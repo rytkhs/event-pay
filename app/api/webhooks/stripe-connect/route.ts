@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
             const applicationObj = event.data.object as Stripe.Application;
             result = await handler.handleAccountApplicationDeauthorized(
               applicationObj,
-              (event as any).account
+              event.account ?? undefined
             );
             break;
           }

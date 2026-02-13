@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import type { Event } from "@core/types/models";
+import type { Event } from "@core/types/event";
 import type { GetParticipantsResponse } from "@core/validation/participant-management";
 
 import {

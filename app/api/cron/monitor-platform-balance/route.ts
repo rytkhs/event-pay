@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
         .filter((i) => i.currency?.toLowerCase() === "jpy")
         .reduce((acc, cur) => acc + (cur.amount || 0), 0);
 
-    const availableJpy = sum((bal.available as any) || []);
-    const pendingJpy = sum((bal.pending as any) || []);
+    const availableJpy = sum(bal.available ?? []);
+    const pendingJpy = sum(bal.pending ?? []);
     const connectReservedJpy = sum(
       (bal as unknown as { connect_reserved?: Array<{ amount: number; currency: string }> })
         .connect_reserved || []

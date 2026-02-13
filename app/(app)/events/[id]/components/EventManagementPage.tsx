@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { useRouter } from "next/navigation";
 
-import type { Event } from "@core/types/models";
+import type { Event } from "@core/types/event";
 import type {
   GetEventPaymentsResponse,
   GetParticipantsResponse,

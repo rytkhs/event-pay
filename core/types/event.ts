@@ -1,12 +1,31 @@
 /**
- * EventPay 統一型定義
- * アプリケーション全体で使用される共通の型定義を集約
+ * Event ドメインの共有契約型
+ * Layer 2 SoT: app/features から参照されるイベント関連型を集約
  */
 
 import type { Database } from "@/types/database";
 
 // ====================================================================
-// Event関連の型定義
+// Event関連のデータベース型エイリアス
+// ====================================================================
+
+/** eventsテーブルの行型（SELECT結果） */
+export type EventRow = Database["public"]["Tables"]["events"]["Row"];
+
+/** eventsテーブルの挿入型（INSERT用） */
+export type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
+
+/** eventsテーブルの更新型（UPDATE用） */
+export type EventUpdate = Database["public"]["Tables"]["events"]["Update"];
+
+/** attendancesテーブルの行型（JOIN結果用） */
+export type AttendanceRow = Database["public"]["Tables"]["attendances"]["Row"];
+
+/** attendancesテーブルの挿入型（INSERT用） */
+export type AttendanceInsert = Database["public"]["Tables"]["attendances"]["Insert"];
+
+// ====================================================================
+// Event関連のアプリケーション型定義
 // ====================================================================
 
 /**

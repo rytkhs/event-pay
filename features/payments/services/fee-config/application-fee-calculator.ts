@@ -1,8 +1,5 @@
-import { type SupabaseClient } from "@supabase/supabase-js";
-
 import { logger } from "@core/logging/app-logger";
-
-import { Database } from "@/types/database";
+import type { AppSupabaseClient } from "@core/types/supabase";
 
 import { FeeConfigService, type PlatformFeeConfig } from "./service";
 
@@ -59,7 +56,7 @@ export interface ApplicationFeeCalculation {
 export class ApplicationFeeCalculator {
   private feeConfigService: FeeConfigService;
 
-  constructor(supabaseClient: SupabaseClient<Database, "public">) {
+  constructor(supabaseClient: AppSupabaseClient<"public">) {
     this.feeConfigService = new FeeConfigService(supabaseClient);
   }
 

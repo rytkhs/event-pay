@@ -47,6 +47,10 @@ export type PaymentOperation =
   | "update_payment_status"
   | "bulk_update_payment_status"
   | "validate_connect_account"
+  | "create_express_account"
+  | "create_account_link"
+  | "get_account_info"
+  | "update_business_profile"
   | "process_webhook";
 
 /**

@@ -28,7 +28,7 @@ export async function verifyEventAccess(eventId: string): Promise<EventAccessRes
   // イベントIDのバリデーション
   const validation = validateEventId(eventId);
   if (!validation.success || !validation.data) {
-    throw new Error("Invalid event ID format");
+    throw new Error("無効なイベントID形式です。");
   }
 
   const validatedEventId = validation.data;

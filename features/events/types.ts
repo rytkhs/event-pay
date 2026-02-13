@@ -1,14 +1,16 @@
-export interface Event {
-  id: string;
-  title: string;
-  date: string;
-  location: string;
-  fee: number;
-  capacity: number | null;
-  status: "upcoming" | "ongoing" | "past" | "canceled";
-  creator_name: string;
-  // 実際のSupabaseクエリから取得される参加者数
+import type { Event } from "@core/types/event";
+
+/**
+ * イベント一覧表示用の軽量型
+ * core/types/event.ts の Event から必要なフィールドのみを抽出し、
+ * 一覧表示に特化した型に変換して使用する。
+ */
+export type EventListItem = Pick<
+  Event,
+  "id" | "title" | "date" | "fee" | "capacity" | "status" | "created_at"
+> & {
+  /** 表示用場所 */
+  location: string | null;
+  /** 参加者数（attending のみカウント） */
   attendances_count?: number;
-  // 作成日時（ソート用）
-  created_at: string;
-}
+};

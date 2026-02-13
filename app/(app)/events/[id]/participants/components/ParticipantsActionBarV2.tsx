@@ -5,7 +5,7 @@ import { useState, type ReactNode } from "react";
 import { Plus, Download, Search, X, ListTodo, MoreVertical } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
-import type { Event } from "@core/types/models";
+import type { Event } from "@core/types/event";
 import type {
   ExportParticipantsCsvResult,
   AdminAddAttendanceResult,

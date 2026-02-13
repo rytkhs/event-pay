@@ -89,7 +89,7 @@ export function CardsView({
       {participants.map((p) => {
         const isActionRequired =
           !isFreeEvent && p.status === "attending" && isPaymentUnpaid(p.payment_status);
-        const simple = toSimplePaymentStatus(p.payment_status as any);
+        const simple = toSimplePaymentStatus(p.payment_status);
         const isCanceledPayment = p.payment_status === "canceled";
         const isCashPayment = p.payment_method === "cash" && p.payment_id && !isCanceledPayment;
         const isOperatable =

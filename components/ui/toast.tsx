@@ -4,13 +4,7 @@ import { useEffect, useState } from "react";
 
 import { X } from "lucide-react";
 
-export interface Toast {
-  id: string;
-  title: string;
-  description?: string;
-  variant?: "default" | "destructive" | "success";
-  duration?: number;
-}
+import type { Toast, ToasterProps } from "@/types/toast";
 
 interface ToastProps {
   toast: Toast;
@@ -65,11 +59,6 @@ function ToastComponent({ toast, onClose }: ToastProps) {
       </div>
     </div>
   );
-}
-
-interface ToasterProps {
-  toasts: Toast[];
-  onClose: (id: string) => void;
 }
 
 export function Toaster({ toasts, onClose }: ToasterProps) {

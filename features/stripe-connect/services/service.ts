@@ -4,17 +4,16 @@
 
 import "server-only";
 
-import { type SupabaseClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
 import { errFrom, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { getStripe, generateIdempotencyKey } from "@core/stripe/client";
 import { convertStripeError } from "@core/stripe/error-handler";
+import type { StripeConnectAccountUpdate } from "@core/types/stripe-connect";
+import type { AppSupabaseClient } from "@core/types/supabase";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
-
-import { Database } from "@/types/database";
 
 import {
   StripeConnectAccount,
@@ -42,11 +41,11 @@ import {
  * StripeConnectServiceの実装クラス
  */
 export class StripeConnectService implements IStripeConnectService {
-  private supabase: SupabaseClient<Database, "public">;
+  private supabase: AppSupabaseClient<"public">;
   private errorHandler: IStripeConnectErrorHandler;
 
   constructor(
-    supabaseClient: SupabaseClient<Database, "public">,
+    supabaseClient: AppSupabaseClient<"public">,
     errorHandler: IStripeConnectErrorHandler
   ) {
     this.supabase = supabaseClient;
@@ -117,10 +116,10 @@ export class StripeConnectService implements IStripeConnectService {
     }
 
     if (requirements.errors && Array.isArray(requirements.errors)) {
-      formatted.errors = requirements.errors.map((err: any) => ({
-        code: err.code || "unknown",
-        reason: err.reason || "",
-        requirement: err.requirement || "",
+      formatted.errors = requirements.errors.map((err) => ({
+        code: typeof err.code === "string" ? err.code : "unknown",
+        reason: typeof err.reason === "string" ? err.reason : "",
+        requirement: typeof err.requirement === "string" ? err.requirement : "",
       }));
     }
 
@@ -141,15 +140,23 @@ export class StripeConnectService implements IStripeConnectService {
     | undefined {
     if (!capabilities) return undefined;
 
+    const parseCapabilityStatus = (
+      value: unknown
+    ): "active" | "inactive" | "pending" | undefined => {
+      return value === "active" || value === "inactive" || value === "pending" ? value : undefined;
+    };
+
     const mapCapability = (cap: unknown): "active" | "inactive" | "pending" | undefined => {
-      if (typeof cap === "string") return cap as any;
-      if (cap && typeof cap === "object" && "status" in (cap as any)) return (cap as any).status;
+      if (typeof cap === "string") return parseCapabilityStatus(cap);
+      if (cap && typeof cap === "object" && "status" in cap) {
+        return parseCapabilityStatus((cap as { status?: unknown }).status);
+      }
       return undefined;
     };
 
     return {
-      card_payments: mapCapability((capabilities as any).card_payments),
-      transfers: mapCapability((capabilities as any).transfers),
+      card_payments: mapCapability(capabilities.card_payments),
+      transfers: mapCapability(capabilities.transfers),
     };
   }
 
@@ -249,7 +256,7 @@ export class StripeConnectService implements IStripeConnectService {
         const env = getEnv();
         if (env.NODE_ENV === "test") {
           // テスト環境では引数シグネチャ互換のためリクエストオプションを渡さない
-          stripeAccount = await stripe.accounts.create(createParams as any);
+          stripeAccount = await stripe.accounts.create(createParams);
         } else {
           stripeAccount = await stripe.accounts.create(createParams, { idempotencyKey });
         }
@@ -540,7 +547,7 @@ export class StripeConnectService implements IStripeConnectService {
       const previousStatus = currentAccount?.status || null;
       const accountId = stripeAccountId || currentAccount?.stripe_account_id || "";
 
-      const updateData: Database["public"]["Tables"]["stripe_connect_accounts"]["Update"] = {
+      const updateData: StripeConnectAccountUpdate = {
         status: status,
         charges_enabled: chargesEnabled,
         payouts_enabled: payoutsEnabled,

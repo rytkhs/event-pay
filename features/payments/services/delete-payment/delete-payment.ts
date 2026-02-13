@@ -1,17 +1,14 @@
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
-
-import { Database } from "@/types/database";
+import type { AppSupabaseClient } from "@core/types/supabase";
 
 /**
  * 決済レコードを削除する
  */
 export async function deletePayment(
   paymentId: string,
-  supabase: SupabaseClient<Database, "public">
+  supabase: AppSupabaseClient<"public">
 ): Promise<void> {
   try {
     const { error } = await supabase.from("payments").delete().eq("id", paymentId);

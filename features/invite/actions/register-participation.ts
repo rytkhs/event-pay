@@ -12,6 +12,7 @@ import {
   logInvalidTokenAccess,
 } from "@core/security/security-logger";
 import { createClient } from "@core/supabase/server";
+import type { RpcGuestGetAttendanceRow } from "@core/types/invite";
 import { generateGuestToken } from "@core/utils/guest-token";
 import {
   validateInviteToken,
@@ -466,9 +467,12 @@ async function verifyGuestTokenStorage(
     const secureClientFactory = getSecureClientFactory();
     const supabase = await secureClientFactory.createGuestClient(expectedGuestToken);
 
-    const { data: rpcRow, error: verifyError } = await (supabase as any)
-      .rpc("rpc_guest_get_attendance")
-      .single();
+    const { data: rpcRow, error: verifyError } = (await supabase
+      .rpc("rpc_guest_get_attendance", { p_guest_token: expectedGuestToken })
+      .maybeSingle()) as {
+      data: RpcGuestGetAttendanceRow | null;
+      error: PostgrestError | null;
+    };
 
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (verifyError || !rpcRow) {
@@ -482,7 +486,8 @@ async function verifyGuestTokenStorage(
         },
         { ...securityContext, eventId: event.id }
       );
-    } else if ((rpcRow as any).guest_token !== expectedGuestToken) {
+    } else if (rpcRow.guest_token !== expectedGuestToken) {
+      const savedGuestToken = rpcRow.guest_token;
       logParticipationSecurityEvent(
         "SUSPICIOUS_ACTIVITY",
         "Guest token mismatch after storage (plain text comparison)",
@@ -490,9 +495,9 @@ async function verifyGuestTokenStorage(
           eventId: event.id,
           attendanceId,
           expectedTokenLength: expectedGuestToken.length,
-          savedTokenLength: ((rpcRow as any).guest_token as string | undefined)?.length,
+          savedTokenLength: savedGuestToken?.length,
           expectedPrefix: expectedGuestToken.substring(0, 4),
-          savedPrefix: ((rpcRow as any).guest_token as string | undefined)?.substring(0, 4),
+          savedPrefix: savedGuestToken?.substring(0, 4),
         },
         { ...securityContext, eventId: event.id }
       );

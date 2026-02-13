@@ -1,11 +1,8 @@
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import type { PaymentLogger } from "@core/logging/payment-logger";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
-
-import { Database } from "@/types/database";
+import type { AppSupabaseClient } from "@core/types/supabase";
 
 import type { PaymentStatus, ServiceUpdatePaymentStatusParams } from "../types";
 
@@ -14,7 +11,7 @@ import type { PaymentStatus, ServiceUpdatePaymentStatusParams } from "../types";
  */
 export async function updatePaymentStatusSafe(
   params: ServiceUpdatePaymentStatusParams,
-  supabase: SupabaseClient<Database, "public">
+  supabase: AppSupabaseClient<"public">
 ): Promise<void> {
   try {
     if (params.expectedVersion === undefined) {
@@ -89,7 +86,7 @@ export async function updatePaymentStatusSafe(
  */
 export async function updatePaymentStatusLegacy(
   params: ServiceUpdatePaymentStatusParams,
-  supabase: SupabaseClient<Database, "public">
+  supabase: AppSupabaseClient<"public">
 ): Promise<void> {
   const updateData: {
     status: PaymentStatus;
@@ -149,7 +146,7 @@ export async function updatePaymentStatusLegacy(
  */
 export async function updatePaymentStatus(
   params: ServiceUpdatePaymentStatusParams,
-  supabase: SupabaseClient<Database, "public">,
+  supabase: AppSupabaseClient<"public">,
   logger: PaymentLogger
 ): Promise<void> {
   const contextLogger = logger.withContext({

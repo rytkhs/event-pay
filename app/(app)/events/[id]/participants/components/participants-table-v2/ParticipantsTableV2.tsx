@@ -59,6 +59,10 @@ type BulkUpdateCashStatusAction = (
   input: BulkUpdateCashStatusInput
 ) => Promise<ActionResult<BulkUpdateResult>>;
 
+function isViewMode(value: string): value is "table" | "cards" {
+  return value === "table" || value === "cards";
+}
+
 export interface ParticipantsTableV2Props {
   eventId: string;
   eventFee: number;
@@ -492,7 +496,11 @@ export function ParticipantsTableV2({
           <ToggleGroup
             type="single"
             value={viewMode}
-            onValueChange={(v: any) => v && handleViewModeChange(v)}
+            onValueChange={(v) => {
+              if (isViewMode(v)) {
+                handleViewModeChange(v);
+              }
+            }}
             className="border rounded-md"
             aria-label="表示形式を選択"
           >

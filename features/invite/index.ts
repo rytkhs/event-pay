@@ -8,10 +8,6 @@ export { InviteEventDetail } from "./components/InviteEventDetail";
 
 // Types & Validation
 export type {
-  InviteValidationResult,
-  AttendanceStatus,
-  EventStatus,
-  PaymentMethod,
   RegisterParticipationData,
   GenerateInviteTokenOptions,
   GenerateInviteTokenResult,

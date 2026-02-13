@@ -1,19 +1,10 @@
-import { z } from "zod";
-
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import type { ErrorCode } from "@core/errors/types";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 
-import { PaymentValidator } from "../validation";
-
-const inputSchema = z.object({
-  paymentId: z.string().uuid(),
-  status: z.enum(["received", "waived", "pending"]),
-  notes: z.string().max(1000).optional(),
-  isCancel: z.boolean().optional(),
-});
+import { PaymentValidator, updateCashStatusActionInputSchema } from "../validation";
 
 function mapPaymentError(type: PaymentErrorType): ErrorCode {
   switch (type) {
@@ -48,7 +39,7 @@ export async function updateCashStatusAction(
   input: unknown
 ): Promise<ActionResult<{ paymentId: string; status: "received" | "waived" | "pending" }>> {
   try {
-    const parsed = inputSchema.safeParse(input);
+    const parsed = updateCashStatusActionInputSchema.safeParse(input);
     if (!parsed.success) {
       return fail("VALIDATION_ERROR", {
         userMessage: "入力データが無効です。",

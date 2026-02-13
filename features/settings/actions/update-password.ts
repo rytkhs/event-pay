@@ -4,9 +4,9 @@ import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
-import { updatePasswordInputSchema } from "@core/validation/settings";
+import { changePasswordInputSchema } from "@core/validation/settings";
 
-export async function updatePasswordAction(formData: FormData): Promise<ActionResult> {
+export async function changePasswordAction(formData: FormData): Promise<ActionResult> {
   try {
     // 認証チェック
     const user = await getCurrentUser();
@@ -20,7 +20,7 @@ export async function updatePasswordAction(formData: FormData): Promise<ActionRe
       newPassword: formData.get("newPassword") as string,
     };
 
-    const validationResult = updatePasswordInputSchema.safeParse(rawData);
+    const validationResult = changePasswordInputSchema.safeParse(rawData);
     if (!validationResult.success) {
       const errors = validationResult.error.errors.map((err) => err.message).join(", ");
       return fail("VALIDATION_ERROR", { userMessage: errors });

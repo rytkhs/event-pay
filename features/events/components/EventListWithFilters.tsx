@@ -4,8 +4,7 @@ import { useState, useCallback, useTransition, useMemo } from "react";
 
 import { useRouter } from "next/navigation";
 
-import { z } from "zod";
-
+import { isValidSortBy, isValidSortOrder } from "@core/constants/event-filters";
 import { usePagination } from "@core/hooks/usePagination";
 import type {
   SortBy,
@@ -13,10 +12,10 @@ import type {
   StatusFilter,
   PaymentFilter,
   DateFilter,
-} from "@core/types/events";
+} from "@core/types/event-query";
 
 import { useEventFilter, Filters } from "../hooks/useEventFilter";
-import { Event } from "../types";
+import { EventListItem } from "../types";
 
 import { EventFilters } from "./EventFilters";
 import { EventList } from "./EventList";
@@ -24,7 +23,7 @@ import { EventSort } from "./EventSort";
 import { Pagination } from "./Pagination";
 
 interface EventListWithFiltersProps {
-  events: Event[];
+  events: EventListItem[];
   totalCount: number;
   isLoading?: boolean;
   initialSortBy?: SortBy;
@@ -53,10 +52,6 @@ export function EventListWithFilters({
     defaultPage: 1,
     defaultPageSize: 24,
   });
-
-  // Zodスキーマによるバリデーション
-  const sortBySchema = z.enum(["date", "created_at", "attendances_count", "fee"]);
-  const sortOrderSchema = z.enum(["asc", "desc"]);
 
   // サーバーサイドソート状態を管理
   const [sortBy, setSortBy] = useState<SortBy>(initialSortBy);
@@ -131,24 +126,20 @@ export function EventListWithFilters({
   // ソート変更ハンドラー（Zodバリデーション付き）
   const customSetSortBy = useCallback(
     (newSortBy: SortBy) => {
-      const validation = sortBySchema.safeParse(newSortBy);
-      if (validation.success) {
-        handleSortChange(validation.data, sortOrder, filters);
-      } else {
+      if (isValidSortBy(newSortBy)) {
+        handleSortChange(newSortBy, sortOrder, filters);
       }
     },
-    [handleSortChange, sortOrder, filters, sortBySchema]
+    [handleSortChange, sortOrder, filters]
   );
 
   const customSetSortOrder = useCallback(
     (newSortOrder: SortOrder) => {
-      const validation = sortOrderSchema.safeParse(newSortOrder);
-      if (validation.success) {
-        handleSortChange(sortBy, validation.data, filters);
-      } else {
+      if (isValidSortOrder(newSortOrder)) {
+        handleSortChange(sortBy, newSortOrder, filters);
       }
     },
-    [handleSortChange, sortBy, filters, sortOrderSchema]
+    [handleSortChange, sortBy, filters]
   );
 
   // フィルターが適用されているかどうかを判定
@@ -167,7 +158,8 @@ export function EventListWithFilters({
     const query = searchQuery.toLowerCase().trim();
     return events.filter((event) => {
       return (
-        event.title.toLowerCase().includes(query) || event.location?.toLowerCase().includes(query)
+        event.title.toLowerCase().includes(query) ||
+        (event.location ?? "").toLowerCase().includes(query)
       );
     });
   }, [events, searchQuery]);

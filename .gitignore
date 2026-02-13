@@ -120,3 +120,8 @@ storage/
 AGENTS.md
 REFACTORING_PRIORITIES.md
 ARCHITECTURE_RULES.md
+
+TYPE_SOT_MIGRATION_REPORT.md
+tools/
+docs/analysis/
+.agents/

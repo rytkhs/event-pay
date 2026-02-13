@@ -6,11 +6,11 @@ import { Copy, ExternalLink, RefreshCw, Link, Share2, Check, MoreVertical } from
 
 import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
-import { useClipboard } from "@core/hooks/use-clipboard";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useClipboard } from "@/core/hooks/useClipboard";
 
 import { generateInviteTokenAction } from "../../actions";
 

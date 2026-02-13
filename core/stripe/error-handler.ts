@@ -7,7 +7,11 @@ import "server-only";
 
 import Stripe from "stripe";
 
-import { type PaymentErrorClassification, PaymentLogger } from "@core/logging/payment-logger";
+import {
+  type PaymentErrorClassification,
+  type PaymentOperation,
+  PaymentLogger,
+} from "@core/logging/payment-logger";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 
 /** Stripeエラー分析結果 */
@@ -31,7 +35,7 @@ interface StripeErrorAnalysis {
 /** Stripeエラーハンドリングコンテキスト */
 export interface StripeErrorContext {
   /** 操作名 */
-  operation?: string;
+  operation?: PaymentOperation;
   /** Connect Account ID */
   connectAccountId?: string;
   /** 決済ID */
@@ -313,6 +317,10 @@ function generateUserMessage(
 class StripeErrorHandler {
   private paymentLogger = new PaymentLogger({ service: "StripeErrorHandler" });
 
+  private resolveOperation(operation?: PaymentOperation): PaymentOperation {
+    return operation ?? "process_webhook";
+  }
+
   /**
    * StripeエラーをPaymentErrorに変換し、詳細分析を実行
    */
@@ -338,7 +346,7 @@ class StripeErrorHandler {
     };
 
     this.paymentLogger.logPaymentError(
-      (context?.operation as any) || "stripe_api_call",
+      this.resolveOperation(context?.operation),
       error,
       logContext
     );

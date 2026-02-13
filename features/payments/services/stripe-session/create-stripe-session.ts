@@ -1,15 +1,15 @@
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type Stripe from "stripe";
 
 import type { PaymentLogger } from "@core/logging/payment-logger";
 import { generateSecureUuid } from "@core/security/crypto";
 import * as DestinationCharges from "@core/stripe/destination-charges";
 import { convertStripeError } from "@core/stripe/error-handler";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
+import type { AppSupabaseClient } from "@core/types/supabase";
 import { maskSessionId } from "@core/utils/mask";
-
-import { Database } from "@/types/database";
+import { toErrorLike } from "@core/utils/type-guards";
 
 import { ApplicationFeeCalculator } from "../fee-config/application-fee-calculator";
 import { IPaymentErrorHandler } from "../interface";
@@ -24,7 +24,7 @@ import { ensureStripePaymentRecord } from "./ensure-payment-record";
 export async function createStripeSession(
   params: CreateStripeSessionParams,
   dependencies: {
-    supabase: SupabaseClient<Database, "public">;
+    supabase: AppSupabaseClient<"public">;
     paymentLogger: PaymentLogger;
     applicationFeeCalculator: ApplicationFeeCalculator;
     errorHandler: IPaymentErrorHandler;
@@ -211,8 +211,8 @@ export async function createStripeSession(
     });
 
     return {
-      sessionUrl: session.url,
       sessionId: session.id,
+      sessionUrl: session.url,
     };
   } catch (error) {
     if (error instanceof PaymentError) {
@@ -225,22 +225,20 @@ export async function createStripeSession(
     contextLogger.logPaymentError("create_stripe_session", error);
 
     // Stripe固有エラーの場合は汎用ハンドラーで詳細分類
-    if (error && typeof error === "object" && "type" in error) {
-      const stripeError = error as any;
-      if (stripeError.type && typeof stripeError.type === "string") {
-        const enhancedError = convertStripeError(stripeError, {
-          operation: "create_stripe_session",
-          connectAccountId: params.destinationCharges?.destinationAccountId,
-          amount: params.amount,
-          sessionId: undefined,
-          additionalData: {
-            event_id: params.eventId,
-            attendance_id: params.attendanceId,
-            actor_id: params.actorId,
-          },
-        });
-        throw enhancedError;
-      }
+    const errorLike = toErrorLike(error);
+    if (typeof errorLike.type === "string") {
+      const enhancedError = convertStripeError(error as Stripe.errors.StripeError, {
+        operation: "create_stripe_session",
+        connectAccountId: params.destinationCharges?.destinationAccountId,
+        amount: params.amount,
+        sessionId: undefined,
+        additionalData: {
+          event_id: params.eventId,
+          attendance_id: params.attendanceId,
+          actor_id: params.actorId,
+        },
+      });
+      throw enhancedError;
     }
 
     // その他のエラーの場合は汎用的なPaymentError

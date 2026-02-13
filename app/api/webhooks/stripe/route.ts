@@ -19,6 +19,7 @@ import { getWebhookSecrets, getStripe } from "@core/stripe/client";
 import { StripeWebhookSignatureVerifier } from "@core/stripe/webhook-signature-verifier";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { getClientIP } from "@core/utils/ip-detection";
+import { toErrorLike } from "@core/utils/type-guards";
 
 import { StripeWebhookEventHandler } from "@features/payments/server";
 
@@ -267,133 +268,131 @@ export async function POST(request: NextRequest) {
     };
 
     // エラーの種類による詳細分類
-    if (error && typeof error === "object") {
-      const errObj = error as any;
+    const errObj = toErrorLike(error);
 
-      // Stripe署名検証エラー
-      if (
-        errObj.message?.includes("signature") ||
-        errObj.message?.includes("webhook") ||
-        errObj.name === "StripeSignatureVerificationError"
-      ) {
-        logger.warn("Stripe signature verification failed", {
-          ...errorContext,
-          error_classification: "security_error",
-          severity: "medium",
-        });
-        return respondWithProblem(error, {
-          instance: "/api/webhooks/stripe",
-          detail: "Webhook signature verification failed",
-          correlationId: requestId,
-          defaultCode: "WEBHOOK_SIGNATURE_VERIFICATION_FAILED",
-          logContext: {
-            category: "stripe_webhook",
-            actorType: "webhook",
-            action: "signatureVerificationFailed",
-            additionalData: errorContext,
-          },
-        });
-      }
+    // Stripe署名検証エラー
+    if (
+      errObj.message?.includes("signature") ||
+      errObj.message?.includes("webhook") ||
+      errObj.name === "StripeSignatureVerificationError"
+    ) {
+      logger.warn("Stripe signature verification failed", {
+        ...errorContext,
+        error_classification: "security_error",
+        severity: "medium",
+      });
+      return respondWithProblem(error, {
+        instance: "/api/webhooks/stripe",
+        detail: "Webhook signature verification failed",
+        correlationId: requestId,
+        defaultCode: "WEBHOOK_SIGNATURE_VERIFICATION_FAILED",
+        logContext: {
+          category: "stripe_webhook",
+          actorType: "webhook",
+          action: "signatureVerificationFailed",
+          additionalData: errorContext,
+        },
+      });
+    }
 
-      // QStash接続・送信エラー
-      if (
-        errObj.message?.includes("qstash") ||
-        errObj.message?.includes("upstash") ||
-        errObj.message?.includes("publish")
-      ) {
-        return respondWithProblem(error, {
-          instance: "/api/webhooks/stripe",
-          detail: "Webhook forwarding to queue failed",
-          correlationId: requestId,
-          defaultCode: "WEBHOOK_QSTASH_FORWARDING_FAILED",
-          logContext: {
-            ...baseLogContext,
-            action: "qstashForwardingFailed",
-          },
-        });
-      }
+    // QStash接続・送信エラー
+    if (
+      errObj.message?.includes("qstash") ||
+      errObj.message?.includes("upstash") ||
+      errObj.message?.includes("publish")
+    ) {
+      return respondWithProblem(error, {
+        instance: "/api/webhooks/stripe",
+        detail: "Webhook forwarding to queue failed",
+        correlationId: requestId,
+        defaultCode: "WEBHOOK_QSTASH_FORWARDING_FAILED",
+        logContext: {
+          ...baseLogContext,
+          action: "qstashForwardingFailed",
+        },
+      });
+    }
 
-      // ネットワーク・接続エラー
-      if (
-        errObj.message?.includes("fetch") ||
-        errObj.message?.includes("network") ||
-        errObj.message?.includes("timeout") ||
-        errObj.code === "ENOTFOUND" ||
-        errObj.code === "ECONNRESET"
-      ) {
-        logger.warn("Network error in webhook processing", {
-          ...errorContext,
-          error_classification: "network_error",
-          severity: "medium",
-          network_error_code: errObj.code,
-        });
-        return respondWithProblem(error, {
-          instance: "/api/webhooks/stripe",
-          detail: "Network connection failed",
-          correlationId: requestId,
-          defaultCode: "EXTERNAL_SERVICE_ERROR",
-          logContext: { ...baseLogContext, action: "network_error" },
-        });
-      }
+    // ネットワーク・接続エラー
+    if (
+      errObj.message?.includes("fetch") ||
+      errObj.message?.includes("network") ||
+      errObj.message?.includes("timeout") ||
+      errObj.code === "ENOTFOUND" ||
+      errObj.code === "ECONNRESET"
+    ) {
+      logger.warn("Network error in webhook processing", {
+        ...errorContext,
+        error_classification: "network_error",
+        severity: "medium",
+        network_error_code: errObj.code,
+      });
+      return respondWithProblem(error, {
+        instance: "/api/webhooks/stripe",
+        detail: "Network connection failed",
+        correlationId: requestId,
+        defaultCode: "EXTERNAL_SERVICE_ERROR",
+        logContext: { ...baseLogContext, action: "network_error" },
+      });
+    }
 
-      // JSON解析エラー
-      if (
-        errObj instanceof SyntaxError ||
-        errObj.message?.includes("JSON") ||
-        errObj.name === "SyntaxError"
-      ) {
-        logger.warn("Invalid JSON in webhook request", {
-          ...errorContext,
-          error_classification: "client_error",
-          severity: "low",
-        });
-        return respondWithProblem(error, {
-          instance: "/api/webhooks/stripe",
-          detail: "Invalid JSON payload",
-          correlationId: requestId,
-          defaultCode: "INVALID_REQUEST",
-          logContext: { ...baseLogContext, action: "invalid_json" },
-        });
-      }
+    // JSON解析エラー
+    if (
+      error instanceof SyntaxError ||
+      errObj.message?.includes("JSON") ||
+      errObj.name === "SyntaxError"
+    ) {
+      logger.warn("Invalid JSON in webhook request", {
+        ...errorContext,
+        error_classification: "client_error",
+        severity: "low",
+      });
+      return respondWithProblem(error, {
+        instance: "/api/webhooks/stripe",
+        detail: "Invalid JSON payload",
+        correlationId: requestId,
+        defaultCode: "INVALID_REQUEST",
+        logContext: { ...baseLogContext, action: "invalid_json" },
+      });
+    }
 
-      // 環境変数・設定エラー
-      if (
-        errObj.message?.includes("QSTASH_TOKEN") ||
-        errObj.message?.includes("environment") ||
-        errObj.message?.includes("configuration")
-      ) {
-        return respondWithProblem(error, {
-          instance: "/api/webhooks/stripe",
-          detail: "Configuration error",
-          correlationId: requestId,
-          defaultCode: "WEBHOOK_CONFIG_ERROR",
-          logContext: {
-            category: "stripe_webhook",
-            actorType: "webhook",
-            action: "webhookConfigError",
-          },
-        });
-      }
+    // 環境変数・設定エラー
+    if (
+      errObj.message?.includes("QSTASH_TOKEN") ||
+      errObj.message?.includes("environment") ||
+      errObj.message?.includes("configuration")
+    ) {
+      return respondWithProblem(error, {
+        instance: "/api/webhooks/stripe",
+        detail: "Configuration error",
+        correlationId: requestId,
+        defaultCode: "WEBHOOK_CONFIG_ERROR",
+        logContext: {
+          category: "stripe_webhook",
+          actorType: "webhook",
+          action: "webhookConfigError",
+        },
+      });
+    }
 
-      // IP制限エラー
-      if (
-        errObj.message?.includes("IP") ||
-        errObj.message?.includes("unauthorized") ||
-        errObj.message?.includes("forbidden")
-      ) {
-        logger.warn("IP restriction or authorization failed", {
-          ...errorContext,
-          error_classification: "security_error",
-          severity: "medium",
-        });
-        return respondWithProblem(error, {
-          instance: "/api/webhooks/stripe",
-          detail: "Access denied",
-          correlationId: requestId,
-          defaultCode: "FORBIDDEN",
-          logContext: { ...baseLogContext, action: "access_denied" },
-        });
-      }
+    // IP制限エラー
+    if (
+      errObj.message?.includes("IP") ||
+      errObj.message?.includes("unauthorized") ||
+      errObj.message?.includes("forbidden")
+    ) {
+      logger.warn("IP restriction or authorization failed", {
+        ...errorContext,
+        error_classification: "security_error",
+        severity: "medium",
+      });
+      return respondWithProblem(error, {
+        instance: "/api/webhooks/stripe",
+        detail: "Access denied",
+        correlationId: requestId,
+        defaultCode: "FORBIDDEN",
+        logContext: { ...baseLogContext, action: "access_denied" },
+      });
     }
 
     // その他の予期しないエラー（最も重大として扱う）

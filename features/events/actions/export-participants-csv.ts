@@ -16,6 +16,13 @@ import {
   type ExportParticipantsCsvResult,
 } from "@core/validation/participant-management";
 
+import {
+  PAYMENTS_LIMIT_ONE,
+  PAYMENTS_ORDER_CREATED_AT_DESC,
+  PAYMENTS_ORDER_PAID_AT_DESC_NULLS_LAST,
+  PAYMENTS_ORDER_UPDATED_AT_DESC,
+} from "./_shared/payment-order";
+
 /**
  * 参加者データCSVエクスポート
  * MANAGE-004: 参加者データ CSV エクスポート（UTF-8 BOM）
@@ -79,17 +86,10 @@ export async function exportParticipantsCsvAction(
       .eq("event_id", validatedEventId)
       // 最新の決済 1 件に絞る
       // 優先順位: 1) paid_at DESC (NULL は後ろ) 2) created_at DESC 3) updated_at DESC
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .order("paid_at", {
-        foreignTable: "payments",
-        ascending: false,
-        nullsFirst: false,
-      } as any)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .order("created_at", { foreignTable: "payments", ascending: false } as any)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .order("updated_at", { foreignTable: "payments", ascending: false } as any)
-      .limit(1, { foreignTable: "payments" });
+      .order("paid_at", PAYMENTS_ORDER_PAID_AT_DESC_NULLS_LAST)
+      .order("created_at", PAYMENTS_ORDER_CREATED_AT_DESC)
+      .order("updated_at", PAYMENTS_ORDER_UPDATED_AT_DESC)
+      .limit(1, PAYMENTS_LIMIT_ONE);
 
     // フィルター適用
     if (filters?.search) {
@@ -163,11 +163,13 @@ export async function exportParticipantsCsvAction(
       });
     }
 
+    const typedParticipants = participants as CsvParticipant[];
+
     // 切り捨て判定 (+1 行オーバーフェッチ方式)
-    const truncated = participants.length > 1000;
+    const truncated = typedParticipants.length > 1000;
 
     // CSV に含めるデータ (最大 1,000 行)
-    const csvSource = truncated ? (participants as any[]).slice(0, 1000) : (participants as any[]);
+    const csvSource = truncated ? typedParticipants.slice(0, 1000) : typedParticipants;
 
     // CSV生成
     const csvContent = generateCsvContent(csvSource, columns);
@@ -255,7 +257,7 @@ function generateCsvContent(participants: CsvParticipant[], columns: string[]): 
 
   // CSV行の生成
   const rows = participants.map((participant) => {
-    const latestPayment = (participant.payments as { [key: string]: any }[])?.[0] || null;
+    const latestPayment = participant.payments?.[0] ?? null;
 
     return columns.map((column) => {
       let value: string | number = "";

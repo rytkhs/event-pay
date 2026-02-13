@@ -90,7 +90,9 @@ export interface UpdatePaymentStatusParams {
 export { SharedPaymentError as PaymentError, PaymentErrorType };
 
 export interface PaymentPort {
-  updateCashStatus(params: UpdateCashStatusParams): Promise<ActionResult<any>>;
+  updateCashStatus(
+    params: UpdateCashStatusParams
+  ): Promise<ActionResult<{ paymentId: string; status: "received" | "waived" | "pending" }>>;
   bulkUpdateCashStatus(params: BulkUpdateCashStatusParams): Promise<ActionResult<BulkUpdateResult>>;
 
   createStripeSession(params: CreateStripeSessionParams): Promise<CreateStripeSessionResult>;

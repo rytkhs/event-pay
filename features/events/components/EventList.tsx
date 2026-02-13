@@ -6,12 +6,12 @@ import { PlusIcon, SearchIcon, CalendarIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-import { Event } from "../types";
+import { EventListItem } from "../types";
 
 import { EventCard } from "./EventCard";
 
 interface EventListProps {
-  events: Event[];
+  events: EventListItem[];
   isLoading?: boolean;
   isFiltered?: boolean;
 }

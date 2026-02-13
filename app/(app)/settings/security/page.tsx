@@ -8,7 +8,7 @@ import { PasswordChangeForm } from "@features/settings";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { updatePasswordAction } from "./actions";
+import { changePasswordAction } from "./actions";
 
 export default async function SecuritySettingsPage() {
   const supabase = createClient();
@@ -29,7 +29,7 @@ export default async function SecuritySettingsPage() {
           <CardDescription>アカウントのログインパスワードを変更できます</CardDescription>
         </CardHeader>
         <CardContent>
-          <PasswordChangeForm updatePasswordAction={updatePasswordAction} />
+          <PasswordChangeForm changePasswordAction={changePasswordAction} />
         </CardContent>
       </Card>
     </div>

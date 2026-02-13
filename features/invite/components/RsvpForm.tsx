@@ -12,13 +12,13 @@ import {
 } from "lucide-react";
 import { useForm, SubmitHandler, Resolver } from "react-hook-form";
 
-import { useParticipationErrorHandler } from "@core/hooks/use-error-handler";
+import type { InviteEventDetail } from "@core/types/invite";
 import {
   createParticipationFormSchema,
   ParticipationFormData,
 } from "@core/validation/participation";
 
-import type { InviteEventDetail } from "../types";
+import { useParticipationErrorHandler } from "@/core/hooks/useErrorHandler";
 
 interface RsvpFormProps {
   event: InviteEventDetail;
@@ -41,7 +41,7 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
   const validationSchema = useMemo(() => createParticipationFormSchema(event.fee), [event.fee]);
 
   const form = useForm<ParticipationFormData>({
-    resolver: zodResolver(validationSchema) as unknown as Resolver<ParticipationFormData>,
+    resolver: zodResolver(validationSchema) as Resolver<ParticipationFormData>,
     defaultValues: {
       inviteToken,
       nickname: "",
@@ -97,7 +97,7 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
   return (
     <form
       onSubmit={handleSubmit(async (data) => {
-        await onFormSubmit(data as unknown as ParticipationFormData);
+        await onFormSubmit(data as ParticipationFormData);
       })}
       className="bg-white rounded-2xl shadow-lg border border-slate-100 p-6 sm:p-8"
     >

@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import { PAYMENT_METHOD_LABELS } from "@core/constants/status-labels";
-import type { Event } from "@core/types/models";
+import type { Event } from "@core/types/event";
 import { sanitizeEventDescription, sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 

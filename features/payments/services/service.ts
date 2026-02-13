@@ -4,11 +4,8 @@
 
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { PaymentLogger } from "@core/logging/payment-logger";
-
-import { Database } from "@/types/database";
+import type { AppSupabaseClient } from "@core/types/supabase";
 
 import { createCashPayment as createCashPaymentFn } from "./cash-payment/create-cash-payment";
 import { deletePayment as deletePaymentFn } from "./delete-payment/delete-payment";
@@ -33,15 +30,12 @@ import {
  * PaymentServiceの実装クラス
  */
 export class PaymentService implements IPaymentService {
-  private supabase: SupabaseClient<Database, "public">;
+  private supabase: AppSupabaseClient<"public">;
   private errorHandler: IPaymentErrorHandler;
   private applicationFeeCalculator: ApplicationFeeCalculator;
   private paymentLogger: PaymentLogger;
 
-  constructor(
-    supabaseClient: SupabaseClient<Database, "public">,
-    errorHandler: IPaymentErrorHandler
-  ) {
+  constructor(supabaseClient: AppSupabaseClient<"public">, errorHandler: IPaymentErrorHandler) {
     this.supabase = supabaseClient;
     this.errorHandler = errorHandler;
     this.applicationFeeCalculator = new ApplicationFeeCalculator(supabaseClient);

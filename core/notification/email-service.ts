@@ -12,6 +12,7 @@ import { AppError, errResult, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
+import { toErrorLike } from "@core/utils/type-guards";
 
 import {
   IEmailNotificationService,
@@ -43,13 +44,14 @@ function maskEmail(email: string): string {
 /**
  * Resendエラーを分類する
  */
-function classifyResendError(error: any): ResendErrorInfo {
+function classifyResendError(error: unknown): ResendErrorInfo {
   // Resend APIエラーの構造:
   // { message: string, name?: string, statusCode?: number }
 
-  const message = error?.message || String(error);
-  const statusCode = error?.statusCode;
-  const name = error?.name;
+  const errorLike = toErrorLike(error);
+  const message = errorLike.message || String(error);
+  const statusCode = errorLike.statusCode;
+  const name = errorLike.name;
 
   // ステータスコードによる分類
   if (statusCode) {
@@ -484,7 +486,7 @@ export class EmailNotificationService implements IEmailNotificationService {
   async sendAdminAlert(params: {
     subject: string;
     message: string;
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
   }): Promise<NotificationResult> {
     try {
       const { subject, message, details } = params;

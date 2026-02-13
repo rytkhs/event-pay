@@ -1,4 +1,5 @@
 import { logger } from "@core/logging/app-logger";
+import { toErrorLike } from "@core/utils/type-guards";
 
 import { getEnv } from "./cloudflare-env";
 import { getClientIPFromHeaders } from "./ip-detection";
@@ -11,7 +12,7 @@ import { getClientIPFromHeaders } from "./ip-detection";
  */
 export function isNextRedirectError(err: unknown): boolean {
   try {
-    const digest = (err as any)?.digest;
+    const digest = toErrorLike(err).digest;
     if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
       return true;
     }

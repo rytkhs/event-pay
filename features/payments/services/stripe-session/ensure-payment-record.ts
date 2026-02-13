@@ -9,14 +9,11 @@
 
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import type { PaymentLogger } from "@core/logging/payment-logger";
 import { generateIdempotencyKey } from "@core/stripe/client";
 import { assertStripePayment } from "@core/stripe/guards";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
-
-import { Database } from "@/types/database";
+import type { AppSupabaseClient } from "@core/types/supabase";
 
 import type { CreateStripeSessionParams, PaymentMethod, PaymentStatus } from "../types";
 import { findLatestPaymentByEffectiveTime } from "../utils/payment-effective-time";
@@ -92,7 +89,7 @@ function selectPreferredOpenPayment(payments: OpenPaymentRow[]): OpenPaymentRow 
  */
 export async function ensureStripePaymentRecord(
   params: CreateStripeSessionParams,
-  supabase: SupabaseClient<Database, "public">,
+  supabase: AppSupabaseClient<"public">,
   logger: PaymentLogger
 ): Promise<EnsurePaymentRecordResult> {
   // --- オープン決済の検索 ---

@@ -7,12 +7,7 @@ import { AppError, normalizeError } from "@core/errors";
 import type { ErrorSeverity } from "@core/errors/types";
 
 import { errorLogger } from "@/components/errors/error-logger";
-import type { Database } from "@/types/database";
-
-/** DB enum から型を取得 */
-type ActorType = Database["public"]["Enums"]["actor_type_enum"];
-type LogOutcome = Database["public"]["Enums"]["log_outcome_enum"];
-type LogCategory = Database["public"]["Enums"]["log_category_enum"];
+import type { ActorType, LogOutcome, LogCategory } from "@/core/logging/app-logger";
 
 export interface ErrorContext {
   userAgent?: string;

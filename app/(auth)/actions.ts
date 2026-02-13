@@ -3,8 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
 
-import type { EmailOtpType, AuthResponse } from "@supabase/supabase-js";
-import { z } from "zod";
+import type { EmailOtpType } from "@supabase/supabase-js";
 
 import {
   AccountLockoutService,
@@ -18,37 +17,21 @@ import { fail, ok, type ActionResult } from "@core/errors/adapters/server-action
 import { logger } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit/index";
+import { hasAuthErrorCode, isResetPasswordResult } from "@core/supabase/auth-guards";
 import { createClient } from "@core/supabase/server";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { formatUtcToJst } from "@core/utils/timezone";
-import { loginInputSchema, registerInputSchema } from "@core/validation/auth";
-
-// バリデーションスキーマ
-const resetPasswordSchema = z.object({
-  email: z.string().email("有効なメールアドレスを入力してください").max(254),
-});
-
-const verifyOtpSchema = z.object({
-  email: z.string().email("有効なメールアドレスを入力してください"),
-  otp: z.string().regex(/^\d{6}$/, "6桁の数字を入力してください"),
-  type: z.enum(["email", "recovery", "email_change", "signup"]),
-});
-
-const updatePasswordSchema = z
-  .object({
-    password: z
-      .string()
-      .min(8, "パスワードは8文字以上で入力してください")
-      .max(128, "パスワードは128文字以内で入力してください"),
-    passwordConfirm: z.string(),
-  })
-  .refine((data) => data.password === data.passwordConfirm, {
-    message: "パスワードが一致しません",
-    path: ["passwordConfirm"],
-  });
+import {
+  emailCheckSchema,
+  loginInputSchema,
+  registerInputSchema,
+  resetPasswordInputSchema,
+  completePasswordResetInputSchema,
+  verifyOtpInputSchema,
+} from "@core/validation/auth";
 
 // FormDataをオブジェクトに変換
 function formDataToObject(formData: FormData): Record<string, string> {
@@ -128,21 +111,16 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     const supabase = createClient();
 
     // ログイン試行実行（タイミング攻撃対策付き）
-    let authResult: AuthResponse | null = null;
-    await TimingAttackProtection.normalizeResponseTime(async () => {
-      authResult = await supabase.auth.signInWithPassword({
-        email: sanitizedEmail,
-        password: sanitizedPassword,
-      });
-    }, 300);
+    const authResult = await TimingAttackProtection.normalizeResponseTime(
+      async () =>
+        await supabase.auth.signInWithPassword({
+          email: sanitizedEmail,
+          password: sanitizedPassword,
+        }),
+      300
+    );
 
-    if (!authResult) {
-      await TimingAttackProtection.addConstantDelay();
-      return fail("LOGIN_UNEXPECTED_ERROR", {
-        userMessage: "ログイン処理中にエラーが発生しました",
-      });
-    }
-    const { data: signInData, error: signInError } = authResult as AuthResponse;
+    const { data: signInData, error: signInError } = authResult;
 
     if (signInError) {
       handleServerError(signInError, {
@@ -166,13 +144,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
       }
 
       // 未確認メールエラーの特別処理
-      if (
-        typeof (signInError as unknown) === "object" &&
-        signInError !== null &&
-        "message" in (signInError as any) &&
-        typeof (signInError as any).message === "string" &&
-        (signInError as any).message === "Email not confirmed"
-      ) {
+      if (hasAuthErrorCode(signInError, "email_not_confirmed")) {
         return fail("LOGIN_FAILED", {
           userMessage: "メールアドレスの確認が必要です。",
           redirectUrl: `/verify-email?email=${encodeURIComponent(sanitizedEmail)}`,
@@ -306,27 +278,23 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
     const supabase = createClient();
 
     // ユーザー登録（メール確認必須）
-    let registrationResult: AuthResponse | null = null;
-    await TimingAttackProtection.normalizeResponseTime(async () => {
-      registrationResult = await supabase.auth.signUp({
-        email: sanitizedEmail,
-        password: sanitizedPassword,
-        options: {
-          data: {
-            name: sanitizedName,
-            terms_agreed: true,
+    const registrationResult = await TimingAttackProtection.normalizeResponseTime(
+      async () =>
+        await supabase.auth.signUp({
+          email: sanitizedEmail,
+          password: sanitizedPassword,
+          options: {
+            data: {
+              name: sanitizedName,
+              terms_agreed: true,
+            },
+            // メール確認後のリダイレクト先は設定しない（OTP方式を使用）
           },
-          // メール確認後のリダイレクト先は設定しない（OTP方式を使用）
-        },
-      });
-    }, 400);
+        }),
+      400
+    );
 
-    if (!registrationResult) {
-      return fail("REGISTRATION_UNEXPECTED_ERROR", {
-        userMessage: "登録処理中にエラーが発生しました",
-      });
-    }
-    const { data: signUpData, error: signUpError } = registrationResult as AuthResponse;
+    const { data: signUpData, error: signUpError } = registrationResult;
 
     if (signUpError) {
       handleServerError(signUpError, {
@@ -342,20 +310,13 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       let errorCode: "ALREADY_EXISTS" | "RATE_LIMITED" | "REGISTRATION_UNEXPECTED_ERROR" =
         "REGISTRATION_UNEXPECTED_ERROR";
 
-      if (
-        typeof (signUpError as unknown) === "object" &&
-        signUpError !== null &&
-        "message" in (signUpError as any) &&
-        typeof (signUpError as any).message === "string"
-      ) {
-        if ((signUpError as any).message.includes("already registered")) {
-          // 既存ユーザー情報の漏洩を防ぐため、統一されたメッセージ
-          errorMessage = "このメールアドレスは既に登録されています";
-          errorCode = "ALREADY_EXISTS";
-        } else if ((signUpError as any).message.includes("rate limit")) {
-          errorMessage = "送信回数の上限に達しました。しばらく時間をおいてからお試しください";
-          errorCode = "RATE_LIMITED";
-        }
+      if (hasAuthErrorCode(signUpError, "user_already_exists")) {
+        // 既存ユーザー情報の漏洩を防ぐため、統一されたメッセージ
+        errorMessage = "このメールアドレスは既に登録されています";
+        errorCode = "ALREADY_EXISTS";
+      } else if (hasAuthErrorCode(signUpError, "over_email_send_limit")) {
+        errorMessage = "送信回数の上限に達しました。しばらく時間をおいてからお試しください";
+        errorCode = "RATE_LIMITED";
       }
 
       return fail(errorCode, {
@@ -468,7 +429,7 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
 export async function verifyOtpAction(formData: FormData): Promise<ActionResult> {
   try {
     const rawData = formDataToObject(formData);
-    const result = verifyOtpSchema.safeParse(rawData);
+    const result = verifyOtpInputSchema.safeParse(rawData);
 
     if (!result.success) {
       return fail("VALIDATION_ERROR", {
@@ -497,10 +458,10 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
 
       let errorMessage = "確認コードが正しくありません";
       let errorCode: "OTP_INVALID" | "OTP_EXPIRED" = "OTP_INVALID";
-      if ((verifiedError as any)?.message?.includes("expired")) {
+      if (hasAuthErrorCode(verifiedError, "otp_expired")) {
         errorMessage = "確認コードが無効、もしくは有効期限が切れています";
         errorCode = "OTP_EXPIRED";
-      } else if ((verifiedError as any)?.message?.includes("invalid")) {
+      } else if (hasAuthErrorCode(verifiedError, "otp_invalid")) {
         errorMessage = "無効な確認コードです";
         errorCode = "OTP_INVALID";
       }
@@ -547,7 +508,7 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
     const email = formData.get("email")?.toString();
     const type = formData.get("type")?.toString() || "signup";
 
-    if (!email || !z.string().email().safeParse(email).success) {
+    if (!email || !emailCheckSchema.safeParse(email).success) {
       return fail("VALIDATION_ERROR", { userMessage: "有効なメールアドレスを入力してください" });
     }
 
@@ -606,7 +567,7 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
         },
       });
 
-      if ((error as any)?.message?.includes("rate limit")) {
+      if (hasAuthErrorCode(error, "over_email_send_limit")) {
         return fail("RATE_LIMITED", {
           userMessage: "送信回数の上限に達しました。しばらく時間をおいてからお試しください",
           retryable: true,
@@ -639,7 +600,7 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
 export async function resetPasswordAction(formData: FormData): Promise<ActionResult> {
   try {
     const rawData = formDataToObject(formData);
-    const result = resetPasswordSchema.safeParse(rawData);
+    const result = resetPasswordInputSchema.safeParse(rawData);
 
     if (!result.success) {
       await TimingAttackProtection.addConstantDelay();
@@ -688,15 +649,15 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
     const supabase = createClient();
 
     // タイミング攻撃対策: 常に一定時間確保
-    let resetResult: { data: unknown; error: unknown } | null = null;
-    await TimingAttackProtection.normalizeResponseTime(async () => {
-      resetResult = await supabase.auth.resetPasswordForEmail(email);
-    }, 300);
+    const resetResult = await TimingAttackProtection.normalizeResponseTime(
+      async () => await supabase.auth.resetPasswordForEmail(email),
+      300
+    );
 
     // セキュリティ上、成功・失敗に関わらず同じメッセージを返す（ユーザー列挙攻撃対策）
     // エラーがあってもログに記録するだけで、ユーザーには同じメッセージを返す
-    if (resetResult && (resetResult as any).error) {
-      handleServerError((resetResult as any).error, {
+    if (isResetPasswordResult(resetResult) && resetResult.error) {
+      handleServerError(resetResult.error, {
         category: "authentication",
         action: "resetPasswordOtpFailed",
         additionalData: {
@@ -729,10 +690,10 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
 /**
  * パスワード更新（リセット後）
  */
-export async function updatePasswordAction(formData: FormData): Promise<ActionResult> {
+export async function completePasswordResetAction(formData: FormData): Promise<ActionResult> {
   try {
     const rawData = formDataToObject(formData);
-    const result = updatePasswordSchema.safeParse(rawData);
+    const result = completePasswordResetInputSchema.safeParse(rawData);
 
     if (!result.success) {
       return fail("VALIDATION_ERROR", {

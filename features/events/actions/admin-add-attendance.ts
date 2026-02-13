@@ -13,7 +13,11 @@ import {
   type AdminAddAttendanceResult,
   AdminAddAttendanceInputSchema,
 } from "@core/validation/participant-management";
-import { canCreateStripeSession } from "@core/validation/payment-eligibility";
+import {
+  canCreateStripeSession,
+  type PaymentEligibilityAttendance,
+  type PaymentEligibilityEvent,
+} from "@core/validation/payment-eligibility";
 
 /**
  * 主催者が手動で参加者を追加する（締切制約なし、定員は上書き可能）
@@ -143,18 +147,18 @@ export async function adminAddAttendanceAction(
     }
 
     // 決済可否（Stripe）を判定
-    const eventForEligibility = {
+    const eventForEligibility: PaymentEligibilityEvent = {
       id: eventRow.id,
-      status: deriveEventStatus(eventRow.date, (eventRow as any).canceled_at ?? null),
+      status: deriveEventStatus(eventRow.date, eventRow.canceled_at ?? null),
       fee: eventRow.fee,
       date: eventRow.date,
       payment_deadline: eventRow.payment_deadline,
       allow_payment_after_deadline: eventRow.allow_payment_after_deadline ?? false,
       grace_period_days: eventRow.grace_period_days ?? 0,
     };
-    const attendanceForEligibility = {
+    const attendanceForEligibility: PaymentEligibilityAttendance = {
       id: attendanceId,
-      status: status as any,
+      status,
       payment: null,
     };
     const eligibility = canCreateStripeSession(attendanceForEligibility, eventForEligibility);

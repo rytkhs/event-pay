@@ -1,9 +1,8 @@
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import { createClient } from "@core/supabase/server";
+import type { AttendanceRow, EventRow } from "@core/types/event";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
-
-import type { Database } from "@/types/database";
 
 export interface DashboardStats {
   upcomingEventsCount: number;
@@ -24,10 +23,10 @@ export interface RecentEvent {
 }
 
 type EventForRecent = Pick<
-  Database["public"]["Tables"]["events"]["Row"],
+  EventRow,
   "id" | "title" | "date" | "fee" | "capacity" | "canceled_at" | "location"
 > & {
-  attendances: Pick<Database["public"]["Tables"]["attendances"]["Row"], "status">[];
+  attendances: Pick<AttendanceRow, "status">[];
 };
 
 /**

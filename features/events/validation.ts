@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Event } from "@core/types/models";
+import type { Event } from "@core/types/event";
 import { parseFee, safeParseNumber } from "@core/utils/number-parsers";
 import { convertDatetimeLocalToUtc, isUtcDateFuture } from "@core/utils/timezone";
 
@@ -355,3 +355,32 @@ export function createEventEditFormSchema(attendeeCount: number, existingEvent: 
       }
     );
 }
+
+export const generateGuestUrlInputSchema = z.object({
+  eventId: z.string().uuid(),
+  attendanceId: z.string().uuid(),
+});
+
+export const generateInviteTokenEventIdSchema = z.string().uuid("Invalid event ID format");
+
+export const eventFilterDateSchema = z
+  .object({
+    start: z.string().optional(),
+    end: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.start && data.end) {
+        try {
+          // 日付文字列を直接比較（YYYY-MM-DD形式）
+          return data.end > data.start;
+        } catch {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message: "終了日は開始日より後の日付を選択してください",
+    }
+  );

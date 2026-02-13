@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 
 import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
-import { z } from "zod";
 
 import {
   SORT_BY_OPTIONS,
@@ -11,7 +10,7 @@ import {
   isValidSortBy,
   isValidSortOrder,
 } from "@core/constants/event-filters";
-import type { SortBy, SortOrder } from "@core/types/events";
+import type { SortBy, SortOrder } from "@core/types/event-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -30,10 +29,6 @@ interface EventSortProps {
 }
 
 export function EventSort({ sortBy, sortOrder, onSortChange, onOrderChange }: EventSortProps) {
-  // Zodスキーマによるバリデーション
-  const sortBySchema = z.enum(["date", "created_at", "attendances_count", "fee"]);
-  const sortOrderSchema = z.enum(["asc", "desc"]);
-
   // 無効な値の検証とデフォルト値の適用
   useEffect(() => {
     if (!isValidSortBy(sortBy)) {
@@ -45,16 +40,14 @@ export function EventSort({ sortBy, sortOrder, onSortChange, onOrderChange }: Ev
   }, [sortBy, sortOrder]);
 
   const handleSortChange = (value: string) => {
-    const validation = sortBySchema.safeParse(value);
-    if (validation.success) {
-      onSortChange(validation.data as SortBy);
+    if (isValidSortBy(value)) {
+      onSortChange(value);
     }
   };
 
   const handleOrderChange = (value: string) => {
-    const validation = sortOrderSchema.safeParse(value);
-    if (validation.success) {
-      onOrderChange(validation.data as SortOrder);
+    if (isValidSortOrder(value)) {
+      onOrderChange(value);
     }
   };
 

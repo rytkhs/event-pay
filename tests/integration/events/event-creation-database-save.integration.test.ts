@@ -12,6 +12,7 @@
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+import type { EventRow } from "@core/types/event";
 import { validateInviteToken } from "@core/utils/invite-token";
 
 import { createEventAction } from "@/app/(app)/events/create/actions";
@@ -19,9 +20,6 @@ import { getFutureDateTimeLocal } from "@/tests/helpers/test-datetime";
 import { createFormDataFromEvent as createFormDataFromEventHelper } from "@/tests/helpers/test-form-data";
 import { cleanupTestPaymentData } from "@/tests/helpers/test-payment-data";
 import { createTestUser, deleteTestUser, type TestUser } from "@/tests/helpers/test-user";
-import type { Database } from "@/types/database";
-
-type EventRow = Database["public"]["Tables"]["events"]["Row"];
 
 // モックのセットアップ
 const mockGetCurrentUser = getCurrentUser as jest.MockedFunction<typeof getCurrentUser>;

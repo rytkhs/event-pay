@@ -8,7 +8,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, CheckCircle2, AlertCircle, Mail, ArrowLeft, RefreshCw } from "lucide-react";
 import { useForm } from "react-hook-form";
-import * as z from "zod";
+
+import { otpCodeFormSchema, type OtpCodeFormInput } from "@core/validation/auth";
 
 import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert";
 import { Button } from "@components/ui/button";
@@ -34,12 +35,6 @@ import { verifyOtpAction, resendOtpAction } from "@/app/(auth)/actions";
 
 export const dynamic = "force-dynamic";
 
-const FormSchema = z.object({
-  otp: z.string().min(6, {
-    message: "6桁の確認コードを入力してください。",
-  }),
-});
-
 function VerifyOtpContent() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -53,8 +48,8 @@ function VerifyOtpContent() {
   const email = searchParams.get("email");
   const type = searchParams.get("type") || "signup";
 
-  const form = useForm<z.infer<typeof FormSchema>>({
-    resolver: zodResolver(FormSchema),
+  const form = useForm<OtpCodeFormInput>({
+    resolver: zodResolver(otpCodeFormSchema),
     defaultValues: {
       otp: "",
     },
@@ -78,7 +73,7 @@ function VerifyOtpContent() {
     }
   }, [email, router, type]);
 
-  const onSubmit = async (data: z.infer<typeof FormSchema>) => {
+  const onSubmit = async (data: OtpCodeFormInput) => {
     if (!email) return;
 
     setLoading(true);

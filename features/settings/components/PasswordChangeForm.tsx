@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 
 import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
-import { updatePasswordFormSchema, type UpdatePasswordFormInput } from "@core/validation/settings";
+import { changePasswordFormSchema, type ChangePasswordFormInput } from "@core/validation/settings";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,18 +22,18 @@ import {
 } from "@/components/ui/form";
 import { PasswordInput } from "@/components/ui/password-input";
 
-type UpdatePasswordAction = (formData: FormData) => Promise<ActionResult>;
+type ChangePasswordAction = (formData: FormData) => Promise<ActionResult>;
 
 interface PasswordChangeFormProps {
-  updatePasswordAction: UpdatePasswordAction;
+  changePasswordAction: ChangePasswordAction;
 }
 
-export function PasswordChangeForm({ updatePasswordAction }: PasswordChangeFormProps) {
+export function PasswordChangeForm({ changePasswordAction }: PasswordChangeFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const form = useForm<UpdatePasswordFormInput>({
-    resolver: zodResolver(updatePasswordFormSchema),
+  const form = useForm<ChangePasswordFormInput>({
+    resolver: zodResolver(changePasswordFormSchema),
     defaultValues: {
       currentPassword: "",
       newPassword: "",
@@ -41,14 +41,14 @@ export function PasswordChangeForm({ updatePasswordAction }: PasswordChangeFormP
     },
   });
 
-  const onSubmit = (data: UpdatePasswordFormInput) => {
+  const onSubmit = (data: ChangePasswordFormInput) => {
     startTransition(async () => {
       try {
         const formData = new FormData();
         formData.append("currentPassword", data.currentPassword);
         formData.append("newPassword", data.newPassword);
 
-        const result = await updatePasswordAction(formData);
+        const result = await changePasswordAction(formData);
 
         if (result.success) {
           form.reset();

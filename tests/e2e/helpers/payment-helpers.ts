@@ -11,6 +11,7 @@ import type Stripe from "stripe";
 import type { Database } from "@/types/database";
 
 const execAsync = promisify(exec);
+const FIXED_STRIPE_API_VERSION: Stripe.LatestApiVersion = "2025-10-29.clover";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -279,7 +280,7 @@ export async function completeCheckoutSessionViaWebhook(
   const stripe = await import("stripe").then(
     (m) =>
       new m.default(stripeSecretKey, {
-        apiVersion: process.env.STRIPE_API_VERSION as Stripe.LatestApiVersion,
+        apiVersion: FIXED_STRIPE_API_VERSION,
       })
   );
 
@@ -577,7 +578,7 @@ async function triggerWebhookManually(
   const stripe = await import("stripe").then(
     (m) =>
       new m.default(stripeSecretKey, {
-        apiVersion: process.env.STRIPE_API_VERSION as Stripe.LatestApiVersion,
+        apiVersion: FIXED_STRIPE_API_VERSION,
       })
   );
 
@@ -678,7 +679,7 @@ export async function sendStripeWebhook(
   const stripe = await import("stripe").then(
     (m) =>
       new m.default(stripeSecretKey, {
-        apiVersion: process.env.STRIPE_API_VERSION as Stripe.LatestApiVersion,
+        apiVersion: FIXED_STRIPE_API_VERSION,
       })
   );
 

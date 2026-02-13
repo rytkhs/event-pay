@@ -12,11 +12,10 @@ import { ga4Client } from "@core/analytics/ga4-client";
 import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
+import type { EventRow } from "@core/types/event";
 import { handleClientError } from "@core/utils/error-handler.client";
 import { safeParseNumber, parseFee } from "@core/utils/number-parsers";
 import type { EventFormData } from "@core/validation/event";
-
-import type { Database } from "@/types/database";
 
 import { createEventFormSchema, type CreateEventFormData } from "../validation";
 
@@ -52,8 +51,6 @@ function toDatetimeLocalString(date: Date): string {
  * react-hook-formを使用したイベント作成フォーム用フック
  * セキュリティファースト設計を維持しながら、パフォーマンスと開発効率を向上
  */
-type EventRow = Database["public"]["Tables"]["events"]["Row"];
-
 export type CreateEventAction = (formData: FormData) => Promise<ActionResult<EventRow>>;
 
 type UseEventFormParams = {

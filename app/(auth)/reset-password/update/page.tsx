@@ -10,12 +10,12 @@ import {
   usePasswordConfirmation,
 } from "@features/auth";
 
-import { updatePasswordAction } from "@/app/(auth)/actions";
+import { completePasswordResetAction } from "@/app/(auth)/actions";
 import { PasswordStatusIcon } from "@/components/ui/PasswordStatusIcon";
 
 export default function UpdatePasswordPage() {
   // 共通認証フォームフック
-  const { state, formAction, isPending } = useAuthForm(updatePasswordAction);
+  const { state, formAction, isPending } = useAuthForm(completePasswordResetAction);
   const error = state.success ? undefined : state.error;
 
   // パスワード確認カスタムフック

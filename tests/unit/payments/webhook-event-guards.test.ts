@@ -55,29 +55,36 @@ describe("webhook-event-guards", () => {
   });
 
   describe("getRefundFromWebhookEvent", () => {
-    const createMockRefund = (id: string): Stripe.Refund => ({
-      id,
-      object: "refund",
-      amount: 1000,
-      currency: "jpy",
-      balance_transaction: "bt_123",
-      charge: "ch_123",
-      created: 1234567890,
-      metadata: {},
-      status: "succeeded",
-    });
+    const createMockRefund = (id: string): Stripe.Refund =>
+      ({
+        id,
+        object: "refund",
+        amount: 1000,
+        currency: "jpy",
+        balance_transaction: "bt_123",
+        charge: "ch_123",
+        created: 1234567890,
+        metadata: {},
+        status: "succeeded",
+        payment_intent: null,
+        reason: null,
+        receipt_number: null,
+        source_transfer_reversal: null,
+        transfer_reversal: null,
+      }) as Stripe.Refund;
 
-    const createMockEvent = (object: unknown): Stripe.Event => ({
-      id: "evt_123",
-      object: "event",
-      api_version: "2023-10-08",
-      created: 1234567890,
-      data: { object },
-      livemode: false,
-      pending_webhooks: 0,
-      request: null,
-      type: "refund.created",
-    });
+    const createMockEvent = (object: unknown): Stripe.Event =>
+      ({
+        id: "evt_123",
+        object: "event",
+        api_version: "2023-10-08",
+        created: 1234567890,
+        data: { object } as any,
+        livemode: false,
+        pending_webhooks: 0,
+        request: null,
+        type: "refund.created",
+      }) as Stripe.Event;
 
     it("should extract Refund object from valid event", () => {
       const refund = createMockRefund("re_123");

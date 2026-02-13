@@ -1,13 +1,12 @@
 import type { AppResult } from "@core/errors";
-
-import type { Json } from "@/types/database";
+import type { PaymentWebhookMetaJson } from "@core/types/payment";
 
 export type WebhookProcessingMeta = {
   paymentId?: string;
   eventId?: string;
   terminal?: boolean;
   reason?: string;
-} & { [key: string]: Json | undefined };
+} & { [key: string]: PaymentWebhookMetaJson | undefined };
 
 export type WebhookProcessingResult = AppResult<void, WebhookProcessingMeta>;
 

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import { z } from "zod";
 
 import { AppError, isErrorCode } from "@core/errors";
 import { respondWithCode, respondWithProblem } from "@core/errors/server";
@@ -10,6 +9,7 @@ import type { ErrorCategory, ErrorCode } from "@core/errors/types";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { notifyError } from "@core/utils/error-handler.server";
+import { errorReportSchema } from "@core/validation/error-report";
 
 import type { Database } from "@/types/database";
 
@@ -22,38 +22,6 @@ const ratelimit =
         analytics: true,
       })
     : null;
-
-// Validation schema for error report
-const errorReportSchema = z.object({
-  error: z.object({
-    code: z.string().optional(),
-    category: z.string().optional(),
-    severity: z.string().optional(),
-    title: z.string().optional(),
-    message: z.string(),
-    userMessage: z.string().optional(),
-    retryable: z.boolean().optional(),
-    correlationId: z.string().optional(),
-    context: z.record(z.any()).optional(),
-  }),
-  stackTrace: z.string().optional(),
-  user: z
-    .object({
-      id: z.string().optional(),
-      email: z.string().optional(),
-      userAgent: z.string().optional(),
-    })
-    .optional(),
-  page: z
-    .object({
-      url: z.string().optional(),
-      pathname: z.string().optional(),
-      referrer: z.string().optional(),
-    })
-    .optional(),
-  breadcrumbs: z.array(z.any()).optional(),
-  environment: z.string().optional(),
-});
 
 type LogCategory = Database["public"]["Enums"]["log_category_enum"];
 
