@@ -15,6 +15,7 @@ import {
   ServiceUpdatePaymentStatusParams,
   PaymentMethod,
   PaymentStatus,
+  isPaymentStatus,
 } from "./types";
 
 // サービス層（Stripeに渡す直前の最終パラメータ）用スキーマ（内部使用専用）
@@ -198,12 +199,13 @@ export class PaymentValidator implements IPaymentValidator {
       }
       if (userId) {
         type EventLite = { id: string; created_by: string };
-        type AttendanceWithEvent = {
+        type AttendanceQueryResult = {
           id: string;
           event_id: string;
           events: EventLite | EventLite[];
         };
-        const record = (Array.isArray(data) ? data[0] : data) as unknown as AttendanceWithEvent;
+
+        const record = (Array.isArray(data) ? data[0] : data) as AttendanceQueryResult;
         const events = Array.isArray(record.events) ? record.events : [record.events];
         const createdBy = events[0]?.created_by;
         if (!createdBy || createdBy !== userId) {
@@ -327,12 +329,22 @@ export class PaymentValidator implements IPaymentValidator {
       const currentStatus = data.status as PaymentStatus;
       const method = data.method as PaymentMethod;
 
+      if (!isPaymentStatus(currentStatus)) {
+        throw new PaymentError(
+          PaymentErrorType.DATABASE_ERROR,
+          `無効な現在のステータス: ${currentStatus}`
+        );
+      }
+      if (!isPaymentStatus(newStatus)) {
+        throw new PaymentError(
+          PaymentErrorType.VALIDATION_ERROR,
+          `無効な新しいステータス: ${newStatus}`
+        );
+      }
+
       // 単調増加（降格禁止）ルール：アプリ側の canPromoteStatus に合わせる
       const { canPromoteStatus } = await import("@core/utils/payments/status-rank");
-      const isPromotion = canPromoteStatus(
-        currentStatus as unknown as PaymentStatus,
-        newStatus as unknown as PaymentStatus
-      );
+      const isPromotion = canPromoteStatus(currentStatus, newStatus);
 
       // 同一ステータスは許容（冪等更新）／降格は拒否
       if (newStatus !== currentStatus && !isPromotion) {
