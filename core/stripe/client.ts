@@ -6,7 +6,16 @@ import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
+// 明示固定: Stripe APIバージョン（SDK更新時はこの値を意図的に見直す）
+const FIXED_STRIPE_API_VERSION: Stripe.LatestApiVersion = "2025-10-29.clover";
+
+let stripeInstance: Stripe | null = null;
+
 export function getStripe(): Stripe {
+  if (stripeInstance) {
+    return stripeInstance;
+  }
+
   const env = getEnv();
   const stripeSecretKey = env.STRIPE_SECRET_KEY;
 
@@ -30,8 +39,6 @@ export function getStripe(): Stripe {
     action: "client_creation",
     actor_type: "system",
     key_length: stripeSecretKey.length,
-    key_starts_with: stripeSecretKey.substring(0, 10),
-    key_ends_with: stripeSecretKey.substring(stripeSecretKey.length - 10),
     key_has_newlines: stripeSecretKey.includes("\n"),
     key_has_spaces: stripeSecretKey.includes(" "),
     key_has_tabs: stripeSecretKey.includes("\t"),
@@ -40,7 +47,7 @@ export function getStripe(): Stripe {
   });
 
   const instance = new Stripe(stripeSecretKey, {
-    apiVersion: env.STRIPE_API_VERSION as Stripe.LatestApiVersion,
+    apiVersion: FIXED_STRIPE_API_VERSION,
     // Cloudflare Workers use the Fetch API for their API requests.
     httpClient: Stripe.createFetchHttpClient(),
     // 自動リトライ設定（429/5xx/接続エラー対応）
@@ -67,63 +74,39 @@ export function getStripe(): Stripe {
     );
   }
 
-  // 重複登録防止フラグ
-  const hasRegisteredHooks = (global as unknown as { __stripeHooks?: boolean }).__stripeHooks;
-
   // 本番ではログを抑制。必要なときだけ `STRIPE_LOG_VERBOSE=true` を設定して有効化する
   const shouldEnableStripeLogging =
     env.NODE_ENV !== "production" || env.STRIPE_LOG_VERBOSE === "true";
 
-  if (!hasRegisteredHooks && shouldEnableStripeLogging) {
-    (global as unknown as { __stripeHooks?: boolean }).__stripeHooks = true;
-
-    // Stripe request hook
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore - stripe typings don't expose "request" event yet
-    if (typeof (instance as unknown as { on?: unknown }).on === "function") {
-      (
-        instance as unknown as {
-          on: (event: string, cb: (arg: Record<string, unknown>) => void) => void;
-        }
-      ).on("request", (req: Record<string, unknown>) => {
-        logger.info("Stripe request initiated", {
-          category: "payment",
-          action: "payment_operation",
-          actor_type: "system",
-          stripe_request_id: req.requestId as string | undefined,
-          idempotency_key: req.idempotencyKey as string | undefined,
-          method: req.method as string | undefined,
-          path: req.path as string | undefined,
-          stripe_account: req.stripeAccount as string | undefined,
-          outcome: "success",
-        });
+  if (shouldEnableStripeLogging) {
+    instance.on("request", (req: Stripe.RequestEvent) => {
+      logger.info("Stripe request initiated", {
+        category: "payment",
+        action: "payment_operation",
+        actor_type: "system",
+        idempotency_key: req.idempotency_key,
+        method: req.method,
+        path: req.path,
+        stripe_account: req.account,
+        outcome: "success",
       });
+    });
 
-      // Stripe response hook
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore - stripe typings don't expose "response" event yet
-      (
-        instance as unknown as {
-          on: (event: string, cb: (arg: Record<string, unknown>) => void) => void;
-        }
-      ).on("response", (res: Record<string, unknown>) => {
-        logger.info("Stripe response received", {
-          category: "payment",
-          action: "payment_operation",
-          actor_type: "system",
-          stripe_request_id: res.requestId as string | undefined,
-          status_code: res.statusCode as number | undefined,
-          latency_ms: res.elapsed as number | undefined,
-          stripe_should_retry: (res.headers as Record<string, unknown> | undefined)?.[
-            "stripe-should-retry"
-          ] as string | undefined,
-          outcome: ((res.statusCode as number) < 400 ? "success" : "failure") as any,
-        });
+    instance.on("response", (res: Stripe.ResponseEvent) => {
+      logger.info("Stripe response received", {
+        category: "payment",
+        action: "payment_operation",
+        actor_type: "system",
+        stripe_request_id: res.request_id,
+        status_code: res.status,
+        latency_ms: res.elapsed,
+        outcome: (res.status < 400 ? "success" : "failure") as any,
       });
-    }
+    });
   }
 
-  return instance;
+  stripeInstance = instance;
+  return stripeInstance;
 }
 
 /**
@@ -192,9 +175,7 @@ export const generateIdempotencyKey = (prefix?: string): string => {
     const uuid = (globalThis.crypto as Crypto).randomUUID();
     return prefix ? `${prefix}_${uuid}` : uuid;
   }
-  // Last resort: pseudo-random (not recommended for production)
-  const fallback = `fallback_${Math.random().toString(36).slice(2)}_${Date.now()}`;
-  return prefix ? `${prefix}_${fallback}` : fallback;
+  throw new Error("crypto.randomUUID is unavailable: cannot generate a secure idempotency key");
 };
 
 /**
