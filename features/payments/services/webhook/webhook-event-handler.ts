@@ -20,13 +20,10 @@ import { handleServerError } from "@core/utils/error-handler.server";
 import { maskSessionId } from "@core/utils/mask";
 import { canPromoteStatus } from "@core/utils/payments/status-rank";
 
+import type { WebhookHandlerContext } from "./context/webhook-handler-context";
+import { routeStripePaymentEvent } from "./router/stripe-event-router";
 import type { WebhookProcessingResult } from "./types";
-import {
-  getRefundFromWebhookEvent,
-  isRefundCreatedCompatibleEventType,
-  isRefundFailedCompatibleEventType,
-  isRefundUpdatedCompatibleEventType,
-} from "./webhook-event-guards";
+import { getRefundFromWebhookEvent } from "./webhook-event-guards";
 
 export interface WebhookEventHandler {
   handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult>;
@@ -156,362 +153,41 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     });
   }
 
+  private buildContext(): WebhookHandlerContext {
+    return {
+      supabase: this.supabase,
+      logger: this.logger,
+      helper: {
+        isTerminalDatabaseError: this.isTerminalDatabaseError.bind(this),
+      },
+    };
+  }
+
   async handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult> {
     await this.ensureInitialized();
+    const context = this.buildContext();
+
     try {
-      if (isRefundCreatedCompatibleEventType(event.type)) {
-        return await this.handleRefundCreated(event);
-      }
-
-      if (isRefundUpdatedCompatibleEventType(event.type)) {
-        return await this.handleRefundUpdated(event);
-      }
-
-      if (isRefundFailedCompatibleEventType(event.type)) {
-        return await this.handleRefundFailed(event);
-      }
-
-      switch (event.type) {
-        case "payment_intent.succeeded": {
-          // 一次処理: PaymentIntent で決済成功を確定し、DB更新や集計を行う
-          return await this.handlePaymentIntentSucceeded(
-            event as Stripe.PaymentIntentSucceededEvent
-          );
-        }
-
-        case "payment_intent.payment_failed":
-          return await this.handlePaymentIntentFailed(
-            event as Stripe.PaymentIntentPaymentFailedEvent
-          );
-
-        case "payment_intent.canceled":
-          return await this.handlePaymentIntentCanceled(event as Stripe.PaymentIntentCanceledEvent);
-
-        case "charge.succeeded":
-          return await this.handleChargeSucceeded(event as Stripe.ChargeSucceededEvent);
-
-        case "charge.failed":
-          return await this.handleChargeFailed(event as Stripe.ChargeFailedEvent);
-
-        case "charge.refunded":
-          return await this.handleChargeRefunded(event as Stripe.ChargeRefundedEvent);
-
-        case "checkout.session.completed": {
-          const session = event.data.object as Stripe.Checkout.Session;
-          // 支払い確定は PaymentIntent/Charge のイベントで行う。ここでは突合用IDを保存する。
-          try {
-            const sessionId: string = session.id;
-            const paymentIntentId = getPaymentIntentId(session);
-            const metadata = getMetadata(session);
-            const paymentIdFromMetadata = metadata?.["payment_id"] || null;
-
-            if (!paymentIdFromMetadata) {
-              handleServerError("WEBHOOK_INVALID_PAYLOAD", {
-                action: "processCheckoutSession",
-                additionalData: {
-                  eventId: event.id,
-                  sessionId: maskSessionId(sessionId),
-                  detail: "Missing payment_id in metadata",
-                },
-              });
-              return okResult();
-            }
-
-            const { data: payment, error: fetchError } = await this.supabase
-              .from("payments")
-              .select("id, stripe_payment_intent_id, amount, attendance_id")
-              .eq("id", paymentIdFromMetadata)
-              .maybeSingle();
-
-            if (fetchError) {
-              throw new Error(
-                `Payment lookup failed on checkout.session.completed: ${fetchError.message}`
-              );
-            }
-
-            if (!payment) {
-              handleServerError("WEBHOOK_PAYMENT_NOT_FOUND", {
-                action: "processCheckoutSession",
-                additionalData: {
-                  eventId: event.id,
-                  sessionId: maskSessionId(sessionId),
-                  paymentIdFromMetadata,
-                },
-              });
-              return okResult();
-            }
-
-            const updatePayload: Partial<PaymentUpdate> = {
-              stripe_checkout_session_id: sessionId,
-              updated_at: new Date().toISOString(),
-              ...(paymentIntentId ? { stripe_payment_intent_id: paymentIntentId } : {}),
-            };
-
-            const { error: updateError } = await this.supabase
-              .from("payments")
-              .update(updatePayload)
-              .eq("id", payment.id);
-            if (updateError) {
-              const isTerminal = this.isTerminalDatabaseError(updateError);
-              handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
-                action: "processCheckoutSession",
-                additionalData: {
-                  eventId: event.id,
-                  paymentId: payment.id,
-                  sessionId: maskSessionId(sessionId),
-                  error_message: updateError.message,
-                  error_code: updateError.code,
-                },
-              });
-              return errResult(
-                new AppError("WEBHOOK_UNEXPECTED_ERROR", {
-                  message: updateError.message,
-                  userMessage: "決済ステータス更新に失敗しました",
-                  retryable: !isTerminal,
-                  details: {
-                    eventId: event.id,
-                    paymentId: payment.id,
-                    sessionId: maskSessionId(sessionId),
-                    errorCode: updateError.code,
-                  },
-                }),
-                {
-                  terminal: isTerminal,
-                  reason: "checkout_session_update_failed",
-                  eventId: event.id,
-                  paymentId: payment.id,
-                  errorCode: updateError.code,
-                }
-              );
-            }
-
-            this.logger.info("Checkout session processed successfully", {
-              event_id: event.id,
-              session_id: maskSessionId(sessionId),
-              payment_id: payment.id,
-              payment_intent_id: paymentIntentId ?? undefined,
-              outcome: "success",
-            });
-
-            // GA4購入イベントの送信（失敗してもwebhook処理は継続）
-            try {
-              // メタデータからGA4 Client IDを取得
-              const metadata = getMetadata(session);
-              const gaClientId = metadata?.["ga_client_id"] || null;
-
-              if (gaClientId) {
-                // attendanceからイベント情報を取得
-                const { data: attendance, error: attendanceError } = await this.supabase
-                  .from("attendances")
-                  .select("event:events(id, title)")
-                  .eq("id", payment.attendance_id)
-                  .single();
-
-                if (attendanceError || !attendance) {
-                  handleServerError("GA4_TRACKING_FAILED", {
-                    action: "fetchEventInfoForGa4",
-                    additionalData: {
-                      payment_id: payment.id,
-                      attendance_id: payment.attendance_id,
-                      error_message: attendanceError?.message || "Attendance not found",
-                    },
-                  });
-                } else {
-                  const eventData = extractGa4EventDataFromAttendance(attendance);
-                  if (!eventData) {
-                    handleServerError("GA4_TRACKING_FAILED", {
-                      action: "fetchEventInfoForGa4",
-                      additionalData: {
-                        payment_id: payment.id,
-                        attendance_id: payment.attendance_id,
-                        error_message: "Invalid attendance event payload",
-                      },
-                    });
-                    return okResult();
-                  }
-
-                  // PaymentAnalyticsServiceを使用してGA4購入イベントを送信
-                  const { paymentAnalytics } = await import("../analytics/payment-analytics");
-
-                  await paymentAnalytics.trackPurchaseCompletion({
-                    clientId: gaClientId,
-                    transactionId: sessionId,
-                    eventId: eventData.id,
-                    eventTitle: eventData.title,
-                    amount: payment.amount,
-                  });
-                }
-              } else {
-                this.logger.debug("[GA4] No GA4 Client ID in checkout session metadata", {
-                  session_id: maskSessionId(sessionId),
-                  payment_id: payment.id,
-                  outcome: "success",
-                });
-              }
-            } catch (gaError) {
-              // GA4イベント送信の失敗はログのみ記録、webhook処理は継続
-              handleServerError("GA4_TRACKING_FAILED", {
-                action: "trackPurchaseCompletion",
-                additionalData: {
-                  payment_id: payment.id,
-                  session_id: maskSessionId(sessionId),
-                  error_message: gaError instanceof Error ? gaError.message : "Unknown error",
-                },
-              });
-            }
-
-            return okResult();
-          } catch (e) {
-            throw e instanceof Error ? e : new Error("Unknown error");
-          }
-        }
-        // Checkout セッションが有効期限切れ（離脱など）
-        case "checkout.session.expired": {
-          const session = event.data.object as Stripe.Checkout.Session;
-          try {
-            const sessionId: string = session.id;
-            const rawPi = session.payment_intent;
-            const paymentIntentId: string | null =
-              typeof rawPi === "string" && rawPi.length > 0 ? rawPi : null;
-
-            // 突合順序:
-            // 1) stripe_checkout_session_id（Destination charges）
-            // 2) metadata.payment_id フォールバック
-            let payment: PaymentRow | null = null;
-            {
-              const { data } = await this.supabase
-                .from("payments")
-                .select("*")
-                .eq("stripe_checkout_session_id", sessionId)
-                .maybeSingle();
-              payment = data ?? null;
-            }
-            if (!payment) {
-              const metadata = getMetadata(session);
-              const paymentIdFromMetadata = metadata?.["payment_id"] || null;
-              if (paymentIdFromMetadata) {
-                const { data } = await this.supabase
-                  .from("payments")
-                  .select("*")
-                  .eq("id", paymentIdFromMetadata)
-                  .maybeSingle();
-                payment = data ?? null;
-              }
-            }
-
-            if (!payment) {
-              handleServerError("WEBHOOK_PAYMENT_NOT_FOUND", {
-                action: "processCheckoutSessionExpired",
-                additionalData: { eventId: event.id, sessionId: maskSessionId(sessionId) },
-              });
-              return okResult();
-            }
-
-            // 既に failed 以上（paid/refunded等も含む）なら冪等的にスキップ
-            if (!canPromoteStatus(payment.status as PaymentStatus, "failed")) {
-              this.logger.info("Duplicate webhook event preventing double processing", {
-                event_id: event.id,
-                payment_id: payment.id,
-                current_status: payment.status,
-                outcome: "success",
-              });
-              return okResult();
-            }
-
-            const updatePayload: Partial<PaymentUpdate> = {
-              status: "failed",
-              webhook_event_id: event.id,
-              webhook_processed_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              stripe_checkout_session_id: sessionId,
-              ...(paymentIntentId ? { stripe_payment_intent_id: paymentIntentId } : {}),
-            };
-
-            const { error: updateError } = await this.supabase
-              .from("payments")
-              .update(updatePayload)
-              .eq("id", payment.id);
-            if (updateError) {
-              const isTerminal = this.isTerminalDatabaseError(updateError);
-              handleServerError("STRIPE_CHECKOUT_SESSION_EXPIRED_UPDATE_FAILED", {
-                action: "processCheckoutSessionExpired",
-                additionalData: {
-                  eventId: event.id,
-                  sessionId: maskSessionId(sessionId),
-                  error_message: updateError.message,
-                  error_code: updateError.code,
-                  payment_id: payment.id,
-                },
-              });
-              return errResult(
-                new AppError("STRIPE_CHECKOUT_SESSION_EXPIRED_UPDATE_FAILED", {
-                  message: updateError.message,
-                  userMessage: "決済ステータス更新に失敗しました",
-                  retryable: !isTerminal,
-                  details: {
-                    eventId: event.id,
-                    paymentId: payment.id,
-                    sessionId: maskSessionId(sessionId),
-                    errorCode: updateError.code,
-                  },
-                }),
-                {
-                  terminal: isTerminal,
-                  reason: "checkout_status_update_failed",
-                  eventId: event.id,
-                  paymentId: payment.id,
-                  errorCode: updateError.code,
-                }
-              );
-            }
-
-            this.logger.info("Checkout session expiration processed", {
-              event_id: event.id,
-              payment_id: payment.id,
-              session_id: maskSessionId(sessionId),
-              payment_intent_id: paymentIntentId ?? undefined,
-              outcome: "success",
-            });
-            return okResult(undefined, { eventId: event.id, paymentId: payment.id });
-          } catch (e) {
-            throw e instanceof Error ? e : new Error("Unknown error");
-          }
-        }
-        case "checkout.session.async_payment_succeeded":
-        case "checkout.session.async_payment_failed": {
-          this.logger.info("Webhook event received (async payment)", {
-            event_id: event.id,
-            event_type: event.type,
-          });
-          return okResult();
-        }
-        case "application_fee.refunded":
-        case "application_fee.refund.updated":
-          return await this.handleApplicationFeeRefunded(event as Stripe.Event);
-
-        case "charge.dispute.created":
-        case "charge.dispute.closed":
-        case "charge.dispute.updated":
-        case "charge.dispute.funds_reinstated":
-          return await this.handleDisputeEvent(
-            event as Stripe.ChargeDisputeCreatedEvent | Stripe.ChargeDisputeClosedEvent
-          );
-
-        // Destination chargesでは transfer.* は不使用
-        case "transfer.created":
-        case "transfer.updated":
-        case "transfer.reversed":
-          return okResult();
-
-        default:
-          // サポートされていないイベントタイプをログに記録
-          this.logger.warn("Unsupported webhook event type", {
-            event_type: event.type,
-            event_id: event.id,
-            outcome: "success",
-          });
-          return okResult();
-      }
+      return await routeStripePaymentEvent({
+        event,
+        context,
+        handlers: {
+          handleRefundCreated: this.handleRefundCreated.bind(this),
+          handleRefundUpdated: this.handleRefundUpdated.bind(this),
+          handleRefundFailed: this.handleRefundFailed.bind(this),
+          handlePaymentIntentSucceeded: this.handlePaymentIntentSucceeded.bind(this),
+          handlePaymentIntentFailed: this.handlePaymentIntentFailed.bind(this),
+          handlePaymentIntentCanceled: this.handlePaymentIntentCanceled.bind(this),
+          handleChargeSucceeded: this.handleChargeSucceeded.bind(this),
+          handleChargeFailed: this.handleChargeFailed.bind(this),
+          handleChargeRefunded: this.handleChargeRefunded.bind(this),
+          handleCheckoutSessionCompleted: this.handleCheckoutSessionCompleted.bind(this),
+          handleCheckoutSessionExpired: this.handleCheckoutSessionExpired.bind(this),
+          handleCheckoutSessionAsyncPayment: this.handleCheckoutSessionAsyncPayment.bind(this),
+          handleApplicationFeeRefunded: this.handleApplicationFeeRefunded.bind(this),
+          handleDisputeEvent: this.handleDisputeEvent.bind(this),
+        },
+      });
     } catch (error) {
       handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
         action: "handleEvent",
@@ -538,6 +214,304 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         }
       );
     }
+  }
+
+  private async handleCheckoutSessionCompleted(
+    event: Stripe.CheckoutSessionCompletedEvent
+  ): Promise<WebhookProcessingResult> {
+    const session = event.data.object as Stripe.Checkout.Session;
+    // 支払い確定は PaymentIntent/Charge のイベントで行う。ここでは突合用IDを保存する。
+    try {
+      const sessionId: string = session.id;
+      const paymentIntentId = getPaymentIntentId(session);
+      const metadata = getMetadata(session);
+      const paymentIdFromMetadata = metadata?.["payment_id"] || null;
+
+      if (!paymentIdFromMetadata) {
+        handleServerError("WEBHOOK_INVALID_PAYLOAD", {
+          action: "processCheckoutSession",
+          additionalData: {
+            eventId: event.id,
+            sessionId: maskSessionId(sessionId),
+            detail: "Missing payment_id in metadata",
+          },
+        });
+        return okResult();
+      }
+
+      const { data: payment, error: fetchError } = await this.supabase
+        .from("payments")
+        .select("id, stripe_payment_intent_id, amount, attendance_id")
+        .eq("id", paymentIdFromMetadata)
+        .maybeSingle();
+
+      if (fetchError) {
+        throw new Error(
+          `Payment lookup failed on checkout.session.completed: ${fetchError.message}`
+        );
+      }
+
+      if (!payment) {
+        handleServerError("WEBHOOK_PAYMENT_NOT_FOUND", {
+          action: "processCheckoutSession",
+          additionalData: {
+            eventId: event.id,
+            sessionId: maskSessionId(sessionId),
+            paymentIdFromMetadata,
+          },
+        });
+        return okResult();
+      }
+
+      const updatePayload: Partial<PaymentUpdate> = {
+        stripe_checkout_session_id: sessionId,
+        updated_at: new Date().toISOString(),
+        ...(paymentIntentId ? { stripe_payment_intent_id: paymentIntentId } : {}),
+      };
+
+      const { error: updateError } = await this.supabase
+        .from("payments")
+        .update(updatePayload)
+        .eq("id", payment.id);
+      if (updateError) {
+        const isTerminal = this.isTerminalDatabaseError(updateError);
+        handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
+          action: "processCheckoutSession",
+          additionalData: {
+            eventId: event.id,
+            paymentId: payment.id,
+            sessionId: maskSessionId(sessionId),
+            error_message: updateError.message,
+            error_code: updateError.code,
+          },
+        });
+        return errResult(
+          new AppError("WEBHOOK_UNEXPECTED_ERROR", {
+            message: updateError.message,
+            userMessage: "決済ステータス更新に失敗しました",
+            retryable: !isTerminal,
+            details: {
+              eventId: event.id,
+              paymentId: payment.id,
+              sessionId: maskSessionId(sessionId),
+              errorCode: updateError.code,
+            },
+          }),
+          {
+            terminal: isTerminal,
+            reason: "checkout_session_update_failed",
+            eventId: event.id,
+            paymentId: payment.id,
+            errorCode: updateError.code,
+          }
+        );
+      }
+
+      this.logger.info("Checkout session processed successfully", {
+        event_id: event.id,
+        session_id: maskSessionId(sessionId),
+        payment_id: payment.id,
+        payment_intent_id: paymentIntentId ?? undefined,
+        outcome: "success",
+      });
+
+      // GA4購入イベントの送信（失敗してもwebhook処理は継続）
+      try {
+        // メタデータからGA4 Client IDを取得
+        const metadata = getMetadata(session);
+        const gaClientId = metadata?.["ga_client_id"] || null;
+
+        if (gaClientId) {
+          // attendanceからイベント情報を取得
+          const { data: attendance, error: attendanceError } = await this.supabase
+            .from("attendances")
+            .select("event:events(id, title)")
+            .eq("id", payment.attendance_id)
+            .single();
+
+          if (attendanceError || !attendance) {
+            handleServerError("GA4_TRACKING_FAILED", {
+              action: "fetchEventInfoForGa4",
+              additionalData: {
+                payment_id: payment.id,
+                attendance_id: payment.attendance_id,
+                error_message: attendanceError?.message || "Attendance not found",
+              },
+            });
+          } else {
+            const eventData = extractGa4EventDataFromAttendance(attendance);
+            if (!eventData) {
+              handleServerError("GA4_TRACKING_FAILED", {
+                action: "fetchEventInfoForGa4",
+                additionalData: {
+                  payment_id: payment.id,
+                  attendance_id: payment.attendance_id,
+                  error_message: "Invalid attendance event payload",
+                },
+              });
+              return okResult();
+            }
+
+            // PaymentAnalyticsServiceを使用してGA4購入イベントを送信
+            const { paymentAnalytics } = await import("../analytics/payment-analytics");
+
+            await paymentAnalytics.trackPurchaseCompletion({
+              clientId: gaClientId,
+              transactionId: sessionId,
+              eventId: eventData.id,
+              eventTitle: eventData.title,
+              amount: payment.amount,
+            });
+          }
+        } else {
+          this.logger.debug("[GA4] No GA4 Client ID in checkout session metadata", {
+            session_id: maskSessionId(sessionId),
+            payment_id: payment.id,
+            outcome: "success",
+          });
+        }
+      } catch (gaError) {
+        // GA4イベント送信の失敗はログのみ記録、webhook処理は継続
+        handleServerError("GA4_TRACKING_FAILED", {
+          action: "trackPurchaseCompletion",
+          additionalData: {
+            payment_id: payment.id,
+            session_id: maskSessionId(sessionId),
+            error_message: gaError instanceof Error ? gaError.message : "Unknown error",
+          },
+        });
+      }
+
+      return okResult();
+    } catch (e) {
+      throw e instanceof Error ? e : new Error("Unknown error");
+    }
+  }
+
+  private async handleCheckoutSessionExpired(
+    event: Stripe.CheckoutSessionExpiredEvent
+  ): Promise<WebhookProcessingResult> {
+    const session = event.data.object as Stripe.Checkout.Session;
+    try {
+      const sessionId: string = session.id;
+      const rawPi = session.payment_intent;
+      const paymentIntentId: string | null =
+        typeof rawPi === "string" && rawPi.length > 0 ? rawPi : null;
+
+      // 突合順序:
+      // 1) stripe_checkout_session_id（Destination charges）
+      // 2) metadata.payment_id フォールバック
+      let payment: PaymentRow | null = null;
+      {
+        const { data } = await this.supabase
+          .from("payments")
+          .select("*")
+          .eq("stripe_checkout_session_id", sessionId)
+          .maybeSingle();
+        payment = data ?? null;
+      }
+      if (!payment) {
+        const metadata = getMetadata(session);
+        const paymentIdFromMetadata = metadata?.["payment_id"] || null;
+        if (paymentIdFromMetadata) {
+          const { data } = await this.supabase
+            .from("payments")
+            .select("*")
+            .eq("id", paymentIdFromMetadata)
+            .maybeSingle();
+          payment = data ?? null;
+        }
+      }
+
+      if (!payment) {
+        handleServerError("WEBHOOK_PAYMENT_NOT_FOUND", {
+          action: "processCheckoutSessionExpired",
+          additionalData: { eventId: event.id, sessionId: maskSessionId(sessionId) },
+        });
+        return okResult();
+      }
+
+      // 既に failed 以上（paid/refunded等も含む）なら冪等的にスキップ
+      if (!canPromoteStatus(payment.status as PaymentStatus, "failed")) {
+        this.logger.info("Duplicate webhook event preventing double processing", {
+          event_id: event.id,
+          payment_id: payment.id,
+          current_status: payment.status,
+          outcome: "success",
+        });
+        return okResult();
+      }
+
+      const updatePayload: Partial<PaymentUpdate> = {
+        status: "failed",
+        webhook_event_id: event.id,
+        webhook_processed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        stripe_checkout_session_id: sessionId,
+        ...(paymentIntentId ? { stripe_payment_intent_id: paymentIntentId } : {}),
+      };
+
+      const { error: updateError } = await this.supabase
+        .from("payments")
+        .update(updatePayload)
+        .eq("id", payment.id);
+      if (updateError) {
+        const isTerminal = this.isTerminalDatabaseError(updateError);
+        handleServerError("STRIPE_CHECKOUT_SESSION_EXPIRED_UPDATE_FAILED", {
+          action: "processCheckoutSessionExpired",
+          additionalData: {
+            eventId: event.id,
+            sessionId: maskSessionId(sessionId),
+            error_message: updateError.message,
+            error_code: updateError.code,
+            payment_id: payment.id,
+          },
+        });
+        return errResult(
+          new AppError("STRIPE_CHECKOUT_SESSION_EXPIRED_UPDATE_FAILED", {
+            message: updateError.message,
+            userMessage: "決済ステータス更新に失敗しました",
+            retryable: !isTerminal,
+            details: {
+              eventId: event.id,
+              paymentId: payment.id,
+              sessionId: maskSessionId(sessionId),
+              errorCode: updateError.code,
+            },
+          }),
+          {
+            terminal: isTerminal,
+            reason: "checkout_status_update_failed",
+            eventId: event.id,
+            paymentId: payment.id,
+            errorCode: updateError.code,
+          }
+        );
+      }
+
+      this.logger.info("Checkout session expiration processed", {
+        event_id: event.id,
+        payment_id: payment.id,
+        session_id: maskSessionId(sessionId),
+        payment_intent_id: paymentIntentId ?? undefined,
+        outcome: "success",
+      });
+      return okResult(undefined, { eventId: event.id, paymentId: payment.id });
+    } catch (e) {
+      throw e instanceof Error ? e : new Error("Unknown error");
+    }
+  }
+
+  private async handleCheckoutSessionAsyncPayment(
+    event:
+      | Stripe.CheckoutSessionAsyncPaymentSucceededEvent
+      | Stripe.CheckoutSessionAsyncPaymentFailedEvent
+  ): Promise<WebhookProcessingResult> {
+    this.logger.info("Webhook event received (async payment)", {
+      event_id: event.id,
+      event_type: event.type,
+    });
+    return okResult();
   }
 
   /**
