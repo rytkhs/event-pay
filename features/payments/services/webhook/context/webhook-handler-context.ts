@@ -11,7 +11,4 @@ export interface WebhookContextLogger {
 export interface WebhookHandlerContext {
   supabase: AppSupabaseClient;
   logger: WebhookContextLogger;
-  helper: {
-    isTerminalDatabaseError: (error: { code?: string | null }) => boolean;
-  };
 }

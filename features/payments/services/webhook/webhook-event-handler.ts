@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 
-import { AppError, errResult, okResult } from "@core/errors";
+import { okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { NotificationService } from "@core/notification/service";
 import { getSettlementReportPort } from "@core/ports/settlements";
@@ -21,6 +21,15 @@ import { maskSessionId } from "@core/utils/mask";
 import { canPromoteStatus } from "@core/utils/payments/status-rank";
 
 import type { WebhookHandlerContext } from "./context/webhook-handler-context";
+import {
+  createWebhookDbError,
+  createWebhookInvalidPayloadError,
+  createWebhookUnexpectedError,
+} from "./errors/webhook-error-factory";
+import {
+  WebhookEventLedgerRepository,
+  type WebhookLedgerFailureDetails,
+} from "./repositories/webhook-event-ledger-repository";
 import { routeStripePaymentEvent } from "./router/stripe-event-router";
 import type { WebhookProcessingResult } from "./types";
 import { getRefundFromWebhookEvent } from "./webhook-event-guards";
@@ -114,21 +123,23 @@ function extractPaymentNotificationDataFromAttendance(
   return { email, nickname, eventTitle };
 }
 
+function isWebhookLedgerFailureDetails(value: unknown): value is WebhookLedgerFailureDetails {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    isNonEmptyString(value.message) &&
+    (value.operation === "begin" ||
+      value.operation === "mark_succeeded" ||
+      value.operation === "mark_failed")
+  );
+}
+
 export class StripeWebhookEventHandler implements WebhookEventHandler {
   private supabase!: AppSupabaseClient;
 
   constructor() {}
-
-  private isTerminalDatabaseError(error: { code?: string | null }): boolean {
-    const code = error.code;
-    if (typeof code !== "string" || code.length < 2) {
-      return false;
-    }
-
-    // SQLSTATE class 22: data exception, class 23: integrity constraint violation
-    // どちらもペイロード/データ不整合起因の恒久エラーになりやすいため終端扱いにする
-    return code.startsWith("22") || code.startsWith("23");
-  }
 
   /**
    * Supabaseクライアントの初期化を確実に行う
@@ -157,18 +168,74 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     return {
       supabase: this.supabase,
       logger: this.logger,
-      helper: {
-        isTerminalDatabaseError: this.isTerminalDatabaseError.bind(this),
-      },
     };
   }
 
   async handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult> {
     await this.ensureInitialized();
     const context = this.buildContext();
+    const eventLedgerRepository = new WebhookEventLedgerRepository(this.supabase);
 
     try {
-      return await routeStripePaymentEvent({
+      const ledgerResult = await eventLedgerRepository.beginProcessing(event);
+      if (
+        ledgerResult.action === "ack_duplicate_succeeded" ||
+        ledgerResult.action === "ack_duplicate_failed_terminal"
+      ) {
+        this.logger.info("Duplicate webhook event acknowledged via ledger", {
+          event_id: event.id,
+          event_type: event.type,
+          stripe_object_id: ledgerResult.stripeObjectId ?? undefined,
+          dedupe_key: ledgerResult.dedupeKey,
+          dedupe_policy: "primary:event.id secondary:event.type+object.id",
+          ledger_action: ledgerResult.action,
+          ledger_status: ledgerResult.status,
+          last_error_code: ledgerResult.lastErrorCode ?? undefined,
+          last_error_reason: ledgerResult.lastErrorReason ?? undefined,
+          outcome: "success",
+        });
+        return okResult();
+      }
+
+      if (ledgerResult.action === "ack_duplicate_in_progress") {
+        this.logger.warn("Webhook event already in processing state", {
+          event_id: event.id,
+          event_type: event.type,
+          stripe_object_id: ledgerResult.stripeObjectId ?? undefined,
+          dedupe_key: ledgerResult.dedupeKey,
+          dedupe_policy: "primary:event.id secondary:event.type+object.id",
+          ledger_action: ledgerResult.action,
+          ledger_status: ledgerResult.status,
+          outcome: "failure",
+        });
+        return createWebhookUnexpectedError({
+          eventId: event.id,
+          reason: "webhook_event_in_progress",
+          eventType: event.type,
+          error: new Error("Webhook event is already being processed"),
+          userMessage: "Webhookイベントを処理中です。再試行してください",
+        });
+      }
+
+      if (ledgerResult.stripeObjectId) {
+        const duplicateByDedupeKey = await eventLedgerRepository.findLatestByDedupeKey(
+          ledgerResult.dedupeKey,
+          event.id
+        );
+        if (duplicateByDedupeKey) {
+          this.logger.warn("Potential duplicate webhook payload detected by dedupe key", {
+            event_id: event.id,
+            event_type: event.type,
+            stripe_object_id: ledgerResult.stripeObjectId,
+            dedupe_key: ledgerResult.dedupeKey,
+            prior_event_id: duplicateByDedupeKey.stripe_event_id,
+            prior_status: duplicateByDedupeKey.processing_status,
+            dedupe_policy: "primary:event.id secondary:event.type+object.id",
+          });
+        }
+      }
+
+      const processingResult = await routeStripePaymentEvent({
         event,
         context,
         handlers: {
@@ -188,6 +255,18 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           handleDisputeEvent: this.handleDisputeEvent.bind(this),
         },
       });
+
+      if (processingResult.success) {
+        await eventLedgerRepository.markSucceeded(event.id);
+        return processingResult;
+      }
+
+      await eventLedgerRepository.markFailed(event.id, {
+        errorCode: processingResult.meta?.errorCode ?? processingResult.error.code,
+        reason: processingResult.meta?.reason,
+      });
+
+      return processingResult;
     } catch (error) {
       handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
         action: "handleEvent",
@@ -198,21 +277,51 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         },
       });
 
-      return errResult(
-        new AppError("WEBHOOK_UNEXPECTED_ERROR", {
-          message: error instanceof Error ? error.message : "Unknown error occurred",
-          userMessage: "Webhook処理に失敗しました",
-          retryable: true,
+      if (isWebhookLedgerFailureDetails(error)) {
+        return createWebhookDbError({
+          code: "WEBHOOK_UNEXPECTED_ERROR",
+          reason: `webhook_ledger_${error.operation}_failed`,
+          eventId: event.id,
+          userMessage: "Webhook ledger更新に失敗しました",
+          dbError: {
+            message: error.message,
+            code: error.code,
+          },
           details: {
+            eventId: event.id,
+            eventType: event.type,
+            operation: error.operation,
+            constraint: error.constraint ?? undefined,
+            details: error.details ?? undefined,
+          },
+        });
+      }
+
+      try {
+        await eventLedgerRepository.markFailed(event.id, {
+          errorCode: "WEBHOOK_UNEXPECTED_ERROR",
+          reason: "unexpected_error",
+        });
+      } catch (markFailedError) {
+        handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
+          action: "handleEvent.markFailed",
+          additionalData: {
             eventType: event.type,
             eventId: event.id,
+            error:
+              markFailedError instanceof Error
+                ? markFailedError.message
+                : "Unknown mark failed error",
           },
-        }),
-        {
-          reason: "unexpected_error",
-          eventId: event.id,
-        }
-      );
+        });
+      }
+
+      return createWebhookUnexpectedError({
+        error,
+        eventId: event.id,
+        eventType: event.type,
+        reason: "unexpected_error",
+      });
     }
   }
 
@@ -274,7 +383,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         .update(updatePayload)
         .eq("id", payment.id);
       if (updateError) {
-        const isTerminal = this.isTerminalDatabaseError(updateError);
         handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
           action: "processCheckoutSession",
           additionalData: {
@@ -285,26 +393,19 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
             error_code: updateError.code,
           },
         });
-        return errResult(
-          new AppError("WEBHOOK_UNEXPECTED_ERROR", {
-            message: updateError.message,
-            userMessage: "決済ステータス更新に失敗しました",
-            retryable: !isTerminal,
-            details: {
-              eventId: event.id,
-              paymentId: payment.id,
-              sessionId: maskSessionId(sessionId),
-              errorCode: updateError.code,
-            },
-          }),
-          {
-            terminal: isTerminal,
-            reason: "checkout_session_update_failed",
+        return createWebhookDbError({
+          code: "WEBHOOK_UNEXPECTED_ERROR",
+          reason: "checkout_session_update_failed",
+          eventId: event.id,
+          paymentId: payment.id,
+          userMessage: "決済ステータス更新に失敗しました",
+          dbError: updateError,
+          details: {
             eventId: event.id,
             paymentId: payment.id,
-            errorCode: updateError.code,
-          }
-        );
+            sessionId: maskSessionId(sessionId),
+          },
+        });
       }
 
       this.logger.info("Checkout session processed successfully", {
@@ -456,7 +557,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         .update(updatePayload)
         .eq("id", payment.id);
       if (updateError) {
-        const isTerminal = this.isTerminalDatabaseError(updateError);
         handleServerError("STRIPE_CHECKOUT_SESSION_EXPIRED_UPDATE_FAILED", {
           action: "processCheckoutSessionExpired",
           additionalData: {
@@ -467,26 +567,19 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
             payment_id: payment.id,
           },
         });
-        return errResult(
-          new AppError("STRIPE_CHECKOUT_SESSION_EXPIRED_UPDATE_FAILED", {
-            message: updateError.message,
-            userMessage: "決済ステータス更新に失敗しました",
-            retryable: !isTerminal,
-            details: {
-              eventId: event.id,
-              paymentId: payment.id,
-              sessionId: maskSessionId(sessionId),
-              errorCode: updateError.code,
-            },
-          }),
-          {
-            terminal: isTerminal,
-            reason: "checkout_status_update_failed",
+        return createWebhookDbError({
+          code: "STRIPE_CHECKOUT_SESSION_EXPIRED_UPDATE_FAILED",
+          reason: "checkout_status_update_failed",
+          eventId: event.id,
+          paymentId: payment.id,
+          userMessage: "決済ステータス更新に失敗しました",
+          dbError: updateError,
+          details: {
             eventId: event.id,
             paymentId: payment.id,
-            errorCode: updateError.code,
-          }
-        );
+            sessionId: maskSessionId(sessionId),
+          },
+        });
       }
 
       this.logger.info("Checkout session expiration processed", {
@@ -729,7 +822,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         .eq("id", payment.id);
 
       if (updateError) {
-        const isTerminal = this.isTerminalDatabaseError(updateError);
         handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
           action: "handleChargeSucceeded",
           additionalData: {
@@ -740,26 +832,19 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
             error_code: updateError.code,
           },
         });
-        return errResult(
-          new AppError("WEBHOOK_UNEXPECTED_ERROR", {
-            message: updateError.message,
-            userMessage: "決済ステータス更新に失敗しました",
-            retryable: !isTerminal,
-            details: {
-              eventId: event.id,
-              paymentId: payment.id,
-              chargeId: charge.id,
-              errorCode: updateError.code,
-            },
-          }),
-          {
-            terminal: isTerminal,
-            reason: "charge_succeeded_update_failed",
+        return createWebhookDbError({
+          code: "WEBHOOK_UNEXPECTED_ERROR",
+          reason: "charge_succeeded_update_failed",
+          eventId: event.id,
+          paymentId: payment.id,
+          userMessage: "決済ステータス更新に失敗しました",
+          dbError: updateError,
+          details: {
             eventId: event.id,
             paymentId: payment.id,
-            errorCode: updateError.code,
-          }
-        );
+            chargeId: charge.id,
+          },
+        });
       }
 
       // 監査ログ記録
@@ -915,7 +1000,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         })
         .eq("id", payment.id);
       if (updateError) {
-        const isTerminal = this.isTerminalDatabaseError(updateError);
         handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
           action: "handleChargeFailed",
           additionalData: {
@@ -926,26 +1010,19 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
             error_code: updateError.code,
           },
         });
-        return errResult(
-          new AppError("WEBHOOK_UNEXPECTED_ERROR", {
-            message: updateError.message,
-            userMessage: "決済ステータス更新に失敗しました",
-            retryable: !isTerminal,
-            details: {
-              eventId: event.id,
-              paymentId: payment.id,
-              chargeId: charge.id,
-              errorCode: updateError.code,
-            },
-          }),
-          {
-            terminal: isTerminal,
-            reason: "charge_failed_update_failed",
+        return createWebhookDbError({
+          code: "WEBHOOK_UNEXPECTED_ERROR",
+          reason: "charge_failed_update_failed",
+          eventId: event.id,
+          paymentId: payment.id,
+          userMessage: "決済ステータス更新に失敗しました",
+          dbError: updateError,
+          details: {
             eventId: event.id,
             paymentId: payment.id,
-            errorCode: updateError.code,
-          }
-        );
+            chargeId: charge.id,
+          },
+        });
       }
       this.logger.info("Charge failed processed", {
         event_id: event.id,
@@ -1054,7 +1131,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         })
         .eq("id", payment.id);
       if (updateError) {
-        const isTerminal = this.isTerminalDatabaseError(updateError);
         handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
           action: "handleChargeRefunded",
           additionalData: {
@@ -1065,26 +1141,19 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
             error_code: updateError.code,
           },
         });
-        return errResult(
-          new AppError("WEBHOOK_UNEXPECTED_ERROR", {
-            message: updateError.message,
-            userMessage: "返金ステータス更新に失敗しました",
-            retryable: !isTerminal,
-            details: {
-              eventId: event.id,
-              paymentId: payment.id,
-              chargeId: charge.id,
-              errorCode: updateError.code,
-            },
-          }),
-          {
-            terminal: isTerminal,
-            reason: "charge_refunded_update_failed",
+        return createWebhookDbError({
+          code: "WEBHOOK_UNEXPECTED_ERROR",
+          reason: "charge_refunded_update_failed",
+          eventId: event.id,
+          paymentId: payment.id,
+          userMessage: "返金ステータス更新に失敗しました",
+          dbError: updateError,
+          details: {
             eventId: event.id,
             paymentId: payment.id,
-            errorCode: updateError.code,
-          }
-        );
+            chargeId: charge.id,
+          },
+        });
       }
 
       this.logger.info("Refund processed successfully", {
@@ -1383,7 +1452,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         })
         .eq("id", payment.id);
       if (updateError) {
-        const isTerminal = this.isTerminalDatabaseError(updateError);
         handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
           action: "handleApplicationFeeRefunded",
           additionalData: {
@@ -1394,26 +1462,19 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
             error_code: updateError.code,
           },
         });
-        return errResult(
-          new AppError("WEBHOOK_UNEXPECTED_ERROR", {
-            message: updateError.message,
-            userMessage: "手数料返金の反映に失敗しました",
-            retryable: !isTerminal,
-            details: {
-              eventId: event.id,
-              paymentId: payment.id,
-              applicationFeeId,
-              errorCode: updateError.code,
-            },
-          }),
-          {
-            terminal: isTerminal,
-            reason: "application_fee_refund_update_failed",
+        return createWebhookDbError({
+          code: "WEBHOOK_UNEXPECTED_ERROR",
+          reason: "application_fee_refund_update_failed",
+          eventId: event.id,
+          paymentId: payment.id,
+          userMessage: "手数料返金の反映に失敗しました",
+          dbError: updateError,
+          details: {
             eventId: event.id,
             paymentId: payment.id,
-            errorCode: updateError.code,
-          }
-        );
+            applicationFeeId,
+          },
+        });
       }
 
       this.logger.info("Application fee refund processed", {
@@ -1612,27 +1673,22 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         });
 
         // 終端エラーとして扱う（再試行しても成功しない）
-        return errResult(
-          new AppError("WEBHOOK_INVALID_PAYLOAD", {
-            message: "Amount or currency mismatch",
-            userMessage: "Webhook payload が不正です",
-            retryable: false,
-            details: {
-              eventId: event.id,
-              paymentId: payment.id,
-              expectedAmount: hasDbAmount ? paymentAmount : undefined,
-              actualAmount: hasPiAmount ? piAmount : undefined,
-              expectedCurrency,
-              actualCurrency: hasPiCurrency ? piCurrency : undefined,
-            },
-          }),
-          {
-            terminal: true,
-            reason: "amount_currency_mismatch",
+        return createWebhookInvalidPayloadError({
+          code: "WEBHOOK_INVALID_PAYLOAD",
+          reason: "amount_currency_mismatch",
+          eventId: event.id,
+          paymentId: payment.id,
+          userMessage: "Webhook payload が不正です",
+          message: "Amount or currency mismatch",
+          details: {
             eventId: event.id,
             paymentId: payment.id,
-          }
-        );
+            expectedAmount: hasDbAmount ? paymentAmount : undefined,
+            actualAmount: hasPiAmount ? piAmount : undefined,
+            expectedCurrency,
+            actualCurrency: hasPiCurrency ? piCurrency : undefined,
+          },
+        });
       }
 
       // 既に処理済みかチェック（ステータスランクによる昇格可能性チェック）
@@ -1660,7 +1716,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         .eq("id", payment.id);
 
       if (updateError) {
-        const isTerminal = this.isTerminalDatabaseError(updateError);
         handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
           action: "handlePaymentIntentSucceeded",
           additionalData: {
@@ -1671,26 +1726,19 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
             error_code: updateError.code,
           },
         });
-        return errResult(
-          new AppError("WEBHOOK_UNEXPECTED_ERROR", {
-            message: updateError.message,
-            userMessage: "決済ステータス更新に失敗しました",
-            retryable: !isTerminal,
-            details: {
-              eventId: event.id,
-              paymentId: payment.id,
-              paymentIntentId: stripePaymentIntentId,
-              errorCode: updateError.code,
-            },
-          }),
-          {
-            terminal: isTerminal,
-            reason: "payment_intent_succeeded_update_failed",
+        return createWebhookDbError({
+          code: "WEBHOOK_UNEXPECTED_ERROR",
+          reason: "payment_intent_succeeded_update_failed",
+          eventId: event.id,
+          paymentId: payment.id,
+          userMessage: "決済ステータス更新に失敗しました",
+          dbError: updateError,
+          details: {
             eventId: event.id,
             paymentId: payment.id,
-            errorCode: updateError.code,
-          }
-        );
+            paymentIntentId: stripePaymentIntentId,
+          },
+        });
       }
 
       // 売上集計を更新（RPC関数を呼び出し）
@@ -1814,7 +1862,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         .eq("id", payment.id);
 
       if (updateError) {
-        const isTerminal = this.isTerminalDatabaseError(updateError);
         handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
           action: "handlePaymentIntentFailed",
           additionalData: {
@@ -1825,26 +1872,19 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
             error_code: updateError.code,
           },
         });
-        return errResult(
-          new AppError("WEBHOOK_UNEXPECTED_ERROR", {
-            message: updateError.message,
-            userMessage: "決済ステータス更新に失敗しました",
-            retryable: !isTerminal,
-            details: {
-              eventId: event.id,
-              paymentId: payment.id,
-              paymentIntentId: stripePaymentIntentId,
-              errorCode: updateError.code,
-            },
-          }),
-          {
-            terminal: isTerminal,
-            reason: "payment_intent_failed_update_failed",
+        return createWebhookDbError({
+          code: "WEBHOOK_UNEXPECTED_ERROR",
+          reason: "payment_intent_failed_update_failed",
+          eventId: event.id,
+          paymentId: payment.id,
+          userMessage: "決済ステータス更新に失敗しました",
+          dbError: updateError,
+          details: {
             eventId: event.id,
             paymentId: payment.id,
-            errorCode: updateError.code,
-          }
-        );
+            paymentIntentId: stripePaymentIntentId,
+          },
+        });
       }
 
       // 失敗理由をログに記録
@@ -1918,7 +1958,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           })
           .eq("id", payment.id);
         if (updateError) {
-          const isTerminal = this.isTerminalDatabaseError(updateError);
           handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
             action: "handlePaymentIntentCanceled",
             additionalData: {
@@ -1929,26 +1968,19 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
               error_code: updateError.code,
             },
           });
-          return errResult(
-            new AppError("WEBHOOK_UNEXPECTED_ERROR", {
-              message: updateError.message,
-              userMessage: "決済ステータス更新に失敗しました",
-              retryable: !isTerminal,
-              details: {
-                eventId: event.id,
-                paymentId: payment.id,
-                paymentIntentId: stripePaymentIntentId,
-                errorCode: updateError.code,
-              },
-            }),
-            {
-              terminal: isTerminal,
-              reason: "payment_intent_canceled_update_failed",
+          return createWebhookDbError({
+            code: "WEBHOOK_UNEXPECTED_ERROR",
+            reason: "payment_intent_canceled_update_failed",
+            eventId: event.id,
+            paymentId: payment.id,
+            userMessage: "決済ステータス更新に失敗しました",
+            dbError: updateError,
+            details: {
               eventId: event.id,
               paymentId: payment.id,
-              errorCode: updateError.code,
-            }
-          );
+              paymentIntentId: stripePaymentIntentId,
+            },
+          });
         }
       }
 
