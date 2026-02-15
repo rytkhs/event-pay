@@ -432,7 +432,4 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       });
     }
   }
-
-  // transfer.* ハンドラは不要
-  // getLatestTransferOrFallback / handleTransferCreated / handleTransferUpdated / handleTransferReversed を削除
 }
