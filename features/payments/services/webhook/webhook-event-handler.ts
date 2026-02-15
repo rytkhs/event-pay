@@ -20,6 +20,7 @@ import {
   createWebhookUnexpectedError,
 } from "./errors/webhook-error-factory";
 import { CheckoutSessionHandler } from "./handlers/checkout-session-handler";
+import { PaymentIntentHandler } from "./handlers/payment-intent-handler";
 import {
   PaymentWebhookRepository,
   isPaymentWebhookRepositoryError,
@@ -124,6 +125,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
   private stripeObjectFetchService?: StripeObjectFetchService;
   private paymentAnalyticsService?: PaymentAnalyticsWebhookService;
   private checkoutSessionHandlerInstance?: CheckoutSessionHandler;
+  private paymentIntentHandlerInstance?: PaymentIntentHandler;
 
   constructor() {}
 
@@ -190,6 +192,17 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       });
     }
     return this.checkoutSessionHandlerInstance;
+  }
+
+  private get paymentIntentHandler(): PaymentIntentHandler {
+    if (!this.paymentIntentHandlerInstance) {
+      this.paymentIntentHandlerInstance = new PaymentIntentHandler({
+        paymentRepository: this.paymentWebhookRepository,
+        supabase: this.supabase,
+        logger: this.logger,
+      });
+    }
+    return this.paymentIntentHandlerInstance;
   }
 
   async handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult> {
@@ -263,9 +276,15 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           handleRefundCreated: this.handleRefundCreated.bind(this),
           handleRefundUpdated: this.handleRefundUpdated.bind(this),
           handleRefundFailed: this.handleRefundFailed.bind(this),
-          handlePaymentIntentSucceeded: this.handlePaymentIntentSucceeded.bind(this),
-          handlePaymentIntentFailed: this.handlePaymentIntentFailed.bind(this),
-          handlePaymentIntentCanceled: this.handlePaymentIntentCanceled.bind(this),
+          handlePaymentIntentSucceeded: this.paymentIntentHandler.handleSucceeded.bind(
+            this.paymentIntentHandler
+          ),
+          handlePaymentIntentFailed: this.paymentIntentHandler.handleFailed.bind(
+            this.paymentIntentHandler
+          ),
+          handlePaymentIntentCanceled: this.paymentIntentHandler.handleCanceled.bind(
+            this.paymentIntentHandler
+          ),
           handleChargeSucceeded: this.handleChargeSucceeded.bind(this),
           handleChargeFailed: this.handleChargeFailed.bind(this),
           handleChargeRefunded: this.handleChargeRefunded.bind(this),
@@ -1243,316 +1262,4 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
 
   // transfer.* ハンドラは不要
   // getLatestTransferOrFallback / handleTransferCreated / handleTransferUpdated / handleTransferReversed を削除
-
-  private async handlePaymentIntentSucceeded(
-    event: Stripe.PaymentIntentSucceededEvent
-  ): Promise<WebhookProcessingResult> {
-    const paymentIntent = event.data.object;
-    const stripePaymentIntentId = paymentIntent.id;
-
-    try {
-      const payment = await this.paymentWebhookRepository.resolveByPaymentIntentOrMetadata({
-        paymentIntentId: stripePaymentIntentId,
-        metadataPaymentId: getPaymentIdFromMetadata(paymentIntent),
-      });
-
-      if (!payment) {
-        handleServerError("WEBHOOK_PAYMENT_NOT_FOUND", {
-          action: "handlePaymentIntentSucceeded",
-          additionalData: { eventId: event.id, payment_intent: stripePaymentIntentId },
-        });
-        return okResult();
-      }
-
-      // 金額・通貨の整合性チェック（通貨はプラットフォーム既定のJPY想定）
-      // テストのモックでは amount が省略される場合があるため、厳密チェックは値が揃っているときのみ実施
-      const expectedCurrency = "jpy"; // 必要に応じて設定化
-      const paymentAmount: number | undefined = (payment as { amount?: number }).amount;
-      const piAmount: number | undefined = (paymentIntent as { amount?: number }).amount;
-      const piCurrency: string | undefined = (paymentIntent as { currency?: string }).currency;
-      const hasDbAmount = typeof paymentAmount === "number";
-      const hasPiAmount = typeof piAmount === "number";
-      const hasPiCurrency = typeof piCurrency === "string";
-
-      if (
-        (hasDbAmount && hasPiAmount && piAmount !== paymentAmount) ||
-        (hasPiCurrency && piCurrency && piCurrency.toLowerCase() !== expectedCurrency)
-      ) {
-        handleServerError("WEBHOOK_INVALID_PAYLOAD", {
-          action: "handlePaymentIntentSucceeded",
-          additionalData: {
-            eventId: event.id,
-            paymentId: payment.id,
-            expectedAmount: hasDbAmount ? paymentAmount : undefined,
-            actualAmount: hasPiAmount ? piAmount : undefined,
-            expectedCurrency,
-            actualCurrency: hasPiCurrency ? piCurrency : undefined,
-            detail: "Amount or currency mismatch",
-          },
-        });
-
-        // 終端エラーとして扱う（再試行しても成功しない）
-        return createWebhookInvalidPayloadError({
-          code: "WEBHOOK_INVALID_PAYLOAD",
-          reason: "amount_currency_mismatch",
-          eventId: event.id,
-          paymentId: payment.id,
-          userMessage: "Webhook payload が不正です",
-          message: "Amount or currency mismatch",
-          details: {
-            eventId: event.id,
-            paymentId: payment.id,
-            expectedAmount: hasDbAmount ? paymentAmount : undefined,
-            actualAmount: hasPiAmount ? piAmount : undefined,
-            expectedCurrency,
-            actualCurrency: hasPiCurrency ? piCurrency : undefined,
-          },
-        });
-      }
-
-      // 既に処理済みかチェック（ステータスランクによる昇格可能性チェック）
-      if (!canPromoteStatus(payment.status as PaymentStatus, "paid")) {
-        this.logger.info("Duplicate webhook event preventing double processing", {
-          event_id: event.id,
-          payment_id: payment.id,
-          current_status: payment.status,
-          outcome: "success",
-        });
-        return okResult(); // 重複処理を防止
-      }
-
-      // 決済ステータスを更新
-      const { error: updateError } =
-        await this.paymentWebhookRepository.updateStatusPaidFromPaymentIntent({
-          paymentId: payment.id,
-          eventId: event.id,
-          stripePaymentIntentId,
-        });
-
-      if (updateError) {
-        handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
-          action: "handlePaymentIntentSucceeded",
-          additionalData: {
-            eventId: event.id,
-            paymentId: payment.id,
-            payment_intent: stripePaymentIntentId,
-            error_message: updateError.message,
-            error_code: updateError.code,
-          },
-        });
-        return createWebhookDbError({
-          code: "WEBHOOK_UNEXPECTED_ERROR",
-          reason: "payment_intent_succeeded_update_failed",
-          eventId: event.id,
-          paymentId: payment.id,
-          userMessage: "決済ステータス更新に失敗しました",
-          dbError: updateError,
-          details: {
-            eventId: event.id,
-            paymentId: payment.id,
-            paymentIntentId: stripePaymentIntentId,
-          },
-        });
-      }
-
-      // 売上集計を更新（RPC関数を呼び出し）
-      const { data: attendanceData, error: attendanceError } = await this.supabase
-        .from("attendances")
-        .select("event_id")
-        .eq("id", payment.attendance_id)
-        .single();
-
-      if (attendanceError || !attendanceData) {
-        // 参加情報取得に失敗した場合は警告ログのみ記録し、決済処理自体は成功扱いにする
-        this.logger.warn("Revenue update skipped (attendance fetch failed)", {
-          event_id: event.id,
-          payment_id: payment.id,
-          reason: "attendance_fetch_failed",
-          error: attendanceError?.message ?? "No attendance data",
-          outcome: "success",
-        });
-      } else {
-        const { error: rpcError } = await this.supabase.rpc("update_revenue_summary", {
-          p_event_id: attendanceData.event_id,
-        });
-
-        if (rpcError) {
-          // 売上集計の更新失敗は警告レベルでログ（決済処理自体は成功）
-          handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
-            action: "handlePaymentIntentSucceeded",
-            additionalData: {
-              eventId: event.id,
-              paymentId: payment.id,
-              eventIdForRevenue: attendanceData.event_id,
-              error: rpcError.message,
-            },
-          });
-        }
-      }
-
-      // 成功をログに記録
-      this.logger.info("Payment intent succeeded processed", {
-        event_id: event.id,
-        payment_id: payment.id,
-        amount: paymentIntent.amount,
-        currency: paymentIntent.currency,
-        outcome: "success",
-      });
-
-      // NOTE: 決済完了通知は charge.succeeded で送信
-      // payment_intent.succeeded と charge.succeeded の両方が発火するため、
-      // 重複送信を避けるため charge.succeeded でのみ通知を送信している
-      // （charge.succeeded では balance_transaction と transfer の情報も取得可能）
-
-      return okResult(undefined, { eventId: event.id, paymentId: payment.id });
-    } catch (error) {
-      throw error instanceof Error ? error : new Error("Unknown error");
-    }
-  }
-
-  private async handlePaymentIntentFailed(
-    event: Stripe.PaymentIntentPaymentFailedEvent
-  ): Promise<WebhookProcessingResult> {
-    const paymentIntent = event.data.object;
-    const stripePaymentIntentId = paymentIntent.id;
-
-    try {
-      const payment = await this.paymentWebhookRepository.resolveByPaymentIntentOrMetadata({
-        paymentIntentId: stripePaymentIntentId,
-        metadataPaymentId: getPaymentIdFromMetadata(paymentIntent),
-      });
-      if (!payment) {
-        handleServerError("WEBHOOK_PAYMENT_NOT_FOUND", {
-          action: "handlePaymentIntentFailed",
-          additionalData: { eventId: event.id, payment_intent: stripePaymentIntentId },
-        });
-        return okResult();
-      }
-
-      // 既に同等以上の状態なら冪等（failed 以上＝paid/refunded等は降格させない）
-      if (!canPromoteStatus(payment.status as PaymentStatus, "failed")) {
-        this.logger.info("Duplicate webhook event preventing double processing", {
-          event_id: event.id,
-          payment_id: payment.id,
-          current_status: payment.status,
-          outcome: "success",
-        });
-        return okResult(); // 重複処理を防止
-      }
-
-      // 決済ステータスを失敗に更新（昇格のみ許可）
-      const { error: updateError } =
-        await this.paymentWebhookRepository.updateStatusFailedFromPaymentIntent({
-          paymentId: payment.id,
-          eventId: event.id,
-          stripePaymentIntentId,
-        });
-
-      if (updateError) {
-        handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
-          action: "handlePaymentIntentFailed",
-          additionalData: {
-            eventId: event.id,
-            paymentId: payment.id,
-            payment_intent: stripePaymentIntentId,
-            error_message: updateError.message,
-            error_code: updateError.code,
-          },
-        });
-        return createWebhookDbError({
-          code: "WEBHOOK_UNEXPECTED_ERROR",
-          reason: "payment_intent_failed_update_failed",
-          eventId: event.id,
-          paymentId: payment.id,
-          userMessage: "決済ステータス更新に失敗しました",
-          dbError: updateError,
-          details: {
-            eventId: event.id,
-            paymentId: payment.id,
-            paymentIntentId: stripePaymentIntentId,
-          },
-        });
-      }
-
-      // 失敗理由をログに記録
-      const failureReason = paymentIntent.last_payment_error?.message || "Unknown payment failure";
-      this.logger.info("Payment intent failed processed", {
-        event_id: event.id,
-        payment_id: payment.id,
-        failure_reason: failureReason,
-        amount: paymentIntent.amount,
-        currency: paymentIntent.currency,
-        outcome: "success",
-      });
-
-      return okResult(undefined, { eventId: event.id, paymentId: payment.id });
-    } catch (error) {
-      // 元のエラーメッセージを維持して上位に伝播（テストの期待との乖離を防止）
-      throw error instanceof Error ? error : new Error("Unknown error");
-    }
-  }
-
-  private async handlePaymentIntentCanceled(
-    event: Stripe.PaymentIntentCanceledEvent
-  ): Promise<WebhookProcessingResult> {
-    const paymentIntent = event.data.object;
-    const stripePaymentIntentId = paymentIntent.id;
-    try {
-      const payment = await this.paymentWebhookRepository.resolveByPaymentIntentOrMetadata({
-        paymentIntentId: stripePaymentIntentId,
-        metadataPaymentId: getPaymentIdFromMetadata(paymentIntent),
-      });
-
-      if (!payment) {
-        handleServerError("WEBHOOK_PAYMENT_NOT_FOUND", {
-          action: "handlePaymentIntentCanceled",
-          additionalData: { eventId: event.id, payment_intent: stripePaymentIntentId },
-        });
-        return okResult();
-      }
-
-      if (canPromoteStatus(payment.status as PaymentStatus, "failed")) {
-        const { error: updateError } =
-          await this.paymentWebhookRepository.updateStatusFailedFromPaymentIntent({
-            paymentId: payment.id,
-            eventId: event.id,
-            stripePaymentIntentId,
-          });
-        if (updateError) {
-          handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
-            action: "handlePaymentIntentCanceled",
-            additionalData: {
-              eventId: event.id,
-              paymentId: payment.id,
-              payment_intent: stripePaymentIntentId,
-              error_message: updateError.message,
-              error_code: updateError.code,
-            },
-          });
-          return createWebhookDbError({
-            code: "WEBHOOK_UNEXPECTED_ERROR",
-            reason: "payment_intent_canceled_update_failed",
-            eventId: event.id,
-            paymentId: payment.id,
-            userMessage: "決済ステータス更新に失敗しました",
-            dbError: updateError,
-            details: {
-              eventId: event.id,
-              paymentId: payment.id,
-              paymentIntentId: stripePaymentIntentId,
-            },
-          });
-        }
-      }
-
-      this.logger.info("Payment intent canceled processed", {
-        event_id: event.id,
-        payment_id: payment.id,
-        outcome: "success",
-      });
-      return okResult(undefined, { eventId: event.id, paymentId: payment.id });
-    } catch (error) {
-      throw error instanceof Error ? error : new Error("Unknown error");
-    }
-  }
 }
