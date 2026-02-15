@@ -22,7 +22,6 @@ interface ChargeHandlerParams {
   stripeObjectFetchService: StripeObjectFetchService;
   paymentNotificationService: PaymentNotificationService;
   logger: WebhookContextLogger;
-  regenerateSettlementSnapshotFromPayment: (payment: unknown) => Promise<void>;
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -66,14 +65,12 @@ export class ChargeHandler {
   private readonly stripeObjectFetchService: StripeObjectFetchService;
   private readonly paymentNotificationService: PaymentNotificationService;
   private readonly logger: WebhookContextLogger;
-  private readonly regenerateSettlementSnapshotFromPayment: (payment: unknown) => Promise<void>;
 
   constructor(params: ChargeHandlerParams) {
     this.paymentRepository = params.paymentRepository;
     this.stripeObjectFetchService = params.stripeObjectFetchService;
     this.paymentNotificationService = params.paymentNotificationService;
     this.logger = params.logger;
-    this.regenerateSettlementSnapshotFromPayment = params.regenerateSettlementSnapshotFromPayment;
   }
 
   async handleSucceeded(event: Stripe.ChargeSucceededEvent): Promise<WebhookProcessingResult> {
@@ -301,121 +298,6 @@ export class ChargeHandler {
         charge_id: charge.id,
         outcome: "success",
       });
-      return okResult(undefined, { eventId: event.id, paymentId: payment.id });
-    } catch (error) {
-      throw error instanceof Error ? error : new Error("Unknown error");
-    }
-  }
-
-  async handleRefunded(event: Stripe.ChargeRefundedEvent): Promise<WebhookProcessingResult> {
-    const charge = event.data.object;
-
-    try {
-      const stripePaymentIntentId = getPaymentIntentId(charge);
-      const payment = await this.paymentRepository.resolveByChargeOrFallback({
-        paymentIntentId: stripePaymentIntentId,
-        chargeId: charge.id,
-        metadataPaymentId: getPaymentIdFromMetadata(charge),
-      });
-
-      if (!payment) {
-        handleServerError("WEBHOOK_PAYMENT_NOT_FOUND", {
-          action: "handleChargeRefunded",
-          additionalData: {
-            eventId: event.id,
-            chargeId: charge.id,
-          },
-        });
-        return okResult();
-      }
-
-      const totalRefunded = typeof charge.amount_refunded === "number" ? charge.amount_refunded : 0;
-      let applicationFeeRefundedAmount = payment.application_fee_refunded_amount;
-      let applicationFeeRefundId: string | null = payment.application_fee_refund_id;
-      if (payment.application_fee_id) {
-        try {
-          const summed = await this.stripeObjectFetchService.sumApplicationFeeRefunds(
-            payment.application_fee_id
-          );
-          applicationFeeRefundedAmount = summed.amount;
-          applicationFeeRefundId = summed.latestRefundId;
-        } catch {
-          // 取得失敗時は既存DB値を維持して上書きを防ぐ
-        }
-      } else {
-        applicationFeeRefundedAmount = 0;
-        applicationFeeRefundId = null;
-      }
-
-      const targetStatus: PaymentStatus =
-        totalRefunded >= payment.amount ? "refunded" : (payment.status as PaymentStatus);
-      if (!canPromoteStatus(payment.status as PaymentStatus, targetStatus as PaymentStatus)) {
-        this.logger.info("Duplicate webhook event preventing double processing", {
-          event_id: event.id,
-          payment_id: payment.id,
-          current_status: payment.status,
-          target_status: targetStatus,
-          outcome: "success",
-        });
-        return okResult();
-      }
-
-      const { error: updateError } = await this.paymentRepository.updateRefundAggregate({
-        paymentId: payment.id,
-        eventId: event.id,
-        chargeId: charge.id,
-        paymentIntentId: stripePaymentIntentId,
-        status: targetStatus,
-        refundedAmount: totalRefunded,
-        applicationFeeRefundedAmount,
-        applicationFeeRefundId,
-      });
-      if (updateError) {
-        handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
-          action: "handleChargeRefunded",
-          additionalData: {
-            eventId: event.id,
-            paymentId: payment.id,
-            chargeId: charge.id,
-            error_message: updateError.message,
-            error_code: updateError.code,
-          },
-        });
-        return createWebhookDbError({
-          code: "WEBHOOK_UNEXPECTED_ERROR",
-          reason: "charge_refunded_update_failed",
-          eventId: event.id,
-          paymentId: payment.id,
-          userMessage: "返金ステータス更新に失敗しました",
-          dbError: updateError,
-          details: {
-            eventId: event.id,
-            paymentId: payment.id,
-            chargeId: charge.id,
-          },
-        });
-      }
-
-      this.logger.info("Refund processed successfully", {
-        event_id: event.id,
-        payment_id: payment.id,
-        refunded_amount: totalRefunded,
-        application_fee_refunded_amount: applicationFeeRefundedAmount,
-        target_status: targetStatus,
-        outcome: "success",
-      });
-      try {
-        await this.regenerateSettlementSnapshotFromPayment(payment);
-      } catch (e) {
-        handleServerError("SETTLEMENT_REGENERATE_FAILED", {
-          action: "handleChargeRefunded",
-          additionalData: {
-            eventId: event.id,
-            paymentId: payment.id,
-            error: e instanceof Error ? e.message : "unknown",
-          },
-        });
-      }
       return okResult(undefined, { eventId: event.id, paymentId: payment.id });
     } catch (error) {
       throw error instanceof Error ? error : new Error("Unknown error");

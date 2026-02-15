@@ -120,25 +120,13 @@ export class StripeObjectFetchService {
   async listAllApplicationFeeRefunds(applicationFeeId: string): Promise<Stripe.FeeRefund[]> {
     const stripe = getStripe();
     const refunds: Stripe.FeeRefund[] = [];
-    let startingAfter: string | undefined;
+    const list = stripe.applicationFees.listRefunds(applicationFeeId, {
+      limit: 100,
+    });
 
-    while (true) {
-      const page = await stripe.applicationFees.listRefunds(applicationFeeId, {
-        limit: 100,
-        ...(startingAfter ? { starting_after: startingAfter } : {}),
-      });
-
-      if (Array.isArray(page.data) && page.data.length > 0) {
-        refunds.push(...page.data);
-      }
-
-      if (!page.has_more || page.data.length === 0) {
-        break;
-      }
-
-      const last = page.data[page.data.length - 1];
-      startingAfter = last.id;
-    }
+    await list.autoPagingEach(async (refund) => {
+      refunds.push(refund);
+    });
 
     return refunds;
   }

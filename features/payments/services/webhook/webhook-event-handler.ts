@@ -5,17 +5,17 @@ import { logger } from "@core/logging/app-logger";
 import { getSettlementReportPort } from "@core/ports/settlements";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { getMetadata, getPaymentIntentId } from "@core/stripe/guards";
 import type { PaymentDisputeInsert } from "@core/types/payment";
-import type { PaymentStatus } from "@core/types/statuses";
 import type { AppSupabaseClient } from "@core/types/supabase";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 import type { WebhookHandlerContext } from "./context/webhook-handler-context";
 import { createWebhookDbError, createWebhookUnexpectedError } from "./errors/webhook-error-factory";
+import { ApplicationFeeHandler } from "./handlers/application-fee-handler";
 import { ChargeHandler } from "./handlers/charge-handler";
 import { CheckoutSessionHandler } from "./handlers/checkout-session-handler";
 import { PaymentIntentHandler } from "./handlers/payment-intent-handler";
+import { RefundHandler } from "./handlers/refund-handler";
 import {
   PaymentWebhookRepository,
   isPaymentWebhookRepositoryError,
@@ -29,7 +29,6 @@ import { PaymentAnalyticsWebhookService } from "./services/payment-analytics-ser
 import { PaymentNotificationService } from "./services/payment-notification-service";
 import { StripeObjectFetchService } from "./services/stripe-object-fetch-service";
 import type { WebhookProcessingResult } from "./types";
-import { getRefundFromWebhookEvent } from "./webhook-event-guards";
 
 export interface WebhookEventHandler {
   handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult>;
@@ -55,12 +54,6 @@ function getExpandableId(value: string | { id: string } | null | undefined): str
   return null;
 }
 
-function getPaymentIdFromMetadata(source: unknown): string | null {
-  const metadata = getMetadata(source);
-  const paymentId = metadata?.["payment_id"];
-  return isNonEmptyString(paymentId) ? paymentId : null;
-}
-
 function isWebhookLedgerFailureDetails(value: unknown): value is WebhookLedgerFailureDetails {
   if (!isRecord(value)) {
     return false;
@@ -83,6 +76,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
   private checkoutSessionHandlerInstance?: CheckoutSessionHandler;
   private paymentIntentHandlerInstance?: PaymentIntentHandler;
   private chargeHandlerInstance?: ChargeHandler;
+  private refundHandlerInstance?: RefundHandler;
+  private applicationFeeHandlerInstance?: ApplicationFeeHandler;
 
   constructor() {}
 
@@ -179,11 +174,35 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         stripeObjectFetchService: this.stripeFetchService,
         paymentNotificationService: this.paymentNotificationService,
         logger: this.logger,
+      });
+    }
+    return this.chargeHandlerInstance;
+  }
+
+  private get refundHandler(): RefundHandler {
+    if (!this.refundHandlerInstance) {
+      this.refundHandlerInstance = new RefundHandler({
+        paymentRepository: this.paymentWebhookRepository,
+        stripeObjectFetchService: this.stripeFetchService,
+        logger: this.logger,
         regenerateSettlementSnapshotFromPayment:
           this.regenerateSettlementSnapshotFromPayment.bind(this),
       });
     }
-    return this.chargeHandlerInstance;
+    return this.refundHandlerInstance;
+  }
+
+  private get applicationFeeHandler(): ApplicationFeeHandler {
+    if (!this.applicationFeeHandlerInstance) {
+      this.applicationFeeHandlerInstance = new ApplicationFeeHandler({
+        paymentRepository: this.paymentWebhookRepository,
+        stripeObjectFetchService: this.stripeFetchService,
+        logger: this.logger,
+        regenerateSettlementSnapshotFromPayment:
+          this.regenerateSettlementSnapshotFromPayment.bind(this),
+      });
+    }
+    return this.applicationFeeHandlerInstance;
   }
 
   async handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult> {
@@ -254,9 +273,9 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         event,
         context,
         handlers: {
-          handleRefundCreated: this.handleRefundCreated.bind(this),
-          handleRefundUpdated: this.handleRefundUpdated.bind(this),
-          handleRefundFailed: this.handleRefundFailed.bind(this),
+          handleRefundCreated: this.refundHandler.handleCreated.bind(this.refundHandler),
+          handleRefundUpdated: this.refundHandler.handleUpdated.bind(this.refundHandler),
+          handleRefundFailed: this.refundHandler.handleFailed.bind(this.refundHandler),
           handlePaymentIntentSucceeded: this.paymentIntentHandler.handleSucceeded.bind(
             this.paymentIntentHandler
           ),
@@ -268,7 +287,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           ),
           handleChargeSucceeded: this.chargeHandler.handleSucceeded.bind(this.chargeHandler),
           handleChargeFailed: this.chargeHandler.handleFailed.bind(this.chargeHandler),
-          handleChargeRefunded: this.chargeHandler.handleRefunded.bind(this.chargeHandler),
+          handleChargeRefunded: this.refundHandler.handleChargeRefunded.bind(this.refundHandler),
           handleCheckoutSessionCompleted: this.checkoutSessionHandler.handleCompleted.bind(
             this.checkoutSessionHandler
           ),
@@ -278,7 +297,9 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           handleCheckoutSessionAsyncPayment: this.checkoutSessionHandler.handleAsyncPayment.bind(
             this.checkoutSessionHandler
           ),
-          handleApplicationFeeRefunded: this.handleApplicationFeeRefunded.bind(this),
+          handleApplicationFeeRefunded: this.applicationFeeHandler.handleRefunded.bind(
+            this.applicationFeeHandler
+          ),
           handleDisputeEvent: this.handleDisputeEvent.bind(this),
         },
       });
@@ -463,298 +484,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         action: "regenerateSettlementSnapshotFromPayment",
         additionalData: { error: e instanceof Error ? e.message : "unknown" },
       });
-    }
-  }
-
-  private async handleRefundCreated(event: Stripe.Event): Promise<WebhookProcessingResult> {
-    const refund = getRefundFromWebhookEvent(event);
-    if (!refund) {
-      handleServerError("WEBHOOK_INVALID_PAYLOAD", {
-        action: "handleRefundCreated",
-        additionalData: { eventId: event.id, detail: "Invalid refund object" },
-      });
-      return okResult();
-    }
-
-    this.logger.info("Refund created event received", {
-      event_id: event.id,
-      refund_id: refund.id,
-      status: refund.status,
-      outcome: "success",
-    });
-    return okResult();
-  }
-
-  private async handleRefundUpdated(event: Stripe.Event): Promise<WebhookProcessingResult> {
-    const refund = getRefundFromWebhookEvent(event);
-    if (!refund) {
-      handleServerError("WEBHOOK_INVALID_PAYLOAD", {
-        action: "handleRefundUpdated",
-        additionalData: { eventId: event.id, detail: "Invalid refund object" },
-      });
-      return okResult();
-    }
-
-    const status = refund.status;
-
-    // ログは常に記録
-    this.logger.info("Refund updated event received", {
-      event_id: event.id,
-      refund_id: refund.id,
-      status,
-      outcome: "success",
-    });
-
-    // 返金がキャンセル/失敗に遷移した場合は、集計値を同期し直す（巻き戻しを許可）
-    if (status === "canceled" || status === "failed") {
-      const chargeId = getExpandableId(refund.charge);
-      if (chargeId) {
-        try {
-          await this.syncRefundAggregateByChargeId(chargeId, event.id, /*allowDemotion*/ true);
-        } catch (e) {
-          // 集計同期失敗はDLQ再試行対象にするため例外を投げる
-          throw e instanceof Error
-            ? e
-            : new Error("Failed to resync refund aggregate on refund.updated");
-        }
-      }
-    }
-
-    return okResult();
-  }
-
-  // refund.failed を受け、返金集計を再同期（必要ならステータスの巻き戻しを許可）
-  private async handleRefundFailed(event: Stripe.Event): Promise<WebhookProcessingResult> {
-    const refund = getRefundFromWebhookEvent(event);
-    if (!refund) {
-      handleServerError("WEBHOOK_INVALID_PAYLOAD", {
-        action: "handleRefundFailed",
-        additionalData: { eventId: event.id, detail: "Invalid refund object" },
-      });
-      return okResult();
-    }
-
-    const chargeId = getExpandableId(refund.charge);
-    this.logger.warn("Refund failed event received", {
-      event_id: event.id,
-      refund_id: refund.id,
-      charge_id: chargeId,
-      outcome: "success",
-    });
-
-    if (chargeId) {
-      await this.syncRefundAggregateByChargeId(chargeId, event.id, /*allowDemotion*/ true);
-    }
-    return okResult();
-  }
-
-  // 指定した chargeId の最新状態をStripeから取得し、paymentsの返金集計とステータスを同期
-  // allowDemotion=true のとき、全額返金でない場合に status=refunded からの巻き戻しを許可する
-  private async syncRefundAggregateByChargeId(
-    chargeId: string,
-    eventId: string,
-    allowDemotion = false
-  ): Promise<void> {
-    // 最新のChargeを取得
-    const charge = await this.stripeFetchService.retrieveChargeForRefundAggregation(chargeId);
-    await this.applyRefundAggregateFromCharge(charge, eventId, allowDemotion);
-  }
-
-  // Chargeスナップショットから返金集計をDBへ反映
-  private async applyRefundAggregateFromCharge(
-    charge: Stripe.Charge,
-    eventId: string,
-    allowDemotion = false
-  ): Promise<void> {
-    const stripePaymentIntentId = getPaymentIntentId(charge);
-    const payment = await this.paymentWebhookRepository.resolveByChargeOrFallback({
-      paymentIntentId: stripePaymentIntentId,
-      chargeId: charge.id,
-      metadataPaymentId: getPaymentIdFromMetadata(charge),
-    });
-    if (!payment) {
-      handleServerError("WEBHOOK_PAYMENT_NOT_FOUND", {
-        action: "applyRefundAggregateFromCharge",
-        additionalData: { eventId, chargeId: charge.id },
-      });
-      return;
-    }
-
-    const totalRefunded = typeof charge.amount_refunded === "number" ? charge.amount_refunded : 0;
-
-    // Application Fee の累積返金額を再計算
-    let applicationFeeRefundedAmount = payment.application_fee_refunded_amount;
-    let applicationFeeRefundId: string | null = payment.application_fee_refund_id;
-    if (payment.application_fee_id) {
-      try {
-        const summed = await this.stripeFetchService.sumApplicationFeeRefunds(
-          payment.application_fee_id
-        );
-        applicationFeeRefundedAmount = summed.amount;
-        applicationFeeRefundId = summed.latestRefundId;
-      } catch {
-        // 取得失敗時は既存DB値を維持して上書きを防ぐ
-      }
-    } else {
-      applicationFeeRefundedAmount = 0;
-      applicationFeeRefundId = null;
-    }
-
-    // 目標ステータス: 全額返金であれば refunded。未満なら現状維持。ただし allowDemotion=true かつ現状refundedなら paid に戻す
-    let targetStatus = payment.status as PaymentStatus;
-    if (totalRefunded >= payment.amount) {
-      targetStatus = "refunded" as PaymentStatus;
-    } else if (allowDemotion && targetStatus === "refunded") {
-      // もともと全額返金扱いだったが、失敗/取消で全額でなくなったケースを巻き戻す
-      targetStatus = "paid" as PaymentStatus;
-    }
-
-    const { error } = await this.paymentWebhookRepository.updateRefundAggregate({
-      paymentId: payment.id,
-      eventId,
-      chargeId: charge.id,
-      paymentIntentId: stripePaymentIntentId,
-      status: targetStatus,
-      refundedAmount: totalRefunded,
-      applicationFeeRefundedAmount,
-      applicationFeeRefundId,
-    });
-    if (error) {
-      throw new Error(`Failed to resync payment on refund change: ${error.message}`);
-    }
-
-    this.logger.info("Payment resynced from charge (refund)", {
-      event_id: eventId,
-      payment_id: payment.id,
-      total_refunded: totalRefunded,
-      target_status: targetStatus,
-      resync: true,
-      outcome: "success",
-    });
-  }
-
-  private async handleApplicationFeeRefunded(
-    event: Stripe.Event
-  ): Promise<WebhookProcessingResult> {
-    // application_fee.refunded は、手数料のみ返金（例外運用）を正確に反映するための補助イベント
-    const obj = event.data?.object as
-      | Stripe.ApplicationFee
-      | (Stripe.FeeRefund & { fee: string | Stripe.ApplicationFee })
-      | undefined;
-    try {
-      // 対象となる Application Fee ID を抽出
-      // ケース1: data.object が ApplicationFee の場合
-      // ケース2: data.object が ApplicationFeeRefund の場合（fee に紐づく）
-      let applicationFeeId: string | null = null;
-      if (obj) {
-        if (
-          (obj as Stripe.ApplicationFee).object === "application_fee" &&
-          typeof (obj as Stripe.ApplicationFee).id === "string"
-        ) {
-          applicationFeeId = (obj as Stripe.ApplicationFee).id;
-        } else if ((obj as Stripe.FeeRefund).object === "fee_refund") {
-          const feeField = (obj as Stripe.FeeRefund & { fee: string | Stripe.ApplicationFee }).fee;
-          if (typeof feeField === "string") {
-            applicationFeeId = feeField;
-          } else if (feeField && typeof feeField.id === "string") {
-            applicationFeeId = feeField.id;
-          }
-        }
-      }
-
-      if (!applicationFeeId) {
-        handleServerError("WEBHOOK_INVALID_PAYLOAD", {
-          action: "handleApplicationFeeRefunded",
-          additionalData: { eventId: event.id, detail: "No application fee ID found" },
-        });
-        return okResult();
-      }
-
-      // payments から対象レコードを特定
-      const payment = await this.paymentWebhookRepository.findByApplicationFeeId(applicationFeeId);
-
-      if (!payment) {
-        handleServerError("WEBHOOK_PAYMENT_NOT_FOUND", {
-          action: "handleApplicationFeeRefunded",
-          additionalData: { eventId: event.id, applicationFeeId },
-        });
-        return okResult();
-      }
-
-      // 最新の手数料返金の累積額と最新IDを取得
-      let applicationFeeRefundedAmount = payment.application_fee_refunded_amount;
-      let applicationFeeRefundId: string | null = payment.application_fee_refund_id;
-      try {
-        const summed = await this.stripeFetchService.sumApplicationFeeRefunds(applicationFeeId);
-        applicationFeeRefundedAmount = summed.amount;
-        applicationFeeRefundId = summed.latestRefundId;
-      } catch (e) {
-        handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
-          action: "handleApplicationFeeRefunded",
-          additionalData: {
-            eventId: event.id,
-            applicationFeeId,
-            error: e instanceof Error ? e.message : "unknown",
-          },
-        });
-      }
-
-      const { error: updateError } =
-        await this.paymentWebhookRepository.updateApplicationFeeRefundAggregate({
-          paymentId: payment.id,
-          eventId: event.id,
-          applicationFeeRefundedAmount,
-          applicationFeeRefundId,
-        });
-      if (updateError) {
-        handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
-          action: "handleApplicationFeeRefunded",
-          additionalData: {
-            eventId: event.id,
-            paymentId: payment.id,
-            applicationFeeId,
-            error_message: updateError.message,
-            error_code: updateError.code,
-          },
-        });
-        return createWebhookDbError({
-          code: "WEBHOOK_UNEXPECTED_ERROR",
-          reason: "application_fee_refund_update_failed",
-          eventId: event.id,
-          paymentId: payment.id,
-          userMessage: "手数料返金の反映に失敗しました",
-          dbError: updateError,
-          details: {
-            eventId: event.id,
-            paymentId: payment.id,
-            applicationFeeId,
-          },
-        });
-      }
-
-      this.logger.info("Application fee refund processed", {
-        event_id: event.id,
-        payment_id: payment.id,
-        application_fee_id: applicationFeeId,
-        application_fee_refunded_amount: applicationFeeRefundedAmount,
-        outcome: "success",
-      });
-      // プラットフォーム手数料返金も清算値へ影響するため再生成を実行
-      try {
-        await this.regenerateSettlementSnapshotFromPayment(payment);
-      } catch (e) {
-        handleServerError("SETTLEMENT_REGENERATE_FAILED", {
-          action: "handleApplicationFeeRefunded",
-          additionalData: {
-            eventId: event.id,
-            paymentId: payment.id,
-            error: e instanceof Error ? e.message : "unknown",
-          },
-        });
-      }
-      return okResult(undefined, { eventId: event.id, paymentId: payment.id });
-    } catch (error) {
-      throw error instanceof Error ? error : new Error("Unknown error");
     }
   }
 

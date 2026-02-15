@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 
-import { StripeObjectFetchService } from "@features/payments/services/webhook/services/stripe-object-fetch-service";
+import { StripeObjectFetchService } from "../../../../features/payments/services/webhook/services/stripe-object-fetch-service";
 
 const mockWarn = jest.fn();
 const mockDebug = jest.fn();
@@ -108,37 +108,35 @@ describe("StripeObjectFetchService", () => {
     expect(mockChargeRetrieve).toHaveBeenCalledTimes(1);
   });
 
-  it("application fee refunds は複数ページを全件集計する", async () => {
-    const page1 = Array.from({ length: 100 }, (_, idx) => ({
-      id: `fr_${idx + 1}`,
-      amount: 10,
-      created: idx + 1,
-      object: "fee_refund",
-    })) as Stripe.FeeRefund[];
-    const page2 = [
+  it("application fee refunds は auto-pagination で全件集計する", async () => {
+    const refunds = [
+      ...Array.from({ length: 100 }, (_, idx) => ({
+        id: `fr_${idx + 1}`,
+        amount: 10,
+        created: idx + 1,
+        object: "fee_refund",
+      })),
       { id: "fr_101", amount: 25, created: 101, object: "fee_refund" },
     ] as Stripe.FeeRefund[];
 
-    mockListApplicationFeeRefunds
-      .mockResolvedValueOnce({
-        data: page1,
-        has_more: true,
-      })
-      .mockResolvedValueOnce({
-        data: page2,
-        has_more: false,
-      });
+    const mockAutoPagingEach = jest.fn(async (onItem: (item: Stripe.FeeRefund) => unknown) => {
+      for (const refund of refunds) {
+        await onItem(refund);
+      }
+    });
+
+    mockListApplicationFeeRefunds.mockReturnValue({
+      autoPagingEach: mockAutoPagingEach,
+    });
 
     const result = await service.sumApplicationFeeRefunds("fee_1");
 
     expect(result.amount).toBe(1025);
     expect(result.latestRefundId).toBe("fr_101");
-    expect(mockListApplicationFeeRefunds).toHaveBeenNthCalledWith(1, "fee_1", {
+    expect(mockListApplicationFeeRefunds).toHaveBeenCalledTimes(1);
+    expect(mockListApplicationFeeRefunds).toHaveBeenCalledWith("fee_1", {
       limit: 100,
     });
-    expect(mockListApplicationFeeRefunds).toHaveBeenNthCalledWith(2, "fee_1", {
-      limit: 100,
-      starting_after: "fr_100",
-    });
+    expect(mockAutoPagingEach).toHaveBeenCalledTimes(1);
   });
 });
