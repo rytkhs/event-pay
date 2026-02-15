@@ -2,23 +2,18 @@ import Stripe from "stripe";
 
 import { okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
-import { NotificationService } from "@core/notification/service";
 import { getSettlementReportPort } from "@core/ports/settlements";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { getMetadata, getPaymentIntentId } from "@core/stripe/guards";
-import type { PaymentDisputeInsert, PaymentWebhookMetaJson } from "@core/types/payment";
+import type { PaymentDisputeInsert } from "@core/types/payment";
 import type { PaymentStatus } from "@core/types/statuses";
 import type { AppSupabaseClient } from "@core/types/supabase";
 import { handleServerError } from "@core/utils/error-handler.server";
-import { canPromoteStatus } from "@core/utils/payments/status-rank";
 
 import type { WebhookHandlerContext } from "./context/webhook-handler-context";
-import {
-  createWebhookDbError,
-  createWebhookInvalidPayloadError,
-  createWebhookUnexpectedError,
-} from "./errors/webhook-error-factory";
+import { createWebhookDbError, createWebhookUnexpectedError } from "./errors/webhook-error-factory";
+import { ChargeHandler } from "./handlers/charge-handler";
 import { CheckoutSessionHandler } from "./handlers/checkout-session-handler";
 import { PaymentIntentHandler } from "./handlers/payment-intent-handler";
 import {
@@ -31,10 +26,8 @@ import {
 } from "./repositories/webhook-event-ledger-repository";
 import { routeStripePaymentEvent } from "./router/stripe-event-router";
 import { PaymentAnalyticsWebhookService } from "./services/payment-analytics-service";
-import {
-  STRIPE_OBJECT_FETCH_POLICY,
-  StripeObjectFetchService,
-} from "./services/stripe-object-fetch-service";
+import { PaymentNotificationService } from "./services/payment-notification-service";
+import { StripeObjectFetchService } from "./services/stripe-object-fetch-service";
 import type { WebhookProcessingResult } from "./types";
 import { getRefundFromWebhookEvent } from "./webhook-event-guards";
 
@@ -68,44 +61,6 @@ function getPaymentIdFromMetadata(source: unknown): string | null {
   return isNonEmptyString(paymentId) ? paymentId : null;
 }
 
-function toStripeFeeDetailsJson(
-  feeDetails: Stripe.BalanceTransaction.FeeDetail[] | null
-): PaymentWebhookMetaJson | null {
-  if (!feeDetails) {
-    return null;
-  }
-
-  return feeDetails.map((detail) => ({
-    amount: detail.amount,
-    currency: detail.currency,
-    type: detail.type,
-  }));
-}
-
-function getEventObjectFromRelation(value: unknown): Record<string, unknown> | null {
-  const candidate = Array.isArray(value) ? value[0] : value;
-  return isRecord(candidate) ? candidate : null;
-}
-
-function extractPaymentNotificationDataFromAttendance(
-  attendance: unknown
-): { email: string; nickname: string; eventTitle: string } | null {
-  if (!isRecord(attendance)) {
-    return null;
-  }
-
-  const email = attendance.email;
-  const nickname = attendance.nickname;
-  const eventObject = getEventObjectFromRelation(attendance.event);
-  const eventTitle = eventObject?.title;
-
-  if (!isNonEmptyString(email) || !isNonEmptyString(nickname) || !isNonEmptyString(eventTitle)) {
-    return null;
-  }
-
-  return { email, nickname, eventTitle };
-}
-
 function isWebhookLedgerFailureDetails(value: unknown): value is WebhookLedgerFailureDetails {
   if (!isRecord(value)) {
     return false;
@@ -124,8 +79,10 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
   private paymentRepository?: PaymentWebhookRepository;
   private stripeObjectFetchService?: StripeObjectFetchService;
   private paymentAnalyticsService?: PaymentAnalyticsWebhookService;
+  private paymentNotificationServiceInstance?: PaymentNotificationService;
   private checkoutSessionHandlerInstance?: CheckoutSessionHandler;
   private paymentIntentHandlerInstance?: PaymentIntentHandler;
+  private chargeHandlerInstance?: ChargeHandler;
 
   constructor() {}
 
@@ -194,6 +151,16 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     return this.checkoutSessionHandlerInstance;
   }
 
+  private get paymentNotificationService(): PaymentNotificationService {
+    if (!this.paymentNotificationServiceInstance) {
+      this.paymentNotificationServiceInstance = new PaymentNotificationService({
+        supabase: this.supabase,
+        logger: this.logger,
+      });
+    }
+    return this.paymentNotificationServiceInstance;
+  }
+
   private get paymentIntentHandler(): PaymentIntentHandler {
     if (!this.paymentIntentHandlerInstance) {
       this.paymentIntentHandlerInstance = new PaymentIntentHandler({
@@ -203,6 +170,20 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       });
     }
     return this.paymentIntentHandlerInstance;
+  }
+
+  private get chargeHandler(): ChargeHandler {
+    if (!this.chargeHandlerInstance) {
+      this.chargeHandlerInstance = new ChargeHandler({
+        paymentRepository: this.paymentWebhookRepository,
+        stripeObjectFetchService: this.stripeFetchService,
+        paymentNotificationService: this.paymentNotificationService,
+        logger: this.logger,
+        regenerateSettlementSnapshotFromPayment:
+          this.regenerateSettlementSnapshotFromPayment.bind(this),
+      });
+    }
+    return this.chargeHandlerInstance;
   }
 
   async handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult> {
@@ -285,9 +266,9 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           handlePaymentIntentCanceled: this.paymentIntentHandler.handleCanceled.bind(
             this.paymentIntentHandler
           ),
-          handleChargeSucceeded: this.handleChargeSucceeded.bind(this),
-          handleChargeFailed: this.handleChargeFailed.bind(this),
-          handleChargeRefunded: this.handleChargeRefunded.bind(this),
+          handleChargeSucceeded: this.chargeHandler.handleSucceeded.bind(this.chargeHandler),
+          handleChargeFailed: this.chargeHandler.handleFailed.bind(this.chargeHandler),
+          handleChargeRefunded: this.chargeHandler.handleRefunded.bind(this.chargeHandler),
           handleCheckoutSessionCompleted: this.checkoutSessionHandler.handleCompleted.bind(
             this.checkoutSessionHandler
           ),
@@ -482,409 +463,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         action: "regenerateSettlementSnapshotFromPayment",
         additionalData: { error: e instanceof Error ? e.message : "unknown" },
       });
-    }
-  }
-
-  private async handleChargeSucceeded(
-    event: Stripe.ChargeSucceededEvent
-  ): Promise<WebhookProcessingResult> {
-    const charge = event.data.object;
-    // PaymentIntent/Chargeの再取得戦略は StripeObjectFetchService に集約
-    try {
-      this.logger.debug("Stripe object fetch policy applied", {
-        event_id: event.id,
-        trust_webhook_payload: STRIPE_OBJECT_FETCH_POLICY.trustWebhookPayload.join(","),
-        always_retrieve_from_stripe: STRIPE_OBJECT_FETCH_POLICY.alwaysRetrieveFromStripe.join(","),
-      });
-
-      const stripePaymentIntentId = getPaymentIntentId(charge);
-      const { charge: fetchedCharge, source: chargeSnapshotSource } =
-        await this.stripeFetchService.getChargeSnapshotForChargeSucceeded({
-          charge,
-          stripePaymentIntentId,
-        });
-      this.logger.debug("Charge snapshot resolved for charge.succeeded", {
-        event_id: event.id,
-        event_charge_id: charge.id,
-        snapshot_charge_id: fetchedCharge.id,
-        charge_snapshot_source: chargeSnapshotSource,
-      });
-
-      const payment = await this.paymentWebhookRepository.resolveByChargeOrFallback({
-        paymentIntentId: stripePaymentIntentId,
-        chargeId: charge.id,
-        metadataPaymentId: getPaymentIdFromMetadata(charge),
-      });
-
-      if (!payment) {
-        handleServerError("WEBHOOK_PAYMENT_NOT_FOUND", {
-          action: "handleChargeSucceeded",
-          additionalData: {
-            eventId: event.id,
-            chargeId: charge.id,
-            payment_intent: stripePaymentIntentId ?? undefined,
-          },
-        });
-        return okResult();
-      }
-
-      // 既に同等以上の状態なら冪等
-      if (!canPromoteStatus(payment.status as PaymentStatus, "paid")) {
-        this.logger.info("Duplicate webhook event preventing double processing", {
-          event_id: event.id,
-          payment_id: payment.id,
-          current_status: payment.status,
-          outcome: "success",
-        });
-        return okResult();
-      }
-
-      // balance_transaction / transfer / application_fee を拾う
-      const chargeObj = fetchedCharge;
-      const btObj = ((): {
-        id: string | null;
-        fee: number | null;
-        net: number | null;
-        fee_details: Stripe.BalanceTransaction.FeeDetail[] | null;
-      } => {
-        const raw = chargeObj.balance_transaction;
-        if (raw && typeof raw === "object") {
-          return {
-            id: raw.id,
-            fee: typeof raw.fee === "number" ? raw.fee : null,
-            net: typeof raw.net === "number" ? raw.net : null,
-            fee_details: Array.isArray(raw.fee_details) ? raw.fee_details : null,
-          };
-        }
-        if (typeof raw === "string") {
-          return { id: raw, fee: null, net: null, fee_details: null };
-        }
-        return { id: null, fee: null, net: null, fee_details: null };
-      })();
-      const balanceTxnId: string | null = btObj.id;
-      const transferId = getExpandableId(chargeObj.transfer);
-      const applicationFeeId = getExpandableId(chargeObj.application_fee);
-
-      const { error: updateError } =
-        await this.paymentWebhookRepository.updateStatusPaidFromChargeSnapshot({
-          paymentId: payment.id,
-          eventId: event.id,
-          chargeId: charge.id,
-          paymentIntentId: stripePaymentIntentId,
-          balanceTransactionId: balanceTxnId,
-          fee: btObj.fee,
-          net: btObj.net,
-          feeDetails: toStripeFeeDetailsJson(btObj.fee_details),
-          transferId,
-          applicationFeeId,
-        });
-
-      if (updateError) {
-        handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
-          action: "handleChargeSucceeded",
-          additionalData: {
-            eventId: event.id,
-            paymentId: payment.id,
-            chargeId: charge.id,
-            error_message: updateError.message,
-            error_code: updateError.code,
-          },
-        });
-        return createWebhookDbError({
-          code: "WEBHOOK_UNEXPECTED_ERROR",
-          reason: "charge_succeeded_update_failed",
-          eventId: event.id,
-          paymentId: payment.id,
-          userMessage: "決済ステータス更新に失敗しました",
-          dbError: updateError,
-          details: {
-            eventId: event.id,
-            paymentId: payment.id,
-            chargeId: charge.id,
-          },
-        });
-      }
-
-      // 監査ログ記録
-      const { logPayment } = await import("@core/logging/system-logger");
-      await logPayment({
-        action: "payment.status_update",
-        message: `Payment status updated to paid via webhook`,
-        resource_id: payment.id,
-        outcome: "success",
-        stripe_request_id: event.request?.id ?? undefined,
-        dedupe_key: `webhook:payment_update:${event.id}`,
-        metadata: {
-          old_status: payment.status,
-          new_status: "paid",
-          amount: payment.amount,
-          charge_id: charge.id,
-          balance_transaction_id: balanceTxnId,
-          stripe_event_id: event.id,
-        },
-      });
-
-      this.logger.info("Charge succeeded processed", {
-        event_id: event.id,
-        payment_id: payment.id,
-        charge_id: charge.id,
-        balance_transaction_id: balanceTxnId,
-        transfer_id: transferId ?? undefined,
-        outcome: "success",
-      });
-
-      // 決済完了通知を送信（失敗してもログのみ記録）
-      // NOTE: payment_intent.succeeded ではなく charge.succeeded で通知を送信する理由:
-      // 1. 重複送信の防止（両方のイベントが発火するため）
-      // 2. charge.succeeded では balance_transaction と transfer の情報も取得可能
-      // 3. 実際の課金が完了した時点で通知するのがユーザー体験として適切
-      try {
-        const { data: attendance, error: fetchError } = await this.supabase
-          .from("attendances")
-          .select("email, nickname, event:events(title)")
-          .eq("id", payment.attendance_id)
-          .single();
-
-        if (fetchError || !attendance) {
-          this.logger.warn("Failed to fetch attendance for payment notification", {
-            paymentId: payment.id,
-            attendanceId: payment.attendance_id,
-            error_message: fetchError?.message || "Attendance not found",
-            outcome: "failure",
-          });
-          // 早期リターン: 通知失敗はwebhook処理を停止させない
-        } else {
-          const notificationData = extractPaymentNotificationDataFromAttendance(attendance);
-          if (!notificationData) {
-            this.logger.warn("Invalid attendance payload for payment notification", {
-              paymentId: payment.id,
-              attendanceId: payment.attendance_id,
-              outcome: "failure",
-            });
-            return okResult(undefined, { eventId: event.id, paymentId: payment.id });
-          }
-
-          const notificationService = new NotificationService(this.supabase);
-          await notificationService.sendPaymentCompletedNotification({
-            email: notificationData.email,
-            nickname: notificationData.nickname,
-            eventTitle: notificationData.eventTitle,
-            amount: payment.amount,
-            paidAt: new Date().toISOString(),
-            receiptUrl: charge.receipt_url ?? undefined,
-          });
-        }
-      } catch (error) {
-        // 通知失敗はログのみ記録、webhook処理は継続
-        handleServerError("PAYMENT_COMPLETION_NOTIFICATION_FAILED", {
-          action: "sendPaymentCompletedNotification",
-          additionalData: {
-            paymentId: payment.id,
-            error_message: error instanceof Error ? error.message : "Unknown error",
-          },
-        });
-      }
-
-      return okResult(undefined, { eventId: event.id, paymentId: payment.id });
-    } catch (error) {
-      throw error instanceof Error ? error : new Error("Unknown error");
-    }
-  }
-
-  private async handleChargeFailed(
-    event: Stripe.ChargeFailedEvent
-  ): Promise<WebhookProcessingResult> {
-    const charge = event.data.object;
-    const stripePaymentIntentId = getPaymentIntentId(charge);
-    try {
-      const payment = await this.paymentWebhookRepository.resolveByChargeOrFallback({
-        paymentIntentId: stripePaymentIntentId,
-        chargeId: charge.id,
-        metadataPaymentId: getPaymentIdFromMetadata(charge),
-      });
-      if (!payment) {
-        handleServerError("WEBHOOK_PAYMENT_NOT_FOUND", {
-          action: "handleChargeFailed",
-          additionalData: {
-            eventId: event.id,
-            chargeId: charge.id,
-          },
-        });
-        return okResult();
-      }
-      if (!canPromoteStatus(payment.status as PaymentStatus, "failed")) {
-        this.logger.info("Duplicate webhook event preventing double processing", {
-          event_id: event.id,
-          payment_id: payment.id,
-          current_status: payment.status,
-          outcome: "success",
-        });
-        return okResult();
-      }
-      const { error: updateError } =
-        await this.paymentWebhookRepository.updateStatusFailedFromCharge({
-          paymentId: payment.id,
-          eventId: event.id,
-          chargeId: charge.id,
-          paymentIntentId: stripePaymentIntentId,
-        });
-      if (updateError) {
-        handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
-          action: "handleChargeFailed",
-          additionalData: {
-            eventId: event.id,
-            paymentId: payment.id,
-            chargeId: charge.id,
-            error_message: updateError.message,
-            error_code: updateError.code,
-          },
-        });
-        return createWebhookDbError({
-          code: "WEBHOOK_UNEXPECTED_ERROR",
-          reason: "charge_failed_update_failed",
-          eventId: event.id,
-          paymentId: payment.id,
-          userMessage: "決済ステータス更新に失敗しました",
-          dbError: updateError,
-          details: {
-            eventId: event.id,
-            paymentId: payment.id,
-            chargeId: charge.id,
-          },
-        });
-      }
-      this.logger.info("Charge failed processed", {
-        event_id: event.id,
-        payment_id: payment.id,
-        charge_id: charge.id,
-        outcome: "success",
-      });
-      return okResult(undefined, { eventId: event.id, paymentId: payment.id });
-    } catch (error) {
-      throw error instanceof Error ? error : new Error("Unknown error");
-    }
-  }
-
-  private async handleChargeRefunded(
-    event: Stripe.ChargeRefundedEvent
-  ): Promise<WebhookProcessingResult> {
-    const charge = event.data.object;
-    // 累積返金額とアプリ手数料返金の保存
-    try {
-      // 支払レコードの特定
-      const stripePaymentIntentId = getPaymentIntentId(charge);
-      const payment = await this.paymentWebhookRepository.resolveByChargeOrFallback({
-        paymentIntentId: stripePaymentIntentId,
-        chargeId: charge.id,
-        metadataPaymentId: getPaymentIdFromMetadata(charge),
-      });
-
-      if (!payment) {
-        handleServerError("WEBHOOK_PAYMENT_NOT_FOUND", {
-          action: "handleChargeRefunded",
-          additionalData: {
-            eventId: event.id,
-            chargeId: charge.id,
-          },
-        });
-        return okResult();
-      }
-
-      const totalRefunded = typeof charge.amount_refunded === "number" ? charge.amount_refunded : 0;
-      // application_fee_refunds は Application Fee API 参照が必要。ここでは累積額を可能な範囲で保存
-      let applicationFeeRefundedAmount = payment.application_fee_refunded_amount;
-      let applicationFeeRefundId: string | null = payment.application_fee_refund_id;
-      if (payment.application_fee_id) {
-        try {
-          // application_fee_id が保存されていれば合計返金額と最新の返金IDを取得
-          const summed = await this.stripeFetchService.sumApplicationFeeRefunds(
-            payment.application_fee_id
-          );
-          applicationFeeRefundedAmount = summed.amount;
-          applicationFeeRefundId = summed.latestRefundId;
-        } catch {
-          // 取得失敗時は既存DB値を維持して上書きを防ぐ
-        }
-      } else {
-        applicationFeeRefundedAmount = 0;
-        applicationFeeRefundId = null;
-      }
-
-      // ステータス: 全額返金なら refunded、部分返金は paid のまま refunded_amount 更新
-      const targetStatus: PaymentStatus =
-        totalRefunded >= payment.amount ? "refunded" : (payment.status as PaymentStatus);
-      // 巻き戻し防止: current >= target の場合は no-op
-      if (!canPromoteStatus(payment.status as PaymentStatus, targetStatus as PaymentStatus)) {
-        this.logger.info("Duplicate webhook event preventing double processing", {
-          event_id: event.id,
-          payment_id: payment.id,
-          current_status: payment.status,
-          target_status: targetStatus,
-          outcome: "success",
-        });
-        return okResult();
-      }
-
-      const { error: updateError } = await this.paymentWebhookRepository.updateRefundAggregate({
-        paymentId: payment.id,
-        eventId: event.id,
-        chargeId: charge.id,
-        paymentIntentId: stripePaymentIntentId,
-        status: targetStatus,
-        refundedAmount: totalRefunded,
-        applicationFeeRefundedAmount,
-        applicationFeeRefundId,
-      });
-      if (updateError) {
-        handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
-          action: "handleChargeRefunded",
-          additionalData: {
-            eventId: event.id,
-            paymentId: payment.id,
-            chargeId: charge.id,
-            error_message: updateError.message,
-            error_code: updateError.code,
-          },
-        });
-        return createWebhookDbError({
-          code: "WEBHOOK_UNEXPECTED_ERROR",
-          reason: "charge_refunded_update_failed",
-          eventId: event.id,
-          paymentId: payment.id,
-          userMessage: "返金ステータス更新に失敗しました",
-          dbError: updateError,
-          details: {
-            eventId: event.id,
-            paymentId: payment.id,
-            chargeId: charge.id,
-          },
-        });
-      }
-
-      this.logger.info("Refund processed successfully", {
-        event_id: event.id,
-        payment_id: payment.id,
-        refunded_amount: totalRefunded,
-        application_fee_refunded_amount: applicationFeeRefundedAmount,
-        target_status: targetStatus,
-        outcome: "success",
-      });
-      // 清算レポートの再生成を非同期で実行（失敗してもWebhook処理はACK）
-      try {
-        await this.regenerateSettlementSnapshotFromPayment(payment);
-      } catch (e) {
-        handleServerError("SETTLEMENT_REGENERATE_FAILED", {
-          action: "handleChargeRefunded",
-          additionalData: {
-            eventId: event.id,
-            paymentId: payment.id,
-            error: e instanceof Error ? e.message : "unknown",
-          },
-        });
-      }
-      return okResult(undefined, { eventId: event.id, paymentId: payment.id });
-    } catch (error) {
-      throw error instanceof Error ? error : new Error("Unknown error");
     }
   }
 
