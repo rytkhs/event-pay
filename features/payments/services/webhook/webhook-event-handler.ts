@@ -2,10 +2,8 @@ import Stripe from "stripe";
 
 import { okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
-import { getSettlementReportPort } from "@core/ports/settlements";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import type { PaymentDisputeInsert } from "@core/types/payment";
 import type { AppSupabaseClient } from "@core/types/supabase";
 import { handleServerError } from "@core/utils/error-handler.server";
 
@@ -14,8 +12,10 @@ import { createWebhookDbError, createWebhookUnexpectedError } from "./errors/web
 import { ApplicationFeeHandler } from "./handlers/application-fee-handler";
 import { ChargeHandler } from "./handlers/charge-handler";
 import { CheckoutSessionHandler } from "./handlers/checkout-session-handler";
+import { DisputeHandler } from "./handlers/dispute-handler";
 import { PaymentIntentHandler } from "./handlers/payment-intent-handler";
 import { RefundHandler } from "./handlers/refund-handler";
+import { DisputeWebhookRepository } from "./repositories/dispute-webhook-repository";
 import {
   PaymentWebhookRepository,
   isPaymentWebhookRepositoryError,
@@ -27,6 +27,7 @@ import {
 import { routeStripePaymentEvent } from "./router/stripe-event-router";
 import { PaymentAnalyticsWebhookService } from "./services/payment-analytics-service";
 import { PaymentNotificationService } from "./services/payment-notification-service";
+import { SettlementRegenerationService } from "./services/settlement-regeneration-service";
 import { StripeObjectFetchService } from "./services/stripe-object-fetch-service";
 import type { WebhookProcessingResult } from "./types";
 
@@ -40,18 +41,6 @@ function isNonEmptyString(value: unknown): value is string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
-}
-
-function getExpandableId(value: string | { id: string } | null | undefined): string | null {
-  if (isNonEmptyString(value)) {
-    return value;
-  }
-
-  if (value && typeof value === "object" && isNonEmptyString(value.id)) {
-    return value.id;
-  }
-
-  return null;
 }
 
 function isWebhookLedgerFailureDetails(value: unknown): value is WebhookLedgerFailureDetails {
@@ -78,6 +67,9 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
   private chargeHandlerInstance?: ChargeHandler;
   private refundHandlerInstance?: RefundHandler;
   private applicationFeeHandlerInstance?: ApplicationFeeHandler;
+  private settlementRegenerationServiceInstance?: SettlementRegenerationService;
+  private disputeWebhookRepositoryInstance?: DisputeWebhookRepository;
+  private disputeHandlerInstance?: DisputeHandler;
 
   constructor() {}
 
@@ -179,14 +171,23 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
     return this.chargeHandlerInstance;
   }
 
+  private get settlementRegenerationService(): SettlementRegenerationService {
+    if (!this.settlementRegenerationServiceInstance) {
+      this.settlementRegenerationServiceInstance = new SettlementRegenerationService({
+        supabase: this.supabase,
+        logger: this.logger,
+      });
+    }
+    return this.settlementRegenerationServiceInstance;
+  }
+
   private get refundHandler(): RefundHandler {
     if (!this.refundHandlerInstance) {
       this.refundHandlerInstance = new RefundHandler({
         paymentRepository: this.paymentWebhookRepository,
         stripeObjectFetchService: this.stripeFetchService,
         logger: this.logger,
-        regenerateSettlementSnapshotFromPayment:
-          this.regenerateSettlementSnapshotFromPayment.bind(this),
+        settlementRegenerationService: this.settlementRegenerationService,
       });
     }
     return this.refundHandlerInstance;
@@ -198,11 +199,29 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         paymentRepository: this.paymentWebhookRepository,
         stripeObjectFetchService: this.stripeFetchService,
         logger: this.logger,
-        regenerateSettlementSnapshotFromPayment:
-          this.regenerateSettlementSnapshotFromPayment.bind(this),
+        settlementRegenerationService: this.settlementRegenerationService,
       });
     }
     return this.applicationFeeHandlerInstance;
+  }
+
+  private get disputeWebhookRepository(): DisputeWebhookRepository {
+    if (!this.disputeWebhookRepositoryInstance) {
+      this.disputeWebhookRepositoryInstance = new DisputeWebhookRepository(this.supabase);
+    }
+    return this.disputeWebhookRepositoryInstance;
+  }
+
+  private get disputeHandler(): DisputeHandler {
+    if (!this.disputeHandlerInstance) {
+      this.disputeHandlerInstance = new DisputeHandler({
+        paymentRepository: this.paymentWebhookRepository,
+        disputeRepository: this.disputeWebhookRepository,
+        settlementRegenerationService: this.settlementRegenerationService,
+        logger: this.logger,
+      });
+    }
+    return this.disputeHandlerInstance;
   }
 
   async handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult> {
@@ -300,7 +319,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           handleApplicationFeeRefunded: this.applicationFeeHandler.handleRefunded.bind(
             this.applicationFeeHandler
           ),
-          handleDisputeEvent: this.handleDisputeEvent.bind(this),
+          handleDisputeEvent: this.disputeHandler.handleEvent.bind(this.disputeHandler),
         },
       });
 
@@ -412,159 +431,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         reason: "unexpected_error",
       });
     }
-  }
-
-  /**
-   * 清算スナップショットの再生成を、payments→attendances→events の関連から特定して実行
-   * 失敗時はログのみ（Webhook処理は継続）
-   */
-  private async regenerateSettlementSnapshotFromPayment(payment: unknown): Promise<void> {
-    try {
-      const paymentRecord = payment as { attendance_id?: string | null } | null;
-      const attendanceId: string | null = (paymentRecord?.attendance_id ?? null) as string | null;
-      if (!attendanceId) {
-        handleServerError("SETTLEMENT_REGENERATE_FAILED", {
-          action: "regenerateSettlementSnapshotFromPayment",
-          additionalData: { paymentHasAttendanceId: false },
-        });
-        return;
-      }
-
-      const { data: attendance, error: attErr } = await this.supabase
-        .from("attendances")
-        .select("event_id")
-        .eq("id", attendanceId)
-        .maybeSingle();
-      if (attErr || !attendance) {
-        handleServerError("SETTLEMENT_REGENERATE_FAILED", {
-          action: "regenerateSettlementSnapshotFromPayment",
-          additionalData: { error: attErr?.message ?? "not_found", attendanceId },
-        });
-        return;
-      }
-
-      const eventId: string = (attendance as { event_id: string }).event_id;
-      const { data: eventRow, error: evErr } = await this.supabase
-        .from("events")
-        .select("created_by")
-        .eq("id", eventId)
-        .maybeSingle();
-      if (evErr || !eventRow) {
-        handleServerError("SETTLEMENT_REGENERATE_FAILED", {
-          action: "regenerateSettlementSnapshotFromPayment",
-          additionalData: { error: evErr?.message ?? "not_found", eventId },
-        });
-        return;
-      }
-
-      const createdBy: string = (eventRow as { created_by: string }).created_by;
-
-      const settlementPort = getSettlementReportPort();
-      const res = await settlementPort.regenerateAfterRefundOrDispute(eventId, createdBy);
-      if (!res.success) {
-        handleServerError("SETTLEMENT_REGENERATE_FAILED", {
-          action: "regenerateSettlementSnapshotFromPayment",
-          additionalData: {
-            eventId,
-            createdBy,
-            error: res.error.message,
-          },
-        });
-        return;
-      }
-
-      this.logger.info("Settlement snapshot regenerated successfully", {
-        event_id: eventId,
-        created_by: createdBy,
-        report_id: res.data?.reportId,
-        outcome: "success",
-      });
-    } catch (e) {
-      handleServerError("SETTLEMENT_REGENERATE_FAILED", {
-        action: "regenerateSettlementSnapshotFromPayment",
-        additionalData: { error: e instanceof Error ? e.message : "unknown" },
-      });
-    }
-  }
-
-  private async handleDisputeEvent(event: Stripe.Event): Promise<WebhookProcessingResult> {
-    const dispute = event.data.object as Stripe.Dispute;
-    this.logger.info("Dispute event received", {
-      event_id: event.id,
-      dispute_id: dispute.id,
-      status: dispute.status,
-      type: event.type,
-      outcome: "success",
-    });
-    // Dispute 対象の支払を推定し、DB保存/更新 + 必要に応じてTransferリバーサル/再転送を実行
-    try {
-      const chargeId = getExpandableId(dispute.charge);
-      const piId = getExpandableId(dispute.payment_intent);
-
-      const payment = await this.paymentWebhookRepository.resolveForDispute({
-        paymentIntentId: piId,
-        chargeId,
-      });
-      const paymentId = payment?.id ?? null;
-
-      // Dispute記録を保存/更新
-      try {
-        const currency = dispute.currency;
-        const reason = dispute.reason;
-        const evidenceDueByUnix = dispute.evidence_details?.due_by ?? null;
-        const now = new Date().toISOString();
-
-        const disputeUpsert: PaymentDisputeInsert = {
-          payment_id: paymentId ?? null,
-          stripe_dispute_id: dispute.id,
-          charge_id: chargeId ?? null,
-          payment_intent_id: piId ?? null,
-          amount: dispute.amount ?? 0,
-          currency: (currency || "jpy").toLowerCase(),
-          reason: reason ?? null,
-          status: dispute.status || "needs_response",
-          evidence_due_by: evidenceDueByUnix
-            ? new Date(evidenceDueByUnix * 1000).toISOString()
-            : null,
-          stripe_account_id: event.account ?? null,
-          updated_at: now,
-          closed_at: event.type === "charge.dispute.closed" ? now : null,
-        };
-
-        await this.supabase
-          .from("payment_disputes")
-          .upsert([disputeUpsert], { onConflict: "stripe_dispute_id" });
-      } catch (e) {
-        handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
-          action: "handleDisputeEvent",
-          additionalData: {
-            eventId: event.id,
-            disputeId: dispute.id,
-            error: e instanceof Error ? e.message : "unknown",
-          },
-        });
-      }
-
-      // Destination charges: Transfer の reversal / 再転送は行わない
-      if (payment) {
-        try {
-          await this.regenerateSettlementSnapshotFromPayment(payment);
-        } catch {
-          /* noop */
-        }
-      } else {
-        handleServerError("WEBHOOK_PAYMENT_NOT_FOUND", {
-          action: "handleDisputeEvent",
-          additionalData: { eventId: event.id, chargeId, paymentIntentId: piId },
-        });
-      }
-    } catch (e) {
-      handleServerError("SETTLEMENT_REGENERATE_FAILED", {
-        action: "handleDisputeEvent",
-        additionalData: { eventId: event.id, error: e instanceof Error ? e.message : "unknown" },
-      });
-    }
-    return okResult();
   }
 
   // transfer.* ハンドラは不要

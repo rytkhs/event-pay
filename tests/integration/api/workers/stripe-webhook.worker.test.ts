@@ -264,6 +264,47 @@ describe("/api/workers/stripe-webhook (worker)", () => {
     expect(ledgerRow.last_error_reason).toBeNull();
   });
 
+  it("charge.dispute.created で dispute を記録して ACK する", async () => {
+    const { adminClient, pending } = await setup.createTestScenario();
+    const paymentIntentId = `pi_${pending.id}`;
+    const chargeId = `ch_${pending.id}`;
+
+    await adminClient
+      .from("payments")
+      .update({
+        stripe_payment_intent_id: paymentIntentId,
+        stripe_charge_id: chargeId,
+      })
+      .eq("id", pending.id);
+
+    const evt = webhookEventFixtures.chargeDisputeCreated();
+    (evt.data.object as any).payment_intent = paymentIntentId;
+    (evt.data.object as any).charge = chargeId;
+
+    const req = setup.createRequest({ event: evt });
+    const res = await WorkerPOST(req);
+    expect(res.status).toBe(204);
+
+    const { data: disputeRow } = await adminClient
+      .from("payment_disputes")
+      .select("stripe_dispute_id, payment_id, charge_id, payment_intent_id, status")
+      .eq("stripe_dispute_id", (evt.data.object as any).id)
+      .single();
+
+    expect(disputeRow.payment_id).toBe(pending.id);
+    expect(disputeRow.charge_id).toBe(chargeId);
+    expect(disputeRow.payment_intent_id).toBe(paymentIntentId);
+    expect(disputeRow.status).toBe("needs_response");
+
+    const { data: ledgerRow } = await adminClient
+      .from("webhook_event_ledger")
+      .select("processing_status")
+      .eq("stripe_event_id", evt.id)
+      .single();
+
+    expect(ledgerRow.processing_status).toBe("succeeded");
+  });
+
   it("checkout.session.completed で stripe_checkout_session_id を保存", async () => {
     const { activeUser, event, attendance } = await setup.createTestScenario();
     const pending = await createPendingTestPayment(attendance.id, {

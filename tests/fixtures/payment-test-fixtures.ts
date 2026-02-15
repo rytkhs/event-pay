@@ -227,6 +227,21 @@ export const webhookEventFixtures = {
         event_title: "有料テストイベント",
       },
     }),
+
+  chargeDisputeCreated: () =>
+    createMockWebhookEvent("charge.dispute.created", {
+      id: `dp_test_${Math.random().toString(36).substring(2, 10)}`,
+      object: "dispute",
+      amount: 800,
+      currency: "jpy",
+      reason: "fraudulent",
+      status: "needs_response",
+      charge: "ch_test_dispute",
+      payment_intent: "pi_test_dispute",
+      evidence_details: {
+        due_by: Math.floor(Date.now() / 1000) + 86400,
+      },
+    }),
 };
 
 /**

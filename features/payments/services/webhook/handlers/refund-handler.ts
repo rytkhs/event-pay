@@ -10,6 +10,7 @@ import type { WebhookContextLogger } from "../context/webhook-handler-context";
 import { createWebhookDbError } from "../errors/webhook-error-factory";
 import type { PaymentWebhookRecord } from "../repositories/payment-webhook-repository";
 import { PaymentWebhookRepository } from "../repositories/payment-webhook-repository";
+import { SettlementRegenerationService } from "../services/settlement-regeneration-service";
 import { StripeObjectFetchService } from "../services/stripe-object-fetch-service";
 import type { WebhookProcessingResult } from "../types";
 import { getRefundFromWebhookEvent } from "../webhook-event-guards";
@@ -18,7 +19,7 @@ interface RefundHandlerParams {
   paymentRepository: PaymentWebhookRepository;
   stripeObjectFetchService: StripeObjectFetchService;
   logger: WebhookContextLogger;
-  regenerateSettlementSnapshotFromPayment: (payment: unknown) => Promise<void>;
+  settlementRegenerationService: SettlementRegenerationService;
 }
 
 interface ApplyRefundAggregateParams {
@@ -63,13 +64,13 @@ export class RefundHandler {
   private readonly paymentRepository: PaymentWebhookRepository;
   private readonly stripeObjectFetchService: StripeObjectFetchService;
   private readonly logger: WebhookContextLogger;
-  private readonly regenerateSettlementSnapshotFromPayment: (payment: unknown) => Promise<void>;
+  private readonly settlementRegenerationService: SettlementRegenerationService;
 
   constructor(params: RefundHandlerParams) {
     this.paymentRepository = params.paymentRepository;
     this.stripeObjectFetchService = params.stripeObjectFetchService;
     this.logger = params.logger;
-    this.regenerateSettlementSnapshotFromPayment = params.regenerateSettlementSnapshotFromPayment;
+    this.settlementRegenerationService = params.settlementRegenerationService;
   }
 
   async handleCreated(event: Stripe.Event): Promise<WebhookProcessingResult> {
@@ -205,18 +206,14 @@ export class RefundHandler {
         outcome: "success",
       });
 
-      try {
-        await this.regenerateSettlementSnapshotFromPayment(applied.payment);
-      } catch (e) {
-        handleServerError("SETTLEMENT_REGENERATE_FAILED", {
+      await this.settlementRegenerationService.regenerateSettlementSnapshotFromPayment(
+        applied.payment,
+        {
           action: "handleChargeRefunded",
-          additionalData: {
-            eventId: event.id,
-            paymentId: applied.payment.id,
-            error: e instanceof Error ? e.message : "unknown",
-          },
-        });
-      }
+          eventId: event.id,
+          paymentId: applied.payment.id,
+        }
+      );
 
       return okResult(undefined, { eventId: event.id, paymentId: applied.payment.id });
     } catch (error) {
