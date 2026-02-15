@@ -16,7 +16,7 @@ import {
  */
 export const eventFixtures = {
   paidEvent: {
-    id: "evt_test_paid_event",
+    id: "98765432-1098-7654-3210-987654321098",
     title: "有料テストイベント",
     fee: 1500,
     capacity: 50,
@@ -25,7 +25,7 @@ export const eventFixtures = {
   },
 
   freeEvent: {
-    id: "evt_test_free_event",
+    id: "87654321-0987-6543-2109-876543210987",
     title: "無料テストイベント",
     fee: 0,
     capacity: null,
@@ -34,7 +34,7 @@ export const eventFixtures = {
   },
 
   fullCapacityEvent: {
-    id: "evt_test_full_event",
+    id: "76543210-9876-5432-1098-765432109876",
     title: "満員テストイベント",
     fee: 1000,
     capacity: 1, // 定員1名（満員テスト用）
@@ -48,7 +48,7 @@ export const eventFixtures = {
  */
 export const userFixtures = {
   withConnect: {
-    id: "user_test_with_connect",
+    id: "65432109-8765-4321-0987-654321098765",
     email: "test-with-connect@example.com",
     hasStripeConnect: true,
     stripeConnectAccountId: "acct_1SNbjmCtoNNhKnPZ",
@@ -57,7 +57,7 @@ export const userFixtures = {
   },
 
   withoutConnect: {
-    id: "user_test_without_connect",
+    id: "54321098-7654-3210-9876-543210987654",
     email: "test-without-connect@example.com",
     hasStripeConnect: false,
     payoutsEnabled: false,
@@ -65,7 +65,7 @@ export const userFixtures = {
   },
 
   payoutsDisabled: {
-    id: "user_test_payouts_disabled",
+    id: "43210987-6543-2109-8765-432109876543",
     email: "test-payouts-disabled@example.com",
     hasStripeConnect: true,
     stripeConnectAccountId: "acct_1SNbjmCtoNNhKnPZ",
@@ -79,7 +79,7 @@ export const userFixtures = {
  */
 export const attendanceFixtures = {
   attending: {
-    id: "att_test_attending",
+    id: "d6e7f8a9-b0c1-4d2e-bf3a-4c5d6e7f8a9b",
     email: "participant@example.com",
     nickname: "テスト参加者",
     status: "attending" as const,
@@ -87,7 +87,7 @@ export const attendanceFixtures = {
   },
 
   waitlisted: {
-    id: "att_test_waitlisted",
+    id: "c5d6e7f8-a9b0-4c1d-ae2f-3b4c5d6e7f8a",
     email: "waitlisted@example.com",
     nickname: "待機リスト参加者",
     status: "waitlisted" as const,
@@ -95,7 +95,7 @@ export const attendanceFixtures = {
   },
 
   declined: {
-    id: "att_test_declined",
+    id: "b4c5d6e7-f8a9-4b0c-9e1f-2a3b4c5d6e7f",
     email: "declined@example.com",
     nickname: "不参加者",
     status: "declined" as const,
@@ -108,7 +108,7 @@ export const attendanceFixtures = {
  */
 export const paymentFixtures = {
   pending: {
-    id: "pay_test_pending",
+    id: "eb568676-e91d-444a-8f92-5eb3065a7f92",
     amount: 1500,
     status: "pending" as const,
     method: "stripe" as const,
@@ -117,7 +117,7 @@ export const paymentFixtures = {
   },
 
   failed: {
-    id: "pay_test_failed",
+    id: "f2a7b8c9-d0e1-4f2a-b3c4-d5e6f7a8b9c0",
     amount: 1500,
     status: "failed" as const,
     method: "stripe" as const,
@@ -126,7 +126,7 @@ export const paymentFixtures = {
   },
 
   withExistingAmount: {
-    id: "pay_test_existing_amount",
+    id: "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
     amount: 2000, // 既存の金額（イベント料金と異なる）
     status: "pending" as const,
     method: "stripe" as const,
@@ -148,8 +148,8 @@ export const checkoutParamsFixtures = {
     },
     application_fee_amount: 150,
     metadata: {
-      payment_id: "pay_test_pending",
-      attendance_id: "att_test_attending",
+      payment_id: "eb568676-e91d-444a-8f92-5eb3065a7f92",
+      attendance_id: "d6e7f8a9-b0c1-4d2e-bf3a-4c5d6e7f8a9b",
       event_title: "有料テストイベント",
     },
     success_url: "http://localhost:3000/payments/success?session_id={CHECKOUT_SESSION_ID}",
@@ -165,8 +165,8 @@ export const checkoutParamsFixtures = {
     },
     application_fee_amount: 200, // 既存金額ベース
     metadata: {
-      payment_id: "pay_test_existing_amount",
-      attendance_id: "att_test_attending",
+      payment_id: "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+      attendance_id: "d6e7f8a9-b0c1-4d2e-bf3a-4c5d6e7f8a9b",
       event_title: "有料テストイベント",
     },
     success_url: "http://localhost:3000/payments/success?session_id={CHECKOUT_SESSION_ID}",
@@ -185,8 +185,8 @@ export const webhookEventFixtures = {
       payment_status: "paid",
       payment_intent: "pi_test_completed",
       metadata: {
-        payment_id: "pay_test_pending",
-        attendance_id: "att_test_attending",
+        payment_id: "eb568676-e91d-444a-8f92-5eb3065a7f92",
+        attendance_id: "d6e7f8a9-b0c1-4d2e-bf3a-4c5d6e7f8a9b",
         event_title: "有料テストイベント",
       },
     }),
@@ -205,8 +205,8 @@ export const webhookEventFixtures = {
         destination: "acct_1SNbjmCtoNNhKnPZ",
       },
       metadata: {
-        payment_id: "pay_test_pending",
-        attendance_id: "att_test_attending",
+        payment_id: "eb568676-e91d-444a-8f92-5eb3065a7f92",
+        attendance_id: "d6e7f8a9-b0c1-4d2e-bf3a-4c5d6e7f8a9b",
         event_title: "有料テストイベント",
       },
     }),
@@ -222,8 +222,8 @@ export const webhookEventFixtures = {
         message: "Your card was declined.",
       },
       metadata: {
-        payment_id: "pay_test_pending",
-        attendance_id: "att_test_attending",
+        payment_id: "eb568676-e91d-444a-8f92-5eb3065a7f92",
+        attendance_id: "d6e7f8a9-b0c1-4d2e-bf3a-4c5d6e7f8a9b",
         event_title: "有料テストイベント",
       },
     }),
