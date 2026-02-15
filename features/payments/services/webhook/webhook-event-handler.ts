@@ -11,7 +11,6 @@ import type { PaymentDisputeInsert, PaymentWebhookMetaJson } from "@core/types/p
 import type { PaymentStatus } from "@core/types/statuses";
 import type { AppSupabaseClient } from "@core/types/supabase";
 import { handleServerError } from "@core/utils/error-handler.server";
-import { maskSessionId } from "@core/utils/mask";
 import { canPromoteStatus } from "@core/utils/payments/status-rank";
 
 import type { WebhookHandlerContext } from "./context/webhook-handler-context";
@@ -20,6 +19,7 @@ import {
   createWebhookInvalidPayloadError,
   createWebhookUnexpectedError,
 } from "./errors/webhook-error-factory";
+import { CheckoutSessionHandler } from "./handlers/checkout-session-handler";
 import {
   PaymentWebhookRepository,
   isPaymentWebhookRepositoryError,
@@ -29,6 +29,7 @@ import {
   type WebhookLedgerFailureDetails,
 } from "./repositories/webhook-event-ledger-repository";
 import { routeStripePaymentEvent } from "./router/stripe-event-router";
+import { PaymentAnalyticsWebhookService } from "./services/payment-analytics-service";
 import {
   STRIPE_OBJECT_FETCH_POLICY,
   StripeObjectFetchService,
@@ -85,27 +86,6 @@ function getEventObjectFromRelation(value: unknown): Record<string, unknown> | n
   return isRecord(candidate) ? candidate : null;
 }
 
-function extractGa4EventDataFromAttendance(
-  attendance: unknown
-): { id: string; title: string } | null {
-  if (!isRecord(attendance)) {
-    return null;
-  }
-
-  const eventObject = getEventObjectFromRelation(attendance.event);
-  if (!eventObject) {
-    return null;
-  }
-
-  const id = eventObject.id;
-  const title = eventObject.title;
-  if (!isNonEmptyString(id) || !isNonEmptyString(title)) {
-    return null;
-  }
-
-  return { id, title };
-}
-
 function extractPaymentNotificationDataFromAttendance(
   attendance: unknown
 ): { email: string; nickname: string; eventTitle: string } | null {
@@ -142,6 +122,8 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
   private supabase!: AppSupabaseClient;
   private paymentRepository?: PaymentWebhookRepository;
   private stripeObjectFetchService?: StripeObjectFetchService;
+  private paymentAnalyticsService?: PaymentAnalyticsWebhookService;
+  private checkoutSessionHandlerInstance?: CheckoutSessionHandler;
 
   constructor() {}
 
@@ -187,6 +169,27 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       this.stripeObjectFetchService = new StripeObjectFetchService();
     }
     return this.stripeObjectFetchService;
+  }
+
+  private get analyticsWebhookService(): PaymentAnalyticsWebhookService {
+    if (!this.paymentAnalyticsService) {
+      this.paymentAnalyticsService = new PaymentAnalyticsWebhookService({
+        supabase: this.supabase,
+        logger: this.logger,
+      });
+    }
+    return this.paymentAnalyticsService;
+  }
+
+  private get checkoutSessionHandler(): CheckoutSessionHandler {
+    if (!this.checkoutSessionHandlerInstance) {
+      this.checkoutSessionHandlerInstance = new CheckoutSessionHandler({
+        paymentRepository: this.paymentWebhookRepository,
+        paymentAnalyticsService: this.analyticsWebhookService,
+        logger: this.logger,
+      });
+    }
+    return this.checkoutSessionHandlerInstance;
   }
 
   async handleEvent(event: Stripe.Event): Promise<WebhookProcessingResult> {
@@ -266,9 +269,15 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           handleChargeSucceeded: this.handleChargeSucceeded.bind(this),
           handleChargeFailed: this.handleChargeFailed.bind(this),
           handleChargeRefunded: this.handleChargeRefunded.bind(this),
-          handleCheckoutSessionCompleted: this.handleCheckoutSessionCompleted.bind(this),
-          handleCheckoutSessionExpired: this.handleCheckoutSessionExpired.bind(this),
-          handleCheckoutSessionAsyncPayment: this.handleCheckoutSessionAsyncPayment.bind(this),
+          handleCheckoutSessionCompleted: this.checkoutSessionHandler.handleCompleted.bind(
+            this.checkoutSessionHandler
+          ),
+          handleCheckoutSessionExpired: this.checkoutSessionHandler.handleExpired.bind(
+            this.checkoutSessionHandler
+          ),
+          handleCheckoutSessionAsyncPayment: this.checkoutSessionHandler.handleAsyncPayment.bind(
+            this.checkoutSessionHandler
+          ),
           handleApplicationFeeRefunded: this.handleApplicationFeeRefunded.bind(this),
           handleDisputeEvent: this.handleDisputeEvent.bind(this),
         },
@@ -382,249 +391,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         reason: "unexpected_error",
       });
     }
-  }
-
-  private async handleCheckoutSessionCompleted(
-    event: Stripe.CheckoutSessionCompletedEvent
-  ): Promise<WebhookProcessingResult> {
-    const session = event.data.object as Stripe.Checkout.Session;
-    // 支払い確定は PaymentIntent/Charge のイベントで行う。ここでは突合用IDを保存する。
-    try {
-      const sessionId: string = session.id;
-      const paymentIntentId = getPaymentIntentId(session);
-      const metadata = getMetadata(session);
-      const paymentIdFromMetadata = metadata?.["payment_id"] || null;
-
-      if (!paymentIdFromMetadata) {
-        handleServerError("WEBHOOK_INVALID_PAYLOAD", {
-          action: "processCheckoutSession",
-          additionalData: {
-            eventId: event.id,
-            sessionId: maskSessionId(sessionId),
-            detail: "Missing payment_id in metadata",
-          },
-        });
-        return okResult();
-      }
-
-      const payment = await this.paymentWebhookRepository.findById(paymentIdFromMetadata);
-
-      if (!payment) {
-        handleServerError("WEBHOOK_PAYMENT_NOT_FOUND", {
-          action: "processCheckoutSession",
-          additionalData: {
-            eventId: event.id,
-            sessionId: maskSessionId(sessionId),
-            paymentIdFromMetadata,
-          },
-        });
-        return okResult();
-      }
-
-      const { error: updateError } = await this.paymentWebhookRepository.saveCheckoutSessionLink({
-        paymentId: payment.id,
-        sessionId,
-        paymentIntentId,
-      });
-      if (updateError) {
-        handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
-          action: "processCheckoutSession",
-          additionalData: {
-            eventId: event.id,
-            paymentId: payment.id,
-            sessionId: maskSessionId(sessionId),
-            error_message: updateError.message,
-            error_code: updateError.code,
-          },
-        });
-        return createWebhookDbError({
-          code: "WEBHOOK_UNEXPECTED_ERROR",
-          reason: "checkout_session_update_failed",
-          eventId: event.id,
-          paymentId: payment.id,
-          userMessage: "決済ステータス更新に失敗しました",
-          dbError: updateError,
-          details: {
-            eventId: event.id,
-            paymentId: payment.id,
-            sessionId: maskSessionId(sessionId),
-          },
-        });
-      }
-
-      this.logger.info("Checkout session processed successfully", {
-        event_id: event.id,
-        session_id: maskSessionId(sessionId),
-        payment_id: payment.id,
-        payment_intent_id: paymentIntentId ?? undefined,
-        outcome: "success",
-      });
-
-      // GA4購入イベントの送信（失敗してもwebhook処理は継続）
-      try {
-        // メタデータからGA4 Client IDを取得
-        const metadata = getMetadata(session);
-        const gaClientId = metadata?.["ga_client_id"] || null;
-
-        if (gaClientId) {
-          // attendanceからイベント情報を取得
-          const { data: attendance, error: attendanceError } = await this.supabase
-            .from("attendances")
-            .select("event:events(id, title)")
-            .eq("id", payment.attendance_id)
-            .single();
-
-          if (attendanceError || !attendance) {
-            handleServerError("GA4_TRACKING_FAILED", {
-              action: "fetchEventInfoForGa4",
-              additionalData: {
-                payment_id: payment.id,
-                attendance_id: payment.attendance_id,
-                error_message: attendanceError?.message || "Attendance not found",
-              },
-            });
-          } else {
-            const eventData = extractGa4EventDataFromAttendance(attendance);
-            if (!eventData) {
-              handleServerError("GA4_TRACKING_FAILED", {
-                action: "fetchEventInfoForGa4",
-                additionalData: {
-                  payment_id: payment.id,
-                  attendance_id: payment.attendance_id,
-                  error_message: "Invalid attendance event payload",
-                },
-              });
-              return okResult();
-            }
-
-            // PaymentAnalyticsServiceを使用してGA4購入イベントを送信
-            const { paymentAnalytics } = await import("../analytics/payment-analytics");
-
-            await paymentAnalytics.trackPurchaseCompletion({
-              clientId: gaClientId,
-              transactionId: sessionId,
-              eventId: eventData.id,
-              eventTitle: eventData.title,
-              amount: payment.amount,
-            });
-          }
-        } else {
-          this.logger.debug("[GA4] No GA4 Client ID in checkout session metadata", {
-            session_id: maskSessionId(sessionId),
-            payment_id: payment.id,
-            outcome: "success",
-          });
-        }
-      } catch (gaError) {
-        // GA4イベント送信の失敗はログのみ記録、webhook処理は継続
-        handleServerError("GA4_TRACKING_FAILED", {
-          action: "trackPurchaseCompletion",
-          additionalData: {
-            payment_id: payment.id,
-            session_id: maskSessionId(sessionId),
-            error_message: gaError instanceof Error ? gaError.message : "Unknown error",
-          },
-        });
-      }
-
-      return okResult();
-    } catch (e) {
-      throw e instanceof Error ? e : new Error("Unknown error");
-    }
-  }
-
-  private async handleCheckoutSessionExpired(
-    event: Stripe.CheckoutSessionExpiredEvent
-  ): Promise<WebhookProcessingResult> {
-    const session = event.data.object as Stripe.Checkout.Session;
-    try {
-      const sessionId: string = session.id;
-      const rawPi = session.payment_intent;
-      const paymentIntentId: string | null =
-        typeof rawPi === "string" && rawPi.length > 0 ? rawPi : null;
-
-      const metadata = getMetadata(session);
-      const payment = await this.paymentWebhookRepository.resolveCheckoutTarget({
-        checkoutSessionId: sessionId,
-        metadataPaymentId:
-          typeof metadata?.["payment_id"] === "string" ? metadata["payment_id"] : null,
-      });
-
-      if (!payment) {
-        handleServerError("WEBHOOK_PAYMENT_NOT_FOUND", {
-          action: "processCheckoutSessionExpired",
-          additionalData: { eventId: event.id, sessionId: maskSessionId(sessionId) },
-        });
-        return okResult();
-      }
-
-      // 既に failed 以上（paid/refunded等も含む）なら冪等的にスキップ
-      if (!canPromoteStatus(payment.status as PaymentStatus, "failed")) {
-        this.logger.info("Duplicate webhook event preventing double processing", {
-          event_id: event.id,
-          payment_id: payment.id,
-          current_status: payment.status,
-          outcome: "success",
-        });
-        return okResult();
-      }
-
-      const { error: updateError } =
-        await this.paymentWebhookRepository.updateStatusFailedFromCheckoutSession({
-          paymentId: payment.id,
-          eventId: event.id,
-          checkoutSessionId: sessionId,
-          paymentIntentId,
-        });
-      if (updateError) {
-        handleServerError("STRIPE_CHECKOUT_SESSION_EXPIRED_UPDATE_FAILED", {
-          action: "processCheckoutSessionExpired",
-          additionalData: {
-            eventId: event.id,
-            sessionId: maskSessionId(sessionId),
-            error_message: updateError.message,
-            error_code: updateError.code,
-            payment_id: payment.id,
-          },
-        });
-        return createWebhookDbError({
-          code: "STRIPE_CHECKOUT_SESSION_EXPIRED_UPDATE_FAILED",
-          reason: "checkout_status_update_failed",
-          eventId: event.id,
-          paymentId: payment.id,
-          userMessage: "決済ステータス更新に失敗しました",
-          dbError: updateError,
-          details: {
-            eventId: event.id,
-            paymentId: payment.id,
-            sessionId: maskSessionId(sessionId),
-          },
-        });
-      }
-
-      this.logger.info("Checkout session expiration processed", {
-        event_id: event.id,
-        payment_id: payment.id,
-        session_id: maskSessionId(sessionId),
-        payment_intent_id: paymentIntentId ?? undefined,
-        outcome: "success",
-      });
-      return okResult(undefined, { eventId: event.id, paymentId: payment.id });
-    } catch (e) {
-      throw e instanceof Error ? e : new Error("Unknown error");
-    }
-  }
-
-  private async handleCheckoutSessionAsyncPayment(
-    event:
-      | Stripe.CheckoutSessionAsyncPaymentSucceededEvent
-      | Stripe.CheckoutSessionAsyncPaymentFailedEvent
-  ): Promise<WebhookProcessingResult> {
-    this.logger.info("Webhook event received (async payment)", {
-      event_id: event.id,
-      event_type: event.type,
-    });
-    return okResult();
   }
 
   /**
