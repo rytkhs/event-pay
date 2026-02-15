@@ -12,6 +12,7 @@ interface CreateWebhookDbErrorParams {
   dbError: WebhookDatabaseErrorLike & { message: string };
   details: Record<string, unknown>;
   paymentId?: string;
+  terminalOverride?: boolean;
 }
 
 interface CreateWebhookUnexpectedErrorParams {
@@ -54,8 +55,10 @@ export function createWebhookDbError({
   userMessage,
   dbError,
   details,
+  terminalOverride,
 }: CreateWebhookDbErrorParams): WebhookProcessingResult {
-  const terminal = isTerminalDatabaseError(dbError);
+  const terminal =
+    typeof terminalOverride === "boolean" ? terminalOverride : isTerminalDatabaseError(dbError);
 
   return errResult(
     new AppError(code, {
