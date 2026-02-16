@@ -134,7 +134,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
     expect(paymentAfterReplay.status).toBe("pending");
   });
 
-  it("processing中の同一event.id再送はretryable errorを返して再処理しない", async () => {
+  it("processing中の同一event.id再送は処理をスキップしてACKを返す", async () => {
     const { adminClient, activeUser, event, attendance } = await setup.createTestScenario();
     const pending = await createPendingTestPayment(attendance.id, {
       amount: 1500,
@@ -160,7 +160,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
 
     const req = setup.createRequest({ event: evt });
     const res = await WorkerPOST(req);
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(204);
 
     const { data: paymentAfterReplay } = await adminClient
       .from("payments")

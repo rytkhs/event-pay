@@ -143,7 +143,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       }
 
       if (ledgerResult.action === "ack_duplicate_in_progress") {
-        this.webhookLogger.warn("Webhook event already in processing state", {
+        this.webhookLogger.info("Webhook event already in processing state (ack)", {
           event_id: event.id,
           event_type: event.type,
           stripe_object_id: ledgerResult.stripeObjectId ?? undefined,
@@ -151,15 +151,9 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
           dedupe_policy: DEDUPE_POLICY,
           ledger_action: ledgerResult.action,
           ledger_status: ledgerResult.status,
-          outcome: "failure",
+          outcome: "success",
         });
-        return createWebhookUnexpectedError({
-          eventId: event.id,
-          reason: "webhook_event_in_progress",
-          eventType: event.type,
-          error: new Error("Webhook event is already being processed"),
-          userMessage: "Webhookイベントを処理中です。再試行してください",
-        });
+        return okResult();
       }
 
       if (ledgerResult.stripeObjectId) {
