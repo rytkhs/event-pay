@@ -92,24 +92,10 @@ export class DisputeHandler {
         dispute.payment_intent as string | { id: string } | null | undefined
       );
 
-      let payment: PaymentWebhookRecord | null = null;
-      try {
-        payment = await this.paymentRepository.resolveForDispute({
-          paymentIntentId,
-          chargeId,
-        });
-      } catch (error) {
-        if (isPaymentWebhookRepositoryError(error) && error.terminal) {
-          this.logger.error("Payment resolution failed with terminal error", {
-            error: error instanceof Error ? error.message : "unknown",
-            code: error.code,
-            repo_error_category: error.category,
-          } as unknown as Record<string, unknown>);
-          // Proceed with null payment to ensure dispute is recorded
-        } else {
-          throw error;
-        }
-      }
+      const payment: PaymentWebhookRecord | null = await this.paymentRepository.resolveForDispute({
+        paymentIntentId,
+        chargeId,
+      });
 
       const upsertResult = await this.disputeRepository.upsertDisputeRecord({
         dispute,
@@ -148,7 +134,7 @@ export class DisputeHandler {
 
       return okResult();
     } catch (error) {
-      if (isPaymentWebhookRepositoryError(error) && !error.terminal) {
+      if (isPaymentWebhookRepositoryError(error)) {
         throw error;
       }
 
