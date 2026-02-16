@@ -30,10 +30,15 @@ export function generateWebSiteSchema(): WithContext<WebSite> {
     "@type": "WebSite",
     "@id": `${baseUrl}/#website`,
     name: "みんなの集金",
+    alternateName: "minnano-shukin",
     url: baseUrl,
     description:
       "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?サークル・コミュニティ運営の集金負担を劇的に減らします。",
     inLanguage: "ja",
+    publisher: {
+      "@type": "Organization",
+      "@id": `${baseUrl}/#organization`,
+    },
   };
 }
 
