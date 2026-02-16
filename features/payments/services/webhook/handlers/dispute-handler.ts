@@ -8,6 +8,7 @@ import { DisputeWebhookRepository } from "../repositories/dispute-webhook-reposi
 import {
   isPaymentWebhookRepositoryError,
   PaymentWebhookRepository,
+  type PaymentWebhookRecord,
 } from "../repositories/payment-webhook-repository";
 import { SettlementRegenerationService } from "../services/settlement-regeneration-service";
 import type { WebhookProcessingResult } from "../types";
@@ -91,10 +92,24 @@ export class DisputeHandler {
         dispute.payment_intent as string | { id: string } | null | undefined
       );
 
-      const payment = await this.paymentRepository.resolveForDispute({
-        paymentIntentId,
-        chargeId,
-      });
+      let payment: PaymentWebhookRecord | null = null;
+      try {
+        payment = await this.paymentRepository.resolveForDispute({
+          paymentIntentId,
+          chargeId,
+        });
+      } catch (error) {
+        if (isPaymentWebhookRepositoryError(error) && error.terminal) {
+          this.logger.error("Payment resolution failed with terminal error", {
+            error: error instanceof Error ? error.message : "unknown",
+            code: error.code,
+            repo_error_category: error.category,
+          } as unknown as Record<string, unknown>);
+          // Proceed with null payment to ensure dispute is recorded
+        } else {
+          throw error;
+        }
+      }
 
       const upsertResult = await this.disputeRepository.upsertDisputeRecord({
         dispute,
