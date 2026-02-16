@@ -66,6 +66,16 @@ export class CheckoutSessionHandler {
         return okResult();
       }
 
+      if (payment.stripe_checkout_session_id === sessionId) {
+        this.logger.info("Duplicate webhook event preventing double processing", {
+          event_id: event.id,
+          payment_id: payment.id,
+          session_id: maskSessionId(sessionId),
+          outcome: "success",
+        });
+        return okResult();
+      }
+
       const { error: updateError } = await this.paymentRepository.saveCheckoutSessionLink({
         paymentId: payment.id,
         sessionId,
