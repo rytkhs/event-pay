@@ -6,6 +6,7 @@ export type WebhookProcessingMeta = {
   eventId?: string;
   terminal?: boolean;
   reason?: string;
+  errorCode?: string;
 } & { [key: string]: PaymentWebhookMetaJson | undefined };
 
 export type WebhookProcessingResult = AppResult<void, WebhookProcessingMeta>;

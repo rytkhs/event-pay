@@ -7,8 +7,11 @@
 
 import { NextRequest } from "next/server";
 
+import type { AppSupabaseClient } from "@core/types/supabase";
+
 import {
   createPendingTestPayment,
+  type TestPaymentData,
   type TestPaymentUser,
   type TestPaymentEvent,
   type TestAttendanceData,
@@ -27,10 +30,11 @@ export interface StripeWebhookWorkerTestSetup {
   cleanup: () => Promise<void>;
   createRequest: (body: unknown, headersInit?: Record<string, string>) => NextRequest;
   createTestScenario: () => Promise<{
-    activeUser: any;
-    event: any;
-    attendance: any;
-    pending: any;
+    adminClient: AppSupabaseClient;
+    activeUser: TestPaymentUser;
+    event: TestPaymentEvent;
+    attendance: TestAttendanceData;
+    pending: TestPaymentData;
   }>;
 }
 
@@ -67,10 +71,11 @@ export async function setupStripeWebhookWorkerTest(): Promise<StripeWebhookWorke
   }
 
   async function createTestScenario(): Promise<{
+    adminClient: AppSupabaseClient;
     activeUser: TestPaymentUser;
     event: TestPaymentEvent;
     attendance: TestAttendanceData;
-    pending: any;
+    pending: TestPaymentData;
   }> {
     // 共通決済テストセットアップを使用（動的シナリオ作成）
     const paymentSetup = await createPaymentTestSetup({
@@ -89,6 +94,7 @@ export async function setupStripeWebhookWorkerTest(): Promise<StripeWebhookWorke
     });
 
     return {
+      adminClient: paymentSetup.adminClient as AppSupabaseClient,
       activeUser: paymentSetup.testUser,
       event: paymentSetup.testEvent,
       attendance: paymentSetup.testAttendance,

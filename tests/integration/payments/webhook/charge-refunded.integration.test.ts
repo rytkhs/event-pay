@@ -5,11 +5,31 @@
  * 設計書: docs/spec/add-canceled-status/design-v2.md
  */
 
+import { jest } from "@jest/globals";
+
+// QStash Receiver.verify を常にtrueにする
+const mockVerify = jest.fn<(...args: any[]) => Promise<boolean>>();
+jest.mock("@upstash/qstash", () => ({
+  Receiver: jest.fn().mockImplementation(() => ({
+    verify: (...args: unknown[]) => mockVerify(...args),
+  })),
+}));
+
+// ロガーをモック（Worker内のPOST関数がロードされる前に必要）
+jest.mock("@core/logging/app-logger", () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+    error: jest.fn(),
+    withContext: jest.fn().mockReturnThis(),
+  },
+}));
+
 import { POST as WorkerPOST } from "@/app/api/workers/stripe-webhook/route";
 
 import {
   setupChargeRefundedTest,
-  setupBeforeEach,
   type ChargeRefundedTestSetup,
 } from "./charge-refunded-test-setup";
 
@@ -25,7 +45,7 @@ describe("charge.refunded Webhook統合テスト", () => {
   });
 
   beforeEach(() => {
-    setupBeforeEach();
+    mockVerify.mockResolvedValue(true);
   });
 
   describe("正常系: paid → refunded 状態遷移", () => {

@@ -2705,6 +2705,44 @@ ALTER SEQUENCE "public"."system_logs_id_seq" OWNED BY "public"."system_logs"."id
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."webhook_event_ledger" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "stripe_event_id" "text" NOT NULL,
+    "event_type" "text" NOT NULL,
+    "stripe_object_id" "text",
+    "dedupe_key" "text" NOT NULL,
+    "processing_status" "text" DEFAULT 'processing'::"text" NOT NULL,
+    "last_error_code" "text",
+    "last_error_reason" "text",
+    "is_terminal_failure" boolean DEFAULT false NOT NULL,
+    "processed_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "webhook_event_ledger_processing_status_check" CHECK (("processing_status" = ANY (ARRAY['processing'::"text", 'succeeded'::"text", 'failed'::"text"])))
+);
+
+ALTER TABLE ONLY "public"."webhook_event_ledger" FORCE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."webhook_event_ledger" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."webhook_event_ledger" IS 'Stripe Webhook event.id 単位の冪等性 ledger';
+
+
+
+COMMENT ON COLUMN "public"."webhook_event_ledger"."stripe_event_id" IS 'Stripe Event ID（一次重複判定キー）';
+
+
+
+COMMENT ON COLUMN "public"."webhook_event_ledger"."dedupe_key" IS 'event.type + data.object.id の観測用キー';
+
+
+
+COMMENT ON COLUMN "public"."webhook_event_ledger"."processing_status" IS 'webhook処理状態（processing/succeeded/failed）';
+
+
+
 ALTER TABLE ONLY "public"."system_logs" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."system_logs_id_seq"'::"regclass");
 
 
@@ -2791,6 +2829,16 @@ ALTER TABLE ONLY "public"."system_logs"
 
 ALTER TABLE ONLY "public"."users"
     ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."webhook_event_ledger"
+    ADD CONSTRAINT "webhook_event_ledger_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."webhook_event_ledger"
+    ADD CONSTRAINT "webhook_event_ledger_stripe_event_id_key" UNIQUE ("stripe_event_id");
 
 
 
@@ -3042,6 +3090,18 @@ CREATE INDEX "idx_users_is_deleted" ON "public"."users" USING "btree" ("is_delet
 
 
 
+CREATE INDEX "idx_webhook_event_ledger_created_at" ON "public"."webhook_event_ledger" USING "btree" ("created_at" DESC);
+
+
+
+CREATE INDEX "idx_webhook_event_ledger_dedupe_key" ON "public"."webhook_event_ledger" USING "btree" ("dedupe_key");
+
+
+
+CREATE INDEX "idx_webhook_event_ledger_status_created_at" ON "public"."webhook_event_ledger" USING "btree" ("processing_status", "created_at" DESC);
+
+
+
 CREATE INDEX "line_accounts_auth_user_id_idx" ON "public"."line_accounts" USING "btree" ("auth_user_id");
 
 
@@ -3104,7 +3164,11 @@ ALTER TABLE ONLY "public"."attendances"
 
 
 ALTER TABLE ONLY "public"."events"
-    ADD CONSTRAINT "events_canceled_by_fkey" FOREIGN KEY ("canceled_by") REFERENCES "public"."users"("id");
+    ADD CONSTRAINT "events_canceled_by_fkey" FOREIGN KEY ("canceled_by") REFERENCES "public"."users"("id") ON DELETE SET NULL;
+
+
+
+COMMENT ON CONSTRAINT "events_canceled_by_fkey" ON "public"."events" IS 'Sets canceled_by to NULL if the referenced user is deleted, preventing deletion errors.';
 
 
 
@@ -3193,6 +3257,10 @@ CREATE POLICY "Service role can manage settlements" ON "public"."settlements" TO
 
 
 CREATE POLICY "Service role can manage stripe/payout info" ON "public"."stripe_connect_accounts" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "Service role can manage webhook event ledger" ON "public"."webhook_event_ledger" TO "service_role" USING (true) WITH CHECK (true);
 
 
 
@@ -3311,6 +3379,9 @@ CREATE POLICY "system_logs are accessible only by service_role" ON "public"."sys
 
 
 ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."webhook_event_ledger" ENABLE ROW LEVEL SECURITY;
 
 
 
@@ -3812,6 +3883,12 @@ GRANT ALL ON SEQUENCE "public"."system_logs_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."system_logs_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."system_logs_id_seq" TO "service_role";
 GRANT SELECT,USAGE ON SEQUENCE "public"."system_logs_id_seq" TO "app_definer";
+
+
+
+GRANT ALL ON TABLE "public"."webhook_event_ledger" TO "anon";
+GRANT ALL ON TABLE "public"."webhook_event_ledger" TO "authenticated";
+GRANT ALL ON TABLE "public"."webhook_event_ledger" TO "service_role";
 
 
 
