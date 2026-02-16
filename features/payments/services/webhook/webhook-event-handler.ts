@@ -182,7 +182,22 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       });
 
       if (processingResult.success) {
-        await eventLedgerRepository.markSucceeded(event.id);
+        try {
+          await eventLedgerRepository.markSucceeded(event.id);
+        } catch (markSucceededError) {
+          handleServerError(WEBHOOK_UNEXPECTED_ERROR_CODE, {
+            action: "handleEvent.markSucceeded",
+            additionalData: {
+              eventType: event.type,
+              eventId: event.id,
+              error:
+                markSucceededError instanceof Error
+                  ? markSucceededError.message
+                  : "Unknown mark succeeded error",
+            },
+          });
+        }
+
         return processingResult;
       }
 
