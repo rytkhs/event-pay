@@ -106,7 +106,7 @@ export class PaymentIntentHandler {
       }
 
       if (!canPromoteStatus(payment.status as PaymentStatus, "paid")) {
-        this.logger.info("Duplicate webhook event preventing double processing", {
+        this.logger.info("Status promotion rule preventing update", {
           event_id: event.id,
           payment_id: payment.id,
           current_status: payment.status,
@@ -215,7 +215,7 @@ export class PaymentIntentHandler {
       }
 
       if (!canPromoteStatus(payment.status as PaymentStatus, "failed")) {
-        this.logger.info("Duplicate webhook event preventing double processing", {
+        this.logger.info("Status promotion rule preventing update", {
           event_id: event.id,
           payment_id: payment.id,
           current_status: payment.status,

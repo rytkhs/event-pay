@@ -309,7 +309,7 @@ export class RefundHandler {
     }
 
     if (enforcePromotion && !canPromoteStatus(payment.status as PaymentStatus, targetStatus)) {
-      this.logger.info("Duplicate webhook event preventing double processing", {
+      this.logger.info("Status promotion rule preventing update", {
         event_id: eventId,
         payment_id: payment.id,
         current_status: payment.status,

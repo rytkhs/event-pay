@@ -67,7 +67,7 @@ export class CheckoutSessionHandler {
       }
 
       if (payment.stripe_checkout_session_id === sessionId) {
-        this.logger.info("Duplicate webhook event preventing double processing", {
+        this.logger.info("Status promotion rule preventing update", {
           event_id: event.id,
           payment_id: payment.id,
           session_id: maskSessionId(sessionId),
@@ -165,7 +165,7 @@ export class CheckoutSessionHandler {
       }
 
       if (!canPromoteStatus(payment.status as PaymentStatus, "failed")) {
-        this.logger.info("Duplicate webhook event preventing double processing", {
+        this.logger.info("Status promotion rule preventing update", {
           event_id: event.id,
           payment_id: payment.id,
           current_status: payment.status,
