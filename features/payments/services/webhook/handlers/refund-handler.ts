@@ -9,7 +9,11 @@ import { canPromoteStatus } from "@core/utils/payments/status-rank";
 import type { WebhookContextLogger } from "../context/webhook-handler-context";
 import { createWebhookDbError } from "../errors/webhook-error-factory";
 import type { PaymentWebhookRecord } from "../repositories/payment-webhook-repository";
-import { PaymentWebhookRepository } from "../repositories/payment-webhook-repository";
+import {
+  PaymentWebhookRepository,
+  PaymentWebhookRepositoryError,
+  classifyReadError,
+} from "../repositories/payment-webhook-repository";
 import { SettlementRegenerationService } from "../services/settlement-regeneration-service";
 import { StripeObjectFetchService } from "../services/stripe-object-fetch-service";
 import type { WebhookProcessingResult } from "../types";
@@ -235,7 +239,14 @@ export class RefundHandler {
     });
 
     if (applied.updateError) {
-      throw new Error(`Failed to resync payment on refund change: ${applied.updateError.message}`);
+      const classified = classifyReadError(applied.updateError);
+      throw new PaymentWebhookRepositoryError({
+        operation: "syncRefundAggregateByChargeId",
+        message: applied.updateError.message,
+        code: applied.updateError.code,
+        category: classified.category,
+        terminal: classified.terminal,
+      });
     }
 
     if (!applied.payment) {

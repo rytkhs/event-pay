@@ -110,7 +110,7 @@ export type PaymentWebhookRepositoryErrorCategory =
   | "transient"
   | "unknown";
 
-interface PaymentWebhookDbErrorLike {
+export interface PaymentWebhookDbErrorLike {
   message: string;
   code?: string | null;
   details?: string | null;
@@ -125,7 +125,7 @@ function normalize(value: unknown): string {
   return typeof value === "string" ? value.toLowerCase() : "";
 }
 
-function classifyReadError(error: PaymentWebhookDbErrorLike): {
+export function classifyReadError(error: PaymentWebhookDbErrorLike): {
   category: PaymentWebhookRepositoryErrorCategory;
   terminal: boolean;
 } {
