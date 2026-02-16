@@ -106,6 +106,12 @@ export class DisputeHandler {
         stripeAccountId: event.account,
       });
 
+      // 紛争記録の更新は意図的にファイアアンドログ方式を採用:
+      // - 紛争記録は管理者の参照用という副次的な成果物である。
+      // - 和解再生成（主目的）は payment_disputes テーブルに依存しないため、副次的な失敗でブロックされるべきではない。
+      // - 後続の紛争イベント（updated/closed）で異なる event.id により再 upsert される機会がある。
+      // - トレードオフ: 紛争記録が保存されなくても、webhook ledger は "succeeded" とマークされる可能性がある。
+
       if (upsertResult.error) {
         handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
           action: "handleDisputeEvent",
