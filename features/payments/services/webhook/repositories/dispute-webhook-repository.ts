@@ -41,8 +41,12 @@ export class DisputeWebhookRepository {
       evidence_due_by: evidenceDueByUnix ? new Date(evidenceDueByUnix * 1000).toISOString() : null,
       stripe_account_id: stripeAccountId ?? null,
       updated_at: now,
-      closed_at: eventType === "charge.dispute.closed" ? now : null,
     };
+
+    // Only set closed_at for charge.dispute.closed events to preserve existing value
+    if (eventType === "charge.dispute.closed") {
+      disputeUpsert.closed_at = now;
+    }
 
     const { error } = await this.supabase
       .from("payment_disputes")

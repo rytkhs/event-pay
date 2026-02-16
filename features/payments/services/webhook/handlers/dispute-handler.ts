@@ -5,7 +5,10 @@ import { handleServerError } from "@core/utils/error-handler.server";
 
 import type { WebhookContextLogger } from "../context/webhook-handler-context";
 import { DisputeWebhookRepository } from "../repositories/dispute-webhook-repository";
-import { PaymentWebhookRepository } from "../repositories/payment-webhook-repository";
+import {
+  isPaymentWebhookRepositoryError,
+  PaymentWebhookRepository,
+} from "../repositories/payment-webhook-repository";
 import { SettlementRegenerationService } from "../services/settlement-regeneration-service";
 import type { WebhookProcessingResult } from "../types";
 
@@ -130,6 +133,10 @@ export class DisputeHandler {
 
       return okResult();
     } catch (error) {
+      if (isPaymentWebhookRepositoryError(error) && !error.terminal) {
+        throw error;
+      }
+
       handleServerError("SETTLEMENT_REGENERATE_FAILED", {
         action: "handleDisputeEvent",
         additionalData: {

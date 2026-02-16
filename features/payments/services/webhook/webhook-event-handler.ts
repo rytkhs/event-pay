@@ -192,9 +192,9 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         return processingResult;
       }
 
-      await eventLedgerRepository.markFailed(event.id, {
+      await this.markLedgerFailedSafely(eventLedgerRepository, event, {
         errorCode: processingResult.meta?.errorCode ?? processingResult.error.code,
-        reason: processingResult.meta?.reason,
+        reason: processingResult.meta?.reason ?? "unknown",
       });
 
       return processingResult;
