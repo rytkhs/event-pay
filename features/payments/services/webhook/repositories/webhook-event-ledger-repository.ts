@@ -225,26 +225,6 @@ export class WebhookEventLedgerRepository {
     } satisfies WebhookLedgerFailureDetails;
   }
 
-  async findLatestByDedupeKey(
-    dedupeKey: string,
-    currentEventId: string
-  ): Promise<{ stripe_event_id: string; processing_status: WebhookEventLedgerStatus } | null> {
-    const { data, error } = await this.supabase
-      .from("webhook_event_ledger")
-      .select("stripe_event_id, processing_status")
-      .eq("dedupe_key", dedupeKey)
-      .neq("stripe_event_id", currentEventId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle<{ stripe_event_id: string; processing_status: WebhookEventLedgerStatus }>();
-
-    if (error) {
-      throw this.toFailure(error, "begin");
-    }
-
-    return data;
-  }
-
   async markSucceeded(eventId: string): Promise<void> {
     const now = new Date().toISOString();
 

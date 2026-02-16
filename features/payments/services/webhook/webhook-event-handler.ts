@@ -156,25 +156,6 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         return okResult();
       }
 
-      if (ledgerResult.stripeObjectId) {
-        const duplicateByDedupeKey = await eventLedgerRepository.findLatestByDedupeKey(
-          ledgerResult.dedupeKey,
-          event.id
-        );
-
-        if (duplicateByDedupeKey) {
-          this.webhookLogger.warn("Potential duplicate webhook payload detected by dedupe key", {
-            event_id: event.id,
-            event_type: event.type,
-            stripe_object_id: ledgerResult.stripeObjectId,
-            dedupe_key: ledgerResult.dedupeKey,
-            prior_event_id: duplicateByDedupeKey.stripe_event_id,
-            prior_status: duplicateByDedupeKey.processing_status,
-            dedupe_policy: DEDUPE_POLICY,
-          });
-        }
-      }
-
       const processingResult = await routeStripePaymentEvent({
         event,
         context,
