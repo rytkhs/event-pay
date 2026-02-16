@@ -9,6 +9,7 @@ const MAX_BEGIN_ATTEMPTS = 5;
 interface WebhookEventLedgerRow {
   stripe_event_id: string;
   processing_status: WebhookEventLedgerStatus;
+  is_terminal_failure: boolean;
   last_error_code: string | null;
   last_error_reason: string | null;
   updated_at: string;
@@ -74,6 +75,10 @@ function isStripeEventIdUniqueViolation(error: {
 }
 
 function isTerminalFailedState(row: WebhookEventLedgerRow): boolean {
+  if (row.is_terminal_failure) {
+    return true;
+  }
+
   const errorCode = row.last_error_code;
   if (errorCode === "WEBHOOK_INVALID_PAYLOAD") {
     return true;
@@ -106,7 +111,7 @@ export class WebhookEventLedgerRepository {
       const { data: existing, error: selectError } = await this.supabase
         .from("webhook_event_ledger")
         .select(
-          "stripe_event_id, processing_status, last_error_code, last_error_reason, updated_at"
+          "stripe_event_id, processing_status, is_terminal_failure, last_error_code, last_error_reason, updated_at"
         )
         .eq("stripe_event_id", event.id)
         .maybeSingle<WebhookEventLedgerRow>();
@@ -180,6 +185,7 @@ export class WebhookEventLedgerRepository {
           stripe_object_id: stripeObjectId,
           dedupe_key: dedupeKey,
           updated_at: new Date().toISOString(),
+          is_terminal_failure: false,
           last_error_code: null,
           last_error_reason: null,
         })
@@ -248,6 +254,7 @@ export class WebhookEventLedgerRepository {
         processing_status: "succeeded",
         processed_at: now,
         updated_at: now,
+        is_terminal_failure: false,
         last_error_code: null,
         last_error_reason: null,
       })
@@ -269,14 +276,15 @@ export class WebhookEventLedgerRepository {
 
   async markFailed(
     eventId: string,
-    params: { errorCode?: string | null; reason?: string | null }
+    params: { errorCode?: string | null; reason?: string | null; terminal?: boolean }
   ): Promise<void> {
-    const { errorCode = null, reason = null } = params;
+    const { errorCode = null, reason = null, terminal = false } = params;
 
     const { data, error } = await this.supabase
       .from("webhook_event_ledger")
       .update({
         processing_status: "failed",
+        is_terminal_failure: terminal,
         last_error_code: errorCode,
         last_error_reason: reason,
         updated_at: new Date().toISOString(),

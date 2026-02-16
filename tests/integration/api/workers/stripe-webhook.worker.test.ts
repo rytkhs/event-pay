@@ -101,11 +101,12 @@ describe("/api/workers/stripe-webhook (worker)", () => {
 
     const { data: failedLedger } = await adminClient
       .from("webhook_event_ledger")
-      .select("processing_status, last_error_reason")
+      .select("processing_status, is_terminal_failure, last_error_reason")
       .eq("stripe_event_id", evt.id)
       .single();
 
     expect(failedLedger.processing_status).toBe("failed");
+    expect(failedLedger.is_terminal_failure).toBe(true);
     expect(failedLedger.last_error_reason).toBe("amount_currency_mismatch");
 
     // DBの期待金額をイベントと揃えても、terminal failureの同一event.idは再処理しない
@@ -117,11 +118,12 @@ describe("/api/workers/stripe-webhook (worker)", () => {
 
     const { data: failedAgainLedger } = await adminClient
       .from("webhook_event_ledger")
-      .select("processing_status, last_error_reason")
+      .select("processing_status, is_terminal_failure, last_error_reason")
       .eq("stripe_event_id", evt.id)
       .single();
 
     expect(failedAgainLedger.processing_status).toBe("failed");
+    expect(failedAgainLedger.is_terminal_failure).toBe(true);
     expect(failedAgainLedger.last_error_reason).toBe("amount_currency_mismatch");
 
     const { data: paymentAfterReplay } = await adminClient
@@ -238,6 +240,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
       stripe_object_id: paymentIntentId,
       dedupe_key: `${evt.type}:${paymentIntentId}`,
       processing_status: "failed",
+      is_terminal_failure: false,
       last_error_code: "WEBHOOK_UNEXPECTED_ERROR",
       last_error_reason: "temporary_failure",
     });
@@ -255,13 +258,64 @@ describe("/api/workers/stripe-webhook (worker)", () => {
 
     const { data: ledgerRow } = await adminClient
       .from("webhook_event_ledger")
-      .select("processing_status, last_error_code, last_error_reason")
+      .select("processing_status, is_terminal_failure, last_error_code, last_error_reason")
       .eq("stripe_event_id", evt.id)
       .single();
 
     expect(ledgerRow.processing_status).toBe("succeeded");
+    expect(ledgerRow.is_terminal_failure).toBe(false);
     expect(ledgerRow.last_error_code).toBeNull();
     expect(ledgerRow.last_error_reason).toBeNull();
+  });
+
+  it("terminal failed (is_terminal_failure=true) の同一event.id再送は error code に関係なく再処理しない", async () => {
+    const { adminClient, activeUser, event, attendance } = await setup.createTestScenario();
+    const pending = await createPendingTestPayment(attendance.id, {
+      amount: 1500,
+      stripeAccountId: activeUser.stripeConnectAccountId,
+    });
+
+    const evt = webhookEventFixtures.paymentIntentSucceeded();
+    const paymentIntentId = `pi_${pending.id}`;
+    (evt.data.object as any).metadata = {
+      payment_id: pending.id,
+      attendance_id: attendance.id,
+      event_title: event.title,
+    };
+    (evt.data.object as any).id = paymentIntentId;
+
+    await adminClient.from("webhook_event_ledger").insert({
+      stripe_event_id: evt.id,
+      event_type: evt.type,
+      stripe_object_id: paymentIntentId,
+      dedupe_key: `${evt.type}:${paymentIntentId}`,
+      processing_status: "failed",
+      is_terminal_failure: true,
+      last_error_code: "WEBHOOK_UNEXPECTED_ERROR",
+      last_error_reason: "payment_repository_findById_cardinality_failed",
+    });
+
+    const req = setup.createRequest({ event: evt });
+    const res = await WorkerPOST(req);
+    expect(res.status).toBe(204);
+
+    const { data: paymentAfterReplay } = await adminClient
+      .from("payments")
+      .select("status")
+      .eq("id", pending.id)
+      .single();
+    expect(paymentAfterReplay.status).toBe("pending");
+
+    const { data: ledgerRow } = await adminClient
+      .from("webhook_event_ledger")
+      .select("processing_status, is_terminal_failure, last_error_code, last_error_reason")
+      .eq("stripe_event_id", evt.id)
+      .single();
+
+    expect(ledgerRow.processing_status).toBe("failed");
+    expect(ledgerRow.is_terminal_failure).toBe(true);
+    expect(ledgerRow.last_error_code).toBe("WEBHOOK_UNEXPECTED_ERROR");
+    expect(ledgerRow.last_error_reason).toBe("payment_repository_findById_cardinality_failed");
   });
 
   it("charge.dispute.created で dispute を記録して ACK する", async () => {

@@ -72,7 +72,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
   private async markLedgerFailedSafely(
     eventLedgerRepository: WebhookEventLedgerRepository,
     event: Stripe.Event,
-    params: { errorCode: string; reason: string }
+    params: { errorCode: string; reason: string; terminal: boolean }
   ): Promise<void> {
     try {
       await eventLedgerRepository.markFailed(event.id, params);
@@ -195,6 +195,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       await this.markLedgerFailedSafely(eventLedgerRepository, event, {
         errorCode: processingResult.meta?.errorCode ?? processingResult.error.code,
         reason: processingResult.meta?.reason ?? "unknown",
+        terminal: processingResult.meta?.terminal ?? !processingResult.error.retryable,
       });
 
       return processingResult;
@@ -214,6 +215,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
         await this.markLedgerFailedSafely(eventLedgerRepository, event, {
           errorCode: error.code ?? WEBHOOK_UNEXPECTED_ERROR_CODE,
           reason,
+          terminal: error.terminal,
         });
 
         return this.createPaymentRepositoryFailureResult(error, event, reason);
@@ -242,6 +244,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       await this.markLedgerFailedSafely(eventLedgerRepository, event, {
         errorCode: WEBHOOK_UNEXPECTED_ERROR_CODE,
         reason: "unexpected_error",
+        terminal: false,
       });
 
       return createWebhookUnexpectedError({

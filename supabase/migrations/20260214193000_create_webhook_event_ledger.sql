@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS public.webhook_event_ledger (
     processing_status text NOT NULL DEFAULT 'processing',
     last_error_code text,
     last_error_reason text,
+    is_terminal_failure boolean DEFAULT false NOT NULL,
     processed_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
