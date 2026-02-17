@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 
 import * as errorHandler from "@core/utils/error-handler.server";
+
 import { StripeWebhookEventHandler } from "@features/payments/services/webhook/webhook-event-handler";
 
 describe("StripeWebhookEventHandler", () => {
@@ -8,7 +9,7 @@ describe("StripeWebhookEventHandler", () => {
     jest.clearAllMocks();
   });
 
-  it("markSucceeded が失敗しても業務成功を維持して失敗応答にしない", async () => {
+  it("markSucceeded が失敗したら retryable failure を返し ledger を failed に更新する", async () => {
     const handleServerErrorSpy = jest
       .spyOn(errorHandler, "handleServerError")
       .mockImplementation(() => undefined);
@@ -20,12 +21,8 @@ describe("StripeWebhookEventHandler", () => {
         stripeObjectId: null,
         status: "processing",
       }),
-      markSucceeded: jest.fn().mockRejectedValue({
-        message: "statement timeout",
-        operation: "mark_succeeded",
-        code: "57014",
-      }),
-      markFailed: jest.fn(),
+      markSucceeded: jest.fn().mockRejectedValue(new Error("statement timeout")),
+      markFailed: jest.fn().mockResolvedValue(undefined),
     };
 
     const handler = new StripeWebhookEventHandler() as any;
@@ -47,9 +44,20 @@ describe("StripeWebhookEventHandler", () => {
 
     const result = await handler.handleEvent(event);
 
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe("WEBHOOK_UNEXPECTED_ERROR");
+      expect(result.error.retryable).toBe(true);
+    }
     expect(mockLedger.markSucceeded).toHaveBeenCalledWith(event.id);
-    expect(mockLedger.markFailed).not.toHaveBeenCalled();
+    expect(mockLedger.markFailed).toHaveBeenCalledWith(
+      event.id,
+      expect.objectContaining({
+        errorCode: "WEBHOOK_UNEXPECTED_ERROR",
+        reason: "mark_succeeded_failed",
+        terminal: false,
+      })
+    );
     expect(handleServerErrorSpy).toHaveBeenCalledWith(
       "WEBHOOK_UNEXPECTED_ERROR",
       expect.objectContaining({

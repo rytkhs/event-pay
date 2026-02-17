@@ -165,6 +165,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       if (processingResult.success) {
         try {
           await eventLedgerRepository.markSucceeded(event.id);
+          return processingResult;
         } catch (markSucceededError) {
           handleServerError(WEBHOOK_UNEXPECTED_ERROR_CODE, {
             action: "handleEvent.markSucceeded",
@@ -177,9 +178,20 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
                   : "Unknown mark succeeded error",
             },
           });
-        }
 
-        return processingResult;
+          await this.markLedgerFailedSafely(eventLedgerRepository, event, {
+            errorCode: WEBHOOK_UNEXPECTED_ERROR_CODE,
+            reason: "mark_succeeded_failed",
+            terminal: false,
+          });
+
+          return createWebhookUnexpectedError({
+            error: markSucceededError,
+            eventId: event.id,
+            eventType: event.type,
+            reason: "mark_succeeded_failed",
+          });
+        }
       }
 
       await this.markLedgerFailedSafely(eventLedgerRepository, event, {
