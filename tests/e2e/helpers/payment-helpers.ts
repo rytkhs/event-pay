@@ -16,6 +16,8 @@ const FIXED_STRIPE_API_VERSION: Stripe.LatestApiVersion = "2025-10-29.clover";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
 /**
  * テスト用のSupabase管理クライアント
  */
@@ -589,7 +591,7 @@ async function triggerWebhookManually(
     );
   }
 
-  const webhookUrl = "http://localhost:3000/api/webhooks/stripe";
+  const webhookUrl = `${BASE_URL}/api/webhooks/stripe`;
 
   const enrichMetadata = (resource: any) => ({
     ...resource,
@@ -690,7 +692,7 @@ export async function sendStripeWebhook(
     );
   }
 
-  const webhookUrl = "http://localhost:3000/api/webhooks/stripe";
+  const webhookUrl = `${BASE_URL}/api/webhooks/stripe`;
 
   // metadataをイベントデータにマージ
   const enrichedEventData = {
@@ -749,7 +751,7 @@ export async function callVerifySessionAPI(
   attendanceId: string,
   guestToken: string
 ): Promise<any> {
-  const url = new URL("http://localhost:3000/api/payments/verify-session");
+  const url = new URL(`${BASE_URL}/api/payments/verify-session`);
   url.searchParams.set("session_id", sessionId);
   url.searchParams.set("attendance_id", attendanceId);
 
