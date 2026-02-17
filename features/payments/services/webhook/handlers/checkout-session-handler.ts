@@ -67,7 +67,7 @@ export class CheckoutSessionHandler {
       }
 
       if (payment.stripe_checkout_session_id === sessionId) {
-        this.logger.info("Status promotion rule preventing update", {
+        this.logger.info("Checkout session already linked (duplicate)", {
           event_id: event.id,
           payment_id: payment.id,
           session_id: maskSessionId(sessionId),

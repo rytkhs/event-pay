@@ -19,7 +19,7 @@ type EventRelationRow = {
   fee: number;
   payment_deadline: string | null;
   allow_payment_after_deadline: boolean | null;
-  grace_period_days: number | null;
+  grace_period_days: number;
   canceled_at: string | null;
 };
 

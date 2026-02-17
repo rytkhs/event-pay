@@ -30,7 +30,7 @@ export interface GuestAttendanceData {
     payment_deadline: string | null;
     payment_methods: PaymentMethod[];
     allow_payment_after_deadline: boolean;
-    grace_period_days: number | null;
+    grace_period_days: number;
     created_by: string;
     canceled_at: string | null;
   };

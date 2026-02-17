@@ -459,6 +459,22 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // ネットワーク・接続エラー
+    if (
+      errObj.message?.includes("fetch") ||
+      errObj.message?.includes("network") ||
+      errObj.message?.includes("timeout") ||
+      errObj.code === "ENOTFOUND" ||
+      errObj.code === "ECONNRESET"
+    ) {
+      return respondWithProblem(error, {
+        instance: "/api/payments/verify-session",
+        detail: "ネットワーク接続エラーが発生しました",
+        defaultCode: "EXTERNAL_SERVICE_ERROR",
+        logContext,
+      });
+    }
+
     // データベースエラー
     if (
       errObj.code ||
@@ -491,22 +507,6 @@ export async function GET(request: NextRequest) {
       return respondWithCode("UNAUTHORIZED", {
         instance: "/api/payments/verify-session",
         detail: "認証エラーが発生しました",
-        logContext,
-      });
-    }
-
-    // ネットワーク・接続エラー
-    if (
-      errObj.message?.includes("fetch") ||
-      errObj.message?.includes("network") ||
-      errObj.message?.includes("timeout") ||
-      errObj.code === "ENOTFOUND" ||
-      errObj.code === "ECONNRESET"
-    ) {
-      return respondWithProblem(error, {
-        instance: "/api/payments/verify-session",
-        detail: "ネットワーク接続エラーが発生しました",
-        defaultCode: "EXTERNAL_SERVICE_ERROR",
         logContext,
       });
     }
