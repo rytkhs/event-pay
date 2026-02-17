@@ -21,6 +21,7 @@ import type {
 import { logSecurityEvent } from "@core/security/security-logger";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIP } from "@core/utils/ip-detection";
+import { getStringProp } from "@core/utils/type-guards";
 
 // CSPレポート用のレート制限ポリシー（1分間に200リクエスト）
 const CSP_REPORT_RATE_LIMIT_POLICY = {
@@ -182,7 +183,7 @@ export async function POST(request: NextRequest) {
           category: "security",
           action: "cspReportIgnoredTypes",
           request_id: requestId,
-          types: rawData.map((d: any) => d.type),
+          types: rawData.map((d) => getStringProp(d, "type") ?? "unknown"),
           ip: clientIP,
         });
         // エラーにはせず正常終了

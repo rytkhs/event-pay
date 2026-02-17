@@ -1,10 +1,7 @@
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
-
-import { Database } from "@/types/database";
+import type { AppSupabaseClient } from "@core/types/supabase";
 
 import { OPEN_PAYMENT_STATUSES, TERMINAL_PAYMENT_STATUSES } from "../stripe-session/types";
 import type { Payment } from "../types";
@@ -17,7 +14,7 @@ import { findLatestPaymentByEffectiveTime } from "../utils/payment-effective-tim
  */
 export async function getPaymentByAttendance(
   attendanceId: string,
-  supabase: SupabaseClient<Database, "public">
+  supabase: AppSupabaseClient<"public">
 ): Promise<Payment | null> {
   try {
     // open（pending/failed）を優先的に返す（統一されたソート使用）
@@ -80,7 +77,7 @@ export async function getPaymentByAttendance(
  */
 export async function getPaymentById(
   paymentId: string,
-  supabase: SupabaseClient<Database, "public">
+  supabase: AppSupabaseClient<"public">
 ): Promise<Payment | null> {
   try {
     const { data, error } = await supabase

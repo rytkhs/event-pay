@@ -44,6 +44,8 @@ export const metadata: Metadata = {
       "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?",
     type: "website",
     locale: "ja_JP",
+    url: getBaseUrl(),
+    siteName: "みんなの集金",
     images: [
       {
         url: "/og/homepage.png",
@@ -65,6 +67,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml", sizes: "any" },
+      { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
       { url: "/favicon.ico", sizes: "48x48" },
     ],
     apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],

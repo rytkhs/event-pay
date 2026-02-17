@@ -2,21 +2,35 @@ import { fail, ok, type ActionResult } from "@core/errors/adapters/server-action
 import type { ErrorCode } from "@core/errors/types";
 import { generateSecureUuid } from "@core/security/crypto";
 import { createClient } from "@core/supabase/server";
-import { SortBy, SortOrder, StatusFilter, PaymentFilter, DateFilter } from "@core/types/events";
+import type { EventRow } from "@core/types/event";
+import {
+  SortBy,
+  SortOrder,
+  StatusFilter,
+  PaymentFilter,
+  DateFilter,
+} from "@core/types/event-query";
+import type { AttendanceStatus } from "@core/types/statuses";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { convertJstDateToUtcRange } from "@core/utils/timezone";
 import { dateFilterSchema } from "@core/validation/event";
 
-import type { Database } from "@/types/database";
+import type { EventListItem } from "../types";
 
-import type { Event } from "../types";
-
-type EventRow = Database["public"]["Tables"]["events"]["Row"];
-
-type EventWithAttendancesCount = EventRow & {
-  attendances?: { status: string }[];
-  public_profiles?: { name: string } | null;
+type EventWithAttendancesCount = Pick<
+  EventRow,
+  | "id"
+  | "title"
+  | "date"
+  | "location"
+  | "fee"
+  | "capacity"
+  | "created_by"
+  | "created_at"
+  | "canceled_at"
+> & {
+  attendances?: { status: AttendanceStatus }[];
 };
 
 // 型安全なフィルター条件の定義
@@ -30,6 +44,16 @@ interface EqualityFilter {
   [key: string]: string | number | boolean | null | "upcoming" | "ongoing" | "past" | "canceled";
 }
 
+interface FilterableQuery<T> {
+  eq(column: string, value: unknown): T;
+  neq(column: string, value: unknown): T;
+  is(column: string, value: null): T;
+  not(column: string, operator: string, value: unknown): T;
+  gt(column: string, value: unknown): T;
+  gte(column: string, value: unknown): T;
+  lte(column: string, value: unknown): T;
+}
+
 type GetEventsOptions = {
   limit?: number;
   offset?: number;
@@ -41,7 +65,7 @@ type GetEventsOptions = {
 };
 
 type GetEventsResult = ActionResult<{
-  items: Event[];
+  items: EventListItem[];
   totalCount: number;
   hasMore: boolean;
 }>;
@@ -186,8 +210,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
     }
 
     // 型安全なフィルター条件を適用する関数
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const applyFilters = (query: any) => {
+    const applyFilters = <T extends FilterableQuery<T>>(query: T): T => {
       let result = query;
 
       // 等価フィルターを適用
@@ -248,7 +271,6 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
       created_by,
       created_at,
       canceled_at,
-      public_profiles!events_created_by_fkey(name),
       attendances!left(status)
     `)
     );
@@ -282,25 +304,22 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
       throw dbError;
     }
 
-    // JOINで取得した作成者名を使用（N+1問題を解決）
     let eventsData = (events || []).map((event: EventWithAttendancesCount) => {
-      const creator_name = event.public_profiles?.name || "不明";
-      const computedStatus = deriveEventStatus(event.date, (event as any).canceled_at ?? null);
+      const computedStatus = deriveEventStatus(event.date, event.canceled_at ?? null);
 
       // status = 'attending' の参加者のみをカウント
       const attendances_count = event.attendances
-        ? event.attendances.filter((attendance: any) => attendance.status === "attending").length
+        ? event.attendances.filter((attendance) => attendance.status === "attending").length
         : 0;
 
       return {
         id: event.id,
         title: event.title,
         date: event.date,
-        location: event.location || "",
+        location: event.location,
         fee: event.fee,
         capacity: event.capacity,
         status: computedStatus,
-        creator_name,
         attendances_count,
         created_at: event.created_at,
       };
@@ -308,7 +327,7 @@ export async function getEventsAction(options: GetEventsOptions = {}): Promise<G
 
     // 参加者数ソートの場合はクライアントサイドでソートとページネーション
     if (sortBy === "attendances_count") {
-      eventsData = eventsData.sort((a: Event, b: Event) => {
+      eventsData = eventsData.sort((a: EventListItem, b: EventListItem) => {
         const aCount = a.attendances_count || 0;
         const bCount = b.attendances_count || 0;
         return sortOrder === "asc" ? aCount - bCount : bCount - aCount;

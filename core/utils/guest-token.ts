@@ -38,7 +38,7 @@ export async function validateGuestToken(guestToken: string): Promise<{
     // 従来の形式に変換
     return {
       isValid: rlsResult.isValid,
-      attendance: rlsResult.attendance ? convertToLegacyFormat(rlsResult.attendance) : undefined,
+      attendance: rlsResult.attendance,
       errorMessage: rlsResult.errorMessage,
       canModify: rlsResult.canModify,
       errorCode: rlsResult.errorCode,
@@ -61,25 +61,6 @@ export async function validateGuestToken(guestToken: string): Promise<{
         "TOKEN_NOT_FOUND" as import("@core/security/secure-client-factory.types").GuestErrorCode,
     };
   }
-}
-
-/**
- * RLS形式のデータを従来形式に変換
- *
- * 注意: Supabaseの関連テーブル取得(.select("relation:table(...)"))では、
- * .limit(1)を指定していても配列で返されることがあります。
- * そのため、eventとpaymentの両方で配列→オブジェクトへの変換を行っています。
- */
-function convertToLegacyFormat(rlsData: GuestAttendanceData): GuestAttendanceData {
-  // event と payment は配列またはオブジェクトの可能性があるため、正規化
-  const event = Array.isArray(rlsData.event) ? rlsData.event[0] : rlsData.event;
-  const payment = Array.isArray(rlsData.payment) ? rlsData.payment[0] : rlsData.payment;
-
-  return {
-    ...rlsData,
-    event: event as GuestAttendanceData["event"],
-    payment: payment || null,
-  };
 }
 
 /**

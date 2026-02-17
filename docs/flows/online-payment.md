@@ -21,8 +21,9 @@
 1. Guestが「オンライン決済（Stripe）」を選択して支払い開始する（前段のRSVP/Attendance作成は `guest-rsvp.md` を参照）。
 2. Appは `createGuestStripeSessionAction`でStripe Checkout Sessionを作成し、Guestを `session.url` にリダイレクトする。
 3. GuestがStripe上で決済を完了すると、StripeはWebhookイベント（例: `payment_intent.succeeded`）を送信する。
-4. Webhook Handlerは署名検証・IP等のチェックを行い、重いDB更新は行わず、QStashへイベント処理をPublishして即時ACKする。
+4. Webhook Handlerは署名検証・IP等のチェックを行い、重いDB更新は行わず、QStashへイベント処理をPublishして `204 No Content` で即時ACKする。
 5. QStashがWorker（`/api/workers/stripe-webhook`）を呼び出し、WorkerがDBの `payments.status` を `paid` に更新する。
+6. Workerは処理結果を `204`（成功ACK）/ `489`（非リトライ）/ `5xx`（リトライ）で返す。
 
 ### シーケンス図（概略）
 ```mermaid
@@ -44,11 +45,11 @@ sequenceDiagram
   Stripe->>WH: payment_intent.succeeded（Webhook）
   WH->>WH: 署名検証 / IPチェック
   WH->>Q: Publish（deduplication）
-  WH-->>Stripe: 200 OK（ACK）
+  WH-->>Stripe: 204 No Content（ACK）
 
   Q->>W: POST /api/workers/stripe-webhook
   W->>DB: payments.status = paid 更新
-  W-->>Q: 200 OK
+  W-->>Q: 204 / 489 / 5xx
 ```
 
 ## 冪等性・重複排除（要点）
@@ -57,14 +58,19 @@ sequenceDiagram
 - DB側でも一意制約（例: Stripeの識別子やWebhook event id、Checkoutのキー等）を利用し、二重反映を防ぐ。
 
 ## 失敗時の扱い（要点）
-- Webhook Handlerは“受け取った”ことを優先してACKし、後続はキューで再試行させる（Stripeの再送・タイムアウトと切り離すため）。
-- キュー/Workerの失敗は再試行し、それでも失敗する場合はDLQ等に送って観測可能にする。
+- Webhook Handlerは“受け取った”ことを優先して `204` でACKし、後続はキューで再試行させる（Stripeの再送・タイムアウトと切り離すため）。
+- Workerの応答で再試行方針を明示する。
+  - `204`: 成功ACK（重複イベント・既処理を含む）
+  - `489 + Upstash-NonRetryable-Error: true`: 恒久失敗（署名不正、JSON不正、必須項目欠落など）
+  - `5xx`: 一時失敗（DB/外部依存の一時障害）
+- キュー/Workerが最終的に失敗したメッセージはDLQ等に送って観測可能にする。
 - 最終的な支払い状態は `payments.status` を正として扱い、UIは「pending → paid」の非同期確定を許容する。
 
 ## セキュリティ・観測（このフローで重要なもの）
 - Stripe Webhookは署名シークレット（primary/secondary）を用いて検証し、許容タイムスタンプ範囲を設ける。
 - QStashからの呼び出しは署名キーで検証する。
 - 重要イベント（webhook/決済/セキュリティ）は構造化ログとして出力し、相関IDで追跡できるようにする。
+- 成功時の相関情報（event id / message id / request id）はレスポンスボディではなくHTTPヘッダーで返す。
 
 ## 関連ドキュメント
 - データモデル: `docs/data-model.md`（`payments`/冪等性キー/enum）

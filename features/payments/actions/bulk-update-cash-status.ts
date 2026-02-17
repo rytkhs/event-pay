@@ -1,19 +1,10 @@
-import { z } from "zod";
-
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import type { ErrorCode } from "@core/errors/types";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
-import { CashUpdateStatusSchema } from "@core/validation/payment-status";
 
-import { PaymentValidator } from "../validation";
-
-const inputSchema = z.object({
-  paymentIds: z.array(z.string().uuid()).min(1).max(50), // 最大50件まで
-  status: CashUpdateStatusSchema,
-  notes: z.string().max(1000).optional(),
-});
+import { PaymentValidator, bulkUpdateCashStatusActionInputSchema } from "../validation";
 
 type BulkUpdateResult = {
   successCount: number;
@@ -56,7 +47,7 @@ export async function bulkUpdateCashStatusAction(
   input: unknown
 ): Promise<ActionResult<BulkUpdateResult>> {
   try {
-    const parsed = inputSchema.safeParse(input);
+    const parsed = bulkUpdateCashStatusActionInputSchema.safeParse(input);
     if (!parsed.success) {
       return fail("VALIDATION_ERROR", {
         userMessage: "入力データが無効です。",

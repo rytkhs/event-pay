@@ -10,15 +10,13 @@ import { logger } from "@core/logging/app-logger";
 import { logEventManagement } from "@core/logging/system-logger";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { logSecurityEvent } from "@core/security/security-logger";
+import type { EventRow } from "@core/types/event";
+import type { PaymentMethod } from "@core/types/statuses";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { extractEventCreateFormData } from "@core/utils/form-data-extractors";
 import { generateInviteToken } from "@core/utils/invite-token";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 import { createEventSchema, type CreateEventInput } from "@core/validation/event";
-
-import type { Database } from "@/types/database";
-
-type EventRow = Database["public"]["Tables"]["events"]["Row"];
 
 type CreateEventResult = ActionResult<EventRow>;
 
@@ -110,9 +108,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     // - features間の直接依存は避け、DBのアカウント状態で軽量判定する
     {
       const fee = Number(rawData.fee);
-      const wantsStripe = Array.isArray((rawData as any).payment_methods)
-        ? ((rawData as any).payment_methods as string[]).includes("stripe")
-        : false;
+      const wantsStripe = rawData.payment_methods.includes("stripe");
 
       if (fee > 0 && wantsStripe) {
         const factory = getSecureClientFactory();
@@ -125,9 +121,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
           .maybeSingle();
 
         const isReady =
-          !!connectAccount &&
-          (connectAccount as any).status === "verified" &&
-          (connectAccount as any).payouts_enabled === true;
+          connectAccount?.status === "verified" && connectAccount?.payouts_enabled === true;
 
         if (connectError || !isReady) {
           actionLogger.warn("Stripe Connect not ready for paid event creation", {
@@ -299,7 +293,7 @@ function buildEventData(
   title: string;
   date: string;
   fee: number;
-  payment_methods: Database["public"]["Enums"]["payment_method_enum"][] | [];
+  payment_methods: PaymentMethod[] | [];
   location: string | null;
   description: string | null;
   capacity: number | null;
@@ -317,10 +311,7 @@ function buildEventData(
     date: convertDatetimeLocalToIso(validatedData.date),
     fee,
     // 無料イベント（fee=0）の場合は空配列を明示的に設定
-    payment_methods:
-      fee === 0
-        ? []
-        : (validatedData.payment_methods as Database["public"]["Enums"]["payment_method_enum"][]),
+    payment_methods: fee === 0 ? [] : (validatedData.payment_methods as PaymentMethod[]),
     location: validatedData.location ?? null,
     description: validatedData.description ?? null,
     capacity: parseCapacityLocal(validatedData.capacity),

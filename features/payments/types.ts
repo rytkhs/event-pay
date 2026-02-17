@@ -3,9 +3,18 @@
  */
 
 import { PAYMENT_STATUS_VALUES } from "@core/constants/statuses";
+import type {
+  CreateCashPaymentParams,
+  CreateStripeSessionParams,
+  UpdatePaymentStatusParams,
+} from "@core/ports/payments";
 import type { PaymentMethod, PaymentStatus } from "@core/types/statuses";
 
+// Port層の型を再エクスポート
+export type { CreateStripeSessionResult, CreateCashPaymentResult } from "@core/ports/payments";
+
 export type { PaymentMethod, PaymentStatus };
+export type { CreateStripeSessionParams, CreateCashPaymentParams, UpdatePaymentStatusParams };
 
 // 決済ステータスのType Guard
 // [WARNING] DBのenum (payment_status_enum) が変更された場合、ここも必ず更新してください
@@ -28,74 +37,7 @@ export interface Payment {
   updated_at: string;
 }
 
-// Stripe決済セッション作成パラメータ
-export interface CreateStripeSessionParams {
-  attendanceId: string;
-  amount: number;
-  /**
-   * 決済対象イベントID（idempotency_key生成に使用）
-   */
-  eventId: string;
-  /**
-   * 決済実行主体のID（idempotency_key生成に使用）
-   * - 認証ユーザー: users.id
-   * - ゲスト: attendances.id（参加単位）
-   */
-  actorId: string;
-  eventTitle: string;
-  successUrl: string;
-  cancelUrl: string;
-  /**
-   * GA4 Client ID（アナリティクス追跡用）
-   */
-  gaClientId?: string;
-  /**
-   * Strip でのグルーピング用識別子
-   * - Checkout -> PaymentIntent に付与し、のちの Transfer と突合するために使用
-   */
-  transferGroup?: string;
-  /**
-   * Destination charges用パラメータ
-   */
-  destinationCharges?: {
-    /** 送金先のStripe Connect アカウントID (acct_...) */
-    destinationAccountId: string;
-    /** ユーザーのメールアドレス（Customer作成用） */
-    userEmail?: string;
-    /** ユーザー名（Customer作成用） */
-    userName?: string;
-    /**
-     * Checkout Session で将来のオフセッション決済用にカード情報を保存するかどうか
-     * @see https://docs.stripe.com/api/checkout/sessions/create#create_checkout_session-payment_intent_data-setup_future_usage
-     */
-    setupFutureUsage?: "off_session";
-  };
-}
-
-// Stripe決済セッション作成結果
-export interface CreateStripeSessionResult {
-  sessionUrl: string;
-  sessionId: string;
-}
-
-// 現金決済作成パラメータ
-export interface CreateCashPaymentParams {
-  attendanceId: string;
-  amount: number;
-}
-
-// 現金決済作成結果
-export interface CreateCashPaymentResult {
-  paymentId: string;
-}
-
-// 決済ステータス更新パラメータ
-export interface UpdatePaymentStatusParams {
-  paymentId: string;
-  status: PaymentStatus;
+// Port契約（paidAt: string）とService内部処理（paidAt: Date）の境界を明示する内部型
+export type ServiceUpdatePaymentStatusParams = Omit<UpdatePaymentStatusParams, "paidAt"> & {
   paidAt?: Date;
-  stripePaymentIntentId?: string;
-  expectedVersion?: number; // 楽観的ロック用
-  userId?: string; // RPC実行用ユーザーID
-  notes?: string; // 更新理由・備考
-}
+};

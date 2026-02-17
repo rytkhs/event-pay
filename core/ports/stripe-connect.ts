@@ -3,13 +3,10 @@
  * Core層からStripe Connect機能にアクセスするためのポートインターフェース
  */
 
+import type { StripeAccountStatus } from "@core/types/statuses";
+
 // Stripe Account Status Type
-export type StripeAccountStatusLike =
-  | "unknown"
-  | "unverified"
-  | "onboarding"
-  | "verified"
-  | "restricted";
+export type StripeAccountStatusLike = StripeAccountStatus | "unknown";
 
 export interface StripeConnectPort {
   // webhook処理で必要なメソッド群
@@ -37,7 +34,7 @@ export interface StripeConnectPort {
 
   updateAccountStatus(input: {
     userId: string;
-    status: StripeAccountStatusLike;
+    status: StripeAccountStatus;
     chargesEnabled: boolean;
     payoutsEnabled: boolean;
     stripeAccountId?: string;

@@ -4,7 +4,7 @@ import React from "react";
 
 import { cn } from "@core/utils";
 
-import { useInView } from "@/hooks/use-in-view";
+import { useInView } from "@/core/hooks/useInView";
 
 type Direction = "up" | "down" | "left" | "right" | "none";
 

@@ -1,21 +1,12 @@
 import { revalidatePath } from "next/cache";
 
-import { z } from "zod";
-
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { fail, ok } from "@core/errors/adapters/server-actions";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createClient } from "@core/supabase/server";
 import { handleServerError } from "@core/utils/error-handler.server";
-
-const updateProfileSchema = z.object({
-  name: z
-    .string()
-    .min(1, "表示名は必須です")
-    .max(255, "表示名は255文字以内で入力してください")
-    .trim(),
-});
+import { updateProfileInputSchema } from "@core/validation/settings";
 
 export async function updateProfileAction(formData: FormData): Promise<ActionResult> {
   try {
@@ -30,7 +21,7 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
       name: formData.get("name") as string,
     };
 
-    const validationResult = updateProfileSchema.safeParse(rawData);
+    const validationResult = updateProfileInputSchema.safeParse(rawData);
     if (!validationResult.success) {
       const errors = validationResult.error.errors.map((err) => err.message).join(", ");
       return fail("VALIDATION_ERROR", { userMessage: errors });

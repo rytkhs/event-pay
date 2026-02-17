@@ -1,10 +1,7 @@
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
-
-import { Database } from "@/types/database";
+import type { AppSupabaseClient } from "@core/types/supabase";
 
 import type { Payment, PaymentMethod, PaymentStatus } from "../types";
 
@@ -14,7 +11,7 @@ import type { Payment, PaymentMethod, PaymentStatus } from "../types";
 export async function getPaymentsByEvent(
   eventId: string,
   userId: string,
-  supabase: SupabaseClient<Database, "public">
+  supabase: AppSupabaseClient<"public">
 ): Promise<Payment[]> {
   try {
     // まずイベントの存在と主催者権限を確認

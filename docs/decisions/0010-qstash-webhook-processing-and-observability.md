@@ -2,10 +2,11 @@
 
 - **Status**: Accepted
 - **Date**: 2025-12-21
+- **Updated**: 2026-02-13
 
 ## Context and Problem Statement
 
-「みんなの集金」では、Stripe Webhook（決済成功/失敗、払い戻しなど）の処理で DB 更新・メール通知・リマインダー送信などの重い処理が発生する。Webhookは5秒以内に200応答を返す必要があるが、同期処理ではタイムアウトリスクがあり、再試行・重複処理・障害時の追跡が課題となる
+「みんなの集金」では、Stripe Webhook（決済成功/失敗、払い戻しなど）の処理で DB 更新・メール通知・リマインダー送信などの重い処理が発生する。Webhookは5秒以内に2xx応答を返す必要があるが、同期処理ではタイムアウトリスクがあり、再試行・重複処理・障害時の追跡が課題となる。
 
 以下の非同期基盤要件を満たす必要がある：
 - **再試行**: 一時的エラー（ネットワーク/外部API遅延）からの自動回復
@@ -35,7 +36,7 @@
 
 ### 全体アーキテクチャ
 ```
-Stripe Webhook → [署名検証 + QStash publish (200即返却)] → QStash → [Worker: DB更新/メール送信] → DLQ（失敗時）
+Stripe Webhook → [署名検証 + QStash publish (204即返却)] → QStash → [Worker: DB更新/メール送信] → DLQ（失敗時）
                            ↓ Correlation IDでトレース
                      構造化ログ/Sentry/メトリクス
 ```
@@ -50,13 +51,18 @@ Stripe Webhook → [署名検証 + QStash publish (200即返却)] → QStash →
 
 ### 1. 再試行戦略（2層構造）
 - **QStashレベル**: ネットワーク/HTTPエラー向け。`{retries: 3, delay: 0}`で指数バックオフ（1s→2s→4s...）
-- **アプリレベル**: Worker内でビジネスエラー（DB制約違反、メール送信失敗）時に`terminal: true`で即DLQ送り、無駄リトライ回避
-- **区別基準**:
-  | エラー種別 | QStashリトライ | アプリterminal | DLQ送り |
-  |------------|----------------|---------------|---------|
-  | ネットワーク | ○ | × | リトライ後 |
-  | DB一時障害 | ○ | × | リトライ後 |
-  | 論理エラー（重複event） | ×（dedup） | ○ | 即時 |
+- **アプリレベル**: Worker内で「再試行不要（non-retryable）」と「再試行可能（retryable）」をHTTPステータスで明示する
+
+| Workerレスポンス | 意味 | QStash挙動 |
+|------------------|------|------------|
+| `204 No Content` | 成功ACK（重複/既処理を含む） | リトライしない |
+| `489` + `Upstash-NonRetryable-Error: true` | 恒久失敗（署名不正、JSON不正、必須項目欠落など） | リトライせずDLQへ |
+| `5xx` | 一時失敗（DB一時障害、外部依存障害など） | リトライする |
+
+- **区別基準（例）**:
+  - 署名不正/ペイロード不正/必須データ欠落: `489`（non-retryable）
+  - DB一時障害/ネットワーク断/外部API一時障害: `5xx`（retryable）
+  - duplicate/already_processed: `204`（成功ACK）
 
 ### 2. DLQ運用
 - **QStash DLQ活用**: リトライ限界で自動DLQトピックへ移動。コンソール/APIで一覧・再publish・削除
@@ -78,9 +84,14 @@ Traces: SentryでWebhook→QStash→Workerを1トレース化
 | E2Eレイテンシ | Sentry Traces | P95>10s |
 
 ### 4. 責務分担
-- **Webhook Endpoint**: 署名検証→QStash publish→200（<500ms）
+- **Webhook Endpoint**: 署名検証→QStash publish→`204`（<500ms）
 - **QStash**: 配信保証・リトライ・DLQ
-- **Worker**: 冪等DB更新（`stripe_event_id` UNIQUE制約）→メール送信→ログ
+- **Worker**: 冪等DB更新（`stripe_event_id` UNIQUE制約）→メール送信→ログ→HTTPでretry可否を明示
+
+### 5. 応答コントラクト
+- 成功レスポンスは JSON ラッパ（`{ success: true }` など）を返さず、`204 No Content` を基本とする。
+- 相関情報（`requestId`, `eventId`, `qstashMessageId` など）はレスポンスボディではなくHTTPヘッダーで返す。
+- エラー時は `respondWithProblem` による Problem Details を使用し、観測性を維持する。
 
 ## Consequences
 

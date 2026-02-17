@@ -1,6 +1,6 @@
 "use client";
 
-import type { Event } from "@core/types/models";
+import type { Event } from "@core/types/event";
 import type { GetEventPaymentsResponse } from "@core/validation/participant-management";
 
 import { EventInfo } from "./overview/EventInfo";

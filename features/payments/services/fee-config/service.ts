@@ -1,8 +1,5 @@
-import { type SupabaseClient } from "@supabase/supabase-js";
-
 import { logger } from "@core/logging/app-logger";
-
-import { Database } from "@/types/database";
+import type { AppSupabaseClient } from "@core/types/supabase";
 
 import { FeeConfigCacheStrategy, globalFeeConfigCache } from "./cache-strategy";
 
@@ -34,13 +31,10 @@ export interface PlatformFeeConfig {
  * fee_config を取得・キャッシュするサービス
  */
 export class FeeConfigService {
-  private supabase: SupabaseClient<Database, "public">;
+  private supabase: AppSupabaseClient<"public">;
   private cacheStrategy: FeeConfigCacheStrategy;
 
-  constructor(
-    supabaseClient: SupabaseClient<Database, "public">,
-    cacheStrategy?: FeeConfigCacheStrategy
-  ) {
+  constructor(supabaseClient: AppSupabaseClient<"public">, cacheStrategy?: FeeConfigCacheStrategy) {
     this.supabase = supabaseClient;
     this.cacheStrategy = cacheStrategy || globalFeeConfigCache;
   }

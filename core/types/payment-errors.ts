@@ -51,7 +51,7 @@ export class PaymentError extends Error {
 }
 
 // エラーハンドリング結果
-export interface ErrorHandlingResult {
+export interface PaymentErrorHandlingResult {
   userMessage: string;
   shouldRetry: boolean;
   logLevel: "info" | "warn" | "error";

@@ -232,18 +232,20 @@ export class TimingAttackProtection {
    * レスポンス時間を一定にするためのパディング
    * @param operation 実行する処理
    * @param targetDurationMs 目標実行時間（ミリ秒）
+   * @returns 処理の結果
    */
-  static async normalizeResponseTime(
-    operation: () => Promise<void>,
+  static async normalizeResponseTime<T>(
+    operation: () => Promise<T>,
     targetDurationMs: number = 300
-  ): Promise<void> {
+  ): Promise<T> {
     const start = Date.now();
-    await operation();
+    const result = await operation();
     const elapsed = Date.now() - start;
 
     if (elapsed < targetDurationMs) {
       await new Promise((resolve) => setTimeout(resolve, targetDurationMs - elapsed));
     }
+    return result;
   }
 }
 

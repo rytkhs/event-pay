@@ -1,16 +1,13 @@
 import { headers } from "next/headers";
 
-import { SupabaseClient } from "@supabase/supabase-js";
-
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { buildKey, enforceRateLimit, POLICIES } from "@core/rate-limit";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createClient as createServerClient } from "@core/supabase/server";
+import type { AppSupabaseClient } from "@core/types/supabase";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
-
-import type { Database } from "@/types/database";
 
 import { seedDemoData } from "../services/seeder";
 
@@ -49,7 +46,7 @@ export async function startDemoSession(): Promise<ActionResult<{ redirectUrl: st
   const adminClient = (await factory.createAuditedAdminClient(
     AdminReason.DEMO_SETUP,
     "Demo Session Creation"
-  )) as SupabaseClient<Database>;
+  )) as AppSupabaseClient;
 
   const email = `demo-${crypto.randomUUID().split("-")[0]}@example.com`;
   const password = `demo-pass-${crypto.randomUUID()}`;

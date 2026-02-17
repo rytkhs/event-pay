@@ -1,4 +1,4 @@
-import type { WithContext } from "schema-dts";
+import type { Thing, WithContext } from "schema-dts";
 
 /**
  * JSON-LD構造化データ出力コンポーネント
@@ -8,7 +8,7 @@ import type { WithContext } from "schema-dts";
  *
  * @param data - WithContext型のスキーマオブジェクトまたはその配列
  */
-export function JsonLd<T extends WithContext<any>>({
+export function JsonLd<T extends WithContext<Thing>>({
   data,
   nonce,
 }: {

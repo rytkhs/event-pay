@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 
 import { ChevronDown, ChevronUp, Search, Filter } from "lucide-react";
-import { z } from "zod";
 
 import {
   STATUS_FILTER_OPTIONS,
@@ -11,7 +10,7 @@ import {
   STATUS_FILTER_LABELS,
   PAYMENT_FILTER_LABELS,
 } from "@core/constants/event-filters";
-import type { StatusFilter, PaymentFilter, DateFilter } from "@core/types/events";
+import type { StatusFilter, PaymentFilter, DateFilter } from "@core/types/event-query";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+import { eventFilterDateSchema } from "../validation";
 
 interface EventFiltersProps {
   statusFilter: StatusFilter;
@@ -56,45 +57,22 @@ export function EventFilters({
   const startDateRef = useRef<HTMLInputElement>(null);
   const endDateRef = useRef<HTMLInputElement>(null);
 
-  // Zodスキーマによる日付バリデーション
-  const dateSchema = z
-    .object({
-      start: z.string().optional(),
-      end: z.string().optional(),
-    })
-    .refine(
-      (data) => {
-        if (data.start && data.end) {
-          try {
-            // 日付文字列を直接比較（YYYY-MM-DD形式）
-            return data.end > data.start;
-          } catch {
-            return false;
-          }
-        }
-        return true;
-      },
-      {
-        message: "終了日は開始日より後の日付を選択してください",
-      }
-    );
-
   // 初期レンダリング時のバリデーション
   useEffect(() => {
     // 日付フィルターの初期バリデーション
-    const validation = dateSchema.safeParse(dateFilter);
+    const validation = eventFilterDateSchema.safeParse(dateFilter);
     if (!validation.success) {
       setDateError(validation.error.issues[0]?.message || "日付の形式が正しくありません");
     } else {
       setDateError("");
     }
-  }, [dateFilter, dateSchema]);
+  }, [dateFilter]);
 
   const handleDateChange = (field: "start" | "end", value: string) => {
     const newDateFilter = { ...dateFilter, [field]: value };
 
     // Zodによるバリデーション
-    const validation = dateSchema.safeParse(newDateFilter);
+    const validation = eventFilterDateSchema.safeParse(newDateFilter);
     if (!validation.success) {
       setDateError(validation.error.issues[0]?.message || "日付の形式が正しくありません");
 

@@ -11,6 +11,20 @@ jest.mock("@upstash/qstash", () => ({
   })),
 }));
 
+// Stripe mock
+const mockPaymentIntentRetrieve = jest.fn();
+const mockChargeRetrieve = jest.fn();
+jest.mock("@core/stripe/client", () => ({
+  getStripe: jest.fn(() => ({
+    paymentIntents: {
+      retrieve: mockPaymentIntentRetrieve,
+    },
+    charges: {
+      retrieve: mockChargeRetrieve,
+    },
+  })),
+}));
+
 function createRequest(body: unknown, headersInit?: Record<string, string>) {
   const url = new URL("http://localhost/api/workers/stripe-webhook");
   const headers = new Headers({
@@ -31,6 +45,8 @@ describe("/api/workers/stripe-webhook (expired & charge)", () => {
     process.env.QSTASH_CURRENT_SIGNING_KEY = "test_current_key";
     process.env.QSTASH_NEXT_SIGNING_KEY = "test_next_key";
     mockVerify.mockResolvedValue(true);
+    mockPaymentIntentRetrieve.mockReset();
+    mockChargeRetrieve.mockReset();
   });
 
   it("checkout.session.expired は 204 を返す（failed 昇格パスを実行）", async () => {
@@ -53,10 +69,22 @@ describe("/api/workers/stripe-webhook (expired & charge)", () => {
             id: "ch_test_123",
             payment_intent: "pi_test_completed",
             amount_refunded: type === "charge.refunded" ? 100 : 0,
-            metadata: { payment_id: "pay_test_pending" },
+            metadata: { payment_id: "eb568676-e91d-444a-8f92-5eb3065a7f92" },
           },
         },
       } as any;
+      if (type === "charge.succeeded") {
+        mockPaymentIntentRetrieve.mockResolvedValue({
+          id: "pi_test_completed",
+          latest_charge: {
+            id: "ch_test_123",
+            balance_transaction: { id: "txn_test", fee: 100, net: 1400 },
+            transfer: "tr_test",
+            application_fee: "fee_test",
+          },
+        });
+      }
+
       const req = createRequest({ event: evt });
       const res = await WorkerPOST(req);
       expect(res.status).toBe(204);

@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import { getCurrentUser } from "@core/auth/auth-utils";
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
@@ -13,26 +11,10 @@ import type {
   GetSettlementReportsPayload,
   RegenerateSettlementReportPayload,
 } from "../types";
-
-// バリデーションスキーマ
-const generateReportSchema = z.object({
-  eventId: z.string().uuid(),
-});
-
-const getReportsSchema = z.object({
-  eventIds: z.array(z.string().uuid()).optional(),
-  // UI からは YYYY-MM-DD 形式で送信されるため、日付のみの文字列を許可
-  fromDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  toDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  limit: z.number().int().min(1).max(100).optional().default(50),
-  offset: z.number().int().min(0).optional().default(0),
-});
+import {
+  generateSettlementReportInputSchema,
+  getSettlementReportsParamsSchema,
+} from "../validation";
 
 /**
  * イベント清算レポートを生成
@@ -52,7 +34,7 @@ export async function generateSettlementReportAction(
       eventId: formData.get("eventId")?.toString() || "",
     };
 
-    const validatedData = generateReportSchema.safeParse(rawData);
+    const validatedData = generateSettlementReportInputSchema.safeParse(rawData);
     if (!validatedData.success) {
       return zodFail(validatedData.error, {
         userMessage: "入力データが無効です",
@@ -131,7 +113,7 @@ export async function getSettlementReportsAction(params: {
 
   try {
     // 入力値検証
-    const validatedParams = getReportsSchema.safeParse(params);
+    const validatedParams = getSettlementReportsParamsSchema.safeParse(params);
     if (!validatedParams.success) {
       return zodFail(validatedParams.error, {
         userMessage: "入力データが無効です",
@@ -186,7 +168,7 @@ export async function exportSettlementReportsAction(params: {
 
   try {
     // 入力値検証
-    const validatedParams = getReportsSchema.safeParse({ ...params, limit: 1000 }); // CSVは最大1000件
+    const validatedParams = getSettlementReportsParamsSchema.safeParse({ ...params, limit: 1000 }); // CSVは最大1000件
     if (!validatedParams.success) {
       return zodFail(validatedParams.error, {
         userMessage: "入力データが無効です",
@@ -272,7 +254,7 @@ export async function regenerateAfterRefundAction(
       eventId: formData.get("eventId")?.toString() || "",
     };
 
-    const validatedData = generateReportSchema.safeParse(rawData);
+    const validatedData = generateSettlementReportInputSchema.safeParse(rawData);
     if (!validatedData.success) {
       return zodFail(validatedData.error, {
         userMessage: "入力データが無効です",

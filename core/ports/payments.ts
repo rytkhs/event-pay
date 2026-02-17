@@ -4,7 +4,11 @@
  */
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
-import { PaymentErrorType, PaymentError as SharedPaymentError } from "@core/types/payment-errors";
+import {
+  PaymentErrorType,
+  PaymentError as SharedPaymentError,
+  type PaymentErrorHandlingResult,
+} from "@core/types/payment-errors";
 import type { PaymentStatus } from "@core/types/statuses";
 
 export type PaymentStatusValue = PaymentStatus;
@@ -83,22 +87,19 @@ export interface UpdatePaymentStatusParams {
   notes?: string;
 }
 
-export interface ErrorHandlingResult {
-  error: SharedPaymentError;
-  userMessage: string;
-}
-
 export { SharedPaymentError as PaymentError, PaymentErrorType };
 
 export interface PaymentPort {
-  updateCashStatus(params: UpdateCashStatusParams): Promise<ActionResult<any>>;
+  updateCashStatus(
+    params: UpdateCashStatusParams
+  ): Promise<ActionResult<{ paymentId: string; status: "received" | "waived" | "pending" }>>;
   bulkUpdateCashStatus(params: BulkUpdateCashStatusParams): Promise<ActionResult<BulkUpdateResult>>;
 
   createStripeSession(params: CreateStripeSessionParams): Promise<CreateStripeSessionResult>;
   createCashPayment(params: CreateCashPaymentParams): Promise<CreateCashPaymentResult>;
   updatePaymentStatus(params: UpdatePaymentStatusParams): Promise<void>;
 
-  handleError(error: unknown): ErrorHandlingResult;
+  handleError(error: unknown): PaymentErrorHandlingResult;
   mapToUserFriendlyMessage(error: unknown): string;
 }
 

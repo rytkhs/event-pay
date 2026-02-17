@@ -4,7 +4,7 @@ import React, { Children, cloneElement, isValidElement, Fragment } from "react";
 
 import { cn } from "@core/utils";
 
-import { useInView } from "@/hooks/use-in-view";
+import { useInView } from "@/core/hooks/useInView";
 
 interface StaggerContainerProps {
   children: React.ReactNode;
@@ -13,6 +13,11 @@ interface StaggerContainerProps {
   className?: string;
   once?: boolean;
 }
+
+type StaggerInjectedProps = {
+  isInView?: boolean;
+  delay?: number;
+};
 
 export const StaggerContainer: React.FC<StaggerContainerProps> = ({
   children,
@@ -37,7 +42,7 @@ export const StaggerContainer: React.FC<StaggerContainerProps> = ({
           return child;
         }
 
-        return cloneElement(child as React.ReactElement<any>, {
+        return cloneElement(child as React.ReactElement<StaggerInjectedProps>, {
           isInView,
           delay: delay + index * staggerDelay,
         });

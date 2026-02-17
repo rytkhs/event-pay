@@ -3,10 +3,7 @@
  * Core層のポートインターフェースにStripe Connect機能を提供するアダプタ
  */
 
-import {
-  registerStripeConnectPort,
-  type StripeAccountStatusLike,
-} from "@core/ports/stripe-connect";
+import { registerStripeConnectPort } from "@core/ports/stripe-connect";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -29,7 +26,7 @@ export function registerStripeConnectAdapters(): void {
 
         const service = createStripeConnectServiceWithClient(supabaseClient);
         const account = await service.getConnectAccountByUser(userId);
-        return account ? { status: account.status as StripeAccountStatusLike } : null;
+        return account ? { status: account.status } : null;
       } catch (error) {
         handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
           category: "stripe_connect",
@@ -56,7 +53,7 @@ export function registerStripeConnectAdapters(): void {
         const service = createStripeConnectServiceWithClient(supabaseClient);
         const accountInfo = await service.getAccountInfo(accountId);
         return {
-          status: accountInfo.status as StripeAccountStatusLike,
+          status: accountInfo.status,
           chargesEnabled: accountInfo.chargesEnabled,
           payoutsEnabled: accountInfo.payoutsEnabled,
           requirements: accountInfo.requirements
@@ -98,7 +95,7 @@ export function registerStripeConnectAdapters(): void {
         const service = createStripeConnectServiceWithClient(supabaseClient);
         await service.updateAccountStatus({
           userId: input.userId,
-          status: input.status as any, // 型キャストが必要な場合
+          status: input.status,
           chargesEnabled: input.chargesEnabled,
           payoutsEnabled: input.payoutsEnabled,
           stripeAccountId: input.stripeAccountId,

@@ -10,6 +10,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { waitUntil } from "@core/utils/cloudflare-ctx";
+import { toErrorLike } from "@core/utils/type-guards";
 
 import type { Database } from "@/types/database";
 
@@ -55,15 +56,16 @@ export interface EventPayLogFields {
   [key: string]: unknown;
 }
 
+type SystemLogInsert = Database["public"]["Tables"]["system_logs"]["Insert"];
+
 /**
  * エラーオブジェクトまたは文字列から安全にスタックトレースを取得
  */
 function extractErrorStack(error: unknown): string | undefined {
   if (!error) return undefined;
   if (error instanceof Error) return error.stack;
-  if (typeof error === "object" && "stack" in error && typeof (error as any).stack === "string") {
-    return (error as any).stack;
-  }
+  const stack = toErrorLike(error).stack;
+  if (typeof stack === "string") return stack;
   if (typeof error === "string") return error;
   return undefined;
 }
@@ -126,7 +128,7 @@ async function persistToSupabase(
       error_stack: errorStack,
       stripe_request_id: fields.stripe_request_id,
       idempotency_key: fields.idempotency_key,
-      metadata: fields as any,
+      metadata: fields as SystemLogInsert["metadata"],
     });
   } catch (e) {
     console.error("[AppLogger] Failed to persist to Supabase:", e);

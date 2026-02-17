@@ -1,20 +1,17 @@
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import type { PaymentLogger } from "@core/logging/payment-logger";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
+import type { AppSupabaseClient } from "@core/types/supabase";
 
-import { Database } from "@/types/database";
-
-import type { PaymentStatus, UpdatePaymentStatusParams } from "../types";
+import type { PaymentStatus, ServiceUpdatePaymentStatusParams } from "../types";
 
 /**
  * 楽観的ロック付きの決済ステータス更新（現金決済用）
  */
 export async function updatePaymentStatusSafe(
-  params: UpdatePaymentStatusParams,
-  supabase: SupabaseClient<Database, "public">
+  params: ServiceUpdatePaymentStatusParams,
+  supabase: AppSupabaseClient<"public">
 ): Promise<void> {
   try {
     if (params.expectedVersion === undefined) {
@@ -88,8 +85,8 @@ export async function updatePaymentStatusSafe(
  * 従来の決済ステータス更新（Stripe決済用など）
  */
 export async function updatePaymentStatusLegacy(
-  params: UpdatePaymentStatusParams,
-  supabase: SupabaseClient<Database, "public">
+  params: ServiceUpdatePaymentStatusParams,
+  supabase: AppSupabaseClient<"public">
 ): Promise<void> {
   const updateData: {
     status: PaymentStatus;
@@ -148,8 +145,8 @@ export async function updatePaymentStatusLegacy(
  * 決済ステータスを更新する
  */
 export async function updatePaymentStatus(
-  params: UpdatePaymentStatusParams,
-  supabase: SupabaseClient<Database, "public">,
+  params: ServiceUpdatePaymentStatusParams,
+  supabase: AppSupabaseClient<"public">,
   logger: PaymentLogger
 ): Promise<void> {
   const contextLogger = logger.withContext({

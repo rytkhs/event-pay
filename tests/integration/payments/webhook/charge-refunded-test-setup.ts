@@ -17,24 +17,6 @@ import {
 } from "@/tests/helpers/test-payment-data";
 import { cleanupTestData } from "@/tests/setup/common-cleanup";
 
-// QStash Receiver.verify を常にtrueにする
-const mockVerify = jest.fn();
-jest.mock("@upstash/qstash", () => ({
-  Receiver: jest.fn().mockImplementation(() => ({
-    verify: (...args: unknown[]) => mockVerify(...args),
-  })),
-}));
-
-// ログの出力をキャプチャするためのモック
-jest.mock("@core/logging/app-logger", () => ({
-  logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-    error: jest.fn(),
-  },
-}));
-
 // ロガーモックをエクスポート（既存のテストで使用されているため）
 export const mockLoggerInfo = jest.fn();
 export const mockLoggerWarn = jest.fn();
@@ -292,8 +274,4 @@ export async function setupChargeRefundedTest(): Promise<ChargeRefundedTestSetup
     createPaidPayment,
     createIsolatedEventWithAttendance,
   };
-}
-
-export function setupBeforeEach() {
-  mockVerify.mockResolvedValue(true);
 }

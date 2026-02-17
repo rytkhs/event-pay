@@ -180,7 +180,7 @@ export class ReminderService {
         };
       }
 
-      const typedTargets = targets as unknown as ResponseDeadlineTarget[];
+      const typedTargets = targets as ResponseDeadlineTarget[];
 
       this.logger.info("Response deadline targets fetched", {
         totalTargets: typedTargets.length,
@@ -291,7 +291,7 @@ export class ReminderService {
         };
       }
 
-      const typedTargets = targets as unknown as PaymentDeadlineTarget[];
+      const typedTargets = targets as PaymentDeadlineTarget[];
 
       this.logger.info("Payment deadline targets fetched", {
         totalTargets: typedTargets.length,
@@ -398,7 +398,7 @@ export class ReminderService {
         };
       }
 
-      const typedTargets = targets as unknown as EventStartTarget[];
+      const typedTargets = targets as EventStartTarget[];
 
       this.logger.info("Event start targets fetched", {
         totalTargets: typedTargets.length,

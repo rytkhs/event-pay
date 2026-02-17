@@ -9,7 +9,11 @@ import { logger, type LogLevel } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
 import { handleServerError } from "@core/utils/error-handler.server";
 
-import { StripeConnectError, StripeConnectErrorType, ErrorHandlingResult } from "../types";
+import {
+  StripeConnectError,
+  StripeConnectErrorType,
+  StripeConnectErrorHandlingResult,
+} from "../types";
 
 import {
   ERROR_HANDLING_BY_TYPE,
@@ -25,7 +29,7 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
   /**
    * StripeConnectエラーを処理する
    */
-  async handleError(error: StripeConnectError): Promise<ErrorHandlingResult> {
+  async handleError(error: StripeConnectError): Promise<StripeConnectErrorHandlingResult> {
     const handling =
       ERROR_HANDLING_BY_TYPE[error.type] ||
       ERROR_HANDLING_BY_TYPE[StripeConnectErrorType.UNKNOWN_ERROR];

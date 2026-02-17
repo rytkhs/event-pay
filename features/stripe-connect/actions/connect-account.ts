@@ -132,16 +132,28 @@ export async function getConnectAccountStatusAction(): Promise<
           pending_verification: [],
         };
 
+    const mapCapabilityStatus = (value: unknown): "active" | "inactive" | "pending" | undefined => {
+      if (value === "active" || value === "inactive" || value === "pending") {
+        return value;
+      }
+      return undefined;
+    };
+
     const capabilities = stripeAccount.capabilities
       ? {
           card_payments:
             typeof stripeAccount.capabilities.card_payments === "string"
               ? (stripeAccount.capabilities.card_payments as "active" | "inactive" | "pending")
-              : (stripeAccount.capabilities.card_payments as any)?.status,
+              : mapCapabilityStatus(
+                  (stripeAccount.capabilities.card_payments as { status?: unknown } | undefined)
+                    ?.status
+                ),
           transfers:
             typeof stripeAccount.capabilities.transfers === "string"
               ? (stripeAccount.capabilities.transfers as "active" | "inactive" | "pending")
-              : (stripeAccount.capabilities.transfers as any)?.status,
+              : mapCapabilityStatus(
+                  (stripeAccount.capabilities.transfers as { status?: unknown } | undefined)?.status
+                ),
         }
       : undefined;
 

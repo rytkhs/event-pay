@@ -14,7 +14,7 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "start": "next start",
     "email:dev": "email dev",
-    "lint": "next lint --dir app --dir components --dir core --dir features --dir types",
+    "lint": "next lint --fix --dir app --dir components --dir core --dir features --dir types",
     "lint:fix": "next lint --fix --dir app --dir components --dir core --dir features --dir types",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",

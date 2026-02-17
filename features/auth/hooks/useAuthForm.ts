@@ -7,10 +7,15 @@ import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFormState } from "react-dom";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { useFocusManagement } from "@core/hooks/useFocusManagement";
+import {
+  loginInputSchema,
+  registerInputSchema,
+  type LoginInput,
+  type RegisterInput,
+} from "@core/validation/auth";
 
 // useAuthFormのオプション型
 interface UseAuthFormOptions<T extends ActionResult> {
@@ -95,28 +100,8 @@ export function useAuthForm<T extends ActionResult>(
   };
 }
 
-// === react-hook-form実装（新実装） ===
-
-// バリデーションスキーマ
-const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, "メールアドレスを入力してください")
-    .email("有効なメールアドレスを入力してください"),
-  password: z.string().min(1, "パスワードを入力してください"),
-});
-
-const registerSchema = z.object({
-  name: z.string().min(1, "表示名を入力してください").max(50, "名前は50文字以内で入力してください"),
-  email: z
-    .string()
-    .min(1, "メールアドレスを入力してください")
-    .email("有効なメールアドレスを入力してください"),
-  password: z.string().min(8, "パスワードは8文字以上で入力してください"),
-});
-
-type LoginFormDataRHF = z.infer<typeof loginSchema>;
-type RegisterFormDataRHF = z.infer<typeof registerSchema>;
+type LoginFormDataRHF = LoginInput;
+type RegisterFormDataRHF = RegisterInput;
 
 interface UseAuthFormRHFOptions<T> {
   enableFocusManagement?: boolean;
@@ -133,7 +118,7 @@ export function useLoginFormRHF<T extends ActionResult>(
   const router = useRouter();
 
   const form = useForm<LoginFormDataRHF>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(loginInputSchema),
     defaultValues: {
       email: "",
       password: "",
@@ -213,7 +198,7 @@ export function useRegisterFormRHF<T extends ActionResult>(
   const router = useRouter();
 
   const form = useForm<RegisterFormDataRHF>({
-    resolver: zodResolver(registerSchema),
+    resolver: zodResolver(registerInputSchema),
     defaultValues: {
       name: "",
       email: "",

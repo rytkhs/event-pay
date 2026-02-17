@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { AlertCircle, XCircle, Users, Clock } from "lucide-react";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
-import type { EventDetail } from "@core/utils/invite-token";
+import type { InviteEventDetail as InviteEventDetailType } from "@core/types/invite";
 import { type ParticipationFormData } from "@core/validation/participation";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -17,7 +17,7 @@ import { RsvpForm } from "./RsvpForm";
 import { SuccessView } from "./SuccessView";
 
 interface InviteEventDetailProps {
-  event: EventDetail;
+  event: InviteEventDetailType;
   inviteToken: string;
   initialRegistrationData?: RegisterParticipationData | null;
   registerParticipationAction: RegisterParticipationAction;

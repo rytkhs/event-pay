@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
-import { useEventForm, type CreateEventAction } from "../hooks/use-event-form";
+import { useEventForm, type CreateEventAction } from "../hooks/useEventForm";
 
 import { EventFormTimeline } from "./EventFormTimeline";
 

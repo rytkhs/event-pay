@@ -7,16 +7,15 @@ import * as Sentry from "@sentry/cloudflare";
 
 import { AppError, normalizeError } from "@core/errors";
 import type { ErrorCategory, ErrorSeverity } from "@core/errors/types";
-import { logger, type LogLevel } from "@core/logging/app-logger";
+import {
+  logger,
+  type LogLevel,
+  type LogCategory,
+  type LogOutcome,
+  type ActorType,
+} from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
-
-import type { Database } from "@/types/database";
-
-/** DB enum から型を取得 */
-type ActorType = Database["public"]["Enums"]["actor_type_enum"];
-type LogOutcome = Database["public"]["Enums"]["log_outcome_enum"];
-type LogCategory = Database["public"]["Enums"]["log_category_enum"];
 
 export interface ErrorContext {
   userAgent?: string;

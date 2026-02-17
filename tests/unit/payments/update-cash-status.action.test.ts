@@ -1,6 +1,6 @@
 import { jest } from "@jest/globals";
 
-import { updateCashStatusAction } from "@/features/payments/actions/update-cash-status";
+import { updateCashStatusAction } from "@features/payments/server";
 
 import { setupRateLimitMocks } from "../../setup/common-mocks";
 
@@ -56,17 +56,19 @@ jest.mock("@core/security/secure-client-factory.impl", () => {
       error: null,
     }),
   };
+  const factory = {
+    createAuthenticatedClient: jest
+      .fn<() => Promise<typeof authClient>>()
+      .mockResolvedValue(authClient),
+    createAuditedAdminClient: jest
+      .fn<() => Promise<typeof adminClient>>()
+      .mockResolvedValue(adminClient),
+  };
 
   return {
+    getSecureClientFactory: () => factory,
     SecureSupabaseClientFactory: {
-      create: () => ({
-        createAuthenticatedClient: jest
-          .fn<() => Promise<typeof authClient>>()
-          .mockResolvedValue(authClient),
-        createAuditedAdminClient: jest
-          .fn<() => Promise<typeof adminClient>>()
-          .mockResolvedValue(adminClient),
-      }),
+      create: () => factory,
     },
   };
 });
@@ -88,8 +90,12 @@ jest.mock("@core/rate-limit", () => {
   };
 });
 
-jest.mock("@/features/payments/validation", () => {
+jest.mock("@features/payments/validation", () => {
+  const actual = jest.requireActual<typeof import("@features/payments/validation")>(
+    "@features/payments/validation"
+  );
   return {
+    ...actual,
     PaymentValidator: class {
       private client: any;
       constructor(client: any) {

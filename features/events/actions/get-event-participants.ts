@@ -12,6 +12,13 @@ import {
   type ParticipantView,
 } from "@core/validation/participant-management";
 
+import {
+  PAYMENTS_LIMIT_ONE,
+  PAYMENTS_ORDER_CREATED_AT_DESC,
+  PAYMENTS_ORDER_PAID_AT_DESC_NULLS_LAST,
+  PAYMENTS_ORDER_UPDATED_AT_DESC,
+} from "./_shared/payment-order";
+
 /**
  * イベント参加者全件取得
  * MANAGE-001: 参加者一覧表示
@@ -59,17 +66,10 @@ export async function getEventParticipantsAction(
       .select(selectColumns)
       .eq("event_id", validatedEventId)
       // 最新決済を取得: paid_at DESC NULLS LAST, created_at DESC, updated_at DESC
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .order("paid_at", {
-        foreignTable: "payments",
-        ascending: false,
-        nullsFirst: false,
-      } as any)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .order("created_at", { foreignTable: "payments", ascending: false } as any)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .order("updated_at", { foreignTable: "payments", ascending: false } as any)
-      .limit(1, { foreignTable: "payments" })
+      .order("paid_at", PAYMENTS_ORDER_PAID_AT_DESC_NULLS_LAST)
+      .order("created_at", PAYMENTS_ORDER_CREATED_AT_DESC)
+      .order("updated_at", PAYMENTS_ORDER_UPDATED_AT_DESC)
+      .limit(1, PAYMENTS_LIMIT_ONE)
       // デフォルトソート: 作成日時降順
       .order("created_at", { ascending: false });
 

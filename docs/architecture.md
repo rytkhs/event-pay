@@ -102,6 +102,7 @@ flowchart TB
 
 ### Queue（Upstash QStash）
 - **責務**: Stripe Webhook処理の非同期化、リトライ・Deduplication
+- **応答規約**: Workerは `204`（成功ACK）、`489 + Upstash-NonRetryable-Error`（非リトライ）、`5xx`（リトライ）で返す
 - **スキップ**: E2Eテスト時は同期処理モード（`SKIP_QSTASH_IN_TEST=true`）
 
 ### Rate Limiting（Upstash Redis）
@@ -187,11 +188,11 @@ sequenceDiagram
     WH->>WH: IP許可リスト検証
     WH->>WH: 署名検証<br/>(whsec_*)
     WH->>Q: QStash Publish<br/>(deduplication_id: event.id)
-    WH-->>Stripe: 200 OK
+    WH-->>Stripe: 204 No Content
     Q->>W: POST /api/workers/stripe-webhook
     W->>DB: payments テーブル更新<br/>(status: paid)
     W->>DB: attendances.payment_status 更新
-    W-->>Q: 200 OK
+    W-->>Q: 204/489/5xx
     Q-->>WH: Success
 ```
 
@@ -200,7 +201,7 @@ sequenceDiagram
 3. **Stripe**: 決済完了 → Webhook送信（`payment_intent.succeeded`）
 4. **Webhook Handler**: IP検証 → 署名検証（Primary/Secondary secret）
 5. **QStash**: 非同期処理（Deduplication ID = `event.id`）
-6. **Worker**: `StripeWebhookEventHandler` → DB更新（`payments.status = 'paid'`）
+6. **Worker**: `StripeWebhookEventHandler` → DB更新（`payments.status = 'paid'`）→ `204/489/5xx` で再試行方針を返却
 7. **システム**: 冪等性保証（同一event.id の重複処理を防止）
 
 ### Flow 3: 現金集金の反映
@@ -280,18 +281,21 @@ sequenceDiagram
 - **ログカテゴリ**: authentication, payment, webhook, security 等（enum定義）
 
 ### 失敗時のリカバリ
-- **Webhook処理失敗**: QStashが自動リトライ（exponential backoff）
+- **Webhook処理失敗**: Workerの `5xx` をQStashが自動リトライ（exponential backoff）
+- **Webhook非リトライ失敗**: Workerの `489 + Upstash-NonRetryable-Error` はDLQへ送る
 - **決済失敗**: Stripe Dashboard で手動再処理 or ユーザーが再試行
 - **メール送信失敗**: リトライロジックなし（推測: Resend側で保証）
 
 ### 再実行・再送の扱い
 - **冪等性キー**: Stripe API呼び出しで24h有効な `idempotency_key` 使用
 - **Webhook重複防止**: QStash Deduplication（`event.id` ベース）
+- **Worker応答で再試行制御**: `204` 成功ACK / `489` 非リトライ / `5xx` リトライ
 - **リマインダー重複防止**: DB記録で送信済みフラグ管理
 
 ### エラーハンドリング
 - **統一エラーモデル**: `AppError` クラスと `ERROR_REGISTRY` による単一ソース管理
 - **Problem Details形式**: RFC 7807準拠のHTTPエラーレスポンス（Adapter経由）
+- **成功時レスポンス方針**: `{ success: true }` のような成功ラッパを避け、payloadのみまたは `204 No Content` を返す
 - **Sentry**: Cloudflare Workers統合（`@sentry/cloudflare`）
 
 ## 変更時に更新すべき章のチェックリスト

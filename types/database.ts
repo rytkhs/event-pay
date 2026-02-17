@@ -700,6 +700,51 @@ export type Database = {
         };
         Relationships: [];
       };
+      webhook_event_ledger: {
+        Row: {
+          created_at: string;
+          dedupe_key: string;
+          event_type: string;
+          id: string;
+          is_terminal_failure: boolean;
+          last_error_code: string | null;
+          last_error_reason: string | null;
+          processed_at: string | null;
+          processing_status: string;
+          stripe_event_id: string;
+          stripe_object_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          dedupe_key: string;
+          event_type: string;
+          id?: string;
+          is_terminal_failure?: boolean;
+          last_error_code?: string | null;
+          last_error_reason?: string | null;
+          processed_at?: string | null;
+          processing_status?: string;
+          stripe_event_id: string;
+          stripe_object_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          dedupe_key?: string;
+          event_type?: string;
+          id?: string;
+          is_terminal_failure?: boolean;
+          last_error_code?: string | null;
+          last_error_reason?: string | null;
+          processed_at?: string | null;
+          processing_status?: string;
+          stripe_event_id?: string;
+          stripe_object_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       public_profiles: {

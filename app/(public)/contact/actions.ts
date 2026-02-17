@@ -4,8 +4,6 @@ import * as React from "react";
 
 import { headers } from "next/headers";
 
-import { z } from "zod";
-
 import { InputSanitizer } from "@core/auth-security";
 import { zodFail, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
@@ -19,29 +17,9 @@ import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJst, formatDateToJstYmd } from "@core/utils/timezone";
+import { ContactInputSchema, type ContactInput } from "@core/validation/contact";
 
 import AdminContactNotice from "@/emails/contact/AdminContactNotice";
-
-/**
- * お問い合わせ入力スキーマ（サーバー用）
- * クライアント側と同じバリデーションルールを維持
- */
-const ContactInputSchema = z.object({
-  name: z.string().min(1, "氏名を入力してください").max(100, "氏名は100文字以内で入力してください"),
-  email: z
-    .string()
-    .email("有効なメールアドレスを入力してください")
-    .max(320, "メールアドレスは320文字以内で入力してください"),
-  message: z
-    .string()
-    .min(10, "お問い合わせ内容は10文字以上で入力してください")
-    .max(4000, "お問い合わせ内容は4000文字以内で入力してください"),
-  consent: z.boolean().refine((val) => val === true, {
-    message: "プライバシーポリシーに同意してください",
-  }),
-});
-
-type ContactInput = z.infer<typeof ContactInputSchema>;
 
 /**
  * メールアドレスをマスクする（ログ用）

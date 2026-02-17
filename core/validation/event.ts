@@ -457,11 +457,26 @@ export const updateEventSchema = z
 // 更新時は部分更新を考慮し、payment_deadline必須チェックはアクション本体で統合実施
 // Zodスキーマでは基本的なバリデーションのみ行う（上記は補助的な早期チェック）
 
+// Eventsフォーム入力契約のSoT
+export interface EventFormData {
+  title: string;
+  description: string;
+  location: string;
+  date: string;
+  fee: string;
+  capacity: string;
+  payment_methods: string[];
+  registration_deadline: string;
+  payment_deadline: string;
+  allow_payment_after_deadline?: boolean;
+  grace_period_days?: string;
+}
+
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 export type UpdateEventFormData = z.input<typeof updateEventSchema>;
 
-// 日付フィルター用のバリデーションスキーマ（強化版）
+// 日付フィルター用のバリデーションスキーマ
 const dateFormatRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 export const dateFilterSchema = z

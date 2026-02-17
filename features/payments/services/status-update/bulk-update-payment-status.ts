@@ -1,12 +1,9 @@
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import type { PaymentLogger } from "@core/logging/payment-logger";
 import { generateSecureUuid } from "@core/security/crypto";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
-
-import { Database } from "@/types/database";
+import type { AppSupabaseClient } from "@core/types/supabase";
 
 import type { PaymentStatus } from "../types";
 
@@ -20,7 +17,7 @@ export async function bulkUpdatePaymentStatus(
     expectedVersion: number;
   }>,
   userId: string,
-  supabase: SupabaseClient<Database, "public">,
+  supabase: AppSupabaseClient<"public">,
   logger: PaymentLogger,
   notes?: string
 ): Promise<{

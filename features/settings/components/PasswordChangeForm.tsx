@@ -5,10 +5,10 @@ import { useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
+import { changePasswordFormSchema, type ChangePasswordFormInput } from "@core/validation/settings";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,34 +22,18 @@ import {
 } from "@/components/ui/form";
 import { PasswordInput } from "@/components/ui/password-input";
 
-const passwordSchema = z
-  .object({
-    currentPassword: z.string().min(1, "現在のパスワードを入力してください"),
-    newPassword: z
-      .string()
-      .min(8, "パスワードは8文字以上で入力してください")
-      .max(128, "パスワードは128文字以内で入力してください"),
-    confirmPassword: z.string().min(1, "確認用パスワードを入力してください"),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "確認用パスワードが一致しません",
-    path: ["confirmPassword"],
-  });
-
-type PasswordFormData = z.infer<typeof passwordSchema>;
-
-type UpdatePasswordAction = (formData: FormData) => Promise<ActionResult>;
+type ChangePasswordAction = (formData: FormData) => Promise<ActionResult>;
 
 interface PasswordChangeFormProps {
-  updatePasswordAction: UpdatePasswordAction;
+  changePasswordAction: ChangePasswordAction;
 }
 
-export function PasswordChangeForm({ updatePasswordAction }: PasswordChangeFormProps) {
+export function PasswordChangeForm({ changePasswordAction }: PasswordChangeFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const form = useForm<PasswordFormData>({
-    resolver: zodResolver(passwordSchema),
+  const form = useForm<ChangePasswordFormInput>({
+    resolver: zodResolver(changePasswordFormSchema),
     defaultValues: {
       currentPassword: "",
       newPassword: "",
@@ -57,14 +41,14 @@ export function PasswordChangeForm({ updatePasswordAction }: PasswordChangeFormP
     },
   });
 
-  const onSubmit = (data: PasswordFormData) => {
+  const onSubmit = (data: ChangePasswordFormInput) => {
     startTransition(async () => {
       try {
         const formData = new FormData();
         formData.append("currentPassword", data.currentPassword);
         formData.append("newPassword", data.newPassword);
 
-        const result = await updatePasswordAction(formData);
+        const result = await changePasswordAction(formData);
 
         if (result.success) {
           form.reset();

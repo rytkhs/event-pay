@@ -2,21 +2,20 @@
  * 決済データ検証ロジック（feature ルート）
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
-import { PaymentStatusSchema } from "@core/validation/payment-status";
-
-import { Database } from "@/types/database";
+import type { AppSupabaseClient } from "@core/types/supabase";
+import { CashUpdateStatusSchema, PaymentStatusSchema } from "@core/validation/payment-status";
 
 import { IPaymentValidator } from "./services/interface";
 import {
   CreateStripeSessionParams,
   CreateCashPaymentParams,
-  UpdatePaymentStatusParams,
+  ServiceUpdatePaymentStatusParams,
   PaymentMethod,
   PaymentStatus,
+  isPaymentStatus,
 } from "./types";
 
 // サービス層（Stripeに渡す直前の最終パラメータ）用スキーマ（内部使用専用）
@@ -52,10 +51,41 @@ const updatePaymentStatusParamsSchema = z.object({
   stripePaymentIntentId: z.string().optional(),
 });
 
-export class PaymentValidator implements IPaymentValidator {
-  private supabase: SupabaseClient<Database, "public">;
+export const updateCashStatusActionInputSchema = z.object({
+  paymentId: z.string().uuid(),
+  status: z.enum(["received", "waived", "pending"]),
+  notes: z.string().max(1000).optional(),
+  isCancel: z.boolean().optional(),
+});
 
-  constructor(supabaseClient: SupabaseClient<Database, "public">) {
+export const bulkUpdateCashStatusActionInputSchema = z.object({
+  paymentIds: z.array(z.string().uuid()).min(1).max(50), // 最大50件まで
+  status: CashUpdateStatusSchema,
+  notes: z.string().max(1000).optional(),
+});
+
+// Stripeセッション検証用スキーマ（ゲスト用決済画面）
+export const verifySessionQuerySchema = z.object({
+  session_id: z
+    .string({
+      required_error: "セッションIDは必須です",
+      invalid_type_error: "セッションIDは必須です",
+    })
+    .min(1, "セッションIDは必須です"),
+  attendance_id: z
+    .string({
+      required_error: "有効な参加IDを入力してください",
+      invalid_type_error: "有効な参加IDを入力してください",
+    })
+    .uuid("有効な参加IDを入力してください"),
+});
+
+export type VerifySessionQueryInput = z.infer<typeof verifySessionQuerySchema>;
+
+export class PaymentValidator implements IPaymentValidator {
+  private supabase: AppSupabaseClient<"public">;
+
+  constructor(supabaseClient: AppSupabaseClient<"public">) {
     this.supabase = supabaseClient;
   }
 
@@ -111,7 +141,7 @@ export class PaymentValidator implements IPaymentValidator {
   }
 
   async validateUpdatePaymentStatusParams(
-    params: UpdatePaymentStatusParams,
+    params: ServiceUpdatePaymentStatusParams,
     isCancel?: boolean
   ): Promise<void> {
     try {
@@ -169,12 +199,13 @@ export class PaymentValidator implements IPaymentValidator {
       }
       if (userId) {
         type EventLite = { id: string; created_by: string };
-        type AttendanceWithEvent = {
+        type AttendanceQueryResult = {
           id: string;
           event_id: string;
           events: EventLite | EventLite[];
         };
-        const record = (Array.isArray(data) ? data[0] : data) as unknown as AttendanceWithEvent;
+
+        const record = (Array.isArray(data) ? data[0] : data) as AttendanceQueryResult;
         const events = Array.isArray(record.events) ? record.events : [record.events];
         const createdBy = events[0]?.created_by;
         if (!createdBy || createdBy !== userId) {
@@ -298,12 +329,22 @@ export class PaymentValidator implements IPaymentValidator {
       const currentStatus = data.status as PaymentStatus;
       const method = data.method as PaymentMethod;
 
+      if (!isPaymentStatus(currentStatus)) {
+        throw new PaymentError(
+          PaymentErrorType.DATABASE_ERROR,
+          `無効な現在のステータス: ${currentStatus}`
+        );
+      }
+      if (!isPaymentStatus(newStatus)) {
+        throw new PaymentError(
+          PaymentErrorType.VALIDATION_ERROR,
+          `無効な新しいステータス: ${newStatus}`
+        );
+      }
+
       // 単調増加（降格禁止）ルール：アプリ側の canPromoteStatus に合わせる
       const { canPromoteStatus } = await import("@core/utils/payments/status-rank");
-      const isPromotion = canPromoteStatus(
-        currentStatus as unknown as PaymentStatus,
-        newStatus as unknown as PaymentStatus
-      );
+      const isPromotion = canPromoteStatus(currentStatus, newStatus);
 
       // 同一ステータスは許容（冪等更新）／降格は拒否
       if (newStatus !== currentStatus && !isPromotion) {

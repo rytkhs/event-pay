@@ -9,10 +9,10 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
-import type { EventDetail } from "@core/utils/invite-token";
+import type { InviteEventDetail as InviteEventDetailType } from "@core/types/invite";
 
-import type { RegisterParticipationData } from "@features/invite/types";
-import { InviteEventDetail } from "@features/invite/components/InviteEventDetail";
+import { InviteEventDetail } from "@features/invite";
+import type { RegisterParticipationData } from "@features/invite";
 
 type DismissInviteSuccessAction = (inviteToken: string) => Promise<ActionResult>;
 
@@ -33,7 +33,7 @@ jest.mock("@features/invite/components/SuccessView", () => ({
 }));
 
 describe("InviteEventDetail", () => {
-  const mockEvent: EventDetail = {
+  const mockEvent: InviteEventDetailType = {
     id: "evt_1",
     created_by: "org_1",
     organizer_name: "Organizer",

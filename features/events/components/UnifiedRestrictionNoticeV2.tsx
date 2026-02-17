@@ -31,7 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-import { useUnifiedRestrictions } from "../hooks/use-unified-restrictions";
+import { useUnifiedRestrictions } from "../hooks/useUnifiedRestrictions";
 
 // =============================================================================
 // Component Props

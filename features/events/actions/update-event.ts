@@ -11,6 +11,8 @@ import {
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logEventManagement } from "@core/logging/system-logger";
 import { createClient } from "@core/supabase/server";
+import type { EventRow } from "@core/types/event";
+import type { PaymentMethod } from "@core/types/statuses";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { extractEventUpdateFormData } from "@core/utils/form-data-extractors";
@@ -18,9 +20,6 @@ import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 import { updateEventSchema, type UpdateEventFormData } from "@core/validation/event";
 import { validateEventId } from "@core/validation/event-id";
 
-import type { Database } from "@/types/database";
-
-type EventRow = Database["public"]["Tables"]["events"]["Row"];
 type UpdateEventResult = ActionResult<EventRow>;
 
 // UpdateEventInputを使用（Zodスキーマから自動生成）
@@ -66,7 +65,8 @@ export async function updateEventAction(
     // ステータスベースの編集禁止チェック
     const eventStatus = deriveEventStatus(existingEvent.date, existingEvent.canceled_at);
 
-    if (!EVENT_CONFIG.UPDATABLE_STATUSES.includes(eventStatus as any)) {
+    const updatableStatuses = new Set<string>(EVENT_CONFIG.UPDATABLE_STATUSES);
+    if (!updatableStatuses.has(eventStatus)) {
       const statusLabel = eventStatus === "past" ? "開催済み" : "キャンセル済み";
       return fail("FORBIDDEN", { userMessage: `${statusLabel}のイベントは編集できません` });
     }
@@ -140,7 +140,7 @@ export async function updateEventAction(
     const effectiveAllowAfter =
       validatedData.allow_payment_after_deadline !== undefined
         ? Boolean(validatedData.allow_payment_after_deadline)
-        : Boolean((existingEvent as any).allow_payment_after_deadline);
+        : Boolean(existingEvent.allow_payment_after_deadline);
 
     if (effectiveAllowAfter) {
       const baseIso = effectivePayDeadlineIso ?? effectiveDateIso;
@@ -148,7 +148,7 @@ export async function updateEventAction(
         Number(
           validatedData.grace_period_days !== undefined
             ? validatedData.grace_period_days
-            : ((existingEvent as any).grace_period_days ?? 0)
+            : (existingEvent.grace_period_days ?? 0)
         ) || 0;
       const finalCandidate = new Date(
         new Date(baseIso).getTime() + graceDays * TIME_CONSTANTS.MS_TO_DAYS
@@ -222,9 +222,7 @@ export async function updateEventAction(
           .maybeSingle();
 
         const isReady =
-          !!connectAccount &&
-          (connectAccount as any).status === "verified" &&
-          (connectAccount as any).payouts_enabled === true;
+          connectAccount?.status === "verified" && connectAccount?.payouts_enabled === true;
 
         if (connectError || !isReady) {
           return fail("VALIDATION_ERROR", {
@@ -266,9 +264,8 @@ export async function updateEventAction(
         date: existingEvent.date,
         registration_deadline: existingEvent.registration_deadline ?? undefined,
         payment_deadline: existingEvent.payment_deadline ?? undefined,
-        allow_payment_after_deadline:
-          (existingEvent as any).allow_payment_after_deadline ?? undefined,
-        grace_period_days: (existingEvent as any).grace_period_days ?? undefined,
+        allow_payment_after_deadline: existingEvent.allow_payment_after_deadline,
+        grace_period_days: existingEvent.grace_period_days,
       },
       { hasAttendees, attendeeCount, hasStripePaid },
       eventStatus
@@ -290,7 +287,7 @@ export async function updateEventAction(
     const effectiveGracePeriodDays =
       validatedData.grace_period_days !== undefined
         ? validatedData.grace_period_days
-        : ((existingEvent as any).grace_period_days ?? undefined);
+        : existingEvent.grace_period_days;
 
     const formDataSnapshot = createFormDataSnapshot({
       fee: effectiveFee,
@@ -457,8 +454,7 @@ function buildUpdateData(
   if (validatedData.payment_methods !== undefined) {
     // 配列の深い比較を実装（順序に依存しない比較）
     const existingMethods = existingEvent.payment_methods || [];
-    let newMethods =
-      validatedData.payment_methods as Database["public"]["Enums"]["payment_method_enum"][];
+    let newMethods = validatedData.payment_methods as PaymentMethod[];
 
     // 無料イベント（fee=0）の場合は決済方法を空配列に設定
     const newFee =
@@ -531,15 +527,15 @@ function buildUpdateData(
 
     if (effectiveFee === 0) {
       // payloadの有無に関わらず、fee=0の場合は確実にpayment_methodsを空配列にする
-      updateData.payment_methods = [] as Database["public"]["Enums"]["payment_method_enum"][];
+      updateData.payment_methods = [] as PaymentMethod[];
     }
   }
 
   // 締切後決済許可
   if (validatedData.allow_payment_after_deadline !== undefined) {
     const next = Boolean(validatedData.allow_payment_after_deadline);
-    if (next !== (existingEvent as any).allow_payment_after_deadline) {
-      (updateData as any).allow_payment_after_deadline = next;
+    if (next !== existingEvent.allow_payment_after_deadline) {
+      updateData.allow_payment_after_deadline = next;
     }
   }
 
@@ -547,8 +543,8 @@ function buildUpdateData(
   if (validatedData.grace_period_days !== undefined) {
     const raw = validatedData.grace_period_days as number;
     const next = Number.isFinite(raw) ? Number(raw) : 0;
-    if (next !== (existingEvent as any).grace_period_days) {
-      (updateData as any).grace_period_days = next;
+    if (next !== existingEvent.grace_period_days) {
+      updateData.grace_period_days = next;
     }
   }
 
