@@ -61,17 +61,31 @@ export const HeroSection: React.FC = () => {
                   今すぐ無料でイベントを作る
                   <ArrowRight size={20} aria-hidden="true" />
                 </Link>
-                <a
-                  href={`${process.env.NEXT_PUBLIC_DEMO_URL || "https://demo.minnano-shukin.com"}/start-demo`}
-                  className="w-full sm:w-auto bg-white hover:bg-primary/5 text-primary border-2 border-primary text-lg font-bold px-8 py-4 rounded-full transition-all flex items-center justify-center gap-2 group"
-                >
-                  <PlayCircle
-                    size={24}
+                <div className="relative w-full sm:w-auto group/demo">
+                  {/* Glow Pulse Effect */}
+                  <div
+                    className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse-glow group-hover/demo:bg-primary/30 transition-colors"
                     aria-hidden="true"
-                    className="opacity-90 group-hover:scale-110 transition-transform"
-                  />
-                  デモを試す
-                </a>
+                  ></div>
+
+                  <a
+                    href={`${process.env.NEXT_PUBLIC_DEMO_URL || "https://demo.minnano-shukin.com"}/start-demo`}
+                    className="relative overflow-hidden w-full sm:w-auto bg-white hover:bg-primary/5 text-primary border-2 border-primary text-lg font-bold px-8 py-4 rounded-full transition-all flex items-center justify-center gap-2 group shadow-xl hover:shadow-primary/20 hover:-translate-y-1 active:scale-95"
+                  >
+                    {/* Shimmer Light Effect */}
+                    <div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent -translate-x-full animate-shimmer"
+                      aria-hidden="true"
+                    ></div>
+
+                    <PlayCircle
+                      size={24}
+                      aria-hidden="true"
+                      className="relative z-10 opacity-90 group-hover:scale-110 transition-transform"
+                    />
+                    <span className="relative z-10">デモを試す</span>
+                  </a>
+                </div>
               </div>
               <p className="mt-4 text-slate-500 text-sm mb-6">
                 初期費用・月額料金 0円 / 現金集金なら完全無料
