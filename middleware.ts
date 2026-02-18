@@ -173,16 +173,13 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set("x-nonce", nonce);
   }
 
-  // 5. CSP生成（本番のみ）
+  // 5. CSP生成（全環境）
   // requestHeadersにもセットすることで、Next.jsがレンダリング時にnonceを読み取れるようにする
-  const csp =
-    process.env.NODE_ENV === "production"
-      ? buildCsp({
-          mode: isStatic ? "static" : "dynamic",
-          nonce,
-          isDev: false,
-        })
-      : null;
+  const csp = buildCsp({
+    mode: isStatic ? "static" : "dynamic",
+    nonce,
+    isDev: process.env.NODE_ENV !== "production",
+  });
 
   if (csp) {
     requestHeaders.set("Content-Security-Policy", csp);
