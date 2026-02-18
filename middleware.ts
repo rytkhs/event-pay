@@ -283,7 +283,7 @@ export const config = {
   matcher: [
     {
       source:
-        "/((?!api/webhooks|api/cron|api/csp-report|api/errors|api/health|healthz|readyz|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|.well-known|apple-app-site-association|assetlinks.json|sw.js|service-worker.js|images|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json|css|js)$).*)",
+        "/((?!api/webhooks|api/cron|api/csp-report|api/errors|api/health|healthz|readyz|_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml|manifest\\.webmanifest|\\.well-known(?:/|$)|apple-app-site-association|assetlinks\\.json|sw\\.js|service-worker\\.js|images|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json|css|js)$).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
