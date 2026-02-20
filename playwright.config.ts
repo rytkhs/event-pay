@@ -15,7 +15,7 @@ export default defineConfig({
   outputDir: "tmp/test-artifacts/playwright-results",
   workers: 1,
   fullyParallel: false,
-  timeout: 40 * 1000,
+  timeout: 20 * 1000,
   expect: {
     timeout: 10 * 1000,
   },

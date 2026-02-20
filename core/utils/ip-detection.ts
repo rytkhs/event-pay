@@ -211,7 +211,10 @@ export function getClientIP(requestOrHeaders: NextRequest | HeaderLike): string 
 
     // 最後の手段（Edge Runtimeでは常にundefined）
     {
-      ip: "ip" in requestOrHeaders ? requestOrHeaders.ip : undefined,
+      ip:
+        "ip" in requestOrHeaders && typeof requestOrHeaders.ip === "string"
+          ? requestOrHeaders.ip
+          : undefined,
       trust: "low",
       source: "Request.ip",
     },

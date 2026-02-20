@@ -112,9 +112,7 @@ const nextConfig = {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 
-  experimental: {
-    serverComponentsExternalPackages: ["pino"],
-  },
+  serverExternalPackages: ["pino"],
 };
 
 export default withBundleAnalyzer({

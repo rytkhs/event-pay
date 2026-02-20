@@ -27,7 +27,7 @@ export async function startDemoSession(): Promise<ActionResult<{ redirectUrl: st
   }
 
   // Rate Limit: 同一IPからのデモ作成を制限 (1時間に10回まで)
-  const ip = getClientIPFromHeaders(headers());
+  const ip = getClientIPFromHeaders(await headers());
   const rlResult = await enforceRateLimit({
     keys: [buildKey({ scope: "demo.create", ip }) as string],
     policy: POLICIES["demo.create"],

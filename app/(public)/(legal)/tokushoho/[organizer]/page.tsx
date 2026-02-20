@@ -10,14 +10,15 @@ export const dynamic = "force-dynamic";
 
 type Params = { organizer: string };
 
-export async function generateMetadata({ params: _params }: { params: Params }): Promise<Metadata> {
+export async function generateMetadata(_props: { params: Promise<Params> }): Promise<Metadata> {
   return {
     title: "特定商取引法に基づく表記",
     robots: "noindex, nofollow",
   };
 }
 
-export default async function Page({ params }: { params: Params }) {
+export default async function Page(props: { params: Promise<Params> }) {
+  const params = await props.params;
   try {
     const { html, frontmatter } = await renderMarkdownFromPublic("/legal/tokushoho/organizer.md");
     // 主催者ニックネーム取得（未認証でも呼べる範囲でベストエフォート）

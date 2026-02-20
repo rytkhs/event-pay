@@ -54,7 +54,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
       });
 
       // セキュリティログの記録
-      const headersList = headers();
+      const headersList = await headers();
       logSecurityEvent({
         type: "SUSPICIOUS_ACTIVITY",
         severity: "MEDIUM",

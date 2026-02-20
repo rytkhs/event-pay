@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   let next = searchParams.get("next") ?? "/";
   if (!next.startsWith("/")) next = "/";
 
-  const hdrs = headers();
+  const hdrs = await headers();
   const proto = hdrs.get("x-forwarded-proto") ?? "http";
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
   const origin = `${proto}://${host}`;

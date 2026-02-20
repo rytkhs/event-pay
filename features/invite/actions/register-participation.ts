@@ -605,7 +605,7 @@ export async function registerParticipationAction(
     };
     // 10. 申込成功状態をHttpOnlyクッキーで12時間保持（パスは該当招待リンクのみに限定）
     try {
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       const twelveHoursMs = 12 * 60 * 60 * 1000;
       const expiresAt = new Date(Date.now() + twelveHoursMs);
       cookieStore.set("invite_success", responseData.guestToken, {

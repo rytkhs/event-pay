@@ -4,7 +4,7 @@ import {
   setupStripeWebhookWorkerTest,
   setupBeforeEach,
   type StripeWebhookWorkerTestSetup,
-} from "../../api/workers/stripe-webhook-worker-test-setup";
+} from "./stripe-webhook-worker-test-setup";
 
 let WorkerPOST: typeof import("../../../../app/api/workers/stripe-webhook/route").POST;
 
@@ -52,7 +52,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
       .eq("id", pending.id)
       .single();
 
-    expect(firstPayment.status).toBe("paid");
+    expect(firstPayment!.status).toBe("paid");
 
     // 冪等再送
     const req2 = setup.createRequest({ event: evt });
@@ -65,9 +65,9 @@ describe("/api/workers/stripe-webhook (worker)", () => {
       .eq("id", pending.id)
       .single();
 
-    expect(secondPayment.status).toBe("paid");
-    expect(secondPayment.updated_at).toBe(firstPayment.updated_at);
-    expect(secondPayment.webhook_processed_at).toBe(firstPayment.webhook_processed_at);
+    expect(secondPayment!.status).toBe("paid");
+    expect(secondPayment!.updated_at).toBe(firstPayment!.updated_at);
+    expect(secondPayment!.webhook_processed_at).toBe(firstPayment!.webhook_processed_at);
 
     const { data: ledgerRow } = await adminClient
       .from("webhook_event_ledger")
@@ -75,7 +75,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
       .eq("stripe_event_id", evt.id)
       .single();
 
-    expect(ledgerRow.processing_status).toBe("succeeded");
+    expect(ledgerRow!.processing_status).toBe("succeeded");
   });
 
   it("payment_intent.succeeded が terminal failure 後に同一event.id再送されても再処理しない", async () => {
@@ -105,9 +105,9 @@ describe("/api/workers/stripe-webhook (worker)", () => {
       .eq("stripe_event_id", evt.id)
       .single();
 
-    expect(failedLedger.processing_status).toBe("failed");
-    expect(failedLedger.is_terminal_failure).toBe(true);
-    expect(failedLedger.last_error_reason).toBe("amount_currency_mismatch");
+    expect(failedLedger!.processing_status).toBe("failed");
+    expect(failedLedger!.is_terminal_failure).toBe(true);
+    expect(failedLedger!.last_error_reason).toBe("amount_currency_mismatch");
 
     // DBの期待金額をイベントと揃えても、terminal failureの同一event.idは再処理しない
     await adminClient.from("payments").update({ amount: 1500 }).eq("id", pending.id);
@@ -122,16 +122,16 @@ describe("/api/workers/stripe-webhook (worker)", () => {
       .eq("stripe_event_id", evt.id)
       .single();
 
-    expect(failedAgainLedger.processing_status).toBe("failed");
-    expect(failedAgainLedger.is_terminal_failure).toBe(true);
-    expect(failedAgainLedger.last_error_reason).toBe("amount_currency_mismatch");
+    expect(failedAgainLedger!.processing_status).toBe("failed");
+    expect(failedAgainLedger!.is_terminal_failure).toBe(true);
+    expect(failedAgainLedger!.last_error_reason).toBe("amount_currency_mismatch");
 
     const { data: paymentAfterReplay } = await adminClient
       .from("payments")
       .select("status")
       .eq("id", pending.id)
       .single();
-    expect(paymentAfterReplay.status).toBe("pending");
+    expect(paymentAfterReplay!.status).toBe("pending");
   });
 
   it("processing中の同一event.id再送は処理をスキップしてACKを返す", async () => {
@@ -167,7 +167,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
       .select("status")
       .eq("id", pending.id)
       .single();
-    expect(paymentAfterReplay.status).toBe("pending");
+    expect(paymentAfterReplay!.status).toBe("pending");
   });
 
   it("staleなprocessing状態の同一event.id再送は処理を再開して成功できる", async () => {
@@ -205,7 +205,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
       .select("status")
       .eq("id", pending.id)
       .single();
-    expect(paymentAfterReplay.status).toBe("paid");
+    expect(paymentAfterReplay!.status).toBe("paid");
 
     const { data: ledgerRow } = await adminClient
       .from("webhook_event_ledger")
@@ -213,9 +213,9 @@ describe("/api/workers/stripe-webhook (worker)", () => {
       .eq("stripe_event_id", evt.id)
       .single();
 
-    expect(ledgerRow.processing_status).toBe("succeeded");
-    expect(ledgerRow.last_error_code).toBeNull();
-    expect(ledgerRow.last_error_reason).toBeNull();
+    expect(ledgerRow!.processing_status).toBe("succeeded");
+    expect(ledgerRow!.last_error_code).toBeNull();
+    expect(ledgerRow!.last_error_reason).toBeNull();
   });
 
   it("retryable failed の同一event.id再送で再処理して成功に遷移する", async () => {
@@ -254,7 +254,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
       .select("status")
       .eq("id", pending.id)
       .single();
-    expect(paymentAfterReplay.status).toBe("paid");
+    expect(paymentAfterReplay!.status).toBe("paid");
 
     const { data: ledgerRow } = await adminClient
       .from("webhook_event_ledger")
@@ -262,10 +262,10 @@ describe("/api/workers/stripe-webhook (worker)", () => {
       .eq("stripe_event_id", evt.id)
       .single();
 
-    expect(ledgerRow.processing_status).toBe("succeeded");
-    expect(ledgerRow.is_terminal_failure).toBe(false);
-    expect(ledgerRow.last_error_code).toBeNull();
-    expect(ledgerRow.last_error_reason).toBeNull();
+    expect(ledgerRow!.processing_status).toBe("succeeded");
+    expect(ledgerRow!.is_terminal_failure).toBe(false);
+    expect(ledgerRow!.last_error_code).toBeNull();
+    expect(ledgerRow!.last_error_reason).toBeNull();
   });
 
   it("terminal failed (is_terminal_failure=true) の同一event.id再送は error code に関係なく再処理しない", async () => {
@@ -304,7 +304,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
       .select("status")
       .eq("id", pending.id)
       .single();
-    expect(paymentAfterReplay.status).toBe("pending");
+    expect(paymentAfterReplay!.status).toBe("pending");
 
     const { data: ledgerRow } = await adminClient
       .from("webhook_event_ledger")
@@ -312,10 +312,10 @@ describe("/api/workers/stripe-webhook (worker)", () => {
       .eq("stripe_event_id", evt.id)
       .single();
 
-    expect(ledgerRow.processing_status).toBe("failed");
-    expect(ledgerRow.is_terminal_failure).toBe(true);
-    expect(ledgerRow.last_error_code).toBe("WEBHOOK_UNEXPECTED_ERROR");
-    expect(ledgerRow.last_error_reason).toBe("payment_repository_findById_cardinality_failed");
+    expect(ledgerRow!.processing_status).toBe("failed");
+    expect(ledgerRow!.is_terminal_failure).toBe(true);
+    expect(ledgerRow!.last_error_code).toBe("WEBHOOK_UNEXPECTED_ERROR");
+    expect(ledgerRow!.last_error_reason).toBe("payment_repository_findById_cardinality_failed");
   });
 
   it("charge.dispute.created で dispute を記録して ACK する", async () => {
@@ -345,10 +345,10 @@ describe("/api/workers/stripe-webhook (worker)", () => {
       .eq("stripe_dispute_id", (evt.data.object as any).id)
       .single();
 
-    expect(disputeRow.payment_id).toBe(pending.id);
-    expect(disputeRow.charge_id).toBe(chargeId);
-    expect(disputeRow.payment_intent_id).toBe(paymentIntentId);
-    expect(disputeRow.status).toBe("needs_response");
+    expect(disputeRow!.payment_id).toBe(pending.id);
+    expect(disputeRow!.charge_id).toBe(chargeId);
+    expect(disputeRow!.payment_intent_id).toBe(paymentIntentId);
+    expect(disputeRow!.status).toBe("needs_response");
 
     const { data: ledgerRow } = await adminClient
       .from("webhook_event_ledger")
@@ -356,7 +356,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
       .eq("stripe_event_id", evt.id)
       .single();
 
-    expect(ledgerRow.processing_status).toBe("succeeded");
+    expect(ledgerRow!.processing_status).toBe("succeeded");
   });
 
   it("checkout.session.completed で stripe_checkout_session_id を保存", async () => {

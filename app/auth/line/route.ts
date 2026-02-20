@@ -42,7 +42,7 @@ export async function GET(request: Request) {
   const state = crypto.randomBytes(32).toString("hex");
 
   // Cookieにstateを保存
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const cookieOptions = createLineOAuthCookieOptions();
 
   cookieStore.set(LINE_OAUTH_COOKIES.STATE, state, cookieOptions);

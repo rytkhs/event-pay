@@ -17,14 +17,15 @@ import { ErrorLayout } from "@/components/errors/ErrorLayout";
 import { dismissInviteSuccessAction, registerParticipationAction } from "./actions";
 
 interface InvitePageProps {
-  params: {
+  params: Promise<{
     token: string;
-  };
+  }>;
 }
 
-export default async function InvitePage({ params }: InvitePageProps) {
+export default async function InvitePage(props: InvitePageProps) {
+  const params = await props.params;
   // リクエスト情報を取得（セキュリティログ用）
-  const headersList = headers();
+  const headersList = await headers();
   const userAgent = headersList.get("user-agent") || undefined;
   const ip = getClientIPFromHeaders(headersList);
 
@@ -118,7 +119,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
     // 申込成功クッキーが存在する場合、ゲストトークンから確認画面データを復元
     let initialRegistrationData: RegisterParticipationData | null = null;
     try {
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       const successCookie = cookieStore.get("invite_success");
       if (successCookie?.value) {
         const guestToken = successCookie.value;
@@ -191,7 +192,8 @@ export default async function InvitePage({ params }: InvitePageProps) {
 }
 
 // ページメタデータ生成
-export async function generateMetadata({ params }: InvitePageProps): Promise<Metadata> {
+export async function generateMetadata(props: InvitePageProps): Promise<Metadata> {
+  const params = await props.params;
   try {
     if (!params?.token) {
       return {

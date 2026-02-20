@@ -114,10 +114,11 @@ async function EventsContent({ searchParams }: EventsContentProps) {
 }
 
 interface EventsPageProps {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function EventsPage({ searchParams }: EventsPageProps) {
+export default async function EventsPage(props: EventsPageProps) {
+  const searchParams = await props.searchParams;
   return (
     <div data-testid="events-page-container" className="container mx-auto max-w-7xl">
       {/* ヘッダー - コンパクト化 */}

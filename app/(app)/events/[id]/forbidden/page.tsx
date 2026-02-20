@@ -7,9 +7,9 @@ export const metadata: Metadata = {
 };
 
 interface ForbiddenPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function EventForbiddenPage(_props: ForbiddenPageProps) {

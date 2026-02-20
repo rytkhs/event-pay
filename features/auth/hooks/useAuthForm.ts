@@ -1,11 +1,10 @@
 "use client";
 
-import { useTransition, useEffect } from "react";
+import { useTransition, useEffect, useActionState } from "react";
 
 import { useRouter } from "next/navigation";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useFormState } from "react-dom";
 import { useForm } from "react-hook-form";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
@@ -49,7 +48,7 @@ export function useAuthForm<T extends ActionResult>(
   } as T;
 
   // useFormStateで状態管理
-  const [state, dispatch] = useFormState(
+  const [state, dispatch] = useActionState(
     async (prevState: Awaited<T>, formData: FormData): Promise<T> => {
       return await action(formData);
     },

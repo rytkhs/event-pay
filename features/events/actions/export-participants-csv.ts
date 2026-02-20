@@ -38,7 +38,7 @@ export async function exportParticipantsCsvAction(
     const { eventId, filters, columns } = validatedParams;
 
     // IP アドレス取得（先頭のみ、監査ログ用）
-    const headersList = headers();
+    const headersList = await headers();
     const rawIp = headersList.get("x-forwarded-for") || headersList.get("x-real-ip");
     const ip = rawIp ? rawIp.split(",")[0].trim() : undefined;
 

@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { Noto_Sans_JP } from "next/font/google";
 import { headers } from "next/headers";
 
@@ -75,13 +77,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
-}>): JSX.Element {
+}>): Promise<JSX.Element> {
   const ga4Config = getGA4Config();
-  const nonce = headers().get("x-nonce") ?? undefined;
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   // 構造化データ（JSON-LD）を生成
   const organizationSchema = generateOrganizationSchema();

@@ -19,11 +19,12 @@ import { GuestPageClient } from "./GuestPageClient";
 const getGuestValidation = cache(async (token: string) => validateGuestToken(token));
 
 interface GuestPageProps {
-  params: { token: string };
-  searchParams: { payment?: string; session_id?: string };
+  params: Promise<{ token: string }>;
+  searchParams: Promise<{ payment?: string; session_id?: string }>;
 }
 
-export async function generateMetadata({ params }: GuestPageProps): Promise<Metadata> {
+export async function generateMetadata(props: GuestPageProps): Promise<Metadata> {
+  const params = await props.params;
   const { token } = params;
 
   // ゲストトークンを検証してイベント情報を取得
@@ -46,7 +47,9 @@ export async function generateMetadata({ params }: GuestPageProps): Promise<Meta
   };
 }
 
-export default async function GuestPage({ params, searchParams }: GuestPageProps) {
+export default async function GuestPage(props: GuestPageProps) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { token } = params;
   const { payment: paymentParam, session_id } = searchParams;
   const VALID_PAYMENT_STATUSES = new Set([
@@ -60,7 +63,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
 
   try {
     // リクエスト情報を取得（セキュリティログ用）
-    const headersList = headers();
+    const headersList = await headers();
     const userAgent = headersList.get("user-agent") || undefined;
     const ip = getClientIPFromHeaders(headersList);
 
@@ -99,7 +102,7 @@ export default async function GuestPage({ params, searchParams }: GuestPageProps
     const { AppError } = await import("@core/errors");
 
     // リクエスト情報を取得（エラーハンドリング用）
-    const errorHeadersList = headers();
+    const errorHeadersList = await headers();
     const errorUserAgent = errorHeadersList.get("user-agent") || undefined;
     const errorIp = getClientIPFromHeaders(errorHeadersList);
 

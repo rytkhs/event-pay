@@ -37,7 +37,7 @@ export type NotificationResult = AppResult<void, NotificationMeta>;
  */
 export interface EmailTemplate {
   subject: string;
-  react: React.ReactElement;
+  react: React.ReactElement<any>;
   fromEmail?: string; // 送信者メールアドレス
   fromName?: string; // 送信者名
   replyTo?: string;
