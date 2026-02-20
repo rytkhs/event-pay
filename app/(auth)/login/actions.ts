@@ -8,7 +8,7 @@ import { getSecureClientFactory } from "@core/security/secure-client-factory.imp
 export async function startGoogleOAuth(formData: FormData) {
   const nextParam = (formData.get("next") as string) || "/";
 
-  const hdrs = headers();
+  const hdrs = await headers();
   const proto = hdrs.get("x-forwarded-proto") ?? "http";
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
   const origin = `${proto}://${host}`;

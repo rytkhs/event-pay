@@ -42,7 +42,7 @@ export async function submitContact(input: ContactInput) {
     return zodFail(parsed.error);
   }
 
-  const h = headers();
+  const h = await headers();
   const ip = getClientIPFromHeaders(h);
 
   // 2. レート制限チェック

@@ -8,7 +8,7 @@ import { type ActionResult, ok } from "@core/errors/adapters/server-actions";
  * - クッキー値自体は扱わず、同名・同パスで期限切れを上書き
  */
 export async function dismissInviteSuccessAction(inviteToken: string): Promise<ActionResult> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   try {
     cookieStore.set("invite_success", "", {
       httpOnly: true,

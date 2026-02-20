@@ -19,9 +19,9 @@ import { updateEventAction } from "./actions";
 import { EventDangerZone } from "./components/EventDangerZone";
 
 interface EventEditPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 type EventEditQueryRow = Pick<
@@ -47,7 +47,8 @@ type EventEditQueryRow = Pick<
   attendances: Array<{ id: string; status: AttendanceStatus }>;
 };
 
-export default async function EventEditPage({ params }: EventEditPageProps) {
+export default async function EventEditPage(props: EventEditPageProps) {
+  const params = await props.params;
   const supabase = createClient();
 
   // IDバリデーション（形式不正のみ404）

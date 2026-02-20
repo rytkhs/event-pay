@@ -23,9 +23,9 @@ import { EventManagementPage } from "./components/EventManagementPage";
 import { bulkUpdateCashStatusAction, updateCashStatusAction } from "./participants/actions";
 
 interface EventDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 // キャッシュ処理を統一（軽量化）
@@ -36,13 +36,12 @@ const cachedActions = createCachedActions({
   getEventParticipants: getEventParticipantsAction,
 });
 
-export default async function EventDetailPage({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams: { [key: string]: string | string[] | undefined };
+export default async function EventDetailPage(props: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   try {
     if (!params?.id) {
       notFound();
@@ -141,7 +140,8 @@ export default async function EventDetailPage({
 }
 
 // ページメタデータ生成（動的タイトル設定）
-export async function generateMetadata({ params }: EventDetailPageProps): Promise<Metadata> {
+export async function generateMetadata(props: EventDetailPageProps): Promise<Metadata> {
+  const params = await props.params;
   try {
     const eventDetailResult = await cachedActions.getEventDetail(params.id);
     if (!eventDetailResult.success) {

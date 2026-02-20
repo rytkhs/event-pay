@@ -30,13 +30,14 @@ export const metadata: Metadata = {
 };
 
 interface PaymentSettingsPageProps {
-  searchParams: {
+  searchParams: Promise<{
     refresh?: string;
     connect?: string;
-  };
+  }>;
 }
 
 async function PaymentSettingsContent({ searchParams }: PaymentSettingsPageProps) {
+  const resolvedSearchParams = await searchParams;
   const supabase = createClient();
   const {
     data: { user },
@@ -59,7 +60,7 @@ async function PaymentSettingsContent({ searchParams }: PaymentSettingsPageProps
   return (
     <div className="space-y-6">
       {/* メッセージ表示 */}
-      {searchParams.connect === "success" && (
+      {resolvedSearchParams.connect === "success" && (
         <Alert className="bg-green-50 border-green-200 text-green-800">
           <CheckCircle2 className="h-4 w-4 text-green-600" />
           <AlertTitle>設定が完了しました</AlertTitle>
@@ -69,7 +70,7 @@ async function PaymentSettingsContent({ searchParams }: PaymentSettingsPageProps
         </Alert>
       )}
 
-      {searchParams.refresh && (
+      {resolvedSearchParams.refresh && (
         <Alert className="bg-blue-50 border-blue-200 text-blue-800">
           <AlertCircle className="h-4 w-4 text-blue-600" />
           <AlertTitle>設定を再開してください</AlertTitle>
@@ -148,7 +149,7 @@ function LoadingSkeleton() {
 export default function PaymentSettingsPage(props: PaymentSettingsPageProps) {
   return (
     <Suspense fallback={<LoadingSkeleton />}>
-      <PaymentSettingsContent {...props} />
+      <PaymentSettingsContent searchParams={props.searchParams} />
     </Suspense>
   );
 }

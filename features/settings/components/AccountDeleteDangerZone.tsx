@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type JSX } from "react";
 
 import { AlertTriangle, Loader2 } from "lucide-react";
 

@@ -21,14 +21,15 @@ export const metadata: Metadata = {
 };
 
 interface ErrorPageProps {
-  searchParams: {
+  searchParams: Promise<{
     message?: string;
-  };
+  }>;
 }
 
-function ErrorContent({ searchParams }: ErrorPageProps) {
-  const errorMessage = searchParams.message
-    ? decodeURIComponent(searchParams.message)
+async function ErrorContent({ searchParams }: ErrorPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const errorMessage = resolvedSearchParams.message
+    ? decodeURIComponent(resolvedSearchParams.message)
     : "Stripeアカウント設定中に予期しないエラーが発生しました";
 
   return (
@@ -85,7 +86,7 @@ function ErrorContent({ searchParams }: ErrorPageProps) {
 export default function PaymentSettingsErrorPage(props: ErrorPageProps) {
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <ErrorContent {...props} />
+      <ErrorContent searchParams={props.searchParams} />
     </Suspense>
   );
 }

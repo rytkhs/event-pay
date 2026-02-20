@@ -3,12 +3,13 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 interface ErrorPageProps {
-  searchParams: {
+  searchParams: Promise<{
     message?: string;
-  };
+  }>;
 }
 
-export default function AuthErrorPage({ searchParams }: ErrorPageProps) {
+export default async function AuthErrorPage(props: ErrorPageProps) {
+  const searchParams = await props.searchParams;
   const { message } = searchParams;
 
   return (

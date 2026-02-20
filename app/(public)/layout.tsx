@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, JSX } from "react";
 
 import { GlobalFooter } from "@components/layout/GlobalFooter";
 import { MarketingHeader } from "@components/layout/GlobalHeader/MarketingHeader";

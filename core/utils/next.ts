@@ -42,7 +42,7 @@ export async function getSafeHeaders(fallbackContext?: {
   try {
     // next/headersから動的にheaders()をインポート（ESModules対応）
     const { headers } = await import("next/headers");
-    headersList = headers();
+    headersList = await headers();
 
     if (headersList) {
       // 実際のヘッダーから情報を抽出
