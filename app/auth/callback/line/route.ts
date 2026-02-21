@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     actor_type: "anonymous",
   });
 
-  const origin = buildOrigin();
+  const origin = await buildOrigin();
 
   // 1. エラーハンドリングとCSRF検証
   if (error) {

@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const origin = buildOrigin();
+  const origin = await buildOrigin();
   const redirectUri = `${origin}/auth/callback/line`;
 
   // CSRF対策用のstate生成

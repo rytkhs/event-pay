@@ -1,7 +1,7 @@
 import * as crypto from "crypto";
 
 import type { ResponseCookie } from "next/dist/compiled/@edge-runtime/cookies";
-import { headers, type UnsafeUnwrappedHeaders } from "next/headers";
+import { headers } from "next/headers";
 
 import { getEnv } from "@core/utils/cloudflare-env";
 
@@ -10,9 +10,9 @@ import { LINE_OAUTH_CONFIG } from "./line-constants";
 /**
  * リクエストからoriginを構築
  */
-export function buildOrigin(): string {
+export async function buildOrigin(): Promise<string> {
   const env = getEnv();
-  const hdrs = headers() as unknown as UnsafeUnwrappedHeaders;
+  const hdrs = await headers();
   const proto = hdrs.get("x-forwarded-proto") ?? "http";
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
   return env.NEXT_PUBLIC_APP_URL ?? `${proto}://${host}`;
