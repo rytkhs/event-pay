@@ -2,7 +2,18 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "types": ["node", "jest"],
+    "paths": {
+      "@/*": ["./*"],
+      "@core/*": ["./core/*"],
+      "@core/domain/*": ["./core/domain/*"],
+      "@core/actions/*": ["./core/actions/*"],
+      "@features/*": ["./features/*"],
+      "@components/*": ["./components/*"],
+      "@/types/*": ["./types/*"],
+      "@tests/*": ["./tests/*"]
+    }
   },
   "include": [
     "next-env.d.ts",
