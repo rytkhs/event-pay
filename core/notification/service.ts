@@ -1,8 +1,6 @@
 /**
  * 通知サービスの実装
  */
-import * as React from "react";
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { AppError, errFrom, errResult, okResult } from "@core/errors";
@@ -13,6 +11,13 @@ import { Database } from "@/types/database";
 
 import { EmailNotificationService } from "./email-service";
 import {
+  buildAccountRestrictedTemplate,
+  buildAccountStatusChangedTemplate,
+  buildAccountVerifiedTemplate,
+  buildParticipationRegisteredTemplate,
+  buildPaymentCompletedTemplate,
+} from "./templates";
+import {
   INotificationService,
   IEmailNotificationService,
   NotificationResult,
@@ -21,7 +26,6 @@ import {
   AccountRestrictedNotification,
   ParticipationRegisteredNotification,
   PaymentCompletedNotification,
-  EmailTemplate,
 } from "./types";
 
 /**
@@ -55,20 +59,11 @@ export class NotificationService implements INotificationService {
         );
       }
 
-      const { default: AccountVerifiedEmail } = await import(
-        "@/emails/connect/AccountVerifiedEmail"
-      );
-
-      const template: EmailTemplate = {
-        subject: "Stripeアカウントの認証が完了しました",
-        react: React.createElement(AccountVerifiedEmail, {
-          userName: userInfo.name || "ユーザー",
-        }),
-      };
-
       return await this.emailService.sendEmail({
         to: userInfo.email,
-        template,
+        template: buildAccountVerifiedTemplate({
+          userName: userInfo.name || "ユーザー",
+        }),
       });
     } catch (error) {
       return errFrom(error, {
@@ -96,23 +91,14 @@ export class NotificationService implements INotificationService {
         );
       }
 
-      const { default: AccountRestrictedEmail } = await import(
-        "@/emails/connect/AccountRestrictedEmail"
-      );
-
-      const template: EmailTemplate = {
-        subject: "Stripeアカウントに制限が設定されました",
-        react: React.createElement(AccountRestrictedEmail, {
+      const result = await this.emailService.sendEmail({
+        to: userInfo.email,
+        template: buildAccountRestrictedTemplate({
           userName: userInfo.name || "ユーザー",
           restrictionReason: data.restrictionReason,
           requiredActions: data.requiredActions,
           dashboardUrl: data.dashboardUrl,
         }),
-      };
-
-      const result = await this.emailService.sendEmail({
-        to: userInfo.email,
-        template,
       });
 
       // 管理者にもアラートを送信（失敗してもユーザー通知の結果には影響させない）
@@ -169,24 +155,15 @@ export class NotificationService implements INotificationService {
           );
         }
 
-        const { default: AccountStatusChangedEmail } = await import(
-          "@/emails/connect/AccountStatusChangedEmail"
-        );
-
-        const template: EmailTemplate = {
-          subject: "Stripeアカウントの状態が更新されました",
-          react: React.createElement(AccountStatusChangedEmail, {
+        return await this.emailService.sendEmail({
+          to: userInfo.email,
+          template: buildAccountStatusChangedTemplate({
             userName: userInfo.name || "ユーザー",
             oldStatus: data.oldStatus,
             newStatus: data.newStatus,
             chargesEnabled: data.chargesEnabled,
             payoutsEnabled: data.payoutsEnabled,
           }),
-        };
-
-        return await this.emailService.sendEmail({
-          to: userInfo.email,
-          template,
         });
       }
 
@@ -238,26 +215,17 @@ export class NotificationService implements INotificationService {
     data: ParticipationRegisteredNotification
   ): Promise<NotificationResult> {
     try {
-      const { default: ParticipationRegisteredEmail } = await import(
-        "@/emails/participation/ParticipationRegisteredEmail"
-      );
-
       const guestUrl = buildGuestUrl(data.guestToken);
 
-      const template: EmailTemplate = {
-        subject: `【みんなの集金】${data.eventTitle} - 参加登録完了`,
-        react: React.createElement(ParticipationRegisteredEmail, {
+      return await this.emailService.sendEmail({
+        to: data.email,
+        template: buildParticipationRegisteredTemplate({
           nickname: data.nickname,
           eventTitle: data.eventTitle,
           eventDate: data.eventDate,
           attendanceStatus: data.attendanceStatus,
           guestUrl,
         }),
-      };
-
-      return await this.emailService.sendEmail({
-        to: data.email,
-        template,
       });
     } catch (error) {
       return errFrom(error, {
@@ -273,24 +241,15 @@ export class NotificationService implements INotificationService {
     data: PaymentCompletedNotification
   ): Promise<NotificationResult> {
     try {
-      const { default: PaymentCompletedEmail } = await import(
-        "@/emails/payment/PaymentCompletedEmail"
-      );
-
-      const template: EmailTemplate = {
-        subject: `【みんなの集金】${data.eventTitle} - お支払い完了`,
-        react: React.createElement(PaymentCompletedEmail, {
+      return await this.emailService.sendEmail({
+        to: data.email,
+        template: buildPaymentCompletedTemplate({
           nickname: data.nickname,
           eventTitle: data.eventTitle,
           amount: data.amount,
           paidAt: data.paidAt,
           receiptUrl: data.receiptUrl,
         }),
-      };
-
-      return await this.emailService.sendEmail({
-        to: data.email,
-        template,
       });
     } catch (error) {
       return errFrom(error, {

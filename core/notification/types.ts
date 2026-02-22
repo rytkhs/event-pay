@@ -2,8 +2,6 @@
  * 通知サービスの型定義
  */
 
-import * as React from "react";
-
 import type { AppResult } from "@core/errors";
 import type { StripeAccountStatus } from "@core/types/statuses";
 
@@ -33,11 +31,12 @@ export interface NotificationMeta {
 export type NotificationResult = AppResult<void, NotificationMeta>;
 
 /**
- * React Emailコンポーネントを使用したメールテンプレート
+ * HTML/TEXT形式のメールテンプレート
  */
 export interface EmailTemplate {
   subject: string;
-  react: React.ReactElement<any>;
+  html: string;
+  text: string;
   fromEmail?: string; // 送信者メールアドレス
   fromName?: string; // 送信者名
   replyTo?: string;

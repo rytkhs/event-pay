@@ -4,16 +4,13 @@
 
 import { randomUUID } from "crypto";
 
-import * as React from "react";
-
-import { Resend } from "resend";
-
 import { AppError, errResult, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { toErrorLike } from "@core/utils/type-guards";
 
+import { buildAdminAlertTemplate } from "./templates";
 import {
   IEmailNotificationService,
   EmailTemplate,
@@ -29,6 +26,31 @@ const RESEND_TIMEOUT_MS = 30000;
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY_MS = 1000;
 const RATE_LIMIT_RETRY_DELAY_MS = 5000;
+
+interface ResendApiSuccess {
+  id?: string;
+}
+
+interface ResendApiError {
+  message?: string;
+  name?: string;
+  statusCode?: number;
+}
+
+interface ResendApiResult {
+  data: ResendApiSuccess | null;
+  error: ResendApiError | null;
+}
+
+interface ResendSendPayload {
+  from: string;
+  to: string[];
+  subject: string;
+  html: string;
+  text: string;
+  reply_to?: string;
+  headers?: Record<string, string>;
+}
 
 /**
  * メールアドレスをマスクする（ログ用）
@@ -232,10 +254,10 @@ function validateEmailConfig(): { fromEmail: string; fromName: string; adminEmai
 }
 
 /**
- * Resendを使用したメール通知サービス
+ * Resend APIを使用したメール通知サービス
  */
 export class EmailNotificationService implements IEmailNotificationService {
-  private resend: Resend;
+  private apiKey: string;
   private fromEmail: string;
   private fromName: string;
   private adminEmail: string;
@@ -246,7 +268,7 @@ export class EmailNotificationService implements IEmailNotificationService {
       throw new Error("RESEND_API_KEY environment variable is required");
     }
 
-    this.resend = new Resend(apiKey);
+    this.apiKey = apiKey;
 
     // 環境変数をバリデーション
     const config = validateEmailConfig();
@@ -291,7 +313,7 @@ export class EmailNotificationService implements IEmailNotificationService {
   }
 
   /**
-   * メール送信（React Emailテンプレート使用）
+   * メール送信（HTML/TEXTテンプレート使用）
    * リトライロジック付き
    */
   async sendEmail(params: { to: string; template: EmailTemplate }): Promise<NotificationResult> {
@@ -326,7 +348,8 @@ export class EmailNotificationService implements IEmailNotificationService {
           from: fromField,
           to: [to],
           subject: template.subject,
-          react: template.react,
+          html: template.html,
+          text: template.text,
           ...(template.replyTo && { reply_to: template.replyTo }),
           headers: {
             "X-Idempotency-Key": idempotencyKey,
@@ -470,13 +493,63 @@ export class EmailNotificationService implements IEmailNotificationService {
   /**
    * タイムアウト付きでメール送信を実行
    */
-  private async sendEmailWithTimeout(params: Parameters<typeof this.resend.emails.send>[0]) {
-    return Promise.race([
-      this.resend.emails.send(params),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Email send timeout")), RESEND_TIMEOUT_MS)
-      ),
-    ]);
+  private async sendEmailWithTimeout(payload: ResendSendPayload): Promise<ResendApiResult> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), RESEND_TIMEOUT_MS);
+
+    try {
+      return await this.sendEmailRequest(payload, controller.signal);
+    } catch (error) {
+      if (controller.signal.aborted) {
+        throw new Error("Email send timeout");
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  /**
+   * Resend APIへ直接メール送信リクエストを送る
+   */
+  private async sendEmailRequest(
+    payload: ResendSendPayload,
+    signal?: AbortSignal
+  ): Promise<ResendApiResult> {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      signal,
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      let parsed: Record<string, unknown> | null = null;
+      try {
+        parsed = (await response.json()) as Record<string, unknown>;
+      } catch {
+        parsed = null;
+      }
+
+      return {
+        data: null,
+        error: {
+          message:
+            (parsed?.message as string | undefined) || response.statusText || "Request failed",
+          name: parsed?.name as string | undefined,
+          statusCode: response.status,
+        },
+      };
+    }
+
+    const data = (await response.json()) as ResendApiSuccess;
+    return {
+      data,
+      error: null,
+    };
   }
 
   /**
@@ -491,23 +564,19 @@ export class EmailNotificationService implements IEmailNotificationService {
     try {
       const { subject, message, details } = params;
 
-      // Dynamic import to avoid build-time issues
-      const { default: AdminAlertEmail } = await import("@/emails/admin/AdminAlertEmail");
-
-      const template: EmailTemplate = {
-        subject: `[EventPay Alert] ${subject}`,
-        react: React.createElement(AdminAlertEmail, {
-          subject,
-          message,
-          details,
-        }),
-        fromEmail: this.fromEmail,
-        fromName: this.fromName,
-      };
+      const template = buildAdminAlertTemplate({
+        subject,
+        message,
+        details,
+      });
 
       const result = await this.sendEmail({
         to: this.adminEmail,
-        template,
+        template: {
+          ...template,
+          fromEmail: this.fromEmail,
+          fromName: this.fromName,
+        },
       });
 
       // 管理者アラート送信に失敗した場合は詳細をログに記録

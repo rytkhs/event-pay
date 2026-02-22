@@ -18,6 +18,11 @@ import {
 import type { Database } from "@/types/database";
 
 import { EmailNotificationService } from "./email-service";
+import {
+  buildEventStartReminderTemplate,
+  buildPaymentDeadlineReminderTemplate,
+  buildResponseDeadlineReminderTemplate,
+} from "./templates";
 import type { IEmailNotificationService } from "./types";
 
 /**
@@ -448,25 +453,18 @@ export class ReminderService {
    * 参加期限リマインダーメールを送信
    */
   private async sendResponseDeadlineEmail(target: ResponseDeadlineTarget): Promise<void> {
-    const { default: ResponseDeadlineReminderEmail } = await import(
-      "@/emails/reminders/ResponseDeadlineReminderEmail"
-    );
-
     const guestUrl = buildGuestUrl(target.guest_token);
 
     const result = await this.emailService.sendEmail({
       to: target.email,
-      template: {
-        subject: `【みんなの集金】${target.events.title} 参加期限のリマインダー`,
-        react: ResponseDeadlineReminderEmail({
-          nickname: target.nickname,
-          eventTitle: target.events.title,
-          eventDate: formatUtcToJst(target.events.date, "yyyy/MM/dd HH:mm"),
-          eventLocation: target.events.location,
-          responseDeadline: formatUtcToJst(target.events.registration_deadline, "yyyy/MM/dd HH:mm"),
-          guestUrl,
-        }),
-      },
+      template: buildResponseDeadlineReminderTemplate({
+        nickname: target.nickname,
+        eventTitle: target.events.title,
+        eventDate: formatUtcToJst(target.events.date, "yyyy/MM/dd HH:mm"),
+        eventLocation: target.events.location,
+        responseDeadline: formatUtcToJst(target.events.registration_deadline, "yyyy/MM/dd HH:mm"),
+        guestUrl,
+      }),
     });
 
     if (!result.success) {
@@ -478,26 +476,19 @@ export class ReminderService {
    * 決済期限リマインダーメールを送信
    */
   private async sendPaymentDeadlineEmail(target: PaymentDeadlineTarget): Promise<void> {
-    const { default: PaymentDeadlineReminderEmail } = await import(
-      "@/emails/reminders/PaymentDeadlineReminderEmail"
-    );
-
     const guestUrl = buildGuestUrl(target.guest_token);
 
     const result = await this.emailService.sendEmail({
       to: target.email,
-      template: {
-        subject: `【みんなの集金】${target.events.title} 決済期限のリマインダー`,
-        react: PaymentDeadlineReminderEmail({
-          nickname: target.nickname,
-          eventTitle: target.events.title,
-          eventDate: formatUtcToJst(target.events.date, "yyyy/MM/dd HH:mm"),
-          eventLocation: target.events.location,
-          participationFee: target.events.fee,
-          paymentDeadline: formatUtcToJst(target.events.payment_deadline, "yyyy/MM/dd HH:mm"),
-          paymentUrl: guestUrl,
-        }),
-      },
+      template: buildPaymentDeadlineReminderTemplate({
+        nickname: target.nickname,
+        eventTitle: target.events.title,
+        eventDate: target.events.date,
+        eventLocation: target.events.location,
+        participationFee: target.events.fee,
+        paymentDeadline: target.events.payment_deadline,
+        paymentUrl: guestUrl,
+      }),
     });
 
     if (!result.success) {
@@ -509,25 +500,18 @@ export class ReminderService {
    * イベント開催リマインダーメールを送信
    */
   private async sendEventStartEmail(target: EventStartTarget): Promise<void> {
-    const { default: EventStartReminderEmail } = await import(
-      "@/emails/reminders/EventStartReminderEmail"
-    );
-
     const guestUrl = buildGuestUrl(target.guest_token);
 
     const result = await this.emailService.sendEmail({
       to: target.email,
-      template: {
-        subject: `【みんなの集金】${target.events.title} 開催のリマインダー`,
-        react: EventStartReminderEmail({
-          nickname: target.nickname,
-          eventTitle: target.events.title,
-          eventDate: formatUtcToJst(target.events.date, "yyyy/MM/dd HH:mm"),
-          eventLocation: target.events.location,
-          eventDescription: target.events.description,
-          guestUrl,
-        }),
-      },
+      template: buildEventStartReminderTemplate({
+        nickname: target.nickname,
+        eventTitle: target.events.title,
+        eventDate: target.events.date,
+        eventLocation: target.events.location,
+        eventDescription: target.events.description,
+        guestUrl,
+      }),
     });
 
     if (!result.success) {
