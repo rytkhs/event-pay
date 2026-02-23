@@ -2,6 +2,7 @@ import {
   buildAdminContactNoticeTemplate,
   buildEventStartReminderTemplate,
   buildParticipationRegisteredTemplate,
+  buildResponseDeadlineReminderTemplate,
 } from "@core/notification/templates";
 
 describe("core/notification/templates", () => {
@@ -30,6 +31,22 @@ describe("core/notification/templates", () => {
 
     expect(template.text).toContain("日時: 2025年1月2日(木) 12:04");
     expect(template.html).toContain("2025年1月2日(木) 12:04");
+  });
+
+  test("参加期限リマインダーテンプレートはJSTスラッシュ書式で日時を表示する", () => {
+    const template = buildResponseDeadlineReminderTemplate({
+      nickname: "田中",
+      eventTitle: "新年会",
+      eventDate: "2025-01-02T03:04:00.000Z",
+      eventLocation: "東京",
+      responseDeadline: "2025-01-03T10:20:00.000Z",
+      guestUrl: "https://example.com/guest",
+    });
+
+    expect(template.text).toContain("日時: 2025/01/02 12:04");
+    expect(template.text).toContain("参加期限: 2025/01/03 19:20");
+    expect(template.html).toContain("2025/01/02 12:04");
+    expect(template.html).toContain("2025/01/03 19:20");
   });
 
   test("不正な日付文字列は入力値をそのまま表示する", () => {

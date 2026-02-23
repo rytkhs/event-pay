@@ -48,14 +48,18 @@ function nl2br(input: string): string {
 
 function formatJstDate(
   value: string | Date,
-  formatType: "default" | "withWeekday" = "default"
+  formatType: "default" | "withWeekday" | "slash" = "default"
 ): string {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) {
     return typeof value === "string" ? value : "-";
   }
   const formatString =
-    formatType === "withWeekday" ? "yyyy年M月d日(EEE) HH:mm" : "yyyy年M月d日 HH:mm";
+    formatType === "withWeekday"
+      ? "yyyy年M月d日(EEE) HH:mm"
+      : formatType === "slash"
+        ? "yyyy/MM/dd HH:mm"
+        : "yyyy年M月d日 HH:mm";
 
   return formatUtcToJst(date, formatString, { locale: ja });
 }
@@ -365,18 +369,20 @@ export function buildPaymentCompletedTemplate(
 export function buildResponseDeadlineReminderTemplate(params: {
   nickname: string;
   eventTitle: string;
-  eventDate: string;
+  eventDate: string | Date;
   eventLocation: string | null;
-  responseDeadline: string;
+  responseDeadline: string | Date;
   guestUrl: string;
 }): EmailTemplate {
   const subject = `【${APP_NAME}】${params.eventTitle} 参加期限のリマインダー`;
+  const eventDate = formatJstDate(params.eventDate, "slash");
+  const responseDeadline = formatJstDate(params.responseDeadline, "slash");
 
   const rows = [
     { label: "イベント名", value: escapeHtml(params.eventTitle) },
-    { label: "日時", value: escapeHtml(params.eventDate) },
+    { label: "日時", value: escapeHtml(eventDate) },
     ...(params.eventLocation ? [{ label: "場所", value: escapeHtml(params.eventLocation) }] : []),
-    { label: "参加期限", value: `<strong>${escapeHtml(params.responseDeadline)}</strong>` },
+    { label: "参加期限", value: `<strong>${escapeHtml(responseDeadline)}</strong>` },
   ];
 
   const html = renderLayout({
@@ -400,9 +406,9 @@ export function buildResponseDeadlineReminderTemplate(params: {
     "",
     "参加期限が近づいています",
     `イベント名: ${params.eventTitle}`,
-    `日時: ${params.eventDate}`,
+    `日時: ${eventDate}`,
     ...(params.eventLocation ? [`場所: ${params.eventLocation}`] : []),
-    `参加期限: ${params.responseDeadline}`,
+    `参加期限: ${responseDeadline}`,
     "",
     `参加ステータス更新: ${params.guestUrl}`,
   ].join("\n");

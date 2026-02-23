@@ -10,7 +10,6 @@ import { handleServerError } from "@core/utils/error-handler.server";
 import { buildGuestUrl } from "@core/utils/guest-token";
 import {
   getCurrentJstTime,
-  formatUtcToJst,
   formatDateToJstYmd,
   convertJstDateToUtcRange,
 } from "@core/utils/timezone";
@@ -461,9 +460,9 @@ export class ReminderService {
       template: buildResponseDeadlineReminderTemplate({
         nickname: target.nickname,
         eventTitle: target.events.title,
-        eventDate: formatUtcToJst(target.events.date, "yyyy/MM/dd HH:mm"),
+        eventDate: target.events.date,
         eventLocation: target.events.location,
-        responseDeadline: formatUtcToJst(target.events.registration_deadline, "yyyy/MM/dd HH:mm"),
+        responseDeadline: target.events.registration_deadline,
         guestUrl,
       }),
       idempotencyKey: buildEmailIdempotencyKey({
