@@ -43,7 +43,7 @@ export async function adminAddAttendanceAction(
 
     // 認証済みクライアント（RLSポリシーベースのアクセス制御）
     const secureFactory = getSecureClientFactory();
-    const authenticatedClient = secureFactory.createAuthenticatedClient();
+    const authenticatedClient = await secureFactory.createAuthenticatedClient();
 
     // ゲストトークン生成
     const guestToken = generateGuestToken();

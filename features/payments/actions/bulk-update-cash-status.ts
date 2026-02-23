@@ -15,6 +15,31 @@ type BulkUpdateResult = {
   }>;
 };
 
+type BulkUpdatePaymentStatusRpcResult = {
+  success_count: number;
+  failure_count: number;
+  failures: Array<{
+    payment_id: string;
+    error_message: string;
+  }>;
+};
+
+function isBulkUpdatePaymentStatusRpcResult(
+  value: unknown
+): value is BulkUpdatePaymentStatusRpcResult {
+  if (typeof value !== "object" || value === null) return false;
+  const maybe = value as Record<string, unknown>;
+  if (typeof maybe.success_count !== "number") return false;
+  if (typeof maybe.failure_count !== "number") return false;
+  if (!Array.isArray(maybe.failures)) return false;
+
+  return maybe.failures.every((failure) => {
+    if (typeof failure !== "object" || failure === null) return false;
+    const f = failure as Record<string, unknown>;
+    return typeof f.payment_id === "string" && typeof f.error_message === "string";
+  });
+}
+
 function mapPaymentError(type: PaymentErrorType): ErrorCode {
   switch (type) {
     case PaymentErrorType.VALIDATION_ERROR:
@@ -168,7 +193,7 @@ export async function bulkUpdateCashStatusAction(
       {
         p_payment_updates: updateData,
         p_user_id: user.id,
-        p_notes: notes || null,
+        p_notes: notes ?? undefined,
       }
     );
 
@@ -178,8 +203,14 @@ export async function bulkUpdateCashStatusAction(
       });
     }
 
+    if (!isBulkUpdatePaymentStatusRpcResult(rpcResult)) {
+      return fail("DATABASE_ERROR", {
+        userMessage: "一括決済ステータス更新の結果形式が不正です。",
+      });
+    }
+
     // RPC結果をレスポンス形式に変換
-    const rpcFailures: BulkUpdateResult["failures"] = (rpcResult.failures || []).map(
+    const rpcFailures: BulkUpdateResult["failures"] = rpcResult.failures.map(
       (f: { payment_id: string; error_message: string }) => ({
         paymentId: f.payment_id,
         error: f.error_message,
@@ -187,8 +218,8 @@ export async function bulkUpdateCashStatusAction(
     );
 
     const result: BulkUpdateResult = {
-      successCount: rpcResult.success_count || 0,
-      failedCount: (rpcResult.failure_count || 0) + initialFailures.length,
+      successCount: rpcResult.success_count,
+      failedCount: rpcResult.failure_count + initialFailures.length,
       failures: [...initialFailures, ...rpcFailures],
     };
 

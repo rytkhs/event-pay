@@ -54,7 +54,7 @@ async function PaymentSettingsContent({ searchParams }: PaymentSettingsContentPr
   }
 
   // StripeConnectServiceを初期化
-  const stripeConnectService = createUserStripeConnectService();
+  const stripeConnectService = await createUserStripeConnectService();
 
   // 既存のアカウントをチェック
   const existingAccount = await stripeConnectService.getConnectAccountByUser(user.id);

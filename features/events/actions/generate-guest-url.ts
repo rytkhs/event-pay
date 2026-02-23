@@ -44,7 +44,7 @@ export async function generateGuestUrlAction(input: unknown): Promise<
     await verifyEventAccess(eventId);
 
     const factory = getSecureClientFactory();
-    const authenticatedClient = factory.createAuthenticatedClient();
+    const authenticatedClient = await factory.createAuthenticatedClient();
 
     // attendance と event を取得（guest_token, 決済可否判定用）
     const { data: attendance, error: attErr } = await authenticatedClient

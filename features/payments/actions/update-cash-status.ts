@@ -147,7 +147,7 @@ export async function updateCashStatusAction(
         p_new_status: status,
         p_expected_version: payment.version,
         p_user_id: user.id,
-        p_notes: notes || null,
+        p_notes: notes ?? undefined,
       }
     );
 

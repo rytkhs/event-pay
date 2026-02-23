@@ -34,7 +34,7 @@ export async function getDetailedAccountStatusAction(): Promise<
     }
 
     // 2. StripeConnectServiceを初期化
-    const stripeConnectService = createUserStripeConnectService();
+    const stripeConnectService = await createUserStripeConnectService();
 
     // 3. Connect Accountの確認
     const account = await stripeConnectService.getConnectAccountByUser(user.id);

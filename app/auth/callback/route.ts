@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const origin = `${proto}://${host}`;
 
   if (code) {
-    const supabase = getSecureClientFactory().createAuthenticatedClient();
+    const supabase = await getSecureClientFactory().createAuthenticatedClient();
 
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error && data?.user) {

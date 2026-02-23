@@ -13,7 +13,7 @@ export async function startGoogleOAuth(formData: FormData) {
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
   const origin = `${proto}://${host}`;
 
-  const supabase = getSecureClientFactory().createAuthenticatedClient();
+  const supabase = await getSecureClientFactory().createAuthenticatedClient();
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",

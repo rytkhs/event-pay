@@ -23,7 +23,7 @@ export interface ISecureSupabaseClientFactory {
    * @param options クライアント作成オプション
    * @returns 認証済みSupabaseクライアント
    */
-  createAuthenticatedClient(options?: ClientCreationOptions): SupabaseClient;
+  createAuthenticatedClient(options?: ClientCreationOptions): Promise<SupabaseClient>;
 
   /**
    * ゲストトークン認証クライアントを作成
@@ -81,7 +81,7 @@ export interface ISecureSupabaseClientFactory {
     request: NextRequest,
     response: NextResponse,
     options?: ClientCreationOptions
-  ): SupabaseClient;
+  ): Promise<SupabaseClient>;
 
   /**
    * ブラウザ用クライアントを作成

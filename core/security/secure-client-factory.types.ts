@@ -103,7 +103,7 @@ export interface SecureSupabaseClient {
   /**
    * 通常の認証済みクライアントを作成
    */
-  createAuthenticatedClient(): SupabaseClient;
+  createAuthenticatedClient(): Promise<SupabaseClient>;
 
   /**
    * ゲストトークン認証クライアントを作成（カスタムヘッダー自動設定）
@@ -134,7 +134,7 @@ export interface SecureSupabaseClient {
    * @param request NextRequest
    * @param response NextResponse
    */
-  createMiddlewareClient(request: NextRequest, response: NextResponse): SupabaseClient;
+  createMiddlewareClient(request: NextRequest, response: NextResponse): Promise<SupabaseClient>;
 }
 
 /**

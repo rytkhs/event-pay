@@ -10,11 +10,10 @@ import "server-only";
 import type { NextRequest, NextResponse } from "next/server";
 
 import { createServerClient, createBrowserClient } from "@supabase/ssr";
-import type { CookieOptions } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
-import { getSupabaseCookieConfig } from "@core/supabase/config";
+import { SupabaseClientFactory } from "@core/supabase/factory";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
@@ -104,67 +103,10 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     return value;
   }
 
-  private getRequestCookieAdapterOrThrow(): {
-    getAll: () => Promise<Array<{ name: string; value: string }>>;
-    setAll: (
-      cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>
-    ) => Promise<void>;
-  } {
-    const getCookieStoreOrThrow = async () => {
-      try {
-        const nextHeaders = (await import("next/headers")) as {
-          cookies: () => Promise<{
-            getAll: () => Array<{ name: string; value: string }>;
-            set: (name: string, value: string, options?: CookieOptions) => void;
-          }>;
-        };
-        return await nextHeaders.cookies();
-      } catch (error) {
-        const message =
-          "createAuthenticatedClient requires next/headers cookies() in a server request context.";
-
-        handleServerError("INTERNAL_ERROR", {
-          category: "authentication",
-          action: "client_creation",
-          actorType: "system",
-          additionalData: {
-            reason: "NEXT_HEADERS_UNAVAILABLE",
-            error_message: error instanceof Error ? error.message : String(error),
-            environment: getEnv().NODE_ENV,
-          },
-        });
-
-        throw new Error(message);
-      }
-    };
-
-    return {
-      async getAll() {
-        const cookieStore = await getCookieStoreOrThrow();
-        return cookieStore.getAll();
-      },
-      async setAll(cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>) {
-        const cookieStore = await getCookieStoreOrThrow();
-
-        try {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        } catch (_) {
-          // Server Componentなど書き込み不可の環境では無視
-        }
-      },
-    };
-  }
-
   /**
    * 通常の認証済みクライアントを作成
    */
-  createAuthenticatedClient(options?: ClientCreationOptions) {
-    const supabaseUrl = this.getSupabaseUrl();
-    const anonKey = this.getAnonKey();
-    const cookieConfig = getSupabaseCookieConfig();
-
+  async createAuthenticatedClient(_options?: ClientCreationOptions) {
     if (typeof window !== "undefined" || typeof document !== "undefined") {
       const message =
         "createAuthenticatedClient is server-only. Use createBrowserClient on the client.";
@@ -179,23 +121,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       throw new Error(message);
     }
 
-    const cookieAdapter = this.getRequestCookieAdapterOrThrow();
-
-    return createServerClient(supabaseUrl, anonKey, {
-      cookieOptions: cookieConfig,
-      cookies: {
-        getAll: () => cookieAdapter.getAll(),
-        setAll: (cookiesToSet: { name: string; value: string; options: CookieOptions }[]) =>
-          cookieAdapter.setAll(cookiesToSet),
-      },
-      auth: {
-        persistSession: options?.persistSession ?? true,
-        autoRefreshToken: options?.autoRefreshToken ?? true,
-      },
-      global: {
-        headers: options?.headers || {},
-      },
-    });
+    return await SupabaseClientFactory.createServerClient("api");
   }
 
   /**
@@ -384,46 +310,12 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   /**
    * ミドルウェア用クライアントを作成
    */
-  createMiddlewareClient(
+  async createMiddlewareClient(
     request: NextRequest,
     response: NextResponse,
-    options?: ClientCreationOptions
+    _options?: ClientCreationOptions
   ) {
-    const supabaseUrl = this.getSupabaseUrl();
-    const anonKey = this.getAnonKey();
-    const cookieConfig = getSupabaseCookieConfig();
-
-    return createServerClient(supabaseUrl, anonKey, {
-      cookieOptions: cookieConfig,
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value }) => {
-            try {
-              request.cookies.set(name, value);
-            } catch (_) {
-              // ignore – request.cookies may be immutable in some contexts
-            }
-          });
-
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
-          });
-        },
-      },
-      auth: {
-        persistSession: options?.persistSession ?? true,
-        autoRefreshToken: options?.autoRefreshToken ?? true,
-      },
-      global: {
-        headers: {
-          "X-Middleware-Client": "true",
-          ...options?.headers,
-        },
-      },
-    });
+    return await SupabaseClientFactory.createServerClient("middleware", { request, response });
   }
 
   /**

@@ -5,9 +5,9 @@ import { StripeConnectErrorHandler } from "./error-handler";
 import type { IStripeConnectService } from "./interface";
 import { StripeConnectService } from "./service";
 
-export const createUserStripeConnectService = (): IStripeConnectService => {
+export const createUserStripeConnectService = async (): Promise<IStripeConnectService> => {
   const secureFactory = getSecureClientFactory();
-  const userClient = secureFactory.createAuthenticatedClient();
+  const userClient = await secureFactory.createAuthenticatedClient();
   const errorHandler = new StripeConnectErrorHandler();
   return new StripeConnectService(userClient as AppSupabaseClient, errorHandler);
 };

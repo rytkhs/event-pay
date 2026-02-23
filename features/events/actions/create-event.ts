@@ -112,7 +112,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
 
       if (fee > 0 && wantsStripe) {
         const factory = getSecureClientFactory();
-        const authenticatedClient = factory.createAuthenticatedClient();
+        const authenticatedClient = await factory.createAuthenticatedClient();
 
         const { data: connectAccount, error: connectError } = await authenticatedClient
           .from("stripe_connect_accounts")
@@ -146,7 +146,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
 
     // 認証済みクライアントを使用（RLSポリシーで自分のイベント作成を許可）
     const secureFactory = getSecureClientFactory();
-    const authenticatedClient = secureFactory.createAuthenticatedClient();
+    const authenticatedClient = await secureFactory.createAuthenticatedClient();
 
     actionLogger.info("Attempting to insert event", {
       user_id: user.id,

@@ -297,7 +297,7 @@ export async function GET(request: Request) {
     }
 
     // 7. 通常のSupabaseクライアントでセッションを確立
-    const supabase = getSecureClientFactory().createAuthenticatedClient();
+    const supabase = await getSecureClientFactory().createAuthenticatedClient();
 
     const { data: sessionData, error: sessionError } = await supabase.auth.verifyOtp({
       token_hash: linkData.properties.hashed_token,

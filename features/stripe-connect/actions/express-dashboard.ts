@@ -46,7 +46,7 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
     }
 
     // 2. StripeConnectServiceを初期化
-    const stripeConnectService = createUserStripeConnectService();
+    const stripeConnectService = await createUserStripeConnectService();
 
     // 3. 既存のConnect Accountを確認
     const account = await stripeConnectService.getConnectAccountByUser(user.id);
@@ -115,7 +115,7 @@ export async function checkExpressDashboardAccessAction(): Promise<
     }
 
     // 2. StripeConnectServiceを初期化
-    const stripeConnectService = createUserStripeConnectService();
+    const stripeConnectService = await createUserStripeConnectService();
 
     // 3. Connect Accountの確認
     const account = await stripeConnectService.getConnectAccountByUser(user.id);
