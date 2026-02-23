@@ -8,7 +8,7 @@
  */
 
 import { parseISO } from "date-fns";
-import { fromZonedTime, toZonedTime, format } from "date-fns-tz";
+import { fromZonedTime, toZonedTime, format, type FormatOptionsWithTZ } from "date-fns-tz";
 
 const JST_TIMEZONE = "Asia/Tokyo";
 
@@ -84,11 +84,15 @@ export function convertDatetimeLocalToUtc(datetimeLocalString: string): Date {
  */
 export function formatUtcToJst(
   utcDate: Date | string,
-  formatString: string = "yyyy/MM/dd HH:mm"
+  formatString: string = "yyyy/MM/dd HH:mm",
+  options?: Omit<FormatOptionsWithTZ, "timeZone">
 ): string {
   const date = typeof utcDate === "string" ? new Date(utcDate) : utcDate;
   const jstDate = toZonedTime(date, JST_TIMEZONE);
-  return format(jstDate, formatString, { timeZone: JST_TIMEZONE });
+  return format(jstDate, formatString, {
+    ...options,
+    timeZone: JST_TIMEZONE,
+  });
 }
 
 /**
