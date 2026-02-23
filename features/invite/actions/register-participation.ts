@@ -563,10 +563,14 @@ async function verifyGuestTokenStorage(
 export async function registerParticipationAction(
   formData: FormData
 ): Promise<ActionResult<RegisterParticipationData>> {
-  // リクエスト情報を取得
-  const { context: securityContext } = await getHeaders();
+  // セキュリティコンテキストを保持（エラー発生時のログ記録用）
+  let securityContext: { userAgent?: string; ip?: string } = {};
 
   try {
+    // リクエスト情報を取得
+    const headersData = await getHeaders();
+    securityContext = headersData.context;
+
     // 1. FormDataの抽出と基本バリデーション
     const participationData = await extractAndValidateFormData(formData, securityContext);
 
