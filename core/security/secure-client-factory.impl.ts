@@ -14,11 +14,7 @@ import type { CookieOptions } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
-import {
-  SUPABASE_COOKIE_CONFIG,
-  SUPABASE_AUTH_COOKIE_CONFIG,
-  getSupabaseCookieConfig,
-} from "@core/supabase/config";
+import { SUPABASE_COOKIE_CONFIG, getSupabaseCookieConfig } from "@core/supabase/config";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
@@ -174,12 +170,6 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
           cookieStore.set(name, value, {
             ...cookieOptions,
             ...SUPABASE_COOKIE_CONFIG,
-            maxAge:
-              name === SUPABASE_AUTH_COOKIE_CONFIG.cookieNames.session
-                ? SUPABASE_AUTH_COOKIE_CONFIG.session.maxAge
-                : cookieOptions.maxAge != null
-                  ? cookieOptions.maxAge
-                  : undefined,
           });
         },
         remove(name: string) {

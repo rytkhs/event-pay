@@ -7,11 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
 import { getSessionManager } from "@core/session/manager";
-import {
-  SUPABASE_COOKIE_CONFIG,
-  SUPABASE_AUTH_COOKIE_CONFIG,
-  getSupabaseCookieConfig,
-} from "@core/supabase/config";
+import { SUPABASE_COOKIE_CONFIG, getSupabaseCookieConfig } from "@core/supabase/config";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
@@ -174,13 +170,6 @@ export class SupabaseClientFactory {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
               const mergedOptions: CookieOptions = { ...options, ...SUPABASE_COOKIE_CONFIG };
-              // 明示的なmaxAgeが無い場合のみ、セッションクッキーのmaxAgeを上書き
-              if (
-                options.maxAge == null &&
-                name === SUPABASE_AUTH_COOKIE_CONFIG.cookieNames.session
-              ) {
-                mergedOptions.maxAge = SUPABASE_AUTH_COOKIE_CONFIG.session.maxAge;
-              }
               cookieStore.set(name, value, mergedOptions);
             });
           } catch (error) {
