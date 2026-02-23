@@ -19,7 +19,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
   // 認証状態を取得（middlewareで認証済みであることが保証されている）
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

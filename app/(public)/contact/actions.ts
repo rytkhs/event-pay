@@ -93,7 +93,7 @@ export async function submitContact(input: ContactInput) {
   const ipHash = getEnv().RL_HMAC_SECRET && ip ? hmacSha256Hex(ip) : null;
 
   // 6. DB保存
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error: insertError } = await supabase.from("contacts").insert({
     name: nameSanitized,
     email,

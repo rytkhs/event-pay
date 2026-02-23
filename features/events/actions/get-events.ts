@@ -89,7 +89,7 @@ function getOrderColumn(sortBy: SortBy): string | null {
 export async function getEventsAction(options: GetEventsOptions = {}): Promise<GetEventsResult> {
   const correlationId = `get_events_${generateSecureUuid()}`;
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const {
       limit = 50,
       offset = 0,

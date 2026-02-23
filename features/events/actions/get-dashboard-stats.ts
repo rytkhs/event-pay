@@ -39,7 +39,7 @@ export async function getDashboardStatsAction(): Promise<ActionResult<DashboardS
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // RPCを呼び出して統計を取得
     // get_dashboard_stats returns setof record, so we expect an array
@@ -80,7 +80,7 @@ export async function getRecentEventsAction(): Promise<ActionResult<RecentEvent[
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // 最近のイベント（リスト表示用）- 上位5件
     const { data: recentEventsRaw, error } = await supabase

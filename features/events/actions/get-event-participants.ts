@@ -40,7 +40,7 @@ export async function getEventParticipantsAction(
     // 共通の認可・権限確認処理
     const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // シンプルな全件取得クエリ
     const selectColumns = `

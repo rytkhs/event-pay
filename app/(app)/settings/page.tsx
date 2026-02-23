@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   // 認証状態チェック
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
     error,

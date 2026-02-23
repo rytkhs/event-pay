@@ -36,7 +36,7 @@ export async function getEventDetailAction(eventId: string): Promise<ActionResul
       return fail("EVENT_INVALID_ID", { userMessage: "無効なイベントID形式です" });
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // 認証確認
     const {

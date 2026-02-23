@@ -29,7 +29,7 @@ export async function changePasswordAction(formData: FormData): Promise<ActionRe
     const { currentPassword, newPassword } = validationResult.data;
 
     // 現在のパスワードで再認証
-    const supabase = createClient();
+    const supabase = await createClient();
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: user.email || "",
       password: currentPassword,

@@ -22,7 +22,7 @@ import { StripeAccountCard } from "./components/StripeAccountCard";
 
 export default async function DashboardPage() {
   // 認証状態チェック
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
     error,

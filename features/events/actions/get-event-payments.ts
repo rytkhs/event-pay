@@ -25,7 +25,7 @@ export async function getEventPaymentsAction(
     // 認可チェック
     const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // 決済データ取得（attendance.statusも含める）
     const { data: payments, error } = await supabase

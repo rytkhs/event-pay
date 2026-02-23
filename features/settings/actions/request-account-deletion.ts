@@ -38,7 +38,7 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
       });
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // 1. Supabase Authのソフトデリート機能を使用
     const factory = getSecureClientFactory();

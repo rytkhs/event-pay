@@ -11,7 +11,7 @@ export async function deleteEventAction(eventId: string): Promise<ActionResult<v
     // 認証・権限（作成者のみ）+ イベントID検証
     const { eventId: validatedEventId, user } = await verifyEventAccess(eventId);
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // 参加者カウント（attending / maybe のみを対象）
     const { count: participantCount, error: attendanceCountError } = await supabase

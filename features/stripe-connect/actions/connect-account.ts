@@ -35,7 +35,7 @@ export async function getConnectAccountStatusAction(): Promise<
   let userId: string | undefined;
   try {
     // 1. 認証チェック
-    const supabase = createClient();
+    const supabase = await createClient();
     const {
       data: { user },
       error: authError,
@@ -190,7 +190,7 @@ export async function getConnectAccountStatusAction(): Promise<
  * 認証済みユーザーを取得するヘルパー関数
  */
 async function getAuthenticatedUser() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
     error: authError,

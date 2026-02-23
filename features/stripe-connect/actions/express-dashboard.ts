@@ -17,7 +17,7 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
   let userId: string | undefined;
   try {
     // 1. 認証チェック
-    const supabase = createClient();
+    const supabase = await createClient();
     const {
       data: { user },
       error: authError,
@@ -103,7 +103,7 @@ export async function checkExpressDashboardAccessAction(): Promise<
   let userId: string | undefined;
   try {
     // 1. 認証チェック
-    const supabase = createClient();
+    const supabase = await createClient();
     const {
       data: { user },
       error: authError,

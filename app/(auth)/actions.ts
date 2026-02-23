@@ -108,7 +108,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
         userMessage: `アカウントがロックされています。${lockoutStatus.lockoutExpiresAt ? formatUtcToJst(lockoutStatus.lockoutExpiresAt, "HH:mm") : ""}頃に再試行してください。`,
       });
     }
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // ログイン試行実行（タイミング攻撃対策付き）
     const authResult = await TimingAttackProtection.normalizeResponseTime(
@@ -275,7 +275,7 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       });
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // ユーザー登録（メール確認必須）
     const registrationResult = await TimingAttackProtection.normalizeResponseTime(
@@ -439,7 +439,7 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
     }
 
     const { email, otp, type } = result.data;
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const { error: verifiedError } = await supabase.auth.verifyOtp({
       email,
@@ -538,7 +538,7 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
       });
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // タイプに応じて適切なメソッドを呼び出し
     let result;
@@ -646,7 +646,7 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
           rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
       });
     }
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // タイミング攻撃対策: 常に一定時間確保
     const resetResult = await TimingAttackProtection.normalizeResponseTime(
@@ -703,7 +703,7 @@ export async function completePasswordResetAction(formData: FormData): Promise<A
     }
 
     const { password } = result.data;
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // セッション存在チェック
     const { data: userData } = await supabase.auth.getUser();
@@ -749,7 +749,7 @@ export async function completePasswordResetAction(formData: FormData): Promise<A
  */
 export async function logoutAction(): Promise<ActionResult> {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // ユーザーIDを取得（GA4イベント送信用）
     let userId: string | undefined;

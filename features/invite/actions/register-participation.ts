@@ -288,7 +288,7 @@ async function executeRegistration(
   event: ValidatedEventData["event"],
   securityContext: { userAgent?: string; ip?: string }
 ): Promise<string> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   let newAttendanceId: string | null = null;
   let rpcError: PostgrestError | Error | null = null;
@@ -625,7 +625,7 @@ export async function registerParticipationAction(
 
     // 11. 参加登録完了通知を送信（失敗してもログのみ記録）
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       const notificationService = new NotificationService(supabase);
       await notificationService.sendParticipationRegisteredNotification({
         email: processedData.sanitizedEmail,

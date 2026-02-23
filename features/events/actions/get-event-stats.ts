@@ -11,7 +11,7 @@ export async function getEventStatsAction(eventId: string): Promise<ActionResult
   try {
     const { eventId: validatedEventId } = await verifyEventAccess(eventId);
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const { data: attendances, error } = await supabase
       .from("attendances")

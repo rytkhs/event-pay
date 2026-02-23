@@ -6,6 +6,6 @@ import type { Database } from "@/types/database";
 
 import { SupabaseClientFactory } from "./factory";
 
-export function createClient(): SupabaseClient<Database, "public"> {
-  return SupabaseClientFactory.createServerClient("server");
+export async function createClient(): Promise<SupabaseClient<Database, "public">> {
+  return await SupabaseClientFactory.createServerClient("server");
 }

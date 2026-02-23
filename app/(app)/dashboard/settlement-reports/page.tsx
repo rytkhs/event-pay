@@ -25,7 +25,7 @@ export default async function SettlementReportsPage() {
     redirect("/login");
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const service = new SettlementReportService(supabase);
 
   // 直近のレポートを初期表示（最大50件）

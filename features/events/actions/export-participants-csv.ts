@@ -59,7 +59,7 @@ export async function exportParticipantsCsvAction(
       });
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // CSVデータ取得用クエリの構築
     let query = supabase

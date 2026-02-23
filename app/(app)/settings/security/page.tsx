@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { changePasswordAction } from "./actions";
 
 export default async function SecuritySettingsPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
     error,

@@ -33,7 +33,7 @@ export async function updateEmailAction(formData: FormData): Promise<ActionResul
       return fail("RESOURCE_CONFLICT", { userMessage: "現在のメールアドレスと同じです" });
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // 現在のパスワードで再認証
     const { error: signInError } = await supabase.auth.signInWithPassword({

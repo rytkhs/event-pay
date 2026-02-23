@@ -24,7 +24,7 @@ export default async function Page(props: { params: Promise<Params> }) {
     // 主催者ニックネーム取得（未認証でも呼べる範囲でベストエフォート）
     let organizerNickname = "";
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       const { data, error } = await supabase.rpc("get_event_creator_name", {
         p_creator_id: params.organizer,
       });

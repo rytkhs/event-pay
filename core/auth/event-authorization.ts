@@ -32,7 +32,7 @@ export async function verifyEventAccess(eventId: string): Promise<EventAccessRes
   }
 
   const validatedEventId = validation.data;
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // 認証確認
   const {

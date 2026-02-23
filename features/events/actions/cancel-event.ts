@@ -33,7 +33,7 @@ export async function cancelEventAction(
     // 認証・権限（作成者のみ）
     const { eventId, user } = await verifyEventAccess(params.eventId);
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // イベントを中止状態に更新（invite_token を NULL 化）
     const { data: updatedRows, error: updateError } = await supabase

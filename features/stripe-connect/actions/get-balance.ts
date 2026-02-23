@@ -61,7 +61,7 @@ const getCachedBalance = (accountId: string) =>
  */
 export async function getStripeBalanceAction(): Promise<ActionResult<number>> {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // 認証確認
     const {

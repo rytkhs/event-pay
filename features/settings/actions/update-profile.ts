@@ -30,7 +30,7 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
     const { name } = validationResult.data;
 
     // データベース更新
-    const supabase = createClient();
+    const supabase = await createClient();
     const { error: updateError } = await supabase
       .from("users")
       .update({

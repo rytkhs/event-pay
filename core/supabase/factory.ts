@@ -28,13 +28,12 @@ interface CookieStoreLike {
 export class SupabaseClientFactory {
   private static sessionManager = getSessionManager();
 
-  private static getRequestCookieStoreOrThrow(): CookieStoreLike {
+  private static async getRequestCookieStoreOrThrow(): Promise<CookieStoreLike> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const nextHeaders = require("next/headers") as {
-        cookies: () => CookieStoreLike;
+      const nextHeaders = (await import("next/headers")) as {
+        cookies: () => Promise<CookieStoreLike>;
       };
-      return nextHeaders.cookies();
+      return await nextHeaders.cookies();
     } catch (error) {
       const message =
         "Supabase server client requires next/headers cookies() in a server request context.";
@@ -92,16 +91,16 @@ export class SupabaseClientFactory {
     return value;
   }
 
-  static createServerClient(context: "server"): SupabaseClient<Database>;
-  static createServerClient(context: "api"): SupabaseClient<Database>;
+  static createServerClient(context: "server"): Promise<SupabaseClient<Database>>;
+  static createServerClient(context: "api"): Promise<SupabaseClient<Database>>;
   static createServerClient(
     context: "middleware",
     config: MiddlewareSupabaseConfig
-  ): SupabaseClient<Database>;
-  static createServerClient(
+  ): Promise<SupabaseClient<Database>>;
+  static async createServerClient(
     context: SupabaseContext,
     config?: MiddlewareSupabaseConfig
-  ): SupabaseClient<Database> {
+  ): Promise<SupabaseClient<Database>> {
     switch (context) {
       case "middleware":
         if (!config) {
@@ -111,7 +110,7 @@ export class SupabaseClientFactory {
 
       case "api":
       case "server":
-        return this.createApiServerClient();
+        return await this.createApiServerClient();
 
       default:
         throw new Error(`Unknown context: ${context}`);
@@ -154,8 +153,8 @@ export class SupabaseClientFactory {
     }) as unknown as SupabaseClient<Database>;
   }
 
-  private static createApiServerClient(): SupabaseClient<Database> {
-    const cookieStore = this.getRequestCookieStoreOrThrow();
+  private static async createApiServerClient(): Promise<SupabaseClient<Database>> {
+    const cookieStore = await this.getRequestCookieStoreOrThrow();
 
     return createServerClient<Database>(this.getURL(), this.getAnonKey(), {
       cookies: {
@@ -194,12 +193,11 @@ export class SupabaseClientFactory {
     context: SupabaseContext,
     config?: MiddlewareSupabaseConfig
   ): Promise<{ client: SupabaseClient<Database>; sessionValid: boolean }> {
-    const client =
-      context === "middleware" && config
-        ? this.createServerClient(context, config)
-        : context === "api"
-          ? this.createServerClient("api")
-          : this.createServerClient("server");
+    const client = await (context === "middleware" && config
+      ? this.createServerClient(context, config)
+      : context === "api"
+        ? this.createServerClient("api")
+        : this.createServerClient("server"));
 
     try {
       const {

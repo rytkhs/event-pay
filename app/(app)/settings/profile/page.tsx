@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { requestAccountDeletionAction, updateEmailAction, updateProfileAction } from "./actions";
 
 export default async function ProfileSettingsPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
     error,

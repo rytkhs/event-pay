@@ -35,8 +35,13 @@ import {
 export class SettlementReportService {
   private supabase: AppSupabaseClient<"public">;
 
-  constructor(supabaseClient?: AppSupabaseClient<"public">) {
-    this.supabase = supabaseClient || createClient();
+  constructor(supabaseClient: AppSupabaseClient<"public">) {
+    this.supabase = supabaseClient;
+  }
+
+  static async create(): Promise<SettlementReportService> {
+    const supabase = await createClient();
+    return new SettlementReportService(supabase);
   }
 
   /**

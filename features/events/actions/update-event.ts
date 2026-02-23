@@ -29,7 +29,7 @@ export async function updateEventAction(
   formData: FormData
 ): Promise<UpdateEventResult> {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // イベントIDのバリデーション（UUID形式）
     const eventIdValidation = validateEventId(eventId);

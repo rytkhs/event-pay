@@ -49,7 +49,7 @@ type EventEditQueryRow = Pick<
 
 export default async function EventEditPage(props: EventEditPageProps) {
   const params = await props.params;
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // IDバリデーション（形式不正のみ404）
   const validation = validateEventId(params.id);

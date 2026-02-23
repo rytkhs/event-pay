@@ -97,7 +97,7 @@ export async function startDemoSession(): Promise<ActionResult<{ redirectUrl: st
 
   // 3. Login (Set Cookies)
   // ここでは通常のServer Client (middleware連携) を使用してログインし、Cookieをセットする
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { error: loginError } = await supabase.auth.signInWithPassword({
     email,
     password,

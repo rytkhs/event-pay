@@ -42,7 +42,7 @@ export async function generateSettlementReportAction(
     }
 
     // サービス実行
-    const supabase = createClient();
+    const supabase = await createClient();
     const service = new SettlementReportService(supabase);
 
     const result = await service.generateSettlementReport({
@@ -121,7 +121,7 @@ export async function getSettlementReportsAction(params: {
     }
 
     // サービス実行
-    const supabase = createClient();
+    const supabase = await createClient();
     const service = new SettlementReportService(supabase);
 
     const reports = await service.getSettlementReports({
@@ -176,7 +176,7 @@ export async function exportSettlementReportsAction(params: {
     }
 
     // サービス実行
-    const supabase = createClient();
+    const supabase = await createClient();
     const service = new SettlementReportService(supabase);
 
     const result = await service.exportToCsv({
@@ -262,7 +262,7 @@ export async function regenerateAfterRefundAction(
     }
 
     // サービス実行
-    const supabase = createClient();
+    const supabase = await createClient();
     const service = new SettlementReportService(supabase);
 
     const result = await service.regenerateAfterRefundOrDispute(
