@@ -41,8 +41,6 @@
     "components/**/*.tsx",
     "core/**/*.ts",
     "core/**/*.tsx",
-    "emails/**/*.ts",
-    "emails/**/*.tsx",
     "features/**/*.ts",
     "features/**/*.tsx",
     "types/**/*.ts",

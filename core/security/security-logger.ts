@@ -10,6 +10,7 @@ import {
   type EventPayLogFields,
   type LogOutcome,
 } from "@core/logging/app-logger";
+import { buildEmailIdempotencyKey } from "@core/notification/idempotency";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -368,6 +369,17 @@ async function sendSecurityAlert(logEntry: Record<string, unknown>): Promise<voi
         const securityType = String(logEntry.security_type || "UNKNOWN");
         const severity = String(logEntry.security_severity || "UNKNOWN");
         const message = String(logEntry.message || "Security event detected");
+        const idempotencyKey = buildEmailIdempotencyKey({
+          scope: "security-alert",
+          parts: [
+            securityType,
+            severity,
+            String(logEntry.user_id || ""),
+            String(logEntry.event_id || ""),
+            message,
+            String(logEntry.timestamp || ""),
+          ],
+        });
 
         // アラートメールを送信（失敗してもアプリケーションは停止しない）
         await emailService.sendAdminAlert({
@@ -378,6 +390,7 @@ async function sendSecurityAlert(logEntry: Record<string, unknown>): Promise<voi
             // タイムスタンプを読みやすい形式に変換
             alert_time: new Date().toISOString(),
           },
+          idempotencyKey,
         });
       }
     } catch (error) {

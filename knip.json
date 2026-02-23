@@ -3,7 +3,6 @@
   "entry": [
     "sentry-worker.ts",
     "open-next.config.ts",
-    "emails/**/*.{ts,tsx}",
     "tests/e2e/auth.setup.ts",
     "tests/setup/**/*.ts",
     "tests/integration/**/*-setup.ts"
@@ -30,9 +29,7 @@
     "jest-environment-jsdom",
     "remark",
     "remark-frontmatter",
-    "server-only",
-    "@react-email/preview-server",
-    "@react-email/render"
+    "server-only"
   ],
   "ignoreIssues": {
     "components/ui/**": ["exports", "types"]
