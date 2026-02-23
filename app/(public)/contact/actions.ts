@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { InputSanitizer } from "@core/auth-security";
 import { zodFail, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
+import { buildEmailIdempotencyKey } from "@core/notification/idempotency";
 import { sendSlackText } from "@core/notification/slack";
 import { buildAdminContactNoticeTemplate } from "@core/notification/templates";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
@@ -161,6 +162,10 @@ export async function submitContact(input: ContactInput) {
             email,
             messageExcerpt: excerpt,
             receivedAt,
+          }),
+          idempotencyKey: buildEmailIdempotencyKey({
+            scope: "contact-admin-notice",
+            parts: [fingerprintHash, dayJst],
           }),
         });
 

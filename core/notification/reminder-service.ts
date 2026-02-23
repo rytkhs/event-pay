@@ -18,6 +18,7 @@ import {
 import type { Database } from "@/types/database";
 
 import { EmailNotificationService } from "./email-service";
+import { buildEmailIdempotencyKey } from "./idempotency";
 import {
   buildEventStartReminderTemplate,
   buildPaymentDeadlineReminderTemplate,
@@ -465,6 +466,10 @@ export class ReminderService {
         responseDeadline: formatUtcToJst(target.events.registration_deadline, "yyyy/MM/dd HH:mm"),
         guestUrl,
       }),
+      idempotencyKey: buildEmailIdempotencyKey({
+        scope: "response-deadline-reminder",
+        parts: [target.id, target.events.id, target.events.registration_deadline],
+      }),
     });
 
     if (!result.success) {
@@ -489,6 +494,10 @@ export class ReminderService {
         paymentDeadline: target.events.payment_deadline,
         paymentUrl: guestUrl,
       }),
+      idempotencyKey: buildEmailIdempotencyKey({
+        scope: "payment-deadline-reminder",
+        parts: [target.id, target.events.id, target.events.payment_deadline],
+      }),
     });
 
     if (!result.success) {
@@ -511,6 +520,10 @@ export class ReminderService {
         eventLocation: target.events.location,
         eventDescription: target.events.description,
         guestUrl,
+      }),
+      idempotencyKey: buildEmailIdempotencyKey({
+        scope: "event-start-reminder",
+        parts: [target.id, target.events.id, target.events.date],
       }),
     });
 

@@ -4,6 +4,8 @@
 
 import { randomUUID } from "crypto";
 
+import { Resend } from "resend";
+
 import { AppError, errResult, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { getEnv } from "@core/utils/cloudflare-env";
@@ -40,6 +42,7 @@ interface ResendApiError {
 interface ResendApiResult {
   data: ResendApiSuccess | null;
   error: ResendApiError | null;
+  retryAfterSeconds?: number;
 }
 
 interface ResendSendPayload {
@@ -74,20 +77,63 @@ function classifyResendError(error: unknown): ResendErrorInfo {
   const message = errorLike.message || String(error);
   const statusCode = errorLike.statusCode;
   const name = errorLike.name;
+  const normalizedName = name?.toLowerCase();
 
   // ステータスコードによる分類
   if (statusCode) {
-    // 4xx系エラー
-    if (statusCode >= 400 && statusCode < 500) {
-      // 429: レート制限（一時的）
-      if (statusCode === 429) {
+    // 429: レート制限
+    if (statusCode === 429) {
+      // クォータ超過は恒久的（再試行しても解決しない）
+      if (
+        normalizedName === "monthly_quota_exceeded" ||
+        normalizedName === "daily_quota_exceeded"
+      ) {
         return {
-          type: "transient",
-          message: "レート制限エラー",
+          type: "permanent",
+          message: message || "送信クォータ超過",
           statusCode,
           name,
         };
       }
+
+      return {
+        type: "transient",
+        message: message || "レート制限エラー",
+        statusCode,
+        name,
+      };
+    }
+
+    // 409: 冪等キー関連
+    if (statusCode === 409) {
+      if (normalizedName === "concurrent_idempotent_requests") {
+        return {
+          type: "transient",
+          message: message || "同一冪等キーのリクエストが処理中です",
+          statusCode,
+          name,
+        };
+      }
+
+      if (normalizedName === "invalid_idempotent_request") {
+        return {
+          type: "permanent",
+          message: message || "冪等キーとリクエスト内容が不整合です",
+          statusCode,
+          name,
+        };
+      }
+
+      return {
+        type: "permanent",
+        message: message || "重複リクエストエラー",
+        statusCode,
+        name,
+      };
+    }
+
+    // 4xx系エラー
+    if (statusCode >= 400 && statusCode < 500) {
       // 401, 403: 認証エラー（恒久的）
       if (statusCode === 401 || statusCode === 403) {
         return {
@@ -180,6 +226,7 @@ function buildEmailErrorResult(options: {
   errorType: ResendErrorType;
   retryCount: number;
   statusCode?: number;
+  retryAfterSeconds?: number;
 }): NotificationResult {
   const appError = new AppError("EMAIL_SENDING_FAILED", {
     message: options.message,
@@ -191,7 +238,38 @@ function buildEmailErrorResult(options: {
     errorType: options.errorType,
     retryCount: options.retryCount,
     statusCode: options.statusCode,
+    retryAfterSeconds: options.retryAfterSeconds,
   });
+}
+
+function parseRetryAfterSeconds(
+  headers: Record<string, string> | null | undefined
+): number | undefined {
+  if (!headers) return undefined;
+  const value = headers["retry-after"] ?? headers["Retry-After"];
+  if (!value) return undefined;
+
+  const seconds = Number.parseInt(value, 10);
+  if (Number.isNaN(seconds) || seconds < 0) {
+    return undefined;
+  }
+  return seconds;
+}
+
+function resolveRetryDelayMs(options: {
+  attempt: number;
+  statusCode?: number;
+  retryAfterSeconds?: number;
+}): number {
+  if (options.retryAfterSeconds && options.retryAfterSeconds > 0) {
+    return options.retryAfterSeconds * 1000;
+  }
+
+  if (options.statusCode === 429) {
+    return RATE_LIMIT_RETRY_DELAY_MS;
+  }
+
+  return INITIAL_RETRY_DELAY_MS * Math.pow(2, options.attempt);
 }
 
 /**
@@ -257,7 +335,7 @@ function validateEmailConfig(): { fromEmail: string; fromName: string; adminEmai
  * Resend APIを使用したメール通知サービス
  */
 export class EmailNotificationService implements IEmailNotificationService {
-  private apiKey: string;
+  private resend: Resend;
   private fromEmail: string;
   private fromName: string;
   private adminEmail: string;
@@ -268,7 +346,7 @@ export class EmailNotificationService implements IEmailNotificationService {
       throw new Error("RESEND_API_KEY environment variable is required");
     }
 
-    this.apiKey = apiKey;
+    this.resend = new Resend(apiKey);
 
     // 環境変数をバリデーション
     const config = validateEmailConfig();
@@ -316,9 +394,13 @@ export class EmailNotificationService implements IEmailNotificationService {
    * メール送信（HTML/TEXTテンプレート使用）
    * リトライロジック付き
    */
-  async sendEmail(params: { to: string; template: EmailTemplate }): Promise<NotificationResult> {
+  async sendEmail(params: {
+    to: string;
+    template: EmailTemplate;
+    idempotencyKey?: string;
+  }): Promise<NotificationResult> {
     const { to, template } = params;
-    const idempotencyKey = randomUUID();
+    const idempotencyKey = params.idempotencyKey ?? randomUUID();
 
     // ログ用にマスクされたメールアドレス
     const maskedTo = maskEmail(to);
@@ -344,17 +426,17 @@ export class EmailNotificationService implements IEmailNotificationService {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         // タイムアウト付きでメール送信を実行
-        const result = await this.sendEmailWithTimeout({
-          from: fromField,
-          to: [to],
-          subject: template.subject,
-          html: template.html,
-          text: template.text,
-          ...(template.replyTo && { reply_to: template.replyTo }),
-          headers: {
-            "X-Idempotency-Key": idempotencyKey,
+        const result = await this.sendEmailWithTimeout(
+          {
+            from: fromField,
+            to: [to],
+            subject: template.subject,
+            html: template.html,
+            text: template.text,
+            ...(template.replyTo && { reply_to: template.replyTo }),
           },
-        });
+          idempotencyKey
+        );
 
         // result.errorがある場合
         if (result.error) {
@@ -383,6 +465,7 @@ export class EmailNotificationService implements IEmailNotificationService {
               errorType: "permanent",
               statusCode: errorInfo.statusCode,
               retryCount: attempt,
+              retryAfterSeconds: result.retryAfterSeconds,
             });
           }
 
@@ -393,19 +476,22 @@ export class EmailNotificationService implements IEmailNotificationService {
               errorType: "transient",
               statusCode: errorInfo.statusCode,
               retryCount: attempt,
+              retryAfterSeconds: result.retryAfterSeconds,
             });
           }
 
           // リトライ待機
-          const delay =
-            errorInfo.statusCode === 429
-              ? RATE_LIMIT_RETRY_DELAY_MS
-              : INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
+          const delay = resolveRetryDelayMs({
+            attempt,
+            statusCode: errorInfo.statusCode,
+            retryAfterSeconds: result.retryAfterSeconds,
+          });
 
           this.logger.info("Retrying email send after delay", {
             to: maskedTo,
             attempt: attempt + 1,
             delay_ms: delay,
+            retry_after_seconds: result.retryAfterSeconds,
             outcome: "success",
           });
 
@@ -466,10 +552,10 @@ export class EmailNotificationService implements IEmailNotificationService {
         }
 
         // リトライ待機
-        const delay =
-          errorInfo.statusCode === 429
-            ? RATE_LIMIT_RETRY_DELAY_MS
-            : INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
+        const delay = resolveRetryDelayMs({
+          attempt,
+          statusCode: errorInfo.statusCode,
+        });
 
         this.logger.info("Retrying email send after error", {
           to: maskedTo,
@@ -493,62 +579,55 @@ export class EmailNotificationService implements IEmailNotificationService {
   /**
    * タイムアウト付きでメール送信を実行
    */
-  private async sendEmailWithTimeout(payload: ResendSendPayload): Promise<ResendApiResult> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), RESEND_TIMEOUT_MS);
-
+  private async sendEmailWithTimeout(
+    payload: ResendSendPayload,
+    idempotencyKey: string
+  ): Promise<ResendApiResult> {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     try {
-      return await this.sendEmailRequest(payload, controller.signal);
-    } catch (error) {
-      if (controller.signal.aborted) {
-        throw new Error("Email send timeout");
-      }
-      throw error;
+      const timeoutPromise = new Promise<ResendApiResult>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error("Email send timeout")), RESEND_TIMEOUT_MS);
+      });
+
+      return await Promise.race([this.sendEmailRequest(payload, idempotencyKey), timeoutPromise]);
     } finally {
-      clearTimeout(timeoutId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     }
   }
 
   /**
-   * Resend APIへ直接メール送信リクエストを送る
+   * Resend SDKでメール送信リクエストを送る
    */
   private async sendEmailRequest(
     payload: ResendSendPayload,
-    signal?: AbortSignal
+    idempotencyKey: string
   ): Promise<ResendApiResult> {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
+    const { data, error, headers } = await this.resend.emails.send(
+      {
+        from: payload.from,
+        to: payload.to,
+        subject: payload.subject,
+        html: payload.html,
+        text: payload.text,
+        ...(payload.reply_to && { replyTo: payload.reply_to }),
+        ...(payload.headers && { headers: payload.headers }),
       },
-      signal,
-      body: JSON.stringify(payload),
-    });
+      { idempotencyKey }
+    );
+    const retryAfterSeconds = parseRetryAfterSeconds(headers);
 
-    if (!response.ok) {
-      let parsed: Record<string, unknown> | null = null;
-      try {
-        parsed = (await response.json()) as Record<string, unknown>;
-      } catch {
-        parsed = null;
-      }
-
-      return {
-        data: null,
-        error: {
-          message:
-            (parsed?.message as string | undefined) || response.statusText || "Request failed",
-          name: parsed?.name as string | undefined,
-          statusCode: response.status,
-        },
-      };
-    }
-
-    const data = (await response.json()) as ResendApiSuccess;
     return {
-      data,
-      error: null,
+      data: data ? { id: data.id } : null,
+      error: error
+        ? {
+            message: error.message,
+            name: error.name,
+            statusCode: error.statusCode ?? undefined,
+          }
+        : null,
+      retryAfterSeconds,
     };
   }
 
@@ -560,9 +639,10 @@ export class EmailNotificationService implements IEmailNotificationService {
     subject: string;
     message: string;
     details?: Record<string, unknown>;
+    idempotencyKey?: string;
   }): Promise<NotificationResult> {
     try {
-      const { subject, message, details } = params;
+      const { subject, message, details, idempotencyKey } = params;
 
       const template = buildAdminAlertTemplate({
         subject,
@@ -577,6 +657,7 @@ export class EmailNotificationService implements IEmailNotificationService {
           fromEmail: this.fromEmail,
           fromName: this.fromName,
         },
+        idempotencyKey,
       });
 
       // 管理者アラート送信に失敗した場合は詳細をログに記録

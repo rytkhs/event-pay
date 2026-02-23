@@ -21,6 +21,8 @@ export interface NotificationMeta {
   retryCount?: number;
   /** ResendやWebhook先のステータスコード */
   statusCode?: number;
+  /** 再試行までの推奨待機秒数（Retry-After） */
+  retryAfterSeconds?: number;
   /** 通知処理をスキップしたか */
   skipped?: boolean;
 }
@@ -140,7 +142,11 @@ export interface IEmailNotificationService {
   /**
    * メール送信
    */
-  sendEmail(params: { to: string; template: EmailTemplate }): Promise<NotificationResult>;
+  sendEmail(params: {
+    to: string;
+    template: EmailTemplate;
+    idempotencyKey?: string;
+  }): Promise<NotificationResult>;
 
   /**
    * 管理者向けアラートメール送信
@@ -149,6 +155,7 @@ export interface IEmailNotificationService {
     subject: string;
     message: string;
     details?: Record<string, unknown>;
+    idempotencyKey?: string;
   }): Promise<NotificationResult>;
 }
 

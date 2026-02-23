@@ -10,6 +10,7 @@ import { buildGuestUrl } from "@core/utils/guest-token";
 import { Database } from "@/types/database";
 
 import { EmailNotificationService } from "./email-service";
+import { buildEmailIdempotencyKey } from "./idempotency";
 import {
   buildAccountRestrictedTemplate,
   buildAccountStatusChangedTemplate,
@@ -64,6 +65,10 @@ export class NotificationService implements INotificationService {
         template: buildAccountVerifiedTemplate({
           userName: userInfo.name || "ユーザー",
         }),
+        idempotencyKey: buildEmailIdempotencyKey({
+          scope: "account-verified",
+          parts: [data.userId, data.accountId],
+        }),
       });
     } catch (error) {
       return errFrom(error, {
@@ -99,6 +104,16 @@ export class NotificationService implements INotificationService {
           requiredActions: data.requiredActions,
           dashboardUrl: data.dashboardUrl,
         }),
+        idempotencyKey: buildEmailIdempotencyKey({
+          scope: "account-restricted-user",
+          parts: [
+            data.userId,
+            data.accountId,
+            data.restrictionReason,
+            (data.requiredActions || []).join(","),
+            data.dashboardUrl,
+          ],
+        }),
       });
 
       // 管理者にもアラートを送信（失敗してもユーザー通知の結果には影響させない）
@@ -111,6 +126,16 @@ export class NotificationService implements INotificationService {
           restrictionReason: data.restrictionReason,
           requiredActions: data.requiredActions,
         },
+        idempotencyKey: buildEmailIdempotencyKey({
+          scope: "account-restricted-admin",
+          parts: [
+            data.userId,
+            data.accountId,
+            data.restrictionReason,
+            (data.requiredActions || []).join(","),
+            data.dashboardUrl,
+          ],
+        }),
       });
 
       // 管理者アラートが失敗してもログのみ記録（ユーザー通知の成功/失敗は返す）
@@ -163,6 +188,17 @@ export class NotificationService implements INotificationService {
             newStatus: data.newStatus,
             chargesEnabled: data.chargesEnabled,
             payoutsEnabled: data.payoutsEnabled,
+          }),
+          idempotencyKey: buildEmailIdempotencyKey({
+            scope: "account-status-change",
+            parts: [
+              data.userId,
+              data.accountId,
+              data.oldStatus,
+              data.newStatus,
+              data.chargesEnabled,
+              data.payoutsEnabled,
+            ],
           }),
         });
       }
@@ -226,6 +262,17 @@ export class NotificationService implements INotificationService {
           attendanceStatus: data.attendanceStatus,
           guestUrl,
         }),
+        idempotencyKey: buildEmailIdempotencyKey({
+          scope: "participation-registered",
+          parts: [
+            data.guestToken,
+            data.inviteToken,
+            data.email,
+            data.eventTitle,
+            data.eventDate,
+            data.attendanceStatus,
+          ],
+        }),
       });
     } catch (error) {
       return errFrom(error, {
@@ -249,6 +296,10 @@ export class NotificationService implements INotificationService {
           amount: data.amount,
           paidAt: data.paidAt,
           receiptUrl: data.receiptUrl,
+        }),
+        idempotencyKey: buildEmailIdempotencyKey({
+          scope: "payment-completed",
+          parts: [data.email, data.eventTitle, data.amount, data.paidAt, data.receiptUrl || ""],
         }),
       });
     } catch (error) {

@@ -6,6 +6,7 @@ import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import { logger } from "@core/logging/app-logger";
 import { logEmail } from "@core/logging/system-logger";
 import { EmailNotificationService } from "@core/notification/email-service";
+import { buildEmailIdempotencyKey } from "@core/notification/idempotency";
 import { ReminderService } from "@core/notification/reminder-service";
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
@@ -106,6 +107,20 @@ export async function GET(request: NextRequest) {
           failureRate: `${(failureRate * 100).toFixed(1)}%`,
           summaries,
         },
+        idempotencyKey: buildEmailIdempotencyKey({
+          scope: "reminder-high-failure-rate-alert",
+          parts: [
+            new Date().toISOString().slice(0, 10),
+            totalSent,
+            totalFailed,
+            summaries
+              .map(
+                (summary) =>
+                  `${summary.reminderType}:${summary.successCount}:${summary.failureCount}`
+              )
+              .join("|"),
+          ],
+        }),
       });
 
       cronLogger.warn("High failure rate detected, admin alert sent", {
