@@ -558,7 +558,7 @@ async function verifyGuestTokenStorage(
 
 /**
  * 参加登録を処理するサーバーアクション
- * セキュリティ対策強化版：容量チェック、重複チェック、ゲストトークン生成、セキュリティログ記録を含む
+ * 容量チェック、重複チェック、ゲストトークン生成、セキュリティログ記録を含む
  */
 export async function registerParticipationAction(
   formData: FormData
