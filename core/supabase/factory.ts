@@ -105,8 +105,16 @@ export class SupabaseClientFactory {
         return this.createMiddlewareClient(config);
 
       case "api":
+        return await this.createRequestServerClient({
+          context: "api",
+          allowCookieWriteFailure: false,
+        });
+
       case "server":
-        return await this.createApiServerClient();
+        return await this.createRequestServerClient({
+          context: "server",
+          allowCookieWriteFailure: true,
+        });
 
       default:
         throw new Error(`Unknown context: ${context}`);
@@ -143,7 +151,13 @@ export class SupabaseClientFactory {
     }) as unknown as SupabaseClient<Database>;
   }
 
-  private static async createApiServerClient(): Promise<SupabaseClient<Database>> {
+  private static async createRequestServerClient({
+    context,
+    allowCookieWriteFailure,
+  }: {
+    context: "api" | "server";
+    allowCookieWriteFailure: boolean;
+  }): Promise<SupabaseClient<Database>> {
     const cookieStore = await this.getRequestCookieStoreOrThrow();
     const cookieConfig = getSupabaseCookieConfig();
 
@@ -162,8 +176,27 @@ export class SupabaseClientFactory {
             cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, options);
             });
-          } catch (error) {
-            // Server Componentなど書き込み不可の環境では無視
+          } catch (error: unknown) {
+            if (allowCookieWriteFailure) {
+              // Server Componentなど書き込み不可の環境では無視
+              return;
+            }
+
+            handleServerError("INTERNAL_ERROR", {
+              category: "system",
+              action: "client_creation",
+              actorType: "system",
+              additionalData: {
+                reason: "COOKIE_WRITE_FAILED",
+                context,
+                error_message: error instanceof Error ? error.message : String(error),
+                environment: getEnv().NODE_ENV,
+              },
+            });
+
+            throw new Error(
+              "Supabase server client failed to write auth cookies. Ensure this runs in a Route Handler or Server Action."
+            );
           }
         },
       },
