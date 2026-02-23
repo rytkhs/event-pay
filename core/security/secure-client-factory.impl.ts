@@ -105,17 +105,15 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   }
 
   private getRequestCookieStoreOrThrow(): {
-    get: (name: string) => { value?: string } | undefined;
+    getAll: () => Array<{ name: string; value: string }>;
     set: (name: string, value: string, options?: CookieOptions) => void;
-    delete: (name: string) => void;
   } {
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { cookies } = require("next/headers") as {
         cookies: () => {
-          get: (name: string) => { value?: string } | undefined;
+          getAll: () => Array<{ name: string; value: string }>;
           set: (name: string, value: string, options?: CookieOptions) => void;
-          delete: (name: string) => void;
         };
       };
       return cookies();
@@ -165,14 +163,17 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     return createServerClient(supabaseUrl, anonKey, {
       cookieOptions: cookieConfig,
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
         },
-        set(name: string, value: string, cookieOptions: CookieOptions) {
-          cookieStore.set(name, value, cookieOptions);
-        },
-        remove(name: string) {
-          cookieStore.delete(name);
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch (_) {
+            // Server Componentなど書き込み不可の環境では無視
+          }
         },
       },
       auth: {
@@ -210,9 +211,8 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       // サーバーサイドでは createServerClient を使用（ただしcookiesは不要）
       return createServerClient(supabaseUrl, anonKey, {
         cookies: {
-          get: () => undefined,
-          set: () => {},
-          remove: () => {},
+          getAll: () => [],
+          setAll: () => {},
         },
         auth: {
           persistSession: false, // ゲストセッションは永続化しない
@@ -384,14 +384,21 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     return createServerClient(supabaseUrl, anonKey, {
       cookieOptions: cookieConfig,
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
+        getAll() {
+          return request.cookies.getAll();
         },
-        set(name: string, value: string, cookieOptions: CookieOptions) {
-          response.cookies.set(name, value, cookieOptions);
-        },
-        remove(name: string, cookieOptions: CookieOptions) {
-          response.cookies.delete({ name, ...cookieOptions });
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          cookiesToSet.forEach(({ name, value }) => {
+            try {
+              request.cookies.set(name, value);
+            } catch (_) {
+              // ignore – request.cookies may be immutable in some contexts
+            }
+          });
+
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
         },
       },
       auth: {
