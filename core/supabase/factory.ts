@@ -32,6 +32,32 @@ interface CookieStoreLike {
 export class SupabaseClientFactory {
   private static sessionManager = getSessionManager();
 
+  private static getRequestCookieStoreOrThrow(): CookieStoreLike {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const nextHeaders = require("next/headers") as {
+        cookies: () => CookieStoreLike;
+      };
+      return nextHeaders.cookies();
+    } catch (error) {
+      const message =
+        "Supabase server client requires next/headers cookies() in a server request context.";
+
+      handleServerError("INTERNAL_ERROR", {
+        category: "system",
+        action: "client_creation",
+        actorType: "system",
+        additionalData: {
+          reason: "NEXT_HEADERS_UNAVAILABLE",
+          error_message: error instanceof Error ? error.message : String(error),
+          environment: getEnv().NODE_ENV,
+        },
+      });
+
+      throw new Error(message);
+    }
+  }
+
   private static getURL(): string {
     const env = getEnv();
     const value = env.NEXT_PUBLIC_SUPABASE_URL;
@@ -133,30 +159,7 @@ export class SupabaseClientFactory {
   }
 
   private static createApiServerClient(): SupabaseClient<Database> {
-    // テスト環境での dynamic import 対応
-    let cookieStore: CookieStoreLike;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const nextHeaders = require("next/headers") as {
-        cookies: () => CookieStoreLike;
-      };
-      cookieStore = nextHeaders.cookies();
-    } catch (error) {
-      // next/headersが利用できない場合（テスト環境など）は、空のcookieStore実装を提供
-      logger.warn("next/headers not available, using empty cookie store", {
-        category: "system",
-        action: "client_creation",
-        actor_type: "system",
-        error_message: error instanceof Error ? error.message : String(error),
-        environment: getEnv().NODE_ENV,
-        outcome: "failure",
-      });
-
-      cookieStore = {
-        getAll: () => [] as { name: string; value: string }[],
-        set: () => {},
-      };
-    }
+    const cookieStore = this.getRequestCookieStoreOrThrow();
 
     return createServerClient<Database>(this.getURL(), this.getAnonKey(), {
       cookies: {

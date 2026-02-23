@@ -42,9 +42,7 @@ jest.mock("@core/security/secure-client-factory.impl", () => {
           // sharedAdminClientはテストのbeforeAllでセットアップされる
           // ここで参照することでRLSをバイパス
           if (!sharedAdminClient) {
-            // フォールバック: 実際のadminClientを作成
-            const factory = new actual.SecureSupabaseClientFactory();
-            return factory.createAuthenticatedClient();
+            throw new Error("sharedAdminClient is not initialized in beforeAll.");
           }
           return sharedAdminClient;
         },
