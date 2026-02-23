@@ -2,6 +2,10 @@
  * 通知メールのHTML/TEXTテンプレート生成
  */
 
+import { ja } from "date-fns/locale";
+
+import { formatUtcToJst } from "@core/utils/timezone";
+
 import type {
   AccountRestrictedNotification,
   AccountStatusChangeNotification,
@@ -44,22 +48,16 @@ function nl2br(input: string): string {
 
 function formatJstDate(
   value: string | Date,
-  options: Intl.DateTimeFormatOptions = {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }
+  formatType: "default" | "withWeekday" = "default"
 ): string {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) {
     return typeof value === "string" ? value : "-";
   }
-  return date.toLocaleString("ja-JP", {
-    ...options,
-    timeZone: "Asia/Tokyo",
-  });
+  const formatString =
+    formatType === "withWeekday" ? "yyyy年M月d日(EEE) HH:mm" : "yyyy年M月d日 HH:mm";
+
+  return formatUtcToJst(date, formatString, { locale: ja });
 }
 
 function formatYen(amount: number): string {
@@ -475,14 +473,7 @@ export function buildEventStartReminderTemplate(params: {
   guestUrl: string;
 }): EmailTemplate {
   const subject = `【${APP_NAME}】${params.eventTitle} 開催のリマインダー`;
-  const eventDate = formatJstDate(params.eventDate, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const eventDate = formatJstDate(params.eventDate, "withWeekday");
 
   const html = renderLayout({
     preheader: `${params.eventTitle}の開始が近づいています`,
