@@ -19,7 +19,7 @@ import {
   checkEventCapacity,
   checkDuplicateEmail,
 } from "@core/utils/invite-token";
-import { getSafeHeaders } from "@core/utils/next";
+import { getHeaders } from "@core/utils/next";
 import {
   participationFormSchema,
   createParticipationFormSchema,
@@ -563,8 +563,8 @@ async function verifyGuestTokenStorage(
 export async function registerParticipationAction(
   formData: FormData
 ): Promise<ActionResult<RegisterParticipationData>> {
-  // リクエスト情報を取得（テスト環境でも安全）
-  const { context: securityContext } = await getSafeHeaders();
+  // リクエスト情報を取得
+  const { context: securityContext } = await getHeaders();
 
   try {
     // 1. FormDataの抽出と基本バリデーション

@@ -108,33 +108,11 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     return value;
   }
 
-  /**
-   * 通常の認証済みクライアントを作成
-   */
-  createAuthenticatedClient(options?: ClientCreationOptions) {
-    const env = getEnv();
-    const supabaseUrl = this.getSupabaseUrl();
-    const anonKey = this.getAnonKey();
-
-    // テスト環境またはヘッダーが利用できない場合はブラウザクライアントを作成
-    if (env.NODE_ENV === "test" || typeof document !== "undefined") {
-      return createBrowserClient(supabaseUrl, anonKey, {
-        auth: {
-          persistSession: options?.persistSession ?? true,
-          autoRefreshToken: options?.autoRefreshToken ?? true,
-        },
-        global: {
-          headers: options?.headers || {},
-        },
-      });
-    }
-
-    // 動的にnext/headersをインポート
-    let cookieStore: {
-      get: (name: string) => { value?: string } | undefined;
-      set: (name: string, value: string, options?: CookieOptions) => void;
-      delete: (name: string) => void;
-    };
+  private getRequestCookieStoreOrThrow(): {
+    get: (name: string) => { value?: string } | undefined;
+    set: (name: string, value: string, options?: CookieOptions) => void;
+    delete: (name: string) => void;
+  } {
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { cookies } = require("next/headers") as {
@@ -144,19 +122,48 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
           delete: (name: string) => void;
         };
       };
-      cookieStore = cookies();
+      return cookies();
     } catch (error) {
-      // next/headersが利用できない場合はブラウザクライアントを作成
-      return createBrowserClient(supabaseUrl, anonKey, {
-        auth: {
-          persistSession: options?.persistSession ?? true,
-          autoRefreshToken: options?.autoRefreshToken ?? true,
-        },
-        global: {
-          headers: options?.headers || {},
+      const message =
+        "createAuthenticatedClient requires next/headers cookies() in a server request context.";
+
+      handleServerError("INTERNAL_ERROR", {
+        category: "authentication",
+        action: "client_creation",
+        actorType: "system",
+        additionalData: {
+          reason: "NEXT_HEADERS_UNAVAILABLE",
+          error_message: error instanceof Error ? error.message : String(error),
+          environment: getEnv().NODE_ENV,
         },
       });
+
+      throw new Error(message);
     }
+  }
+
+  /**
+   * 通常の認証済みクライアントを作成
+   */
+  createAuthenticatedClient(options?: ClientCreationOptions) {
+    const supabaseUrl = this.getSupabaseUrl();
+    const anonKey = this.getAnonKey();
+
+    if (typeof window !== "undefined" || typeof document !== "undefined") {
+      const message =
+        "createAuthenticatedClient is server-only. Use createBrowserClient on the client.";
+      handleServerError("INTERNAL_ERROR", {
+        category: "authentication",
+        action: "client_creation",
+        actorType: "system",
+        additionalData: {
+          reason: "BROWSER_CONTEXT_NOT_SUPPORTED",
+        },
+      });
+      throw new Error(message);
+    }
+
+    const cookieStore = this.getRequestCookieStoreOrThrow();
 
     return createServerClient(supabaseUrl, anonKey, {
       cookies: {
