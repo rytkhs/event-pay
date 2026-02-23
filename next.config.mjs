@@ -38,12 +38,6 @@ const nextConfig = {
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve = config.resolve || {};
-      config.resolve.alias = {
-        ...(config.resolve.alias ?? {}),
-        "@react-email/tailwind": false,
-        "@react-email/render": false,
-        "react-email": false,
-      };
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,

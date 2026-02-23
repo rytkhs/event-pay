@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     actor_type: "anonymous",
   });
 
-  const origin = buildOrigin();
+  const origin = await buildOrigin();
 
   // 1. エラーハンドリングとCSRF検証
   if (error) {
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.AUTH_FAILED}`);
   }
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const storedState = cookieStore.get(LINE_OAUTH_COOKIES.STATE)?.value;
   const nextPath = cookieStore.get(LINE_OAUTH_COOKIES.NEXT)?.value ?? "/dashboard";
   const codeVerifier = cookieStore.get(LINE_OAUTH_COOKIES.CODE_VERIFIER)?.value;
@@ -315,7 +315,7 @@ export async function GET(request: Request) {
           const { ga4Server } = await import("@core/analytics/ga4-server");
 
           // _ga CookieからClient IDを取得
-          const cookieStore = cookies();
+          const cookieStore = await cookies();
           const gaCookie = cookieStore.get("_ga")?.value;
           const clientId = extractClientIdFromGaCookie(gaCookie);
 

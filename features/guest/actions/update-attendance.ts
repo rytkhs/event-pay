@@ -26,7 +26,7 @@ export async function updateGuestAttendanceAction(
   // テスト環境ではheaders()が利用できないため、安全に取得
   let securityContext: { userAgent?: string; ip?: string } = {};
   try {
-    const headersList = headers();
+    const headersList = await headers();
     const userAgent = headersList.get("user-agent") || undefined;
     const ip = getClientIPFromHeaders(headersList);
     securityContext = { userAgent, ip };

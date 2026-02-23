@@ -248,10 +248,10 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
 
     // === 2. テストユーザーでログイン ===
     console.log("🔐 ログイン中...");
-
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
     // セッションをクリア
     await page.context().clearCookies();
-    await page.goto("http://localhost:3000/login");
+    await page.goto(baseUrl + "/login");
     await page.evaluate(() => localStorage.clear());
     await page.reload();
 
@@ -265,7 +265,7 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
     await page.waitForURL("**/dashboard", { timeout: 20000 });
 
     // === 3. 参加者管理ページにアクセス ===
-    await page.goto(`http://localhost:3000/events/${TEST_IDS.EVENT_ID}`);
+    await page.goto(baseUrl + `/events/${TEST_IDS.EVENT_ID}`);
     await page.waitForLoadState("networkidle");
 
     // 参加者タブに切り替え

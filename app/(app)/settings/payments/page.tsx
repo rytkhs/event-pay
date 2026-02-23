@@ -30,13 +30,19 @@ export const metadata: Metadata = {
 };
 
 interface PaymentSettingsPageProps {
-  searchParams: {
-    refresh?: string;
-    connect?: string;
-  };
+  searchParams: Promise<PaymentSettingsSearchParams>;
 }
 
-async function PaymentSettingsContent({ searchParams }: PaymentSettingsPageProps) {
+interface PaymentSettingsContentProps {
+  searchParams: PaymentSettingsSearchParams;
+}
+
+interface PaymentSettingsSearchParams {
+  refresh?: string;
+  connect?: string;
+}
+
+async function PaymentSettingsContent({ searchParams }: PaymentSettingsContentProps) {
   const supabase = createClient();
   const {
     data: { user },
@@ -145,10 +151,12 @@ function LoadingSkeleton() {
   );
 }
 
-export default function PaymentSettingsPage(props: PaymentSettingsPageProps) {
+export default async function PaymentSettingsPage(props: PaymentSettingsPageProps) {
+  const searchParams = await props.searchParams;
+
   return (
     <Suspense fallback={<LoadingSkeleton />}>
-      <PaymentSettingsContent {...props} />
+      <PaymentSettingsContent searchParams={searchParams} />
     </Suspense>
   );
 }

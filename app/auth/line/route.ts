@@ -35,14 +35,14 @@ export async function GET(request: Request) {
     );
   }
 
-  const origin = buildOrigin();
+  const origin = await buildOrigin();
   const redirectUri = `${origin}/auth/callback/line`;
 
   // CSRF対策用のstate生成
   const state = crypto.randomBytes(32).toString("hex");
 
   // Cookieにstateを保存
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const cookieOptions = createLineOAuthCookieOptions();
 
   cookieStore.set(LINE_OAUTH_COOKIES.STATE, state, cookieOptions);

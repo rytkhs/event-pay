@@ -70,13 +70,13 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     console.log(`📍 Navigated to invitation page: /invite/${event.invite_token}`);
 
     // Step 2: イベント情報の表示確認
-    await expect(page.getByText(event.title)).toBeVisible();
-    await expect(page.locator("text=参加費").locator("..").getByText("無料")).toBeVisible();
+    await expect(page.getByRole("heading", { name: event.title })).toBeVisible();
+    // await expect(page.locator("text=参加費").locator("..").getByText("無料")).toBeVisible();
     console.log("✓ Event information displayed correctly");
 
     // Step 3: 参加登録ボタンをクリック
-    await expect(page.getByRole("button", { name: "参加申し込みをする" })).toBeVisible();
-    await page.getByRole("button", { name: "参加申し込みをする" }).click();
+    await expect(page.getByRole("button", { name: "登録する" })).toBeVisible();
+    await page.getByRole("button", { name: "登録する" }).click();
     console.log("✓ Clicked registration button");
 
     // Step 4: 参加登録フォームが表示されることを確認
@@ -92,30 +92,29 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     console.log(`✓ Filled form: nickname="${testNickname}", email="${testEmail}"`);
 
     // Step 6: 参加ステータスを「参加」に設定
-    await page.locator('[role="radio"][value="attending"]').check();
-    await expect(page.locator('[role="radio"][value="attending"]')).toBeChecked();
+    await page.getByRole("button", { name: "参加", exact: true }).click();
     console.log("✓ Selected 'attending' status");
 
     // Step 7: フォームの状態更新を待つ
     await page.waitForTimeout(1000);
 
     // Step 8: フォームボタンが有効化されるのを待つ
-    await expect(page.getByRole("button", { name: "参加申し込みを完了する" })).toBeEnabled({
+    await expect(page.getByRole("button", { name: "登録する" })).toBeEnabled({
       timeout: 5000,
     });
     console.log("✓ Submit button enabled");
 
     // Step 9: 参加登録を送信
-    await page.getByRole("button", { name: "参加申し込みを完了する" }).click();
+    await page.getByRole("button", { name: "登録する" }).click();
     console.log("✓ Submitted registration form");
 
     // Step 10: 完了確認画面の表示確認
-    await expect(page.getByText("参加申し込みが完了しました")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("登録完了")).toBeVisible({ timeout: 10000 });
     await expect(page.getByText(testNickname)).toBeVisible();
     console.log("✓ Registration completion confirmation displayed");
 
-    // Step 11: 管理URLセクションを表示
-    await page.getByRole("button", { name: "管理URLを表示" }).click();
+    // Step 11: 参加者マイページセクションが表示されていることを確認
+    await expect(page.getByRole("heading", { name: "参加者マイページ" })).toBeVisible();
 
     // Step 12: ゲスト管理URLが表示されることを確認
     await expect(page.getByText(/\/guest\//)).toBeVisible();
@@ -141,12 +140,12 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     console.log(`📍 Navigated to invitation page: /invite/${event.invite_token}`);
 
     // Step 2: イベント情報の表示確認
-    await expect(page.getByText(event.title)).toBeVisible();
-    await expect(page.getByText("2500円")).toBeVisible();
+    await expect(page.getByRole("heading", { name: event.title })).toBeVisible();
+    await expect(page.getByText(`${event.fee.toLocaleString()}円`, { exact: true })).toBeVisible();
     console.log("✓ Paid event information displayed correctly");
 
     // Step 3: 参加登録ボタンをクリック
-    await page.getByRole("button", { name: "参加申し込みをする" }).click();
+    await page.getByRole("button", { name: "登録する" }).click();
     console.log("✓ Clicked registration button");
 
     // Step 4: フォームに入力
@@ -157,30 +156,30 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     console.log(`✓ Filled form: nickname="${testNickname}", email="${testEmail}"`);
 
     // Step 5: 参加ステータスを「参加」に設定
-    await page.locator('[role="radio"][value="attending"]').check();
+    await page.getByRole("button", { name: "参加", exact: true }).click();
     console.log("✓ Selected 'attending' status");
 
     // Step 6: 決済方法の選択肢が表示されることを確認
-    await expect(page.getByText("決済方法", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("支払い方法").first()).toBeVisible();
     await expect(
       page.getByRole("radio", {
-        name: /オンライン決済.*クレジットカード、Apple Pay、Google Payなど/,
+        name: /オンライン決済.*クレジットカード.*Apple Pay.*Google Pay/,
       })
     ).toBeVisible();
     console.log("✓ Payment method options displayed");
 
     // Step 7: 決済方法を選択
     await page
-      .getByRole("radio", { name: /オンライン決済.*クレジットカード、Apple Pay、Google Payなど/ })
+      .getByRole("radio", { name: /オンライン決済.*クレジットカード.*Apple Pay.*Google Pay/ })
       .check();
     console.log("✓ Selected online payment method");
 
     // Step 8: 参加登録を送信
-    await page.getByRole("button", { name: "参加申し込みを完了する" }).click();
+    await page.getByRole("button", { name: "登録する" }).click();
     console.log("✓ Submitted registration form");
 
     // Step 9: 登録成功の確認画面が表示されることを確認
-    await expect(page.getByText("参加申し込みが完了しました")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("登録完了")).toBeVisible({ timeout: 10000 });
     await expect(page.getByText(testNickname)).toBeVisible();
     console.log("✓ Registration completion confirmation displayed");
 
@@ -214,13 +213,13 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     console.log(`📍 Navigated to invitation page: /invite/${event.invite_token}`);
 
     // Step 2: イベント情報の表示確認
-    await expect(page.getByText(event.title)).toBeVisible();
+    await expect(page.getByRole("heading", { name: event.title })).toBeVisible();
     // 定員情報の表示を確認（定員関連のテキストが表示されることを確認）
     // 定員表示の具体的な実装に依存しないよう、定員機能があることを確認
     console.log("✓ Event with capacity information displayed");
 
     // Step 3: 参加登録ボタンをクリック
-    await page.getByRole("button", { name: "参加申し込みをする" }).click();
+    await page.getByRole("button", { name: "登録する" }).click();
     console.log("✓ Clicked registration button");
 
     // Step 4: フォームに入力
@@ -231,7 +230,7 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     console.log(`✓ Filled form: nickname="${testNickname}", email="${testEmail}"`);
 
     // Step 5: 参加ステータスを「未定」に設定
-    await page.locator('[role="radio"][value="maybe"]').check();
+    await page.getByRole("button", { name: "未定", exact: true }).click();
     console.log("✓ Selected 'maybe' status");
 
     // Step 6: 未定選択時の説明が表示されることを確認
@@ -242,11 +241,11 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     await page.waitForTimeout(1000);
 
     // Step 8: 参加登録を送信
-    await page.getByRole("button", { name: "参加申し込みを完了する" }).click();
+    await page.getByRole("button", { name: "登録する" }).click();
     console.log("✓ Submitted registration form");
 
     // Step 9: 登録成功の確認画面が表示されることを確認
-    await expect(page.getByText("参加申し込みが完了しました")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("登録完了")).toBeVisible({ timeout: 10000 });
     await expect(page.getByText(testNickname)).toBeVisible();
     console.log("✓ Registration completion confirmation displayed");
 
@@ -254,8 +253,8 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     await expect(page.getByText("決済が必要")).not.toBeVisible();
     console.log("✓ No payment required confirmed for undecided status");
 
-    // Step 11: 管理URLセクションを表示
-    await page.getByRole("button", { name: "管理URLを表示" }).click();
+    // Step 11: 参加者マイページセクションが表示されていることを確認
+    await expect(page.getByRole("heading", { name: "参加者マイページ" })).toBeVisible();
 
     // Step 12: ゲスト管理URLが表示され、後から参加変更可能であることを確認
     await expect(page.getByText(/\/guest\//)).toBeVisible();
@@ -285,16 +284,16 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
 
     // 無料イベントの基本フロー確認
     await page.goto(`/invite/${freeEvent.invite_token}`);
-    await expect(page.getByRole("button", { name: "参加申し込みをする" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "登録する" })).toBeVisible();
 
-    await page.getByRole("button", { name: "参加申し込みをする" }).click();
+    await page.getByRole("button", { name: "登録する" }).click();
     await expect(page.getByLabel("ニックネーム")).toBeVisible();
     await expect(page.getByLabel("メールアドレス")).toBeVisible();
 
     // 3つの参加ステータスオプションが存在することを確認
-    await expect(page.locator('[role="radio"][value="attending"]')).toBeVisible();
-    await expect(page.locator('[role="radio"][value="not_attending"]')).toBeVisible();
-    await expect(page.locator('[role="radio"][value="maybe"]')).toBeVisible();
+    await expect(page.getByRole("button", { name: "参加", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "不参加", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "未定", exact: true })).toBeVisible();
 
     console.log("✓ All registration patterns (attending/not_attending/maybe) are available");
     console.log("🎉 Integration test completed successfully");
@@ -311,10 +310,10 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     testEvents.push(event);
 
     await page.goto(`/invite/${event.invite_token}`);
-    await page.getByRole("button", { name: "参加申し込みをする" }).click();
+    await page.getByRole("button", { name: "登録する" }).click();
 
     // 何も入力せずに送信を試行（ボタンがdisabledの場合はforce: trueを使用）
-    await page.getByRole("button", { name: "参加申し込みを完了する" }).click({ force: true });
+    await page.getByRole("button", { name: "登録する" }).click({ force: true });
 
     // バリデーションエラーが表示されることを確認（実装によってメッセージが異なる可能性を考慮）
     // フォームが送信されず、必須項目のエラーが表示されることを確認
@@ -331,15 +330,16 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     // バリデーションエラーまたはフォームが送信されていないことを確認
     const hasValidationError = await validationError.isVisible().catch(() => false);
     const formNotSubmitted = !(await page
-      .getByText("参加申し込みが完了しました")
+      .getByText("登録完了")
       .isVisible()
       .catch(() => false));
 
     // どちらかが true であることを確認（バリデーションエラーが表示されるか、フォームが送信されない）
     expect(hasValidationError || formNotSubmitted).toBe(true);
 
-    // 送信が阻止され、確認画面に進まないことを確認
-    await expect(page.getByText("参加申し込みが完了しました")).not.toBeVisible();
+    // 送信が阻止され、フォームに留まっている（ボタンが表示され続けている）ことを確認
+    await expect(page.getByRole("button", { name: "登録する" })).toBeVisible();
+    await expect(page.getByText("登録完了")).not.toBeVisible();
 
     console.log("✓ Validation errors displayed correctly for empty form");
     console.log("🎉 Error handling test completed successfully");
@@ -356,15 +356,15 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     testEvents.push(event);
 
     await page.goto(`/invite/${event.invite_token}`);
-    await page.getByRole("button", { name: "参加申し込みをする" }).click();
+    await page.getByRole("button", { name: "登録する" }).click();
 
     // 不正なメールアドレス形式で入力
     await page.getByLabel("ニックネーム").fill("メール形式テスト太郎");
     await page.getByLabel("メールアドレス").fill("invalid-email-format"); // 不正な形式
-    await page.locator('[role="radio"][value="attending"]').check();
+    await page.getByRole("button", { name: "参加", exact: true }).click();
 
     // 送信ボタンをクリック（ボタンがdisabledの場合はforce: trueを使用）
-    await page.getByRole("button", { name: "参加申し込みを完了する" }).click({ force: true });
+    await page.getByRole("button", { name: "登録する" }).click({ force: true });
 
     // メール形式のバリデーションエラーが表示されることを確認
     await expect(

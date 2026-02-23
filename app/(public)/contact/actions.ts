@@ -1,13 +1,13 @@
 "use server";
 
-import * as React from "react";
-
 import { headers } from "next/headers";
 
 import { InputSanitizer } from "@core/auth-security";
 import { zodFail, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
+import { buildEmailIdempotencyKey } from "@core/notification/idempotency";
 import { sendSlackText } from "@core/notification/slack";
+import { buildAdminContactNoticeTemplate } from "@core/notification/templates";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { hmacSha256Hex } from "@core/rate-limit/hash";
 import { createClient } from "@core/supabase/server";
@@ -18,8 +18,6 @@ import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJst, formatDateToJstYmd } from "@core/utils/timezone";
 import { ContactInputSchema, type ContactInput } from "@core/validation/contact";
-
-import AdminContactNotice from "@/emails/contact/AdminContactNotice";
 
 /**
  * メールアドレスをマスクする（ログ用）
@@ -42,7 +40,7 @@ export async function submitContact(input: ContactInput) {
     return zodFail(parsed.error);
   }
 
-  const h = headers();
+  const h = await headers();
   const ip = getClientIPFromHeaders(h);
 
   // 2. レート制限チェック
@@ -159,15 +157,16 @@ export async function submitContact(input: ContactInput) {
 
         const result = await emailService.sendEmail({
           to: getEnv().ADMIN_EMAIL || "admin@eventpay.jp",
-          template: {
-            subject: "【みんなの集金】新しいお問い合わせが届きました",
-            react: React.createElement(AdminContactNotice, {
-              name: nameSanitized,
-              email,
-              messageExcerpt: excerpt,
-              receivedAt,
-            }),
-          },
+          template: buildAdminContactNoticeTemplate({
+            name: nameSanitized,
+            email,
+            messageExcerpt: excerpt,
+            receivedAt,
+          }),
+          idempotencyKey: buildEmailIdempotencyKey({
+            scope: "contact-admin-notice",
+            parts: [fingerprintHash, dayJst],
+          }),
         });
 
         if (!result.success) {

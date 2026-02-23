@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 // QStash Receiver.verify を常にtrueにする
-const mockVerify = jest.fn<(...args: any[]) => Promise<boolean>>();
+const mockVerify = jest.fn<Promise<boolean>, any[]>();
 jest.mock("@upstash/qstash", () => ({
   Receiver: jest.fn().mockImplementation(() => ({
     verify: (...args: unknown[]) => mockVerify(...args),

@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import type { Thing, WithContext } from "schema-dts";
 
 /**

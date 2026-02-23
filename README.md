@@ -101,7 +101,6 @@ event-pay/
 ├── components/              # UIコンポーネント
 ├── supabase/                # migrations
 ├── tests/                   # unit / e2e
-├── emails/                  # メールテンプレート
 └── wrangler.jsonc           # Cloudflare Workers 設定
 ```
 
@@ -148,11 +147,6 @@ npm run check:all
 Stripe Webhook（必要時）:
 ```
 npm run stripe:listen
-```
-
-メールテンプレート（必要時）:
-```
-npm run email:dev
 ```
 
 ## テスト

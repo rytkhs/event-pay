@@ -2,8 +2,6 @@
  * Stripe Connect エラーページ
  */
 
-import { Suspense } from "react";
-
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
@@ -21,12 +19,18 @@ export const metadata: Metadata = {
 };
 
 interface ErrorPageProps {
-  searchParams: {
-    message?: string;
-  };
+  searchParams: Promise<ErrorSearchParams>;
 }
 
-function ErrorContent({ searchParams }: ErrorPageProps) {
+interface ErrorContentProps {
+  searchParams: ErrorSearchParams;
+}
+
+interface ErrorSearchParams {
+  message?: string;
+}
+
+function ErrorContent({ searchParams }: ErrorContentProps) {
   const errorMessage = searchParams.message
     ? decodeURIComponent(searchParams.message)
     : "Stripeアカウント設定中に予期しないエラーが発生しました";
@@ -82,10 +86,8 @@ function ErrorContent({ searchParams }: ErrorPageProps) {
   );
 }
 
-export default function PaymentSettingsErrorPage(props: ErrorPageProps) {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <ErrorContent {...props} />
-    </Suspense>
-  );
+export default async function PaymentSettingsErrorPage(props: ErrorPageProps) {
+  const searchParams = await props.searchParams;
+
+  return <ErrorContent searchParams={searchParams} />;
 }

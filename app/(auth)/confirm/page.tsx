@@ -3,13 +3,14 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 interface ConfirmPageProps {
-  searchParams: {
+  searchParams: Promise<{
     email?: string;
     error?: string;
-  };
+  }>;
 }
 
-export default async function ConfirmPage({ searchParams }: ConfirmPageProps) {
+export default async function ConfirmPage(props: ConfirmPageProps) {
+  const searchParams = await props.searchParams;
   const { email, error } = searchParams;
 
   // エラーがある場合の表示
