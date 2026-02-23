@@ -5,8 +5,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { logger } from "@core/logging/app-logger";
-import { getSessionManager } from "@core/session/manager";
 import { getSupabaseCookieConfig } from "@core/supabase/config";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -26,8 +24,6 @@ interface CookieStoreLike {
 }
 
 export class SupabaseClientFactory {
-  private static sessionManager = getSessionManager();
-
   private static async getRequestCookieStoreOrThrow(): Promise<CookieStoreLike> {
     try {
       const nextHeaders = (await import("next/headers")) as {
@@ -172,66 +168,5 @@ export class SupabaseClientFactory {
         },
       },
     }) as unknown as SupabaseClient<Database>;
-  }
-
-  /**
-   * セッション付きクライアント作成（最適化済み）
-   */
-  static async createOptimizedClient(
-    context: "api" | "server"
-  ): Promise<{ client: SupabaseClient<Database>; sessionValid: boolean }>;
-  static async createOptimizedClient(
-    context: "middleware",
-    config: MiddlewareSupabaseConfig
-  ): Promise<{ client: SupabaseClient<Database>; sessionValid: boolean }>;
-  static async createOptimizedClient(
-    context: SupabaseContext,
-    config?: MiddlewareSupabaseConfig
-  ): Promise<{ client: SupabaseClient<Database>; sessionValid: boolean }> {
-    const client = await (context === "middleware" && config
-      ? this.createServerClient(context, config)
-      : context === "api"
-        ? this.createServerClient("api")
-        : this.createServerClient("server"));
-
-    try {
-      const {
-        data: { session },
-      } = await client.auth.getSession();
-      const sessionValid = this.sessionManager.isSessionValid(session);
-
-      // セッション更新が必要な場合は背景で実行
-      if (session && sessionValid) {
-        const sessionId = session.user.id;
-        this.sessionManager.backgroundSessionRefresh(client, sessionId);
-      }
-
-      return { client, sessionValid };
-    } catch (error) {
-      logger.warn("Failed to check session validity", {
-        category: "system",
-        action: "session_validation",
-        actor_type: "system",
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-        context,
-        outcome: "failure",
-      });
-      return { client, sessionValid: false };
-    }
-  }
-
-  /**
-   * セッション統計情報取得
-   */
-  static getSessionStats() {
-    return this.sessionManager.getStats();
-  }
-
-  /**
-   * セッション管理のクリーンアップ
-   */
-  static cleanupSession(sessionId: string): void {
-    this.sessionManager.cleanupSession(sessionId);
   }
 }
