@@ -14,7 +14,7 @@ import type { CookieOptions } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
-import { SUPABASE_COOKIE_CONFIG, getSupabaseCookieConfig } from "@core/supabase/config";
+import { getSupabaseCookieConfig } from "@core/supabase/config";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
@@ -144,6 +144,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   createAuthenticatedClient(options?: ClientCreationOptions) {
     const supabaseUrl = this.getSupabaseUrl();
     const anonKey = this.getAnonKey();
+    const cookieConfig = getSupabaseCookieConfig();
 
     if (typeof window !== "undefined" || typeof document !== "undefined") {
       const message =
@@ -162,15 +163,13 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     const cookieStore = this.getRequestCookieStoreOrThrow();
 
     return createServerClient(supabaseUrl, anonKey, {
+      cookieOptions: cookieConfig,
       cookies: {
         get(name: string) {
           return cookieStore.get(name)?.value;
         },
         set(name: string, value: string, cookieOptions: CookieOptions) {
-          cookieStore.set(name, value, {
-            ...cookieOptions,
-            ...SUPABASE_COOKIE_CONFIG,
-          });
+          cookieStore.set(name, value, cookieOptions);
         },
         remove(name: string) {
           cookieStore.delete(name);
@@ -380,23 +379,16 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   ) {
     const supabaseUrl = this.getSupabaseUrl();
     const anonKey = this.getAnonKey();
-
-    // HTTPS接続を動的に検出
-    const isHttps =
-      request.url.startsWith("https://") || request.headers.get("x-forwarded-proto") === "https";
-
-    const cookieConfig = getSupabaseCookieConfig(isHttps);
+    const cookieConfig = getSupabaseCookieConfig();
 
     return createServerClient(supabaseUrl, anonKey, {
+      cookieOptions: cookieConfig,
       cookies: {
         get(name: string) {
           return request.cookies.get(name)?.value;
         },
         set(name: string, value: string, cookieOptions: CookieOptions) {
-          response.cookies.set(name, value, {
-            ...cookieOptions,
-            ...cookieConfig,
-          });
+          response.cookies.set(name, value, cookieOptions);
         },
         remove(name: string, cookieOptions: CookieOptions) {
           response.cookies.delete({ name, ...cookieOptions });

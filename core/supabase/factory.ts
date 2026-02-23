@@ -7,7 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
 import { getSessionManager } from "@core/session/manager";
-import { SUPABASE_COOKIE_CONFIG, getSupabaseCookieConfig } from "@core/supabase/config";
+import { getSupabaseCookieConfig } from "@core/supabase/config";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
@@ -121,13 +121,10 @@ export class SupabaseClientFactory {
     request,
     response,
   }: MiddlewareSupabaseConfig): SupabaseClient<Database> {
-    // HTTPS接続を動的に検出
-    const isHttps =
-      request.url.startsWith("https://") || request.headers.get("x-forwarded-proto") === "https";
-
-    const cookieConfig = getSupabaseCookieConfig(isHttps);
+    const cookieConfig = getSupabaseCookieConfig();
 
     return createServerClient<Database>(this.getURL(), this.getAnonKey(), {
+      cookieOptions: cookieConfig,
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -143,10 +140,7 @@ export class SupabaseClientFactory {
           });
 
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, {
-              ...options,
-              ...cookieConfig,
-            });
+            response.cookies.set(name, value, options);
           });
         },
       },
@@ -155,8 +149,10 @@ export class SupabaseClientFactory {
 
   private static async createApiServerClient(): Promise<SupabaseClient<Database>> {
     const cookieStore = await this.getRequestCookieStoreOrThrow();
+    const cookieConfig = getSupabaseCookieConfig();
 
     return createServerClient<Database>(this.getURL(), this.getAnonKey(), {
+      cookieOptions: cookieConfig,
       cookies: {
         getAll() {
           try {
@@ -168,8 +164,7 @@ export class SupabaseClientFactory {
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
-              const mergedOptions: CookieOptions = { ...options, ...SUPABASE_COOKIE_CONFIG };
-              cookieStore.set(name, value, mergedOptions);
+              cookieStore.set(name, value, options);
             });
           } catch (error) {
             // Server Componentなど書き込み不可の環境では無視

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 import { DEMO_ALLOWED_PREFIXES, DEMO_REDIRECT_PATHS } from "@core/constants/demo-config";
 import {
@@ -8,6 +8,7 @@ import {
   getMaintenancePageHTML,
 } from "@core/maintenance/maintenance-page";
 import { buildCsp } from "@core/security/csp";
+import { getSupabaseCookieConfig } from "@core/supabase/config";
 import { getEnv } from "@core/utils/cloudflare-env";
 
 const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
@@ -212,15 +213,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: "Missing Supabase configuration" }, { status: 500 });
   }
 
+  const cookieConfig = getSupabaseCookieConfig();
+
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
+    cookieOptions: cookieConfig,
     cookies: {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookies: Array<{ name: string; value: string; options?: any }>) {
+      setAll(cookies: Array<{ name: string; value: string; options: CookieOptions }>) {
         cookies.forEach(({ name, value, options }) => {
-          request.cookies.set({ name, value, ...options });
-          response.cookies.set({ name, value, ...options });
+          request.cookies.set(name, value);
+          response.cookies.set(name, value, options);
         });
       },
     },
