@@ -104,36 +104,57 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     return value;
   }
 
-  private getRequestCookieStoreOrThrow(): {
-    getAll: () => Array<{ name: string; value: string }>;
-    set: (name: string, value: string, options?: CookieOptions) => void;
+  private getRequestCookieAdapterOrThrow(): {
+    getAll: () => Promise<Array<{ name: string; value: string }>>;
+    setAll: (
+      cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>
+    ) => Promise<void>;
   } {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { cookies } = require("next/headers") as {
-        cookies: () => {
-          getAll: () => Array<{ name: string; value: string }>;
-          set: (name: string, value: string, options?: CookieOptions) => void;
+    const getCookieStoreOrThrow = async () => {
+      try {
+        const nextHeaders = (await import("next/headers")) as {
+          cookies: () => Promise<{
+            getAll: () => Array<{ name: string; value: string }>;
+            set: (name: string, value: string, options?: CookieOptions) => void;
+          }>;
         };
-      };
-      return cookies();
-    } catch (error) {
-      const message =
-        "createAuthenticatedClient requires next/headers cookies() in a server request context.";
+        return await nextHeaders.cookies();
+      } catch (error) {
+        const message =
+          "createAuthenticatedClient requires next/headers cookies() in a server request context.";
 
-      handleServerError("INTERNAL_ERROR", {
-        category: "authentication",
-        action: "client_creation",
-        actorType: "system",
-        additionalData: {
-          reason: "NEXT_HEADERS_UNAVAILABLE",
-          error_message: error instanceof Error ? error.message : String(error),
-          environment: getEnv().NODE_ENV,
-        },
-      });
+        handleServerError("INTERNAL_ERROR", {
+          category: "authentication",
+          action: "client_creation",
+          actorType: "system",
+          additionalData: {
+            reason: "NEXT_HEADERS_UNAVAILABLE",
+            error_message: error instanceof Error ? error.message : String(error),
+            environment: getEnv().NODE_ENV,
+          },
+        });
 
-      throw new Error(message);
-    }
+        throw new Error(message);
+      }
+    };
+
+    return {
+      async getAll() {
+        const cookieStore = await getCookieStoreOrThrow();
+        return cookieStore.getAll();
+      },
+      async setAll(cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>) {
+        const cookieStore = await getCookieStoreOrThrow();
+
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        } catch (_) {
+          // Server Componentなど書き込み不可の環境では無視
+        }
+      },
+    };
   }
 
   /**
@@ -158,23 +179,14 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       throw new Error(message);
     }
 
-    const cookieStore = this.getRequestCookieStoreOrThrow();
+    const cookieAdapter = this.getRequestCookieAdapterOrThrow();
 
     return createServerClient(supabaseUrl, anonKey, {
       cookieOptions: cookieConfig,
       cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          } catch (_) {
-            // Server Componentなど書き込み不可の環境では無視
-          }
-        },
+        getAll: () => cookieAdapter.getAll(),
+        setAll: (cookiesToSet: { name: string; value: string; options: CookieOptions }[]) =>
+          cookieAdapter.setAll(cookiesToSet),
       },
       auth: {
         persistSession: options?.persistSession ?? true,
