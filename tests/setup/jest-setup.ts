@@ -61,11 +61,11 @@ afterAll(() => {
 });
 
 // Supabase認証モックを設定
-import { resetAuthMock } from "./supabase-auth-mock";
 import {
   getAuthenticatedTestClient,
   clearAuthenticatedTestClient,
 } from "./authenticated-client-mock";
+import { resetAuthMock } from "./supabase-auth-mock";
 
 // getCurrentUser関数のみをモック化（統合テストでは実際のSupabaseクライアントを使用）
 jest.mock("@core/auth/auth-utils", () => ({
@@ -100,7 +100,7 @@ jest.mock("@core/security/secure-client-factory.impl", () => {
           // 他のメソッドは元の実装を使用
           createAuditedAdminClient: originalFactory.createAuditedAdminClient.bind(originalFactory),
           createGuestClient: originalFactory.createGuestClient.bind(originalFactory),
-          createReadOnlyClient: originalFactory.createReadOnlyClient.bind(originalFactory),
+          createPublicClient: originalFactory.createPublicClient.bind(originalFactory),
           createMiddlewareClient: originalFactory.createMiddlewareClient.bind(originalFactory),
           createBrowserClient: originalFactory.createBrowserClient.bind(originalFactory),
         };
@@ -123,7 +123,7 @@ jest.mock("@core/security/secure-client-factory.impl", () => {
         },
         createAuditedAdminClient: originalFactory.createAuditedAdminClient.bind(originalFactory),
         createGuestClient: originalFactory.createGuestClient.bind(originalFactory),
-        createReadOnlyClient: originalFactory.createReadOnlyClient.bind(originalFactory),
+        createPublicClient: originalFactory.createPublicClient.bind(originalFactory),
         createMiddlewareClient: originalFactory.createMiddlewareClient.bind(originalFactory),
         createBrowserClient: originalFactory.createBrowserClient.bind(originalFactory),
       };

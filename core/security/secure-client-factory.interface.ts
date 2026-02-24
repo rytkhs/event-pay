@@ -60,14 +60,14 @@ export interface ISecureSupabaseClientFactory {
   ): Promise<SupabaseClient>;
 
   /**
-   * 読み取り専用クライアントを作成
+   * 公開RPC向けの匿名クライアントを作成
    *
-   * 読み取り操作のみに制限されたクライアントを作成します。
+   * 書き込み可否はDB側のRLS/GRANTで制御されます。
    *
    * @param options クライアント作成オプション
-   * @returns 読み取り専用Supabaseクライアント
+   * @returns 公開RPC向けSupabaseクライアント
    */
-  createReadOnlyClient(options?: ClientCreationOptions): SupabaseClient;
+  createPublicClient(options?: ClientCreationOptions): SupabaseClient;
 
   /**
    * ミドルウェア用クライアントを作成

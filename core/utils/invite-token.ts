@@ -59,9 +59,9 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
   }
 
   try {
-    // 読み取り専用クライアント（匿名ロール） + 招待トークンヘッダー
+    // 公開RPC向け匿名クライアント + 招待トークンヘッダー
     const secureFactory = getSecureClientFactory();
-    const anonClient = secureFactory.createReadOnlyClient({
+    const anonClient = secureFactory.createPublicClient({
       headers: { "x-invite-token": token },
     }) as SupabaseClient<Database>;
 
@@ -168,7 +168,7 @@ export async function checkEventCapacity(
 
   try {
     const secureFactory = getSecureClientFactory();
-    const client = secureFactory.createReadOnlyClient() as SupabaseClient<Database>;
+    const client = secureFactory.createPublicClient() as SupabaseClient<Database>;
 
     const { data, error } = await client.rpc("rpc_public_attending_count", {
       p_event_id: eventId,
@@ -221,7 +221,7 @@ export async function checkDuplicateEmail(
     // 招待トークンヘッダーが必要なため、呼び出し側でvalidateInviteToken済み前提
     // ここでは匿名RPCに委譲
     const secureFactory = getSecureClientFactory();
-    const client = secureFactory.createReadOnlyClient({
+    const client = secureFactory.createPublicClient({
       headers: inviteToken ? { "x-invite-token": inviteToken } : {},
     }) as SupabaseClient<Database>;
 

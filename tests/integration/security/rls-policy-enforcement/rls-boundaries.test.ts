@@ -41,7 +41,7 @@ describe("RLS boundaries for fee_config/system_logs", () => {
 
   test("system_logs: anon cannot INSERT; admin can SELECT", async () => {
     const factory = getSecureClientFactory();
-    const anon = factory.createReadOnlyClient();
+    const anon = factory.createPublicClient();
     const ins = await anon.from("system_logs").insert({
       id: 999999,
       created_at: new Date().toISOString(),

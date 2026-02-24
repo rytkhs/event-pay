@@ -5,6 +5,7 @@
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
 import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+
 import { setupRLSTest, type RLSTestSetup } from "./rls-test-setup";
 
 describe("Data Isolation Verification", () => {
@@ -53,8 +54,8 @@ describe("Data Isolation Verification", () => {
 
   test("招待トークンによるイベントアクセスが正しく分離されている", async () => {
     const factory = getSecureClientFactory();
-    // 招待トークンヘッダーを設定した読み取り専用クライアント
-    const anonClient = factory.createReadOnlyClient({
+    // 招待トークンヘッダーを設定した公開RPC向け匿名クライアント
+    const anonClient = factory.createPublicClient({
       headers: {
         "x-invite-token": setup.testInviteToken,
       },

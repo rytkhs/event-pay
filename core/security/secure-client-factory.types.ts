@@ -126,9 +126,9 @@ export interface SecureSupabaseClient {
   ): Promise<SupabaseClient>;
 
   /**
-   * 読み取り専用クライアントを作成
+   * 公開RPC向けの匿名クライアントを作成
    */
-  createReadOnlyClient(): SupabaseClient;
+  createPublicClient(options?: ClientCreationOptions): SupabaseClient;
 
   /**
    * ミドルウェア用クライアントを作成

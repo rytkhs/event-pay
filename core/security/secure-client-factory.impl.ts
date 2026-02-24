@@ -267,9 +267,9 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   }
 
   /**
-   * 読み取り専用クライアントを作成
+   * 公開RPC向けの匿名クライアントを作成
    */
-  createReadOnlyClient(options?: ClientCreationOptions) {
+  createPublicClient(options?: ClientCreationOptions) {
     const supabaseUrl = this.getSupabaseUrl();
     const anonKey = this.getAnonKey();
 
@@ -280,7 +280,6 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       },
       global: {
         headers: {
-          "X-Read-Only": "true",
           ...options?.headers,
         },
       },
