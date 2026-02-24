@@ -107,6 +107,7 @@ export interface SecureSupabaseClient {
 
   /**
    * ゲストトークン認証クライアントを作成（カスタムヘッダー自動設定）
+   * 非永続セッション（persistSession=false / autoRefreshToken=false）で動作
    * @param token ゲストトークン
    * @returns ゲスト用Supabaseクライアント
    */

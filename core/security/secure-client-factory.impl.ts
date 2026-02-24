@@ -9,7 +9,7 @@ import "server-only";
 
 import type { NextRequest, NextResponse } from "next/server";
 
-import { createServerClient, createBrowserClient } from "@supabase/ssr";
+import { createBrowserClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
@@ -127,7 +127,10 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
   /**
    * ゲストトークン認証クライアントを作成
    * X-Guest-Tokenヘッダーを自動設定し、RLSポリシーベースのアクセス制御を実現
-   * SSR環境でも安全に動作するよう環境を考慮
+   *
+   * NOTE:
+   * ゲスト用途は Cookie ベースの Supabase Auth セッションを利用しないため、
+   * server/client を問わず createClient を使い、非永続セッションを固定する。
    */
   createGuestClient(token: string, options?: ClientCreationOptions) {
     const supabaseUrl = this.getSupabaseUrl();
@@ -142,42 +145,19 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
       );
     }
 
-    // SSR環境（サーバーサイド）かどうかを判定
-    const isServerSide = typeof window === "undefined";
-
-    if (isServerSide) {
-      // サーバーサイドでは createServerClient を使用（ただしcookiesは不要）
-      return createServerClient(supabaseUrl, anonKey, {
-        cookies: {
-          getAll: () => [],
-          setAll: () => {},
+    return createClient(supabaseUrl, anonKey, {
+      // ゲストアクセスは常に非永続セッション運用
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+      global: {
+        headers: {
+          "x-guest-token": token, // カスタムヘッダーでトークンを自動設定
+          ...options?.headers,
         },
-        auth: {
-          persistSession: false, // ゲストセッションは永続化しない
-          autoRefreshToken: false,
-        },
-        global: {
-          headers: {
-            "x-guest-token": token, // カスタムヘッダーでトークンを自動設定
-            ...options?.headers,
-          },
-        },
-      });
-    } else {
-      // クライアントサイドでは createClient を使用
-      return createClient(supabaseUrl, anonKey, {
-        auth: {
-          persistSession: options?.persistSession ?? false, // ゲストセッションは永続化しない
-          autoRefreshToken: options?.autoRefreshToken ?? false,
-        },
-        global: {
-          headers: {
-            "x-guest-token": token, // カスタムヘッダーでトークンを自動設定
-            ...options?.headers,
-          },
-        },
-      });
-    }
+      },
+    });
   }
 
   /**

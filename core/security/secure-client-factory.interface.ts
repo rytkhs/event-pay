@@ -30,8 +30,10 @@ export interface ISecureSupabaseClientFactory {
    *
    * X-Guest-Tokenヘッダーを自動設定し、RLSポリシーベースの
    * アクセス制御を透過的に実現します。
+   * CookieベースのAuthセッションは使用せず、
+   * 常に `persistSession=false` / `autoRefreshToken=false` で動作します。
    *
-   * @param token ゲストトークン（32文字の英数字）
+   * @param token ゲストトークン（`gst_` 接頭辞 + 32文字）
    * @param options クライアント作成オプション
    * @returns ゲスト用Supabaseクライアント
    * @throws GuestTokenError トークンが無効な場合
