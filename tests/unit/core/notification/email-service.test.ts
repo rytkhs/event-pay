@@ -70,7 +70,6 @@ describe("core/notification/email-service", () => {
     mockResendSend.mockResolvedValue({
       data: { id: "email_1" },
       error: null,
-      headers: {},
     });
 
     const service = createService();
@@ -100,7 +99,6 @@ describe("core/notification/email-service", () => {
     mockResendSend.mockResolvedValue({
       data: { id: "email_2" },
       error: null,
-      headers: {},
     });
 
     const service = createService();
@@ -122,39 +120,36 @@ describe("core/notification/email-service", () => {
     );
   });
 
-  it("429 + retry-after ヘッダーがある場合は retry-after 秒で再試行する", async () => {
+  it("rate_limit_exceeded は RATE_LIMIT_RETRY_DELAY_MS (5000ms) で再試行する", async () => {
     jest.useFakeTimers();
     mockResendSend
       .mockResolvedValueOnce({
         data: null,
         error: {
           name: "rate_limit_exceeded",
-          statusCode: 429,
           message: "Too many requests",
         },
-        headers: { "retry-after": "7" },
       })
       .mockResolvedValueOnce({
-        data: { id: "email_retry_after_ok" },
+        data: { id: "email_retry_ok" },
         error: null,
-        headers: {},
       });
 
     const service = createService();
     const sending = service.sendEmail({
       to: "user@example.com",
       template: {
-        subject: "retry-after",
-        html: "<p>retry-after</p>",
-        text: "retry-after",
+        subject: "rate-limit",
+        html: "<p>rate-limit</p>",
+        text: "rate-limit",
       },
-      idempotencyKey: "retry-after-case",
+      idempotencyKey: "rate-limit-case",
     });
 
     await Promise.resolve();
     expect(mockResendSend).toHaveBeenCalledTimes(1);
 
-    await jest.advanceTimersByTimeAsync(7000);
+    await jest.advanceTimersByTimeAsync(5000);
     const result = await sending;
 
     expect(result.success).toBe(true);
@@ -162,21 +157,18 @@ describe("core/notification/email-service", () => {
     expect(mockServiceLoggerInfo).toHaveBeenCalledWith(
       "Retrying email send after delay",
       expect.objectContaining({
-        delay_ms: 7000,
-        retry_after_seconds: 7,
+        delay_ms: 5000,
       })
     );
   });
 
-  it("429 monthly_quota_exceeded は恒久エラーとして即時終了する", async () => {
+  it("monthly_quota_exceeded は恒久エラーとして即時終了する", async () => {
     mockResendSend.mockResolvedValue({
       data: null,
       error: {
         name: "monthly_quota_exceeded",
-        statusCode: 429,
         message: "Monthly quota exceeded",
       },
-      headers: { "retry-after": "120" },
     });
 
     const service = createService();
@@ -194,7 +186,6 @@ describe("core/notification/email-service", () => {
     if (!result.success) {
       expect(result.meta?.errorType).toBe("permanent");
       expect(result.meta?.retryCount).toBe(0);
-      expect(result.meta?.retryAfterSeconds).toBe(120);
     }
     expect(mockResendSend).toHaveBeenCalledTimes(1);
   });
@@ -206,15 +197,12 @@ describe("core/notification/email-service", () => {
         data: null,
         error: {
           name: "concurrent_idempotent_requests",
-          statusCode: 409,
           message: "Request still in progress",
         },
-        headers: {},
       })
       .mockResolvedValueOnce({
         data: { id: "email_409_retry_ok" },
         error: null,
-        headers: {},
       });
 
     const service = createService();
@@ -241,10 +229,8 @@ describe("core/notification/email-service", () => {
       data: null,
       error: {
         name: "invalid_idempotent_request",
-        statusCode: 409,
         message: "Payload mismatch",
       },
-      headers: {},
     });
 
     const service = createService();
@@ -262,7 +248,94 @@ describe("core/notification/email-service", () => {
     if (!result.success) {
       expect(result.meta?.errorType).toBe("permanent");
       expect(result.meta?.retryCount).toBe(0);
-      expect(result.meta?.statusCode).toBe(409);
+    }
+    expect(mockResendSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("daily_quota_exceeded は恒久エラーとして即時終了する", async () => {
+    mockResendSend.mockResolvedValue({
+      data: null,
+      error: {
+        name: "daily_quota_exceeded",
+        message: "Daily quota exceeded",
+      },
+    });
+
+    const service = createService();
+    const result = await service.sendEmail({
+      to: "user@example.com",
+      template: {
+        subject: "daily quota",
+        html: "<p>daily quota</p>",
+        text: "daily quota",
+      },
+      idempotencyKey: "daily-quota-case",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.meta?.errorType).toBe("permanent");
+    }
+    expect(mockResendSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("application_error (500) は一時的エラーとして再試行する", async () => {
+    jest.useFakeTimers();
+    mockResendSend
+      .mockResolvedValueOnce({
+        data: null,
+        error: {
+          name: "application_error",
+          message: "Internal server error",
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { id: "email_500_retry_ok" },
+        error: null,
+      });
+
+    const service = createService();
+    const sending = service.sendEmail({
+      to: "user@example.com",
+      template: {
+        subject: "500 retry",
+        html: "<p>500 retry</p>",
+        text: "500 retry",
+      },
+      idempotencyKey: "500-retry",
+    });
+
+    await Promise.resolve();
+    await jest.advanceTimersByTimeAsync(1000);
+    const result = await sending;
+
+    expect(result.success).toBe(true);
+    expect(mockResendSend).toHaveBeenCalledTimes(2);
+  });
+
+  it("validation_error (403) は恒久エラーとして即時終了する", async () => {
+    mockResendSend.mockResolvedValue({
+      data: null,
+      error: {
+        name: "validation_error",
+        message: "Domain not verified",
+      },
+    });
+
+    const service = createService();
+    const result = await service.sendEmail({
+      to: "user@example.com",
+      template: {
+        subject: "validation",
+        html: "<p>validation</p>",
+        text: "validation",
+      },
+      idempotencyKey: "validation-case",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.meta?.errorType).toBe("permanent");
     }
     expect(mockResendSend).toHaveBeenCalledTimes(1);
   });
@@ -271,7 +344,6 @@ describe("core/notification/email-service", () => {
     mockResendSend.mockResolvedValue({
       data: { id: "admin_alert_1" },
       error: null,
-      headers: {},
     });
 
     const service = createService();

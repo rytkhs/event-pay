@@ -21,8 +21,6 @@ export interface NotificationMeta {
   retryCount?: number;
   /** ResendやWebhook先のステータスコード */
   statusCode?: number;
-  /** 再試行までの推奨待機秒数（Retry-After） */
-  retryAfterSeconds?: number;
   /** 通知処理をスキップしたか */
   skipped?: boolean;
 }
@@ -165,6 +163,5 @@ export interface IEmailNotificationService {
 export interface ResendErrorInfo {
   type: ResendErrorType;
   message: string;
-  statusCode?: number;
   name?: string;
 }
