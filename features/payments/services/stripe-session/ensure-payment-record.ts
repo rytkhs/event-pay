@@ -32,12 +32,14 @@ import {
  * オープン決済レコードの正規化
  */
 export function normalizeOpenPaymentRow(
-  row: Record<string, unknown>,
+  row: unknown,
   logger: PaymentLogger
 ): OpenPaymentRow | null {
-  if (!row || typeof row.id !== "string") return null;
+  if (!row || typeof row !== "object") return null;
+  const record = row as Record<string, unknown>;
+  if (typeof record.id !== "string") return null;
 
-  const checkoutKeyRevisionRaw = row.checkout_key_revision;
+  const checkoutKeyRevisionRaw = record.checkout_key_revision;
   const checkoutKeyRevision =
     typeof checkoutKeyRevisionRaw === "number"
       ? checkoutKeyRevisionRaw
@@ -51,24 +53,24 @@ export function normalizeOpenPaymentRow(
     typeof checkoutKeyRevisionRaw !== "number"
   ) {
     logger.warn("checkout_key_revision is not a number; coercing to 0", {
-      payment_id: row.id,
+      payment_id: record.id,
       checkout_key_revision_raw: checkoutKeyRevisionRaw,
     });
   }
 
   return {
-    id: row.id,
-    status: row.status as PaymentStatus,
-    method: row.method as PaymentMethod,
-    amount: typeof row.amount === "number" ? row.amount : 0,
+    id: record.id,
+    status: record.status as PaymentStatus,
+    method: record.method as PaymentMethod,
+    amount: typeof record.amount === "number" ? record.amount : 0,
     checkout_idempotency_key:
-      typeof row.checkout_idempotency_key === "string" ? row.checkout_idempotency_key : null,
+      typeof record.checkout_idempotency_key === "string" ? record.checkout_idempotency_key : null,
     checkout_key_revision: checkoutKeyRevision,
     stripe_payment_intent_id:
-      typeof row.stripe_payment_intent_id === "string" ? row.stripe_payment_intent_id : null,
-    paid_at: typeof row.paid_at === "string" ? row.paid_at : null,
-    created_at: typeof row.created_at === "string" ? row.created_at : null,
-    updated_at: typeof row.updated_at === "string" ? row.updated_at : null,
+      typeof record.stripe_payment_intent_id === "string" ? record.stripe_payment_intent_id : null,
+    paid_at: typeof record.paid_at === "string" ? record.paid_at : null,
+    created_at: typeof record.created_at === "string" ? record.created_at : null,
+    updated_at: typeof record.updated_at === "string" ? record.updated_at : null,
   };
 }
 
@@ -108,9 +110,7 @@ export async function ensureStripePaymentRecord(
   }
 
   const normalizedOpenPayments = (openPayments ?? [])
-    .map((payment) =>
-      normalizeOpenPaymentRow(payment as unknown as Record<string, unknown>, logger)
-    )
+    .map((payment) => normalizeOpenPaymentRow(payment, logger))
     .filter((payment): payment is OpenPaymentRow => payment !== null);
 
   const openPayment = selectPreferredOpenPayment(normalizedOpenPayments);

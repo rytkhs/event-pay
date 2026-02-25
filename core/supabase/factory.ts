@@ -124,7 +124,7 @@ async function createRequestServerClient({
         }
       },
     },
-  }) as unknown as SupabaseClient<Database>;
+  });
 }
 
 export async function createRouteHandlerSupabaseClient(): Promise<SupabaseClient<Database>> {

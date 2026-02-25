@@ -39,5 +39,5 @@ export function createMiddlewareSupabaseClient({
         });
       },
     },
-  }) as unknown as SupabaseClient<Database>;
+  });
 }

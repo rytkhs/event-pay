@@ -146,7 +146,7 @@ export async function createStripeSession(
         `Failed to update payment record with destination charges data after retries: ${
           lastDbError?.message ?? "no rows updated"
         }`,
-        (lastDbError ?? undefined) as unknown as Error
+        lastDbError ?? undefined
       );
       await errorHandler.logError(dbError, {
         operation: "updateDestinationChargesData",

@@ -99,7 +99,7 @@ export async function getEventParticipantsAction(
 
     // データ変換（参加者ビュー形式に変換）
     const participants: ParticipantView[] = (
-      (attendances as unknown as SupabaseAttendanceWithPayments[]) || []
+      (attendances as SupabaseAttendanceWithPayments[]) || []
     ).map((attendance) => {
       const latestPayment = (attendance.payments || [])[0] || null;
 
