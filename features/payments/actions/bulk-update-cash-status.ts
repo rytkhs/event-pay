@@ -1,7 +1,7 @@
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import type { ErrorCode } from "@core/errors/types";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 
 import { PaymentValidator, bulkUpdateCashStatusActionInputSchema } from "../validation";
@@ -81,8 +81,7 @@ export async function bulkUpdateCashStatusAction(
     }
     const { paymentIds, status, notes } = parsed.data;
 
-    const factory = getSecureClientFactory();
-    const supabase = await factory.createAuthenticatedClient();
+    const supabase = await createServerActionSupabaseClient();
     const {
       data: { user },
       error: authError,

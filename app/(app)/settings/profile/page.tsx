@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { createClient } from "@core/supabase/server";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { requestAccountDeletionAction, updateEmailAction, updateProfileAction } from "./actions";
 
 export default async function ProfileSettingsPage() {
-  const supabase = await createClient();
+  const supabase = await createServerComponentSupabaseClient();
   const {
     data: { user },
     error,

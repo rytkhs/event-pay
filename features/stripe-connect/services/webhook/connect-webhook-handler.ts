@@ -17,7 +17,7 @@ import type {
   StripeConnectNotificationData,
 } from "@core/notification/types";
 import { getStripeConnectPort, type StripeAccountStatusLike } from "@core/ports/stripe-connect";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import type { StripeAccountStatus } from "@core/types/statuses";
 import type { AppSupabaseClient } from "@core/types/supabase";
@@ -52,8 +52,7 @@ export class ConnectWebhookHandler {
    * 監査付きのWebhookハンドラーを作成
    */
   static async create(): Promise<ConnectWebhookHandler> {
-    const secureFactory = getSecureClientFactory();
-    const adminClient = await secureFactory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "Stripe Connect webhook processing"
     );

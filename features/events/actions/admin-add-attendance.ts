@@ -5,7 +5,7 @@ import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/serv
 import { logger } from "@core/logging/app-logger";
 import { logAttendance } from "@core/logging/system-logger";
 import { getPaymentPort } from "@core/ports/payments";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { PaymentError } from "@core/types/payment-errors";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { buildGuestUrl, generateGuestToken } from "@core/utils/guest-token";
@@ -42,8 +42,7 @@ export async function adminAddAttendanceAction(
     const { user } = await verifyEventAccess(eventId);
 
     // 認証済みクライアント（RLSポリシーベースのアクセス制御）
-    const secureFactory = getSecureClientFactory();
-    const authenticatedClient = await secureFactory.createAuthenticatedClient();
+    const authenticatedClient = await createServerActionSupabaseClient();
 
     // ゲストトークン生成
     const guestToken = generateGuestToken();

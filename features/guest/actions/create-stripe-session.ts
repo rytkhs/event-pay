@@ -2,7 +2,7 @@ import { fail, ok, type ActionResult, zodFail } from "@core/errors/adapters/serv
 import type { ErrorCode } from "@core/errors/types";
 import { getPaymentPort } from "@core/ports/payments";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createGuestClient } from "@core/security/secure-client-factory.impl";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -141,8 +141,7 @@ export async function createGuestStripeSessionAction(
   }
 
   // 5. 決済サービス呼び出し (Guest)
-  const factory = getSecureClientFactory();
-  const guestClient = factory.createGuestClient(guestToken);
+  const guestClient = createGuestClient(guestToken);
 
   // PaymentService の登録は app 側の初期化（feature-registrations）で保証される
   const paymentPort = getPaymentPort();

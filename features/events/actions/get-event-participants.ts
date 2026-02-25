@@ -3,7 +3,7 @@ import { z } from "zod";
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
 import { type ActionResult, ok, fail, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 import {
@@ -40,7 +40,7 @@ export async function getEventParticipantsAction(
     // 共通の認可・権限確認処理
     const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
 
-    const supabase = await createClient();
+    const supabase = await createServerActionSupabaseClient();
 
     // シンプルな全件取得クエリ
     const selectColumns = `

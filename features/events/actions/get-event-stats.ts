@@ -1,6 +1,6 @@
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 
 type EventStats = {
   attending_count: number;
@@ -11,7 +11,7 @@ export async function getEventStatsAction(eventId: string): Promise<ActionResult
   try {
     const { eventId: validatedEventId } = await verifyEventAccess(eventId);
 
-    const supabase = await createClient();
+    const supabase = await createServerActionSupabaseClient();
 
     const { data: attendances, error } = await supabase
       .from("attendances")

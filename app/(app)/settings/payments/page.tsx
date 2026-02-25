@@ -7,12 +7,12 @@ import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
-import { createClient } from "@core/supabase/server";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 
 import { AccountStatus, CONNECT_REFRESH_PATH, OnboardingForm } from "@features/stripe-connect";
 import {
   checkExpressDashboardAccessAction,
-  createUserStripeConnectService,
+  createUserStripeConnectServiceForServerComponent,
   getConnectAccountStatusAction,
 } from "@features/stripe-connect/server";
 
@@ -43,7 +43,7 @@ interface PaymentSettingsSearchParams {
 }
 
 async function PaymentSettingsContent({ searchParams }: PaymentSettingsContentProps) {
-  const supabase = await createClient();
+  const supabase = await createServerComponentSupabaseClient();
   const {
     data: { user },
     error,
@@ -54,7 +54,7 @@ async function PaymentSettingsContent({ searchParams }: PaymentSettingsContentPr
   }
 
   // StripeConnectServiceを初期化
-  const stripeConnectService = await createUserStripeConnectService();
+  const stripeConnectService = await createUserStripeConnectServiceForServerComponent();
 
   // 既存のアカウントをチェック
   const existingAccount = await stripeConnectService.getConnectAccountByUser(user.id);

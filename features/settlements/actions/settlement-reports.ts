@@ -1,7 +1,7 @@
-import { getCurrentUser } from "@core/auth/auth-utils";
+import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 import { SettlementReportService } from "../services/service";
@@ -23,7 +23,7 @@ export async function generateSettlementReportAction(
   formData: FormData
 ): Promise<ActionResult<GenerateSettlementReportPayload>> {
   // 認証確認
-  const user = await getCurrentUser();
+  const user = await getCurrentUserForServerAction();
   if (!user?.id) {
     return fail("UNAUTHORIZED", { userMessage: "ログインが必要です" });
   }
@@ -42,7 +42,7 @@ export async function generateSettlementReportAction(
     }
 
     // サービス実行
-    const supabase = await createClient();
+    const supabase = await createServerActionSupabaseClient();
     const service = new SettlementReportService(supabase);
 
     const result = await service.generateSettlementReport({
@@ -106,7 +106,7 @@ export async function getSettlementReportsAction(params: {
   offset?: number;
 }): Promise<ActionResult<GetSettlementReportsPayload>> {
   // 認証確認
-  const user = await getCurrentUser();
+  const user = await getCurrentUserForServerAction();
   if (!user?.id) {
     return fail("UNAUTHORIZED", { userMessage: "ログインが必要です" });
   }
@@ -121,7 +121,7 @@ export async function getSettlementReportsAction(params: {
     }
 
     // サービス実行
-    const supabase = await createClient();
+    const supabase = await createServerActionSupabaseClient();
     const service = new SettlementReportService(supabase);
 
     const reports = await service.getSettlementReports({
@@ -161,7 +161,7 @@ export async function exportSettlementReportsAction(params: {
   toDate?: string;
 }): Promise<ActionResult<ExportSettlementReportsPayload>> {
   // 認証確認
-  const user = await getCurrentUser();
+  const user = await getCurrentUserForServerAction();
   if (!user?.id) {
     return fail("UNAUTHORIZED", { userMessage: "ログインが必要です" });
   }
@@ -176,7 +176,7 @@ export async function exportSettlementReportsAction(params: {
     }
 
     // サービス実行
-    const supabase = await createClient();
+    const supabase = await createServerActionSupabaseClient();
     const service = new SettlementReportService(supabase);
 
     const result = await service.exportToCsv({
@@ -243,7 +243,7 @@ export async function regenerateAfterRefundAction(
   formData: FormData
 ): Promise<ActionResult<RegenerateSettlementReportPayload>> {
   // 認証確認
-  const user = await getCurrentUser();
+  const user = await getCurrentUserForServerAction();
   if (!user?.id) {
     return fail("UNAUTHORIZED", { userMessage: "ログインが必要です" });
   }
@@ -262,7 +262,7 @@ export async function regenerateAfterRefundAction(
     }
 
     // サービス実行
-    const supabase = await createClient();
+    const supabase = await createServerActionSupabaseClient();
     const service = new SettlementReportService(supabase);
 
     const result = await service.regenerateAfterRefundOrDispute(

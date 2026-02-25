@@ -12,7 +12,7 @@ import {
   PaymentError as CorePaymentError,
   PaymentErrorType,
 } from "@core/ports/payments";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import type { PaymentErrorHandlingResult } from "@core/types/payment-errors";
 import { toErrorLike } from "@core/utils/type-guards";
@@ -36,8 +36,7 @@ const paymentServiceImpl: Pick<
 > = {
   async createStripeSession(params: CoreCreateStripeSessionParams) {
     // Stripe決済セッション作成時はAdminクライアントを使用（RLS回避のため）
-    const factory = getSecureClientFactory();
-    const adminClient = await factory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "features/payments/adapters/payment-port.adapter createStripeSession"
     );
@@ -48,8 +47,7 @@ const paymentServiceImpl: Pick<
 
   async createCashPayment(params: CoreCreateCashPaymentParams) {
     // 現金決済レコード作成は管理者（service_role）クライアントで実行
-    const factory = getSecureClientFactory();
-    const adminClient = await factory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "features/payments/adapters/payment-port.adapter createCashPayment"
     );
@@ -76,8 +74,7 @@ const paymentServiceImpl: Pick<
     }
 
     // 決済ステータス更新は管理者（service_role）クライアントで実行
-    const factory = getSecureClientFactory();
-    const adminClient = await factory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "features/payments/adapters/payment-port.adapter updatePaymentStatus"
     );

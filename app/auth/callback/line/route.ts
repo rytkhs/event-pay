@@ -4,8 +4,9 @@ import { NextResponse } from "next/server";
 import { LINE_API, LINE_OAUTH_COOKIES, LINE_ERROR_CODES } from "@core/auth/line-constants";
 import { buildOrigin } from "@core/auth/line-utils";
 import { logger } from "@core/logging/app-logger";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+import { createRouteHandlerSupabaseClient } from "@core/supabase/factory";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -122,7 +123,7 @@ export async function GET(request: Request) {
 
     // 4. Supabase Admin操作（Service Role使用）
     // 監査付きAdminクライアントを作成
-    const supabaseAdmin = await getSecureClientFactory().createAuditedAdminClient(
+    const supabaseAdmin = await createAuditedAdminClient(
       AdminReason.LINE_LOGIN,
       "line-auth-callback",
       {
@@ -297,7 +298,7 @@ export async function GET(request: Request) {
     }
 
     // 7. 通常のSupabaseクライアントでセッションを確立
-    const supabase = await getSecureClientFactory().createAuthenticatedClient();
+    const supabase = await createRouteHandlerSupabaseClient();
 
     const { data: sessionData, error: sessionError } = await supabase.auth.verifyOtp({
       token_hash: linkData.properties.hashed_token,

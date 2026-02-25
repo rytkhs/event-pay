@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
-import { getCurrentUser } from "@core/auth/auth-utils";
+import { getCurrentUserForServerComponent } from "@core/auth/auth-utils";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { createCachedActions } from "@core/utils/cache-helpers";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -69,7 +69,7 @@ export default async function EventDetailPage(props: {
     }
 
     // 現在のユーザーを取得して主催者かどうか判定
-    const currentUser = await getCurrentUser();
+    const currentUser = await getCurrentUserForServerComponent();
     const isOrganizer = currentUser && currentUser.id === eventDetail.created_by;
 
     if (!isOrganizer) {

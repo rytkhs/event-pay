@@ -2,7 +2,7 @@ import { ZodError } from "zod";
 
 import { verifyEventAccess } from "@core/auth/event-authorization";
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import type { AttendanceStatus } from "@core/types/statuses";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import {
@@ -43,8 +43,7 @@ export async function generateGuestUrlAction(input: unknown): Promise<
     // 主催者権限確認
     await verifyEventAccess(eventId);
 
-    const factory = getSecureClientFactory();
-    const authenticatedClient = await factory.createAuthenticatedClient();
+    const authenticatedClient = await createServerActionSupabaseClient();
 
     // attendance と event を取得（guest_token, 決済可否判定用）
     const { data: attendance, error: attErr } = await authenticatedClient

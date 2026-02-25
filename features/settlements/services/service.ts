@@ -4,9 +4,9 @@ import type { PostgrestError } from "@supabase/supabase-js";
 
 import { AppError, errFrom, errResult, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { createClient } from "@core/supabase/server";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import type { AppSupabaseClient } from "@core/types/supabase";
 import { toCsvCell } from "@core/utils/csv";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -40,7 +40,7 @@ export class SettlementReportService {
   }
 
   static async create(): Promise<SettlementReportService> {
-    const supabase = await createClient();
+    const supabase = await createServerComponentSupabaseClient();
     return new SettlementReportService(supabase);
   }
 
@@ -74,8 +74,7 @@ export class SettlementReportService {
       });
 
       // RPC関数は管理者（service_role）クライアントで実行（権限整合）
-      const factory = getSecureClientFactory();
-      const adminClient = await factory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.PAYMENT_PROCESSING,
         "features/settlements/services/service generateSettlementReport"
       );

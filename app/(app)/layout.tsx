@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { createClient } from "@core/supabase/server";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 
 import { DemoBanner } from "@features/demo";
 
@@ -19,7 +19,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
   // 認証状態を取得（middlewareで認証済みであることが保証されている）
-  const supabase = await createClient();
+  const supabase = await createServerComponentSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -6,7 +6,7 @@ import {
   getMaintenancePageHTML,
 } from "@core/maintenance/maintenance-page";
 import { buildCsp } from "@core/security/csp";
-import { SupabaseClientFactory } from "@core/supabase/factory";
+import { createMiddlewareSupabaseClient } from "@core/supabase/middleware-client";
 import { getEnv } from "@core/utils/cloudflare-env";
 
 const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
@@ -211,9 +211,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: "Missing Supabase configuration" }, { status: 500 });
   }
 
-  const supabase = await SupabaseClientFactory.createServerClient("middleware", {
+  const supabase = createMiddlewareSupabaseClient({
     request,
     response,
+    supabaseUrl,
+    supabaseAnonKey: supabaseKey,
   });
 
   const {

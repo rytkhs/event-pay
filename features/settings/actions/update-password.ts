@@ -1,15 +1,15 @@
-import { getCurrentUser } from "@core/auth/auth-utils";
+import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
 import { fail, ok } from "@core/errors/adapters/server-actions";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { changePasswordInputSchema } from "@core/validation/settings";
 
 export async function changePasswordAction(formData: FormData): Promise<ActionResult> {
   try {
     // 認証チェック
-    const user = await getCurrentUser();
+    const user = await getCurrentUserForServerAction();
     if (!user) {
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
@@ -29,7 +29,7 @@ export async function changePasswordAction(formData: FormData): Promise<ActionRe
     const { currentPassword, newPassword } = validationResult.data;
 
     // 現在のパスワードで再認証
-    const supabase = await createClient();
+    const supabase = await createServerActionSupabaseClient();
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: user.email || "",
       password: currentPassword,

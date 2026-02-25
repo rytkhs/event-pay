@@ -2,7 +2,7 @@ import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authori
 import { PAYMENT_STATUS_VALUES } from "@core/constants/statuses";
 import { type ActionResult, ok, fail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import type { PaymentStatus } from "@core/types/statuses";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
@@ -25,7 +25,7 @@ export async function getEventPaymentsAction(
     // 認可チェック
     const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
 
-    const supabase = await createClient();
+    const supabase = await createServerActionSupabaseClient();
 
     // 決済データ取得（attendance.statusも含める）
     const { data: payments, error } = await supabase

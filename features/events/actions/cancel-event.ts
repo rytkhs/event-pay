@@ -6,7 +6,7 @@ import { verifyEventAccess } from "@core/auth/event-authorization";
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { logEventManagement } from "@core/logging/system-logger";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { getEnv } from "@core/utils/cloudflare-env";
 
 type CancelEventInput = {
@@ -33,7 +33,7 @@ export async function cancelEventAction(
     // 認証・権限（作成者のみ）
     const { eventId, user } = await verifyEventAccess(params.eventId);
 
-    const supabase = await createClient();
+    const supabase = await createServerActionSupabaseClient();
 
     // イベントを中止状態に更新（invite_token を NULL 化）
     const { data: updatedRows, error: updateError } = await supabase

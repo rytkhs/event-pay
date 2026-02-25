@@ -18,7 +18,7 @@ import type { Database } from "@/types/database";
 
 import { validateGuestTokenFormat } from "./crypto";
 import { GuestErrorCode, GuestTokenErrorFactory } from "./guest-token-errors";
-import { getSecureClientFactory } from "./secure-client-factory.impl";
+import { createGuestClient } from "./secure-client-factory.impl";
 import { IGuestTokenValidator } from "./secure-client-factory.interface";
 import {
   GuestValidationResult,
@@ -49,8 +49,6 @@ export interface RLSGuestTokenValidationResult {
  * - エラーハンドリングの強化
  */
 export class RLSGuestTokenValidator implements IGuestTokenValidator {
-  private readonly clientFactory = getSecureClientFactory();
-
   constructor() {}
 
   /**
@@ -80,7 +78,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
 
     try {
       // ゲストクライアントを使用してRLSポリシーを有効化
-      const guestClient = this.clientFactory.createGuestClient(token) as SupabaseClient<Database>;
+      const guestClient = this.createGuestClient(token) as SupabaseClient<Database>;
 
       // 公開RPCに置換（最小列）
       const { data: rpcRow, error } = await guestClient
@@ -163,7 +161,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
     }
 
     try {
-      const guestClient = this.clientFactory.createGuestClient(token) as SupabaseClient<Database>;
+      const guestClient = this.createGuestClient(token) as SupabaseClient<Database>;
 
       // 詳細な参加データを取得（最新支払い1件を含む）
       const { data: rpcRow, error } = await guestClient
@@ -322,7 +320,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       throw GuestTokenErrorFactory.invalidFormat(token.length);
     }
 
-    return this.clientFactory.createGuestClient(token);
+    return createGuestClient(token);
   }
 
   // ====================================================================

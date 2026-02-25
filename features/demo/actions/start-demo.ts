@@ -3,9 +3,9 @@ import { headers } from "next/headers";
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { buildKey, enforceRateLimit, POLICIES } from "@core/rate-limit";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { createClient as createServerClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import type { AppSupabaseClient } from "@core/types/supabase";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 
@@ -42,8 +42,7 @@ export async function startDemoSession(): Promise<ActionResult<{ redirectUrl: st
   }
 
   // 1. Create User (Admin Client)
-  const factory = getSecureClientFactory();
-  const adminClient = (await factory.createAuditedAdminClient(
+  const adminClient = (await createAuditedAdminClient(
     AdminReason.DEMO_SETUP,
     "Demo Session Creation"
   )) as AppSupabaseClient;
@@ -97,7 +96,7 @@ export async function startDemoSession(): Promise<ActionResult<{ redirectUrl: st
 
   // 3. Login (Set Cookies)
   // ここでは通常のServer Client (middleware連携) を使用してログインし、Cookieをセットする
-  const supabase = await createServerClient();
+  const supabase = await createServerActionSupabaseClient();
   const { error: loginError } = await supabase.auth.signInWithPassword({
     email,
     password,

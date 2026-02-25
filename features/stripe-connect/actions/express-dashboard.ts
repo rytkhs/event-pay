@@ -2,11 +2,11 @@ import { redirect } from "next/navigation";
 
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 
-import { createUserStripeConnectService } from "../services/factories";
+import { createUserStripeConnectServiceForServerAction } from "../services/factories";
 import type { ExpressDashboardAccessPayload } from "../types";
 
 /**
@@ -17,7 +17,7 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
   let userId: string | undefined;
   try {
     // 1. 認証チェック
-    const supabase = await createClient();
+    const supabase = await createServerActionSupabaseClient();
     const {
       data: { user },
       error: authError,
@@ -46,7 +46,7 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
     }
 
     // 2. StripeConnectServiceを初期化
-    const stripeConnectService = await createUserStripeConnectService();
+    const stripeConnectService = await createUserStripeConnectServiceForServerAction();
 
     // 3. 既存のConnect Accountを確認
     const account = await stripeConnectService.getConnectAccountByUser(user.id);
@@ -103,7 +103,7 @@ export async function checkExpressDashboardAccessAction(): Promise<
   let userId: string | undefined;
   try {
     // 1. 認証チェック
-    const supabase = await createClient();
+    const supabase = await createServerActionSupabaseClient();
     const {
       data: { user },
       error: authError,
@@ -115,7 +115,7 @@ export async function checkExpressDashboardAccessAction(): Promise<
     }
 
     // 2. StripeConnectServiceを初期化
-    const stripeConnectService = await createUserStripeConnectService();
+    const stripeConnectService = await createUserStripeConnectServiceForServerAction();
 
     // 3. Connect Accountの確認
     const account = await stripeConnectService.getConnectAccountByUser(user.id);

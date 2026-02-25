@@ -7,13 +7,13 @@ import { redirect } from "next/navigation";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 
 import { CONNECT_REFRESH_PATH, CONNECT_RETURN_PATH } from "../constants/routes";
-import { createUserStripeConnectService } from "../services/factories";
+import { createUserStripeConnectServiceForServerAction } from "../services/factories";
 import { type ConnectAccountStatusPayload, StripeConnectError } from "../types";
 
 /**
@@ -35,7 +35,7 @@ export async function getConnectAccountStatusAction(): Promise<
   let userId: string | undefined;
   try {
     // 1. 認証チェック
-    const supabase = await createClient();
+    const supabase = await createServerActionSupabaseClient();
     const {
       data: { user },
       error: authError,
@@ -58,7 +58,7 @@ export async function getConnectAccountStatusAction(): Promise<
     }
 
     // 2. StripeConnectServiceを初期化（ユーザーセッション使用、RLS適用）
-    const stripeConnectService = await createUserStripeConnectService();
+    const stripeConnectService = await createUserStripeConnectServiceForServerAction();
 
     // 3. アカウント情報を取得
     const account = await stripeConnectService.getConnectAccountByUser(user.id);
@@ -190,7 +190,7 @@ export async function getConnectAccountStatusAction(): Promise<
  * 認証済みユーザーを取得するヘルパー関数
  */
 async function getAuthenticatedUser() {
-  const supabase = await createClient();
+  const supabase = await createServerActionSupabaseClient();
   const {
     data: { user },
     error: authError,
@@ -241,7 +241,7 @@ export async function handleOnboardingReturnAction(): Promise<
     userId = user.id;
 
     // 2. StripeConnectServiceを初期化（ユーザーセッション使用、RLS適用）
-    const stripeConnectService = await createUserStripeConnectService();
+    const stripeConnectService = await createUserStripeConnectServiceForServerAction();
 
     // 3. アカウント情報を取得
     const account = await stripeConnectService.getConnectAccountByUser(user.id);
@@ -379,7 +379,7 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
     const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}`;
 
     // 3. StripeConnectServiceを初期化
-    const stripeConnectService = await createUserStripeConnectService();
+    const stripeConnectService = await createUserStripeConnectServiceForServerAction();
 
     // 4. 既存アカウントを取得（無ければ作成）
     let account = await stripeConnectService.getConnectAccountByUser(user.id);
@@ -456,7 +456,7 @@ export async function startOnboardingAction(): Promise<void> {
     const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}`;
 
     // 3. StripeConnectServiceを初期化
-    const stripeConnectService = await createUserStripeConnectService();
+    const stripeConnectService = await createUserStripeConnectServiceForServerAction();
 
     // 4. 既存アカウントを取得（無ければ作成）
     let account = await stripeConnectService.getConnectAccountByUser(user.id);

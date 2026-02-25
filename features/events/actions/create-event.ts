@@ -4,12 +4,12 @@ import { headers } from "next/headers";
 
 import { z } from "zod";
 
-import { getCurrentUser } from "@core/auth/auth-utils";
+import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { logEventManagement } from "@core/logging/system-logger";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { logSecurityEvent } from "@core/security/security-logger";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import type { EventRow } from "@core/types/event";
 import type { PaymentMethod } from "@core/types/statuses";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -46,7 +46,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
   actionLogger.info("Event creation action invoked", { outcome: "success" });
 
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserForServerAction();
 
     if (!user) {
       actionLogger.warn("Event creation attempted without authentication", {
@@ -111,8 +111,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
       const wantsStripe = rawData.payment_methods.includes("stripe");
 
       if (fee > 0 && wantsStripe) {
-        const factory = getSecureClientFactory();
-        const authenticatedClient = await factory.createAuthenticatedClient();
+        const authenticatedClient = await createServerActionSupabaseClient();
 
         const { data: connectAccount, error: connectError } = await authenticatedClient
           .from("stripe_connect_accounts")
@@ -145,8 +144,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
     const eventData = buildEventData(validatedData, user.id, inviteToken);
 
     // 認証済みクライアントを使用（RLSポリシーで自分のイベント作成を許可）
-    const secureFactory = getSecureClientFactory();
-    const authenticatedClient = await secureFactory.createAuthenticatedClient();
+    const authenticatedClient = await createServerActionSupabaseClient();
 
     actionLogger.info("Attempting to insert event", {
       user_id: user.id,

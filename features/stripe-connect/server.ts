@@ -12,7 +12,10 @@ export {
   createExpressDashboardLoginLinkAction,
 } from "./actions/express-dashboard";
 export { getStripeBalanceAction } from "./actions/get-balance";
-export { createUserStripeConnectService } from "./services/factories";
+export {
+  createUserStripeConnectServiceForServerAction,
+  createUserStripeConnectServiceForServerComponent,
+} from "./services/factories";
 export { registerStripeConnectAdapters } from "./adapters/stripe-connect-port.adapter";
 export { AccountStatusClassifier } from "./services/account-status-classifier";
 export { logStatusChange } from "./services/audit-logger";

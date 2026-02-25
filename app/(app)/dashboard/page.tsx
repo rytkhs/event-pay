@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { Plus } from "lucide-react";
 
-import { createClient } from "@core/supabase/server";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 
 import { Button } from "@/components/ui/button";
 
@@ -22,7 +22,7 @@ import { StripeAccountCard } from "./components/StripeAccountCard";
 
 export default async function DashboardPage() {
   // 認証状態チェック
-  const supabase = await createClient();
+  const supabase = await createServerComponentSupabaseClient();
   const {
     data: { user },
     error,

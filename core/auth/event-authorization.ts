@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 
 import type { User } from "@supabase/supabase-js";
 
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { validateEventId } from "@core/validation/event-id";
 
 /**
@@ -32,7 +32,7 @@ export async function verifyEventAccess(eventId: string): Promise<EventAccessRes
   }
 
   const validatedEventId = validation.data;
-  const supabase = await createClient();
+  const supabase = await createServerActionSupabaseClient();
 
   // 認証確認
   const {

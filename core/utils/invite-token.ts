@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 
 import { generateRandomBytes, toBase64UrlSafe } from "@core/security/crypto";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import type { InviteEventDetail, InviteValidationResult } from "@core/types/invite";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -43,6 +43,23 @@ function validateInviteTokenFormat(token: string): boolean {
 }
 
 /**
+ * 招待トークン検証用の匿名Supabaseクライアントを作成
+ */
+function createAnonClient(): SupabaseClient<Database> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) {
+    throw new Error("Missing required Supabase environment variables");
+  }
+  return createClient<Database>(supabaseUrl, anonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
+
+/**
  * 招待トークンを検証し、イベントデータを取得します。
  * @param {string} token - 検証する招待トークン
  * @returns {Promise<InviteValidationResult>} 検証結果
@@ -59,11 +76,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
   }
 
   try {
-    // 公開RPC向け匿名クライアント + 招待トークンヘッダー
-    const secureFactory = getSecureClientFactory();
-    const anonClient = secureFactory.createPublicClient({
-      headers: { "x-invite-token": token },
-    }) as SupabaseClient<Database>;
+    const anonClient = createAnonClient();
 
     // 公開RPCでイベント情報+参加者数を取得
     const { data: rpcData, error: rpcError } = await anonClient.rpc("rpc_public_get_event", {
@@ -167,8 +180,7 @@ export async function checkEventCapacity(
   }
 
   try {
-    const secureFactory = getSecureClientFactory();
-    const client = secureFactory.createPublicClient() as SupabaseClient<Database>;
+    const client = createAnonClient();
 
     const { data, error } = await client.rpc("rpc_public_attending_count", {
       p_event_id: eventId,
@@ -218,12 +230,7 @@ export async function checkDuplicateEmail(
   inviteToken?: string
 ): Promise<boolean> {
   try {
-    // 招待トークンヘッダーが必要なため、呼び出し側でvalidateInviteToken済み前提
-    // ここでは匿名RPCに委譲
-    const secureFactory = getSecureClientFactory();
-    const client = secureFactory.createPublicClient({
-      headers: inviteToken ? { "x-invite-token": inviteToken } : {},
-    }) as SupabaseClient<Database>;
+    const client = createAnonClient();
 
     const { data, error } = await client.rpc("rpc_public_check_duplicate_email", {
       p_event_id: eventId,
