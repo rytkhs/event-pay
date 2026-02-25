@@ -4,127 +4,31 @@
 
 import { randomUUID } from "crypto";
 
-import type { CreateEmailOptions, ErrorResponse } from "resend";
+import type { CreateEmailOptions, CreateEmailRequestOptions, ErrorResponse } from "resend";
 import { Resend } from "resend";
 
 import { AppError, errResult, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { maskEmail } from "@core/utils/mask";
-import { getFiniteNumberProp, getStringProp, isRecord } from "@core/utils/type-guards";
 
+import { resolveEmailConfig } from "./email-config";
+import { classifyEmailProviderError } from "./email-error-policy";
+import { computeRetryDelayMs, DEFAULT_MAX_ATTEMPTS, shouldRetry } from "./email-retry-policy";
 import { buildAdminAlertTemplate } from "./templates";
 import {
   IEmailNotificationService,
   EmailTemplate,
   NotificationResult,
-  ResendErrorInfo,
-  ResendErrorType,
+  EmailErrorInfo,
+  EmailErrorType,
 } from "./types";
 
 // タイムアウト設定（ミリ秒）
 const RESEND_TIMEOUT_MS = 10000;
 
-// リトライ設定
-const MAX_RETRIES = 1;
-const INITIAL_RETRY_DELAY_MS = 1000;
-const RATE_LIMIT_RETRY_DELAY_MS = 5000;
-const RETRY_JITTER_RATIO = 0.2;
-
-/**
- * 恒久的（再試行しても解決しない）エラーの名前セット
- * statusCode が取れない場合の補助として利用（主軸は statusCode）
- */
-const PERMANENT_ERROR_NAMES = new Set<string>([
-  "missing_required_field",
-  "invalid_idempotency_key",
-  "invalid_idempotent_request",
-  "invalid_access",
-  "invalid_parameter",
-  "invalid_region",
-  "monthly_quota_exceeded",
-  "daily_quota_exceeded",
-  "missing_api_key",
-  "invalid_api_key",
-  "invalid_from_address",
-  "validation_error",
-  "not_found",
-  "method_not_allowed",
-]);
-
 function isDevelopment(): boolean {
   return process.env.NODE_ENV === "development";
-}
-
-/**
- * Resendエラーを分類する（statusCode 主軸 + name 補助）
- */
-function classifyResendError(error: unknown): ResendErrorInfo {
-  // 1) statusCode を持つ Resend 系エラーは最優先で解釈（主軸）
-  if (isRecord(error)) {
-    const statusCode = getFiniteNumberProp(error, "statusCode");
-    const name = getStringProp(error, "name");
-    const message = getStringProp(error, "message") ?? "不明なエラー";
-
-    if (typeof statusCode === "number") {
-      // 一時的（再試行対象）
-      if (statusCode >= 500 || statusCode === 429 || statusCode === 408) {
-        return { type: "transient", message, name, statusCode };
-      }
-
-      // 4xx は基本恒久的（429/408除く）
-      if (statusCode >= 400 && statusCode < 500) {
-        return { type: "permanent", message, name, statusCode };
-      }
-
-      // 想定外のstatusでも安全側に倒す
-      return { type: "transient", message, name, statusCode };
-    }
-  }
-
-  // 2) ネイティブ Error（ネットワーク障害、タイムアウト等）
-  if (error instanceof Error) {
-    const lowerMessage = error.message.toLowerCase();
-
-    if (
-      lowerMessage.includes("network") ||
-      lowerMessage.includes("timeout") ||
-      lowerMessage.includes("econnrefused") ||
-      lowerMessage.includes("enotfound") ||
-      lowerMessage.includes("etimedout") ||
-      lowerMessage.includes("fetch failed")
-    ) {
-      return {
-        type: "transient",
-        message: "ネットワークエラー",
-        name: error.name,
-      };
-    }
-
-    // statusCode がない Error は安全側（transient）
-    return {
-      type: "transient",
-      message: error.message || "不明なエラー",
-      name: error.name,
-    };
-  }
-
-  // 3) statusCode はないが name/message があるオブジェクト（補助）
-  if (isRecord(error)) {
-    const name = getStringProp(error, "name");
-    const message = getStringProp(error, "message");
-
-    if (name && message) {
-      const type: ResendErrorType = PERMANENT_ERROR_NAMES.has(name) ? "permanent" : "transient";
-      return { type, message, name };
-    }
-  }
-
-  // 4) fallback（安全側）
-  return {
-    type: "transient",
-    message: String(error) || "不明なエラー",
-  };
 }
 
 /**
@@ -136,8 +40,10 @@ function sleep(ms: number): Promise<void> {
 
 function buildEmailErrorResult(options: {
   message: string;
-  errorType: ResendErrorType;
+  errorType: EmailErrorType;
   retryCount: number;
+  statusCode?: number;
+  providerErrorName?: string;
 }): NotificationResult {
   const appError = new AppError("EMAIL_SENDING_FAILED", {
     message: options.message,
@@ -148,89 +54,16 @@ function buildEmailErrorResult(options: {
   return errResult(appError, {
     errorType: options.errorType,
     retryCount: options.retryCount,
+    statusCode: options.statusCode,
+    providerErrorName: options.providerErrorName,
   });
 }
 
-function resolveRetryDelayMs(options: {
-  attempt: number;
-  statusCode?: number;
-  errorName?: string;
-}): number {
-  const withJitter = (baseDelayMs: number): number => {
-    // +-20% のゆらぎを入れて同時リトライを分散させる
-    const jitterFactor = 1 + (Math.random() * 2 - 1) * RETRY_JITTER_RATIO;
-    return Math.max(0, Math.round(baseDelayMs * jitterFactor));
-  };
-
-  // rate limit は statusCode を優先、name は補助
-  if (options.statusCode === 429 || options.errorName === "rate_limit_exceeded") {
-    return withJitter(RATE_LIMIT_RETRY_DELAY_MS);
-  }
-
-  return withJitter(INITIAL_RETRY_DELAY_MS * Math.pow(2, options.attempt));
-}
-
-function resolveEnvValue(options: {
-  value: string | undefined;
-  envName: "FROM_EMAIL" | "FROM_NAME" | "ADMIN_EMAIL";
-  defaultValue: string;
-}): string {
-  if (options.value) {
-    return options.value;
-  }
-
-  logger.warn(`${options.envName} not set, using default`, {
-    category: "email",
-    action: "email_config_validation",
-    default_value: options.defaultValue,
-    outcome: "success",
-  });
-
-  return options.defaultValue;
-}
-
-/**
- * 環境変数をバリデーション
- */
-function validateEmailConfig(): { fromEmail: string; fromName: string; adminEmail: string } {
-  const isDev = isDevelopment();
-
-  const fromEmail = process.env.FROM_EMAIL;
-  const fromName = process.env.FROM_NAME;
-  const adminEmail = process.env.ADMIN_EMAIL;
-
-  // 本番環境（development以外）では必須
-  if (!isDev) {
-    if (!fromEmail) {
-      throw new Error(
-        "FROM_EMAIL environment variable is required in production. Please set it in your environment variables."
-      );
-    }
-    if (!adminEmail) {
-      throw new Error(
-        "ADMIN_EMAIL environment variable is required in production. Please set it in your environment variables."
-      );
-    }
-  }
-
-  return {
-    fromEmail: resolveEnvValue({
-      value: fromEmail,
-      envName: "FROM_EMAIL",
-      defaultValue: "noreply@eventpay.jp",
-    }),
-    fromName: resolveEnvValue({
-      value: fromName,
-      envName: "FROM_NAME",
-      defaultValue: "みんなの集金",
-    }),
-    adminEmail: resolveEnvValue({
-      value: adminEmail,
-      envName: "ADMIN_EMAIL",
-      defaultValue: "admin@eventpay.jp",
-    }),
-  };
-}
+type ResendSendResult = {
+  data: { id: string } | null;
+  error: ErrorResponse | null;
+  headers: Record<string, string> | null;
+};
 
 /**
  * Resend APIを使用したメール通知サービス
@@ -250,8 +83,7 @@ export class EmailNotificationService implements IEmailNotificationService {
 
     this.resend = new Resend(apiKey);
 
-    // 環境変数をバリデーション
-    const config = validateEmailConfig();
+    const config = resolveEmailConfig();
     this.fromEmail = config.fromEmail;
     this.fromName = config.fromName;
     this.adminEmail = config.adminEmail;
@@ -282,7 +114,7 @@ export class EmailNotificationService implements IEmailNotificationService {
     maskedTo: string;
     subject: string;
     attempt: number;
-    errorInfo: ResendErrorInfo;
+    errorInfo: EmailErrorInfo;
   }): void {
     handleServerError("EMAIL_SENDING_FAILED", {
       category: "email",
@@ -295,62 +127,10 @@ export class EmailNotificationService implements IEmailNotificationService {
         error_message: options.errorInfo.message,
         error_name: options.errorInfo.name,
         status_code: options.errorInfo.statusCode,
-        attempt: options.attempt + 1,
-        max_retries: MAX_RETRIES,
+        attempt: options.attempt,
+        max_attempts: DEFAULT_MAX_ATTEMPTS,
       },
     });
-  }
-
-  private completeIfNoMoreRetries(options: {
-    errorInfo: ResendErrorInfo;
-    attempt: number;
-    maskedTo: string;
-    subject: string;
-  }): NotificationResult | null {
-    const shouldRetry = options.errorInfo.type === "transient" && options.attempt < MAX_RETRIES;
-    if (shouldRetry) {
-      return null;
-    }
-
-    this.logSendFailure({
-      maskedTo: options.maskedTo,
-      subject: options.subject,
-      attempt: options.attempt,
-      errorInfo: options.errorInfo,
-    });
-
-    return buildEmailErrorResult({
-      message: options.errorInfo.message,
-      errorType: options.errorInfo.type,
-      retryCount: options.attempt,
-    });
-  }
-
-  private async retryOrReturnFailure(options: {
-    errorInfo: ResendErrorInfo;
-    attempt: number;
-    maskedTo: string;
-    subject: string;
-    retryLogMessage: string;
-  }): Promise<NotificationResult | null> {
-    const finalizedResult = this.completeIfNoMoreRetries({
-      errorInfo: options.errorInfo,
-      attempt: options.attempt,
-      maskedTo: options.maskedTo,
-      subject: options.subject,
-    });
-    if (finalizedResult) {
-      return finalizedResult;
-    }
-
-    await this.waitBeforeRetry({
-      attempt: options.attempt,
-      maskedTo: options.maskedTo,
-      statusCode: options.errorInfo.statusCode,
-      errorName: options.errorInfo.name,
-      logMessage: options.retryLogMessage,
-    });
-    return null;
   }
 
   private async waitBeforeRetry(options: {
@@ -359,21 +139,66 @@ export class EmailNotificationService implements IEmailNotificationService {
     logMessage: string;
     statusCode?: number;
     errorName?: string;
+    retryAfterSeconds?: number;
   }): Promise<void> {
-    const delay = resolveRetryDelayMs({
-      attempt: options.attempt,
+    const delay = computeRetryDelayMs({
+      attempt: options.attempt - 1,
       statusCode: options.statusCode,
       errorName: options.errorName,
+      retryAfterSeconds: options.retryAfterSeconds,
     });
 
     this.logger.info(options.logMessage, {
       to: options.maskedTo,
-      attempt: options.attempt + 1,
+      attempt: options.attempt,
       delay_ms: delay,
-      outcome: "success",
+      status: "retrying",
     });
 
     await sleep(delay);
+  }
+
+  private async handleSendFailure(options: {
+    errorInfo: EmailErrorInfo;
+    attempt: number;
+    maskedTo: string;
+    subject: string;
+    retryLogMessage: string;
+    retryAfterSeconds?: number;
+  }): Promise<NotificationResult | null> {
+    const retryable = shouldRetry({
+      errorInfo: options.errorInfo,
+      attempt: options.attempt,
+      maxAttempts: DEFAULT_MAX_ATTEMPTS,
+    });
+
+    if (!retryable) {
+      this.logSendFailure({
+        maskedTo: options.maskedTo,
+        subject: options.subject,
+        attempt: options.attempt,
+        errorInfo: options.errorInfo,
+      });
+
+      return buildEmailErrorResult({
+        message: options.errorInfo.message,
+        errorType: options.errorInfo.type,
+        retryCount: options.attempt - 1,
+        statusCode: options.errorInfo.statusCode,
+        providerErrorName: options.errorInfo.name,
+      });
+    }
+
+    await this.waitBeforeRetry({
+      attempt: options.attempt,
+      maskedTo: options.maskedTo,
+      statusCode: options.errorInfo.statusCode,
+      errorName: options.errorInfo.name,
+      retryAfterSeconds: options.retryAfterSeconds,
+      logMessage: options.retryLogMessage,
+    });
+
+    return null;
   }
 
   /**
@@ -388,21 +213,17 @@ export class EmailNotificationService implements IEmailNotificationService {
     const { to, template } = params;
     const idempotencyKey = params.idempotencyKey ?? randomUUID();
 
-    // ログ用にマスクされたメールアドレス
     const maskedTo = maskEmail(to);
-
-    // fromフィールドの構築
     const fromField = this.buildFromField(template);
 
-    // 開発環境（development）では実際の送信をスキップ
-    const isDev = isDevelopment();
-    if (isDev) {
+    if (isDevelopment()) {
       this.logger.info("Email send skipped in development environment", {
         to: maskedTo,
         subject: template.subject,
         outcome: "success",
         mocked: true,
       });
+
       return okResult(undefined, {
         skipped: true,
         providerMessageId: `mock-${randomUUID()}`,
@@ -419,80 +240,81 @@ export class EmailNotificationService implements IEmailNotificationService {
       ...(template.replyTo && { replyTo: template.replyTo }),
     };
 
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    for (let attempt = 1; attempt <= DEFAULT_MAX_ATTEMPTS; attempt++) {
+      let sendResult: ResendSendResult;
+
       try {
-        // タイムアウト付きでメール送信を実行
-        const { data, error } = await this.sendEmailWithTimeout(emailPayload, idempotencyKey);
-
-        // error がある場合
-        if (error) {
-          const errorInfo = classifyResendError(error);
-          const finalizedResult = await this.retryOrReturnFailure({
-            errorInfo,
-            attempt,
-            maskedTo,
-            subject: template.subject,
-            retryLogMessage: "Retrying email send after delay",
-          });
-          if (finalizedResult) {
-            return finalizedResult;
-          }
-          continue;
-        }
-
-        // error がなくても data.id がない場合は失敗として扱う
-        if (!data?.id) {
-          const errorInfo: ResendErrorInfo = {
-            type: "transient",
-            message: "Email provider returned success without message id",
-          };
-
-          const finalizedResult = await this.retryOrReturnFailure({
-            errorInfo,
-            attempt,
-            maskedTo,
-            subject: template.subject,
-            retryLogMessage: "Retrying email send after invalid response",
-          });
-          if (finalizedResult) {
-            return finalizedResult;
-          }
-          continue;
-        }
-
-        // 成功
-        this.logger.info("Email sent successfully", {
-          to: maskedTo,
-          subject: template.subject,
-          message_id: data.id,
-          attempt: attempt + 1,
-          outcome: "success",
-        });
-
-        return okResult(undefined, {
-          providerMessageId: data.id,
-          retryCount: attempt,
-        });
+        sendResult = await this.sendEmailWithTimeout(emailPayload, idempotencyKey);
       } catch (error) {
-        const errorInfo = classifyResendError(error);
-        const finalizedResult = await this.retryOrReturnFailure({
-          errorInfo,
+        const finalResult = await this.handleSendFailure({
+          errorInfo: classifyEmailProviderError(error),
           attempt,
           maskedTo,
           subject: template.subject,
           retryLogMessage: "Retrying email send after error",
         });
-        if (finalizedResult) {
-          return finalizedResult;
+
+        if (finalResult) {
+          return finalResult;
         }
+
+        continue;
       }
+
+      if (sendResult.error) {
+        const finalResult = await this.handleSendFailure({
+          errorInfo: classifyEmailProviderError(sendResult.error),
+          attempt,
+          maskedTo,
+          subject: template.subject,
+          retryLogMessage: "Retrying email send after delay",
+          retryAfterSeconds: this.extractRetryAfterSeconds(sendResult.headers),
+        });
+
+        if (finalResult) {
+          return finalResult;
+        }
+
+        continue;
+      }
+
+      if (!sendResult.data?.id) {
+        const finalResult = await this.handleSendFailure({
+          errorInfo: {
+            type: "transient",
+            message: "Email provider returned success without message id",
+          },
+          attempt,
+          maskedTo,
+          subject: template.subject,
+          retryLogMessage: "Retrying email send after invalid response",
+        });
+        if (finalResult) {
+          return finalResult;
+        }
+        continue;
+      }
+
+      this.logger.info("Email sent successfully", {
+        to: maskedTo,
+        subject: template.subject,
+        message_id: sendResult.data.id,
+        attempt: attempt,
+        outcome: "success",
+      });
+
+      return okResult(undefined, {
+        providerMessageId: sendResult.data.id,
+        retryCount: attempt - 1,
+      });
     }
 
-    // ここには到達しないはずだが、念のため
     return buildEmailErrorResult({
       message: "メール送信中に予期しないエラーが発生しました",
       errorType: "transient",
-      retryCount: MAX_RETRIES,
+      retryCount: DEFAULT_MAX_ATTEMPTS - 1,
+      statusCode: undefined,
+      providerErrorName: undefined,
     });
   }
 
@@ -502,22 +324,54 @@ export class EmailNotificationService implements IEmailNotificationService {
   private async sendEmailWithTimeout(
     payload: CreateEmailOptions,
     idempotencyKey: string
-  ): Promise<{ data: { id: string } | null; error: ErrorResponse | null }> {
+  ): Promise<ResendSendResult> {
+    const abortController = new AbortController();
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
     try {
       const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error("Email send timeout")), RESEND_TIMEOUT_MS);
+        timeoutId = setTimeout(() => {
+          abortController.abort();
+          reject(new Error("Email send timeout"));
+        }, RESEND_TIMEOUT_MS);
       });
 
-      return await Promise.race([
-        this.resend.emails.send(payload, { idempotencyKey }),
-        timeoutPromise,
-      ]);
+      const requestOptions: CreateEmailRequestOptions & { signal: AbortSignal } = {
+        idempotencyKey,
+        signal: abortController.signal,
+      };
+
+      return await Promise.race([this.resend.emails.send(payload, requestOptions), timeoutPromise]);
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
     }
+  }
+
+  private extractRetryAfterSeconds(
+    headers: Record<string, string> | null | undefined
+  ): number | undefined {
+    if (!headers) {
+      return undefined;
+    }
+
+    const rawRetryAfter = headers["retry-after"] ?? headers["Retry-After"];
+    if (!rawRetryAfter) {
+      return undefined;
+    }
+
+    const retryAfterSeconds = Number.parseInt(rawRetryAfter, 10);
+    if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+      return retryAfterSeconds;
+    }
+
+    const retryAfterDateMs = Date.parse(rawRetryAfter);
+    if (!Number.isFinite(retryAfterDateMs)) {
+      return undefined;
+    }
+
+    return Math.max(1, Math.ceil((retryAfterDateMs - Date.now()) / 1000));
   }
 
   /**
@@ -549,7 +403,6 @@ export class EmailNotificationService implements IEmailNotificationService {
         idempotencyKey,
       });
 
-      // 管理者アラート送信に失敗した場合は詳細をログに記録
       if (!result.success) {
         handleServerError("ADMIN_ALERT_FAILED", {
           category: "email",
@@ -567,9 +420,8 @@ export class EmailNotificationService implements IEmailNotificationService {
 
       return result;
     } catch (error) {
-      const errorInfo = classifyResendError(error);
+      const errorInfo = classifyEmailProviderError(error);
 
-      // テンプレート読み込みエラーなど、sendEmail以外でのエラー
       handleServerError("ADMIN_ALERT_FAILED", {
         category: "email",
         action: "sendAdminAlert",

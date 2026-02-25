@@ -61,6 +61,7 @@ describe("core/notification/email-service", () => {
     // Jitter（ゆらぎ）を無効化するために Math.random を固定 (0.5 * 2 - 1 = 0)
     jest.spyOn(Math, "random").mockReturnValue(0.5);
     process.env.NODE_ENV = "production";
+    process.env.RESEND_API_KEY = defaultEnv.RESEND_API_KEY;
     mockGetEnv.mockReturnValue({ ...defaultEnv });
   });
 
@@ -168,6 +169,53 @@ describe("core/notification/email-service", () => {
     );
   });
 
+  it("429 かつ retry-after ヘッダーがある場合は指定秒数で再試行する", async () => {
+    jest.useFakeTimers();
+    mockResendSend
+      .mockResolvedValueOnce({
+        data: null,
+        error: {
+          statusCode: 429,
+          name: "rate_limit_exceeded",
+          message: "Too many requests",
+        },
+        headers: {
+          "retry-after": "2",
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { id: "email_retry_after_ok" },
+        error: null,
+        headers: null,
+      });
+
+    const service = createService();
+    const sending = service.sendEmail({
+      to: "user@example.com",
+      template: {
+        subject: "retry-after",
+        html: "<p>retry-after</p>",
+        text: "retry-after",
+      },
+      idempotencyKey: "retry-after-case",
+    });
+
+    await Promise.resolve();
+    expect(mockResendSend).toHaveBeenCalledTimes(1);
+
+    await jest.advanceTimersByTimeAsync(2000);
+    const result = await sending;
+
+    expect(result.success).toBe(true);
+    expect(mockResendSend).toHaveBeenCalledTimes(2);
+    expect(mockServiceLoggerInfo).toHaveBeenCalledWith(
+      "Retrying email send after delay",
+      expect.objectContaining({
+        delay_ms: 2000,
+      })
+    );
+  });
+
   it("monthly_quota_exceeded は恒久エラーとして即時終了する", async () => {
     mockResendSend.mockResolvedValue({
       data: null,
@@ -194,6 +242,15 @@ describe("core/notification/email-service", () => {
       expect(result.meta?.retryCount).toBe(0);
     }
     expect(mockResendSend).toHaveBeenCalledTimes(1);
+    expect(mockHandleServerError).toHaveBeenCalledWith(
+      "EMAIL_SENDING_FAILED",
+      expect.objectContaining({
+        additionalData: expect.objectContaining({
+          attempt: 1,
+          max_attempts: 2,
+        }),
+      })
+    );
   });
 
   it("409 concurrent_idempotent_requests は再試行する", async () => {
@@ -202,6 +259,7 @@ describe("core/notification/email-service", () => {
       .mockResolvedValueOnce({
         data: null,
         error: {
+          statusCode: 409,
           name: "concurrent_idempotent_requests",
           message: "Request still in progress",
         },
@@ -256,6 +314,15 @@ describe("core/notification/email-service", () => {
       expect(result.meta?.retryCount).toBe(0);
     }
     expect(mockResendSend).toHaveBeenCalledTimes(1);
+    expect(mockHandleServerError).toHaveBeenCalledWith(
+      "EMAIL_SENDING_FAILED",
+      expect.objectContaining({
+        additionalData: expect.objectContaining({
+          attempt: 1,
+          max_attempts: 2,
+        }),
+      })
+    );
   });
 
   it("daily_quota_exceeded は恒久エラーとして即時終了する", async () => {
@@ -342,8 +409,18 @@ describe("core/notification/email-service", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.meta?.errorType).toBe("permanent");
+      expect(result.meta?.retryCount).toBe(0);
     }
     expect(mockResendSend).toHaveBeenCalledTimes(1);
+    expect(mockHandleServerError).toHaveBeenCalledWith(
+      "EMAIL_SENDING_FAILED",
+      expect.objectContaining({
+        additionalData: expect.objectContaining({
+          attempt: 1,
+          max_attempts: 2,
+        }),
+      })
+    );
   });
 
   it("ネイティブ Error の timeout はネットワークエラーとして分類される", async () => {

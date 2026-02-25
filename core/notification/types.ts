@@ -6,9 +6,9 @@ import type { AppResult } from "@core/errors";
 import type { StripeAccountStatus } from "@core/types/statuses";
 
 /**
- * Resendエラータイプ
+ * メール送信エラータイプ
  */
-export type ResendErrorType = "transient" | "permanent";
+export type EmailErrorType = "transient" | "permanent";
 
 /**
  * 通知結果メタデータ
@@ -16,11 +16,13 @@ export type ResendErrorType = "transient" | "permanent";
 export interface NotificationMeta {
   providerMessageId?: string;
   /** エラータイプ（一時的または恒久的） */
-  errorType?: ResendErrorType;
+  errorType?: EmailErrorType;
   /** リトライ回数 */
   retryCount?: number;
   /** ResendやWebhook先のステータスコード */
   statusCode?: number;
+  /** プロバイダのエラー名 */
+  providerErrorName?: string;
   /** 通知処理をスキップしたか */
   skipped?: boolean;
 }
@@ -158,10 +160,10 @@ export interface IEmailNotificationService {
 }
 
 /**
- * Resendエラー情報
+ * メール送信エラー情報
  */
-export interface ResendErrorInfo {
-  type: ResendErrorType;
+export interface EmailErrorInfo {
+  type: EmailErrorType;
   message: string;
   name?: string;
   statusCode?: number;
