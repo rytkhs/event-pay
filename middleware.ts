@@ -218,12 +218,11 @@ export async function middleware(request: NextRequest) {
     supabaseAnonKey: supabaseKey,
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims;
 
   // 10. 認証ガード: 未ログインはログイン画面へ
-  if (!user) {
+  if (!claims) {
     // デモ環境かつログイン・登録ページの場合は、本番環境へリダイレクト
     if (isDemo && (pathname === "/login" || pathname === "/register")) {
       const redirectPageUrl = new URL("/demo-redirect", request.url);
