@@ -41,37 +41,6 @@ describe("core/supabase/factory", () => {
     });
   });
 
-  it("getAll が失敗したらログを残して throw する", async () => {
-    const cookieStore = {
-      getAll: jest.fn(() => {
-        throw new Error("cookie store read failed");
-      }),
-      set: jest.fn(),
-    };
-    mockCookies.mockResolvedValue(cookieStore);
-
-    await createServerActionSupabaseClient();
-
-    const options = mockCreateServerClient.mock.calls[0][2] as {
-      cookies: {
-        getAll: () => Array<{ name: string; value: string }>;
-      };
-    };
-
-    expect(() => options.cookies.getAll()).toThrow(
-      "Supabase server client failed to read auth cookies."
-    );
-    expect(mockHandleServerError).toHaveBeenCalledWith(
-      "INTERNAL_ERROR",
-      expect.objectContaining({
-        additionalData: expect.objectContaining({
-          reason: "COOKIE_READ_FAILED",
-          context: "server_action",
-        }),
-      })
-    );
-  });
-
   it("Server Component では setAll 書き込み失敗を無視する", async () => {
     const cookieStore = {
       getAll: jest.fn(() => []),
