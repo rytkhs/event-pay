@@ -31,11 +31,7 @@ export function createMiddlewareSupabaseClient({
       setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
         // Next.js Middlewareでは、リクエストとレスポンスの両方に反映する
         cookiesToSet.forEach(({ name, value }) => {
-          try {
-            request.cookies.set(name, value);
-          } catch (_) {
-            // ignore – request.cookies may be immutable in some contexts
-          }
+          request.cookies.set(name, value);
         });
 
         cookiesToSet.forEach(({ name, value, options }) => {

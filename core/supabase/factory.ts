@@ -93,11 +93,7 @@ async function createRequestServerClient({
     cookieOptions: cookieConfig,
     cookies: {
       getAll() {
-        try {
-          return cookieStore.getAll();
-        } catch (_) {
-          return [] as { name: string; value: string }[];
-        }
+        return cookieStore.getAll();
       },
       setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
         try {
