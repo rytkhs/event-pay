@@ -164,4 +164,5 @@ export interface ResendErrorInfo {
   type: ResendErrorType;
   message: string;
   name?: string;
+  statusCode?: number;
 }

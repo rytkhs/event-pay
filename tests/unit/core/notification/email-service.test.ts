@@ -58,8 +58,14 @@ describe("core/notification/email-service", () => {
     jest.clearAllMocks();
     jest.resetModules();
     jest.useRealTimers();
+    // Jitter（ゆらぎ）を無効化するために Math.random を固定 (0.5 * 2 - 1 = 0)
+    jest.spyOn(Math, "random").mockReturnValue(0.5);
     process.env.NODE_ENV = "production";
     mockGetEnv.mockReturnValue({ ...defaultEnv });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   afterAll(() => {
@@ -338,6 +344,35 @@ describe("core/notification/email-service", () => {
       expect(result.meta?.errorType).toBe("permanent");
     }
     expect(mockResendSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("ネイティブ Error の timeout はネットワークエラーとして分類される", async () => {
+    jest.useFakeTimers();
+    mockResendSend.mockRejectedValue(new Error("socket timeout"));
+
+    const service = createService();
+    const sending = service.sendEmail({
+      to: "user@example.com",
+      template: {
+        subject: "network timeout",
+        html: "<p>network timeout</p>",
+        text: "network timeout",
+      },
+      idempotencyKey: "native-error-timeout",
+    });
+
+    await Promise.resolve();
+    // INITIAL_RETRY_DELAY_MS (1000ms) 以上進める
+    await jest.advanceTimersByTimeAsync(1500);
+    const result = await sending;
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.message).toBe("ネットワークエラー");
+      expect(result.meta?.errorType).toBe("transient");
+      expect(result.meta?.retryCount).toBe(1);
+    }
+    expect(mockResendSend).toHaveBeenCalledTimes(2);
   });
 
   it("sendAdminAlert は idempotencyKey を sendEmail 経由で引き継ぐ", async () => {
