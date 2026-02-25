@@ -102,7 +102,6 @@ jest.mock("@core/security/secure-client-factory.impl", () => {
           createGuestClient: originalFactory.createGuestClient.bind(originalFactory),
           createPublicClient: originalFactory.createPublicClient.bind(originalFactory),
           createMiddlewareClient: originalFactory.createMiddlewareClient.bind(originalFactory),
-          createBrowserClient: originalFactory.createBrowserClient.bind(originalFactory),
         };
       },
     },
@@ -125,7 +124,6 @@ jest.mock("@core/security/secure-client-factory.impl", () => {
         createGuestClient: originalFactory.createGuestClient.bind(originalFactory),
         createPublicClient: originalFactory.createPublicClient.bind(originalFactory),
         createMiddlewareClient: originalFactory.createMiddlewareClient.bind(originalFactory),
-        createBrowserClient: originalFactory.createBrowserClient.bind(originalFactory),
       };
     },
   };

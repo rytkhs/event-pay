@@ -84,16 +84,6 @@ export interface ISecureSupabaseClientFactory {
     response: NextResponse,
     options?: ClientCreationOptions
   ): Promise<SupabaseClient>;
-
-  /**
-   * ブラウザ用クライアントを作成
-   *
-   * クライアントサイドでの使用に最適化されたクライアントを作成します。
-   *
-   * @param options クライアント作成オプション
-   * @returns ブラウザ用Supabaseクライアント
-   */
-  createBrowserClient(options?: ClientCreationOptions): SupabaseClient;
 }
 
 /**
@@ -144,78 +134,4 @@ export interface IGuestTokenValidator {
    * @returns フォーマットが有効かどうか
    */
   validateTokenFormat(token: string): boolean;
-}
-
-/**
- * セキュリティ監査機能のインターフェース
- *
- * 管理者権限の使用やゲストアクセスを監査し、
- * セキュリティインシデントの検出と対応を支援します。
- */
-export interface ISecurityAuditor {
-  /**
-   * 管理者アクセスをログに記録
-   *
-   * @param reason 使用理由
-   * @param context 使用コンテキスト
-   * @param auditContext 監査情報
-   * @param operationDetails 操作詳細
-   */
-  logAdminAccess(
-    reason: AdminReason,
-    context: string,
-    auditContext: AuditContext,
-    operationDetails?: Record<string, unknown>
-  ): Promise<void>;
-
-  /**
-   * ゲストアクセスをログに記録
-   *
-   * @param token ゲストトークン（ハッシュ化して記録）
-   * @param action 実行されたアクション
-   * @param auditContext 監査情報
-   * @param success 成功/失敗
-   * @param additionalInfo 追加情報
-   */
-  logGuestAccess(
-    token: string,
-    action: string,
-    auditContext: AuditContext,
-    success: boolean,
-    additionalInfo?: {
-      attendanceId?: string;
-      eventId?: string;
-      tableName?: string;
-      operationType?: "SELECT" | "INSERT" | "UPDATE" | "DELETE";
-      resultCount?: number;
-      errorCode?: string;
-      errorMessage?: string;
-    }
-  ): Promise<void>;
-
-  /**
-   * 疑わしい活動をログに記録
-   *
-   * @param activity 疑わしい活動の詳細
-   */
-  logSuspiciousActivity(activity: {
-    activityType: string;
-    tableName?: string;
-    userRole?: string;
-    userId?: string;
-    attemptedAction?: string;
-    expectedResultCount?: number;
-    actualResultCount?: number;
-    context?: Record<string, unknown>;
-    severity?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-    ipAddress?: string;
-    userAgent?: string;
-    sessionId?: string;
-    detectionMethod?: string;
-    falsePositive?: boolean;
-    investigatedAt?: Date;
-    investigatedBy?: string;
-    investigationNotes?: string;
-    createdAt?: Date;
-  }): Promise<void>;
 }

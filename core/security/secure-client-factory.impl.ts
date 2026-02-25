@@ -9,7 +9,6 @@ import "server-only";
 
 import type { NextRequest, NextResponse } from "next/server";
 
-import { createBrowserClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
@@ -18,11 +17,10 @@ import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 import { validateGuestTokenFormat } from "./crypto";
+import { GuestErrorCode, GuestTokenError } from "./guest-token-errors";
 import { ISecureSupabaseClientFactory } from "./secure-client-factory.interface";
 import {
   AdminReason,
-  GuestErrorCode,
-  GuestTokenError,
   AdminAccessError,
   AdminAccessErrorCode,
   AuditContext,
@@ -108,8 +106,7 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
    */
   async createAuthenticatedClient(_options?: ClientCreationOptions) {
     if (typeof window !== "undefined" || typeof document !== "undefined") {
-      const message =
-        "createAuthenticatedClient is server-only. Use createBrowserClient on the client.";
+      const message = "createAuthenticatedClient is server-only.";
       handleServerError("INTERNAL_ERROR", {
         category: "authentication",
         action: "client_creation",
@@ -190,20 +187,6 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
 
     // 監査ログを記録
     try {
-      const _fullAuditContext: AuditContext = {
-        userId: auditContext?.userId,
-        ipAddress: auditContext?.ipAddress,
-        userAgent: auditContext?.userAgent,
-        accessedTables: auditContext?.accessedTables,
-        operationType: auditContext?.operationType,
-        additionalInfo: {
-          reason,
-          context,
-          timestamp: new Date().toISOString(),
-          ...auditContext?.additionalInfo,
-        },
-      };
-
       logger.info("Admin access logged", {
         category: "security",
         action: "admin_access",
@@ -295,27 +278,6 @@ export class SecureSupabaseClientFactory implements ISecureSupabaseClientFactory
     _options?: ClientCreationOptions
   ) {
     return await SupabaseClientFactory.createServerClient("middleware", { request, response });
-  }
-
-  /**
-   * ブラウザ用クライアントを作成
-   */
-  createBrowserClient(options?: ClientCreationOptions) {
-    const supabaseUrl = this.getSupabaseUrl();
-    const anonKey = this.getAnonKey();
-
-    return createBrowserClient(supabaseUrl, anonKey, {
-      auth: {
-        persistSession: options?.persistSession ?? true,
-        autoRefreshToken: options?.autoRefreshToken ?? true,
-      },
-      global: {
-        headers: {
-          "X-Browser-Client": "true",
-          ...options?.headers,
-        },
-      },
-    });
   }
 }
 

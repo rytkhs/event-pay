@@ -1,6 +1,5 @@
 const mockCreateClient = jest.fn(() => ({ from: jest.fn() }));
 const mockCreateServerClient = jest.fn(() => ({ from: jest.fn() }));
-const mockCreateBrowserClient = jest.fn(() => ({ from: jest.fn() }));
 const mockGetEnv = jest.fn();
 const mockHandleServerError = jest.fn();
 
@@ -10,7 +9,6 @@ jest.mock("@supabase/supabase-js", () => ({
 
 jest.mock("@supabase/ssr", () => ({
   createServerClient: mockCreateServerClient,
-  createBrowserClient: mockCreateBrowserClient,
 }));
 
 jest.mock("@core/utils/cloudflare-env", () => ({

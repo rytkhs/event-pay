@@ -1,7 +1,3 @@
-import type { NextRequest, NextResponse } from "next/server";
-
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { GuestErrorCode } from "./guest-token-errors";
 
 /**
@@ -94,48 +90,6 @@ export interface AuditContext extends Record<string, unknown> {
   accessedTables?: string[];
   operationType?: "SELECT" | "INSERT" | "UPDATE" | "DELETE";
   additionalInfo?: Record<string, unknown>;
-}
-
-/**
- * セキュアSupabaseクライアントのインターフェース
- */
-export interface SecureSupabaseClient {
-  /**
-   * 通常の認証済みクライアントを作成
-   */
-  createAuthenticatedClient(): Promise<SupabaseClient>;
-
-  /**
-   * ゲストトークン認証クライアントを作成（カスタムヘッダー自動設定）
-   * 非永続セッション（persistSession=false / autoRefreshToken=false）で動作
-   * @param token ゲストトークン
-   * @returns ゲスト用Supabaseクライアント
-   */
-  createGuestClient(token: string): SupabaseClient;
-
-  /**
-   * 限定的管理者クライアントを作成（監査付き）
-   * @param reason 管理者権限使用理由
-   * @param context 監査コンテキスト
-   * @returns 監査付き管理者クライアント
-   */
-  createAuditedAdminClient(
-    reason: AdminReason,
-    context: string,
-    auditContext?: AuditContext
-  ): Promise<SupabaseClient>;
-
-  /**
-   * 公開RPC向けの匿名クライアントを作成
-   */
-  createPublicClient(options?: ClientCreationOptions): SupabaseClient;
-
-  /**
-   * ミドルウェア用クライアントを作成
-   * @param request NextRequest
-   * @param response NextResponse
-   */
-  createMiddlewareClient(request: NextRequest, response: NextResponse): Promise<SupabaseClient>;
 }
 
 /**

@@ -28,7 +28,7 @@ export async function validateGuestToken(guestToken: string): Promise<{
   attendance?: GuestAttendanceData;
   errorMessage?: string;
   canModify: boolean;
-  errorCode?: import("@core/security/secure-client-factory.types").GuestErrorCode;
+  errorCode?: import("@core/security/guest-token-errors").GuestErrorCode;
 }> {
   try {
     // 新しいRLSベースのバリデーターを使用
@@ -57,8 +57,7 @@ export async function validateGuestToken(guestToken: string): Promise<{
       isValid: false,
       errorMessage: "参加データの取得中にエラーが発生しました",
       canModify: false,
-      errorCode:
-        "TOKEN_NOT_FOUND" as import("@core/security/secure-client-factory.types").GuestErrorCode,
+      errorCode: "TOKEN_NOT_FOUND" as import("@core/security/guest-token-errors").GuestErrorCode,
     };
   }
 }

@@ -17,11 +17,10 @@ import { isValidIsoDateTimeString } from "@core/utils/timezone";
 import type { Database } from "@/types/database";
 
 import { validateGuestTokenFormat } from "./crypto";
+import { GuestErrorCode, GuestTokenErrorFactory } from "./guest-token-errors";
 import { getSecureClientFactory } from "./secure-client-factory.impl";
 import { IGuestTokenValidator } from "./secure-client-factory.interface";
 import {
-  GuestErrorCode,
-  GuestTokenErrorFactory,
   GuestValidationResult,
   GuestSession,
   GuestPermission,
@@ -51,11 +50,8 @@ export interface RLSGuestTokenValidationResult {
  */
 export class RLSGuestTokenValidator implements IGuestTokenValidator {
   private readonly clientFactory = getSecureClientFactory();
-  // Security auditor removed
 
-  constructor() {
-    // Security auditor removed
-  }
+  constructor() {}
 
   /**
    * ゲストトークンを検証し、参加データを取得
