@@ -336,6 +336,7 @@ export class EmailNotificationService implements IEmailNotificationService {
         }, RESEND_TIMEOUT_MS);
       });
 
+      // resend@6.9.2 では `signal` とは型付けされないが、実行時に `options` がfetch optionに展開される
       const requestOptions: CreateEmailRequestOptions & { signal: AbortSignal } = {
         idempotencyKey,
         signal: abortController.signal,
