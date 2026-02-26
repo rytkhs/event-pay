@@ -192,7 +192,7 @@ export async function bulkUpdateCashStatusAction(
       {
         p_payment_updates: updateData,
         p_user_id: user.id,
-        p_notes: notes ?? undefined,
+        p_notes: notes,
       }
     );
 
