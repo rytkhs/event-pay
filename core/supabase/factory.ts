@@ -3,7 +3,7 @@ import "server-only";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { getSupabaseCookieConfig } from "@core/supabase/config";
+import { SUPABASE_COOKIE_CONFIG } from "@core/supabase/config";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
@@ -87,10 +87,9 @@ async function createRequestServerClient({
   allowCookieWriteFailure: boolean;
 }): Promise<SupabaseClient<Database>> {
   const cookieStore = await getRequestCookieStoreOrThrow();
-  const cookieConfig = getSupabaseCookieConfig();
 
   return createServerClient<Database>(getURL(), getAnonKey(), {
-    cookieOptions: cookieConfig,
+    cookieOptions: SUPABASE_COOKIE_CONFIG,
     cookies: {
       getAll() {
         return cookieStore.getAll();

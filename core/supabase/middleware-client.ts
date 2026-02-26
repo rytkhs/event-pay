@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { getSupabaseCookieConfig } from "@core/supabase/config";
+import { SUPABASE_COOKIE_CONFIG } from "@core/supabase/config";
 
 import type { Database } from "@/types/database";
 
@@ -27,7 +27,6 @@ export function createMiddlewareSupabaseClient({
   supabaseUrl,
   supabaseAnonKey,
 }: MiddlewareSupabaseConfig): MiddlewareSupabaseClient {
-  const cookieConfig = getSupabaseCookieConfig();
   let middlewareResponse = response;
   const requestCookieStore = new Map<string, string>();
 
@@ -56,7 +55,7 @@ export function createMiddlewareSupabaseClient({
   };
 
   const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
-    cookieOptions: cookieConfig,
+    cookieOptions: SUPABASE_COOKIE_CONFIG,
     cookies: {
       getAll() {
         return Array.from(requestCookieStore.entries()).map(([name, value]) => ({ name, value }));
