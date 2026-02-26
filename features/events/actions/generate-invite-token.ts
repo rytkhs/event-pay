@@ -1,6 +1,6 @@
-import { getCurrentUser } from "@core/auth/auth-utils";
+import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { generateInviteToken } from "@core/utils/invite-token";
 
 import { generateInviteTokenEventIdSchema } from "../validation";
@@ -19,13 +19,12 @@ export async function generateInviteTokenAction(
   try {
     const validatedEventId = generateInviteTokenEventIdSchema.parse(eventId);
 
-    const user = await getCurrentUser();
+    const user = await getCurrentUserForServerAction();
     if (!user) {
       return fail("UNAUTHORIZED", { userMessage: "Authentication required" });
     }
 
-    const factory = getSecureClientFactory();
-    const client = await factory.createAuthenticatedClient();
+    const client = await createServerActionSupabaseClient();
 
     const { data: event, error: eventError } = await client
       .from("events")

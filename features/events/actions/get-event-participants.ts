@@ -3,7 +3,7 @@ import { z } from "zod";
 import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
 import { type ActionResult, ok, fail, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
-import { createClient } from "@core/supabase/server";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 import {
@@ -38,9 +38,11 @@ export async function getEventParticipantsAction(
     const { eventId } = parseResult.data;
 
     // 共通の認可・権限確認処理
-    const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
+    const { user, eventId: validatedEventId } = await verifyEventAccess(eventId, {
+      context: "server_component",
+    });
 
-    const supabase = createClient();
+    const supabase = await createServerComponentSupabaseClient();
 
     // シンプルな全件取得クエリ
     const selectColumns = `
@@ -99,7 +101,7 @@ export async function getEventParticipantsAction(
 
     // データ変換（参加者ビュー形式に変換）
     const participants: ParticipantView[] = (
-      (attendances as unknown as SupabaseAttendanceWithPayments[]) || []
+      (attendances as SupabaseAttendanceWithPayments[]) || []
     ).map((attendance) => {
       const latestPayment = (attendance.payments || [])[0] || null;
 

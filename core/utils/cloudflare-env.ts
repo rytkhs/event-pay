@@ -7,6 +7,16 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 import { logger } from "@core/logging/app-logger";
 
+function toProcessEnv(env: object): NodeJS.ProcessEnv {
+  const mappedEnv = {} as NodeJS.ProcessEnv;
+  for (const [key, value] of Object.entries(env)) {
+    if (typeof value === "string") {
+      mappedEnv[key] = value;
+    }
+  }
+  return mappedEnv;
+}
+
 /**
  * Cloudflare環境変数にアクセスするためのヘルパー関数
  * @returns Cloudflare環境変数オブジェクト
@@ -16,7 +26,7 @@ export function getEnv(): NodeJS.ProcessEnv {
     return process.env;
   } catch {
     const env = getCloudflareContext().env;
-    return env as unknown as NodeJS.ProcessEnv;
+    return toProcessEnv(env);
   }
 }
 
@@ -42,7 +52,7 @@ export async function getEnvAsync(): Promise<NodeJS.ProcessEnv> {
       env_count: envKeys.length,
       outcome: "success",
     });
-    return env as unknown as NodeJS.ProcessEnv;
+    return toProcessEnv(env);
   } catch {
     const envKeys = Object.keys(process.env);
     logger.debug("process.envをフォールバックとして使用（非同期）", {

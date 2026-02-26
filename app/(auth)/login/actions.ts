@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 
 export async function startGoogleOAuth(formData: FormData) {
   const nextParam = (formData.get("next") as string) || "/";
@@ -13,7 +13,7 @@ export async function startGoogleOAuth(formData: FormData) {
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
   const origin = `${proto}://${host}`;
 
-  const supabase = getSecureClientFactory().createAuthenticatedClient();
+  const supabase = await createServerActionSupabaseClient();
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",

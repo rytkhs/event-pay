@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { validateGuestTokenFormat } from "@core/security/crypto";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createGuestClient } from "@core/security/secure-client-factory.impl";
 import {
   logInvalidTokenAccess,
   logParticipationSecurityEvent,
@@ -156,8 +156,7 @@ export async function updateGuestAttendanceAction(
     }
 
     // ゲストクライアントを取得してRLSポリシーを適用
-    const secureFactory = getSecureClientFactory();
-    const guestClient = secureFactory.createGuestClient(guestToken);
+    const guestClient = createGuestClient(guestToken);
 
     // データベース更新の実行（定員チェックはRPC関数内で実行される）
     // NOTE: `p_event_fee` は冗長に見えるが、以下の理由で呼び出し時に確定した金額を明示的に渡している。

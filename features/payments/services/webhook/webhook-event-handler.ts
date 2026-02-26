@@ -2,7 +2,7 @@ import Stripe from "stripe";
 
 import { okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import type { AppSupabaseClient } from "@core/types/supabase";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -44,8 +44,7 @@ export class StripeWebhookEventHandler implements WebhookEventHandler {
       return;
     }
 
-    const factory = getSecureClientFactory();
-    this.supabase = (await factory.createAuditedAdminClient(
+    this.supabase = (await createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "Stripe Webhook Event Handling"
     )) as AppSupabaseClient;

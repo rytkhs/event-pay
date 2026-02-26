@@ -10,7 +10,7 @@ import { sendSlackText } from "@core/notification/slack";
 import { buildAdminContactNoticeTemplate } from "@core/notification/templates";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { hmacSha256Hex } from "@core/rate-limit/hash";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -93,7 +93,7 @@ export async function submitContact(input: ContactInput) {
   const ipHash = getEnv().RL_HMAC_SECRET && ip ? hmacSha256Hex(ip) : null;
 
   // 6. DB保存
-  const supabase = createClient();
+  const supabase = await createServerActionSupabaseClient();
   const { error: insertError } = await supabase.from("contacts").insert({
     name: nameSanitized,
     email,

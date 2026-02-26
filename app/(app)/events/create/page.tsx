@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { createClient } from "@core/supabase/server";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,7 @@ import { getDetailedAccountStatusAction } from "@features/stripe-connect/server"
 import { createEventAction } from "./actions";
 
 export default async function CreateEventPage() {
-  const supabase = await createClient();
+  const supabase = await createServerComponentSupabaseClient();
 
   const {
     data: { user },

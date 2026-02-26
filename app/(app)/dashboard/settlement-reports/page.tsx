@@ -2,8 +2,8 @@ import React from "react";
 
 import { redirect } from "next/navigation";
 
-import { getCurrentUser } from "@core/auth/auth-utils";
-import { createClient } from "@core/supabase/server";
+import { getCurrentUserForServerComponent } from "@core/auth/auth-utils";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 
 import { SettlementReportGenerator, SettlementReportList } from "@features/settlements";
@@ -20,12 +20,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export const dynamic = "force-dynamic";
 
 export default async function SettlementReportsPage() {
-  const user = await getCurrentUser();
+  const user = await getCurrentUserForServerComponent();
   if (!user?.id) {
     redirect("/login");
   }
 
-  const supabase = createClient();
+  const supabase = await createServerComponentSupabaseClient();
   const service = new SettlementReportService(supabase);
 
   // 直近のレポートを初期表示（最大50件）

@@ -4,7 +4,7 @@ import { verifyEventAccess } from "@core/auth/event-authorization";
 import { type ActionResult, ok, fail } from "@core/errors/adapters/server-actions";
 import { logExport } from "@core/logging/system-logger";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
 import {
   type SimplePaymentStatus,
@@ -59,7 +59,7 @@ export async function exportParticipantsCsvAction(
       });
     }
 
-    const supabase = createClient();
+    const supabase = await createServerActionSupabaseClient();
 
     // CSVデータ取得用クエリの構築
     let query = supabase

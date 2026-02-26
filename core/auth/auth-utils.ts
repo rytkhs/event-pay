@@ -1,7 +1,12 @@
-import { createClient } from "@core/supabase/server";
+import {
+  createServerActionSupabaseClient,
+  createServerComponentSupabaseClient,
+} from "@core/supabase/factory";
 
-export async function getCurrentUser() {
-  const supabase = createClient();
+async function getCurrentUserWithClient(
+  createClient: () => ReturnType<typeof createServerComponentSupabaseClient>
+) {
+  const supabase = await createClient();
 
   const {
     data: { user },
@@ -13,4 +18,12 @@ export async function getCurrentUser() {
   }
 
   return user;
+}
+
+export async function getCurrentUserForServerAction() {
+  return await getCurrentUserWithClient(createServerActionSupabaseClient);
+}
+
+export async function getCurrentUserForServerComponent() {
+  return await getCurrentUserWithClient(createServerComponentSupabaseClient);
 }

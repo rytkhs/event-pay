@@ -1,16 +1,26 @@
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import {
+  createServerActionSupabaseClient,
+  createServerComponentSupabaseClient,
+} from "@core/supabase/factory";
 import type { AppSupabaseClient } from "@core/types/supabase";
 
 import { StripeConnectErrorHandler } from "./error-handler";
 import type { IStripeConnectService } from "./interface";
 import { StripeConnectService } from "./service";
 
-export const createUserStripeConnectService = (): IStripeConnectService => {
-  const secureFactory = getSecureClientFactory();
-  const userClient = secureFactory.createAuthenticatedClient();
-  const errorHandler = new StripeConnectErrorHandler();
-  return new StripeConnectService(userClient as AppSupabaseClient, errorHandler);
-};
+export const createUserStripeConnectServiceForServerAction =
+  async (): Promise<IStripeConnectService> => {
+    const userClient = await createServerActionSupabaseClient();
+    const errorHandler = new StripeConnectErrorHandler();
+    return new StripeConnectService(userClient as AppSupabaseClient, errorHandler);
+  };
+
+export const createUserStripeConnectServiceForServerComponent =
+  async (): Promise<IStripeConnectService> => {
+    const userClient = await createServerComponentSupabaseClient();
+    const errorHandler = new StripeConnectErrorHandler();
+    return new StripeConnectService(userClient as AppSupabaseClient, errorHandler);
+  };
 
 export const createStripeConnectServiceWithClient = (
   adminClient: AppSupabaseClient

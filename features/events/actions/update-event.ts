@@ -10,7 +10,7 @@ import {
 } from "@core/domain/event-edit-restrictions";
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logEventManagement } from "@core/logging/system-logger";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import type { EventRow } from "@core/types/event";
 import type { PaymentMethod } from "@core/types/statuses";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
@@ -29,7 +29,7 @@ export async function updateEventAction(
   formData: FormData
 ): Promise<UpdateEventResult> {
   try {
-    const supabase = createClient();
+    const supabase = await createServerActionSupabaseClient();
 
     // イベントIDのバリデーション（UUID形式）
     const eventIdValidation = validateEventId(eventId);

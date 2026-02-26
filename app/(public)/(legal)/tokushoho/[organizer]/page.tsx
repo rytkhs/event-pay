@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import type { Metadata } from "next";
 
-import { createClient } from "@core/supabase/server";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import { renderMarkdownFromPublic } from "@core/utils/markdown";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 
@@ -24,7 +24,7 @@ export default async function Page(props: { params: Promise<Params> }) {
     // 主催者ニックネーム取得（未認証でも呼べる範囲でベストエフォート）
     let organizerNickname = "";
     try {
-      const supabase = createClient();
+      const supabase = await createServerComponentSupabaseClient();
       const { data, error } = await supabase.rpc("get_event_creator_name", {
         p_creator_id: params.organizer,
       });

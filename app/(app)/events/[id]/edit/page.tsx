@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 import { ArrowLeft } from "lucide-react";
 
-import { createClient } from "@core/supabase/server";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import type { Event, EventRow } from "@core/types/event";
 import type { AttendanceStatus } from "@core/types/statuses";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
@@ -49,7 +49,7 @@ type EventEditQueryRow = Pick<
 
 export default async function EventEditPage(props: EventEditPageProps) {
   const params = await props.params;
-  const supabase = createClient();
+  const supabase = await createServerComponentSupabaseClient();
 
   // IDバリデーション（形式不正のみ404）
   const validation = validateEventId(params.id);

@@ -6,12 +6,12 @@ import { z } from "zod";
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { NotificationService } from "@core/notification/service";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createGuestClient } from "@core/security/secure-client-factory.impl";
 import {
   logParticipationSecurityEvent,
   logInvalidTokenAccess,
 } from "@core/security/security-logger";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import type { RpcGuestGetAttendanceRow } from "@core/types/invite";
 import { generateGuestToken } from "@core/utils/guest-token";
 import {
@@ -288,7 +288,7 @@ async function executeRegistration(
   event: ValidatedEventData["event"],
   securityContext: { userAgent?: string; ip?: string }
 ): Promise<string> {
-  const supabase = createClient();
+  const supabase = await createServerActionSupabaseClient();
 
   let newAttendanceId: string | null = null;
   let rpcError: PostgrestError | Error | null = null;
@@ -464,8 +464,7 @@ async function verifyGuestTokenStorage(
   securityContext: { userAgent?: string; ip?: string }
 ): Promise<void> {
   try {
-    const secureClientFactory = getSecureClientFactory();
-    const supabase = await secureClientFactory.createGuestClient(expectedGuestToken);
+    const supabase = createGuestClient(expectedGuestToken);
 
     const { data: rpcRow, error: verifyError } = (await supabase
       .rpc("rpc_guest_get_attendance", { p_guest_token: expectedGuestToken })
@@ -625,7 +624,7 @@ export async function registerParticipationAction(
 
     // 11. 参加登録完了通知を送信（失敗してもログのみ記録）
     try {
-      const supabase = createClient();
+      const supabase = await createServerActionSupabaseClient();
       const notificationService = new NotificationService(supabase);
       await notificationService.sendParticipationRegisteredNotification({
         email: processedData.sanitizedEmail,

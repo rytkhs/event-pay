@@ -7,7 +7,10 @@ import { redirect } from "next/navigation";
 
 import type { User } from "@supabase/supabase-js";
 
-import { createClient } from "@core/supabase/server";
+import {
+  createServerActionSupabaseClient,
+  createServerComponentSupabaseClient,
+} from "@core/supabase/factory";
 import { validateEventId } from "@core/validation/event-id";
 
 /**
@@ -18,13 +21,24 @@ interface EventAccessResult {
   eventId: string;
 }
 
+type EventAccessContext = "server_action" | "server_component";
+
+interface VerifyEventAccessOptions {
+  context?: EventAccessContext;
+}
+
 /**
  * イベントへのアクセス権限を確認する共通関数
  * @param eventId - 確認対象のイベントID
  * @returns Promise<EventAccessResult> - 認証済みユーザー情報と検証済みイベントID
  * @throws Error - 認証失敗、権限なし、不正なイベントIDなどの場合
  */
-export async function verifyEventAccess(eventId: string): Promise<EventAccessResult> {
+export async function verifyEventAccess(
+  eventId: string,
+  options: VerifyEventAccessOptions = {}
+): Promise<EventAccessResult> {
+  const context = options.context ?? "server_action";
+
   // イベントIDのバリデーション
   const validation = validateEventId(eventId);
   if (!validation.success || !validation.data) {
@@ -32,7 +46,10 @@ export async function verifyEventAccess(eventId: string): Promise<EventAccessRes
   }
 
   const validatedEventId = validation.data;
-  const supabase = createClient();
+  const supabase =
+    context === "server_component"
+      ? await createServerComponentSupabaseClient()
+      : await createServerActionSupabaseClient();
 
   // 認証確認
   const {
