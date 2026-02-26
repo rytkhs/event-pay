@@ -28,6 +28,11 @@ export function getNumberProp(value: unknown, key: string): number | undefined {
   return typeof prop === "number" ? prop : undefined;
 }
 
+export function getFiniteNumberProp(value: unknown, key: string): number | undefined {
+  const prop = getNumberProp(value, key);
+  return typeof prop === "number" && Number.isFinite(prop) ? prop : undefined;
+}
+
 export function getRecordProp(value: unknown, key: string): UnknownRecord | undefined {
   if (!isRecord(value)) return undefined;
   const prop = value[key];
