@@ -5,7 +5,7 @@
 
 import { errFrom, mapResult } from "@core/errors";
 import { registerSettlementReportPort } from "@core/ports/settlements";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import { SettlementReportService } from "../services/service";
@@ -17,8 +17,7 @@ export function registerSettlementsAdapters(): void {
   registerSettlementReportPort({
     async regenerateAfterRefundOrDispute(eventId: string, createdBy: string) {
       try {
-        const factory = getSecureClientFactory();
-        const supabaseClient = await factory.createAuditedAdminClient(
+        const supabaseClient = await createAuditedAdminClient(
           AdminReason.PAYMENT_PROCESSING,
           `features/settlements/adapters/settlement-port.adapter regenerateAfterRefundOrDispute eventId=${eventId}`,
           { userId: createdBy }

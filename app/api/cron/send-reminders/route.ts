@@ -6,8 +6,9 @@ import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import { logger } from "@core/logging/app-logger";
 import { logEmail } from "@core/logging/system-logger";
 import { EmailNotificationService } from "@core/notification/email-service";
+import { buildEmailIdempotencyKey } from "@core/notification/idempotency";
 import { ReminderService } from "@core/notification/reminder-service";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 export const runtime = "nodejs";
@@ -48,8 +49,7 @@ export async function GET(request: NextRequest) {
     cronLogger.info("Starting reminder cron job");
 
     // RLSを回避するため管理者クライアントを使用
-    const clientFactory = getSecureClientFactory();
-    const supabase = await clientFactory.createAuditedAdminClient(
+    const supabase = await createAuditedAdminClient(
       AdminReason.REMINDER_PROCESSING,
       "cron:send-reminders - automated reminder email sending for deadlines and events",
       {
@@ -106,6 +106,20 @@ export async function GET(request: NextRequest) {
           failureRate: `${(failureRate * 100).toFixed(1)}%`,
           summaries,
         },
+        idempotencyKey: buildEmailIdempotencyKey({
+          scope: "reminder-high-failure-rate-alert",
+          parts: [
+            new Date().toISOString().slice(0, 10),
+            totalSent,
+            totalFailed,
+            summaries
+              .map(
+                (summary) =>
+                  `${summary.reminderType}:${summary.successCount}:${summary.failureCount}`
+              )
+              .join("|"),
+          ],
+        }),
       });
 
       cronLogger.warn("High failure rate detected, admin alert sent", {

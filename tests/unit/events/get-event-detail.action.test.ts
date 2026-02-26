@@ -51,7 +51,7 @@ function createMockSupabase({
 
   return {
     auth: {
-      getUser: jest.fn().mockResolvedValue({
+      getUser: jest.fn<() => Promise<any>>().mockResolvedValue({
         data: { user: { id: "00000000-0000-0000-0000-000000000999" } },
         error: null,
       }),
@@ -61,7 +61,7 @@ function createMockSupabase({
       if (table === "attendances") return attendancesQuery;
       throw new Error(`Unexpected table: ${table}`);
     }),
-    rpc: jest.fn().mockResolvedValue({
+    rpc: jest.fn<() => Promise<any>>().mockResolvedValue({
       data: creatorName,
       error: creatorError,
     }),

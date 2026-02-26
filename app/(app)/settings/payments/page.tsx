@@ -7,12 +7,12 @@ import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
-import { createClient } from "@core/supabase/server";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 
 import { AccountStatus, CONNECT_REFRESH_PATH, OnboardingForm } from "@features/stripe-connect";
 import {
   checkExpressDashboardAccessAction,
-  createUserStripeConnectService,
+  createUserStripeConnectServiceForServerComponent,
   getConnectAccountStatusAction,
 } from "@features/stripe-connect/server";
 
@@ -30,14 +30,20 @@ export const metadata: Metadata = {
 };
 
 interface PaymentSettingsPageProps {
-  searchParams: {
-    refresh?: string;
-    connect?: string;
-  };
+  searchParams: Promise<PaymentSettingsSearchParams>;
 }
 
-async function PaymentSettingsContent({ searchParams }: PaymentSettingsPageProps) {
-  const supabase = createClient();
+interface PaymentSettingsContentProps {
+  searchParams: PaymentSettingsSearchParams;
+}
+
+interface PaymentSettingsSearchParams {
+  refresh?: string;
+  connect?: string;
+}
+
+async function PaymentSettingsContent({ searchParams }: PaymentSettingsContentProps) {
+  const supabase = await createServerComponentSupabaseClient();
   const {
     data: { user },
     error,
@@ -48,7 +54,7 @@ async function PaymentSettingsContent({ searchParams }: PaymentSettingsPageProps
   }
 
   // StripeConnectServiceを初期化
-  const stripeConnectService = createUserStripeConnectService();
+  const stripeConnectService = await createUserStripeConnectServiceForServerComponent();
 
   // 既存のアカウントをチェック
   const existingAccount = await stripeConnectService.getConnectAccountByUser(user.id);
@@ -145,10 +151,12 @@ function LoadingSkeleton() {
   );
 }
 
-export default function PaymentSettingsPage(props: PaymentSettingsPageProps) {
+export default async function PaymentSettingsPage(props: PaymentSettingsPageProps) {
+  const searchParams = await props.searchParams;
+
   return (
     <Suspense fallback={<LoadingSkeleton />}>
-      <PaymentSettingsContent {...props} />
+      <PaymentSettingsContent searchParams={searchParams} />
     </Suspense>
   );
 }

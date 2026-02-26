@@ -6,12 +6,12 @@ import { z } from "zod";
 import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { NotificationService } from "@core/notification/service";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createGuestClient } from "@core/security/secure-client-factory.impl";
 import {
   logParticipationSecurityEvent,
   logInvalidTokenAccess,
 } from "@core/security/security-logger";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import type { RpcGuestGetAttendanceRow } from "@core/types/invite";
 import { generateGuestToken } from "@core/utils/guest-token";
 import {
@@ -19,7 +19,7 @@ import {
   checkEventCapacity,
   checkDuplicateEmail,
 } from "@core/utils/invite-token";
-import { getSafeHeaders } from "@core/utils/next";
+import { getHeaders } from "@core/utils/next";
 import {
   participationFormSchema,
   createParticipationFormSchema,
@@ -288,7 +288,7 @@ async function executeRegistration(
   event: ValidatedEventData["event"],
   securityContext: { userAgent?: string; ip?: string }
 ): Promise<string> {
-  const supabase = createClient();
+  const supabase = await createServerActionSupabaseClient();
 
   let newAttendanceId: string | null = null;
   let rpcError: PostgrestError | Error | null = null;
@@ -464,8 +464,7 @@ async function verifyGuestTokenStorage(
   securityContext: { userAgent?: string; ip?: string }
 ): Promise<void> {
   try {
-    const secureClientFactory = getSecureClientFactory();
-    const supabase = await secureClientFactory.createGuestClient(expectedGuestToken);
+    const supabase = createGuestClient(expectedGuestToken);
 
     const { data: rpcRow, error: verifyError } = (await supabase
       .rpc("rpc_guest_get_attendance", { p_guest_token: expectedGuestToken })
@@ -558,15 +557,19 @@ async function verifyGuestTokenStorage(
 
 /**
  * 参加登録を処理するサーバーアクション
- * セキュリティ対策強化版：容量チェック、重複チェック、ゲストトークン生成、セキュリティログ記録を含む
+ * 容量チェック、重複チェック、ゲストトークン生成、セキュリティログ記録を含む
  */
 export async function registerParticipationAction(
   formData: FormData
 ): Promise<ActionResult<RegisterParticipationData>> {
-  // リクエスト情報を取得（テスト環境でも安全）
-  const { context: securityContext } = await getSafeHeaders();
+  // セキュリティコンテキストを保持（エラー発生時のログ記録用）
+  let securityContext: { userAgent?: string; ip?: string } = {};
 
   try {
+    // リクエスト情報を取得
+    const headersData = await getHeaders();
+    securityContext = headersData.context;
+
     // 1. FormDataの抽出と基本バリデーション
     const participationData = await extractAndValidateFormData(formData, securityContext);
 
@@ -605,7 +608,7 @@ export async function registerParticipationAction(
     };
     // 10. 申込成功状態をHttpOnlyクッキーで12時間保持（パスは該当招待リンクのみに限定）
     try {
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       const twelveHoursMs = 12 * 60 * 60 * 1000;
       const expiresAt = new Date(Date.now() + twelveHoursMs);
       cookieStore.set("invite_success", responseData.guestToken, {
@@ -621,7 +624,7 @@ export async function registerParticipationAction(
 
     // 11. 参加登録完了通知を送信（失敗してもログのみ記録）
     try {
-      const supabase = createClient();
+      const supabase = await createServerActionSupabaseClient();
       const notificationService = new NotificationService(supabase);
       await notificationService.sendParticipationRegisteredNotification({
         email: processedData.sanitizedEmail,

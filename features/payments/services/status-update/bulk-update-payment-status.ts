@@ -65,7 +65,7 @@ export async function bulkUpdatePaymentStatus(
     const { data, error } = await supabase.rpc("rpc_bulk_update_payment_status_safe", {
       p_payment_updates: paymentUpdates,
       p_user_id: userId,
-      p_notes: notes ?? undefined,
+      p_notes: notes,
     });
 
     if (error) {

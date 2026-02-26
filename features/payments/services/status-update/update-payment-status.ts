@@ -32,7 +32,7 @@ export async function updatePaymentStatusSafe(
       p_new_status: params.status,
       p_expected_version: params.expectedVersion,
       p_user_id: params.userId,
-      p_notes: params.notes ?? undefined,
+      p_notes: params.notes,
     });
 
     if (error) {

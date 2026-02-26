@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { getStripe } from "@core/stripe/client";
-import { createClient } from "@core/supabase/server";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 
 import { StripeConnectErrorHandler } from "../services/error-handler";
 import { StripeConnectService } from "../services/service";
@@ -61,7 +61,7 @@ const getCachedBalance = (accountId: string) =>
  */
 export async function getStripeBalanceAction(): Promise<ActionResult<number>> {
   try {
-    const supabase = createClient();
+    const supabase = await createServerComponentSupabaseClient();
 
     // 認証確認
     const {

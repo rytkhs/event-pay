@@ -14,6 +14,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "types": ["node"],
     "plugins": [
       {
         "name": "next"
@@ -26,11 +27,25 @@
       "@core/actions/*": ["./core/actions/*"],
       "@features/*": ["./features/*"],
       "@components/*": ["./components/*"],
-      "@/types/*": ["./types/*"],
-      "@tests/*": ["./tests/*"],
-      "server-only": ["./tests/mocks/server-only.js"]
+      "@/types/*": ["./types/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "types/**/*.ts"],
+  "include": [
+    "next-env.d.ts",
+    "env.d.ts",
+    "cloudflare-env.d.ts",
+    ".next/types/**/*.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "core/**/*.ts",
+    "core/**/*.tsx",
+    "features/**/*.ts",
+    "features/**/*.tsx",
+    "types/**/*.ts",
+    "middleware.ts",
+    "sentry-worker.ts"
+  ],
   "exclude": ["node_modules", "tests/**", "**/*.test.ts", "**/*.test.tsx", "supabase/functions/**"]
 }

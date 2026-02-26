@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import type { Metadata } from "next";
 
-import { createClient } from "@core/supabase/server";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import { renderMarkdownFromPublic } from "@core/utils/markdown";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 
@@ -10,20 +10,21 @@ export const dynamic = "force-dynamic";
 
 type Params = { organizer: string };
 
-export async function generateMetadata({ params: _params }: { params: Params }): Promise<Metadata> {
+export async function generateMetadata(_props: { params: Promise<Params> }): Promise<Metadata> {
   return {
     title: "特定商取引法に基づく表記",
     robots: "noindex, nofollow",
   };
 }
 
-export default async function Page({ params }: { params: Params }) {
+export default async function Page(props: { params: Promise<Params> }) {
+  const params = await props.params;
   try {
     const { html, frontmatter } = await renderMarkdownFromPublic("/legal/tokushoho/organizer.md");
     // 主催者ニックネーム取得（未認証でも呼べる範囲でベストエフォート）
     let organizerNickname = "";
     try {
-      const supabase = createClient();
+      const supabase = await createServerComponentSupabaseClient();
       const { data, error } = await supabase.rpc("get_event_creator_name", {
         p_creator_id: params.organizer,
       });

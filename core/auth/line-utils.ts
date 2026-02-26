@@ -10,9 +10,9 @@ import { LINE_OAUTH_CONFIG } from "./line-constants";
 /**
  * リクエストからoriginを構築
  */
-export function buildOrigin(): string {
+export async function buildOrigin(): Promise<string> {
   const env = getEnv();
-  const hdrs = headers();
+  const hdrs = await headers();
   const proto = hdrs.get("x-forwarded-proto") ?? "http";
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
   return env.NEXT_PUBLIC_APP_URL ?? `${proto}://${host}`;

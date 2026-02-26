@@ -3,15 +3,15 @@ import { revalidatePath } from "next/cache";
 import { verifyEventAccess } from "@core/auth/event-authorization";
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logEventManagement } from "@core/logging/system-logger";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { hasPostgrestCode } from "@core/supabase/postgrest-error-guards";
-import { createClient } from "@core/supabase/server";
 
 export async function deleteEventAction(eventId: string): Promise<ActionResult<void>> {
   try {
     // 認証・権限（作成者のみ）+ イベントID検証
     const { eventId: validatedEventId, user } = await verifyEventAccess(eventId);
 
-    const supabase = createClient();
+    const supabase = await createServerActionSupabaseClient();
 
     // 参加者カウント（attending / maybe のみを対象）
     const { count: participantCount, error: attendanceCountError } = await supabase

@@ -28,7 +28,7 @@ describe("Invite Header Requirement", () => {
 
   test("ヘッダー未設定ではrpc_public_get_eventは返らない", async () => {
     const factory = getSecureClientFactory();
-    const anon = factory.createReadOnlyClient();
+    const anon = factory.createPublicClient();
 
     const { data: events, error } = await (anon as any).rpc("rpc_public_get_event", {
       p_invite_token: setup.testInviteToken,
@@ -102,14 +102,14 @@ describe("Public Attending Count RPC", () => {
     ]);
 
     // Without header: should error
-    const anon = factory.createReadOnlyClient();
+    const anon = factory.createPublicClient();
     const { error: errNoHeader } = await (anon as any).rpc("rpc_public_attending_count", {
       p_event_id: e.id,
     });
     expect(errNoHeader).not.toBeNull();
 
     // With header: correct count
-    const anonWithHeader = factory.createReadOnlyClient({
+    const anonWithHeader = factory.createPublicClient({
       headers: { "x-invite-token": invite },
     });
     // small delay to ensure visibility
@@ -142,7 +142,7 @@ describe("Public Connect Account RPC", () => {
 
   test("guest can fetch minimal connect account info for event organizer", async () => {
     const factory = getSecureClientFactory();
-    const anonWithHeader = factory.createReadOnlyClient({
+    const anonWithHeader = factory.createPublicClient({
       headers: { "x-invite-token": setup.testInviteToken },
     });
 
@@ -162,7 +162,7 @@ describe("Public Connect Account RPC", () => {
 
   test("mismatched creator_id returns empty", async () => {
     const factory = getSecureClientFactory();
-    const anonWithHeader = factory.createReadOnlyClient({
+    const anonWithHeader = factory.createPublicClient({
       headers: { "x-invite-token": setup.testInviteToken },
     });
 

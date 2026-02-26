@@ -4,8 +4,9 @@ import { NextResponse } from "next/server";
 import { LINE_API, LINE_OAUTH_COOKIES, LINE_ERROR_CODES } from "@core/auth/line-constants";
 import { buildOrigin } from "@core/auth/line-utils";
 import { logger } from "@core/logging/app-logger";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+import { createRouteHandlerSupabaseClient } from "@core/supabase/factory";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
     actor_type: "anonymous",
   });
 
-  const origin = buildOrigin();
+  const origin = await buildOrigin();
 
   // 1. エラーハンドリングとCSRF検証
   if (error) {
@@ -40,7 +41,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.AUTH_FAILED}`);
   }
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const storedState = cookieStore.get(LINE_OAUTH_COOKIES.STATE)?.value;
   const nextPath = cookieStore.get(LINE_OAUTH_COOKIES.NEXT)?.value ?? "/dashboard";
   const codeVerifier = cookieStore.get(LINE_OAUTH_COOKIES.CODE_VERIFIER)?.value;
@@ -122,7 +123,7 @@ export async function GET(request: Request) {
 
     // 4. Supabase Admin操作（Service Role使用）
     // 監査付きAdminクライアントを作成
-    const supabaseAdmin = await getSecureClientFactory().createAuditedAdminClient(
+    const supabaseAdmin = await createAuditedAdminClient(
       AdminReason.LINE_LOGIN,
       "line-auth-callback",
       {
@@ -297,7 +298,7 @@ export async function GET(request: Request) {
     }
 
     // 7. 通常のSupabaseクライアントでセッションを確立
-    const supabase = getSecureClientFactory().createAuthenticatedClient();
+    const supabase = await createRouteHandlerSupabaseClient();
 
     const { data: sessionData, error: sessionError } = await supabase.auth.verifyOtp({
       token_hash: linkData.properties.hashed_token,
@@ -315,7 +316,7 @@ export async function GET(request: Request) {
           const { ga4Server } = await import("@core/analytics/ga4-server");
 
           // _ga CookieからClient IDを取得
-          const cookieStore = cookies();
+          const cookieStore = await cookies();
           const gaCookie = cookieStore.get("_ga")?.value;
           const clientId = extractClientIdFromGaCookie(gaCookie);
 

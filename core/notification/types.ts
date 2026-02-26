@@ -2,8 +2,6 @@
  * 通知サービスの型定義
  */
 
-import * as React from "react";
-
 import type { AppResult } from "@core/errors";
 import type { StripeAccountStatus } from "@core/types/statuses";
 
@@ -23,6 +21,8 @@ export interface NotificationMeta {
   retryCount?: number;
   /** ResendやWebhook先のステータスコード */
   statusCode?: number;
+  /** 再試行までの推奨待機秒数（Retry-After） */
+  retryAfterSeconds?: number;
   /** 通知処理をスキップしたか */
   skipped?: boolean;
 }
@@ -33,11 +33,12 @@ export interface NotificationMeta {
 export type NotificationResult = AppResult<void, NotificationMeta>;
 
 /**
- * React Emailコンポーネントを使用したメールテンプレート
+ * HTML/TEXT形式のメールテンプレート
  */
 export interface EmailTemplate {
   subject: string;
-  react: React.ReactElement;
+  html: string;
+  text: string;
   fromEmail?: string; // 送信者メールアドレス
   fromName?: string; // 送信者名
   replyTo?: string;
@@ -141,7 +142,11 @@ export interface IEmailNotificationService {
   /**
    * メール送信
    */
-  sendEmail(params: { to: string; template: EmailTemplate }): Promise<NotificationResult>;
+  sendEmail(params: {
+    to: string;
+    template: EmailTemplate;
+    idempotencyKey?: string;
+  }): Promise<NotificationResult>;
 
   /**
    * 管理者向けアラートメール送信
@@ -150,6 +155,7 @@ export interface IEmailNotificationService {
     subject: string;
     message: string;
     details?: Record<string, unknown>;
+    idempotencyKey?: string;
   }): Promise<NotificationResult>;
 }
 

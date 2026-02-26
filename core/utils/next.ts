@@ -1,4 +1,4 @@
-import { logger } from "@core/logging/app-logger";
+import { handleServerError } from "@core/utils/error-handler.server";
 import { toErrorLike } from "@core/utils/type-guards";
 
 import { getEnv } from "./cloudflare-env";
@@ -24,55 +24,39 @@ export function isNextRedirectError(err: unknown): boolean {
 }
 
 /**
- * テスト環境でも安全にNext.js headers()を呼び出すためのヘルパー関数
- *
- * @param fallbackContext テスト環境等でheaders()が利用できない場合のフォールバック値
- * @returns ヘッダー情報またはフォールバック値
+ * Next.js headers() を利用できるリクエスト文脈でのみヘッダー情報を取得する。
+ * 利用できない場合はフォールバックせず例外を投げる。
  */
-export async function getSafeHeaders(fallbackContext?: {
-  userAgent?: string;
-  ip?: string;
-}): Promise<{
-  headersList: { get: (name: string) => string | null } | null;
+export async function getHeaders(): Promise<{
+  headersList: { get: (name: string) => string | null };
   context: { userAgent?: string; ip?: string };
 }> {
-  let headersList: { get: (name: string) => string | null } | null = null;
-  let context: { userAgent?: string; ip?: string };
-
   try {
-    // next/headersから動的にheaders()をインポート（ESModules対応）
+    // next/headers から headers() を動的にインポート
     const { headers } = await import("next/headers");
-    headersList = headers();
+    const headersList = await headers();
 
     if (headersList) {
-      // 実際のヘッダーから情報を抽出
       const userAgent = headersList.get("user-agent") ?? undefined;
       const ip = getClientIPFromHeaders(headersList);
-      context = { userAgent, ip };
-    } else {
-      throw new Error("headers() returned null");
+      return { headersList, context: { userAgent, ip } };
     }
+
+    throw new Error("headers() returned null");
   } catch (error) {
-    // headers()が利用できない場合（テスト環境など）
-    logger.warn("next/headers not available, using fallback context", {
+    const message = "getHeaders requires next/headers headers() in a server request context.";
+
+    handleServerError("INTERNAL_ERROR", {
       category: "system",
       action: "header_access",
-      actor_type: "system",
-      error_message: error instanceof Error ? error.message : String(error),
-      environment: getEnv().NODE_ENV,
-      fallback: fallbackContext ? "provided" : "default",
-      outcome: "failure",
+      actorType: "system",
+      additionalData: {
+        reason: "NEXT_HEADERS_UNAVAILABLE",
+        error_message: error instanceof Error ? error.message : String(error),
+        environment: getEnv().NODE_ENV,
+      },
     });
 
-    // headersList を null に設定
-    headersList = null;
-
-    // フォールバック値を使用
-    context = fallbackContext || {
-      userAgent: getEnv().NODE_ENV === "test" ? "test-environment" : "unknown",
-      ip: "127.0.0.1",
-    };
+    throw new Error(message);
   }
-
-  return { headersList, context };
 }

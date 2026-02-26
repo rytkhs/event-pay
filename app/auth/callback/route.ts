@@ -2,7 +2,7 @@ import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { logger } from "@core/logging/app-logger";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createRouteHandlerSupabaseClient } from "@core/supabase/factory";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
 
@@ -12,13 +12,13 @@ export async function GET(request: Request) {
   let next = searchParams.get("next") ?? "/";
   if (!next.startsWith("/")) next = "/";
 
-  const hdrs = headers();
+  const hdrs = await headers();
   const proto = hdrs.get("x-forwarded-proto") ?? "http";
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
   const origin = `${proto}://${host}`;
 
   if (code) {
-    const supabase = getSecureClientFactory().createAuthenticatedClient();
+    const supabase = await createRouteHandlerSupabaseClient();
 
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error && data?.user) {

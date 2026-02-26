@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 
-import { createClient } from "@core/supabase/server";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   // 認証状態チェック
-  const supabase = createClient();
+  const supabase = await createServerComponentSupabaseClient();
   const {
     data: { user },
     error,

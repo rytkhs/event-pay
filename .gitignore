@@ -125,3 +125,5 @@ TYPE_SOT_MIGRATION_REPORT.md
 tools/
 docs/analysis/
 .agents/
+# next-agents-md
+.next-docs/

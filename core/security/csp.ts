@@ -108,10 +108,18 @@ export function buildCsp(params: BuildCspParams): string {
   ];
 
   // script-src: 動的ページはnonce + strict-dynamic、静的ページは'unsafe-inline'を許可（Next.jsハイドレーション用）
-  const scriptSrc =
+  // 開発環境ではHMR互換のため 'unsafe-eval' を許可
+  const scriptTokens =
     mode === "dynamic" && nonce
-      ? `script-src 'self' 'nonce-${nonce}' ${joinSrc(scriptOrigins)} 'strict-dynamic'`
-      : `script-src 'self' 'unsafe-inline' ${joinSrc(scriptOrigins)}`;
+      ? [
+          "'self'",
+          `'nonce-${nonce}'`,
+          ...(isDev ? ["'unsafe-eval'"] : []),
+          ...scriptOrigins,
+          "'strict-dynamic'",
+        ]
+      : ["'self'", "'unsafe-inline'", ...(isDev ? ["'unsafe-eval'"] : []), ...scriptOrigins];
+  const scriptSrc = `script-src ${joinSrc(scriptTokens)}`;
 
   // connect-src: API/WebSocket接続先
   const connectSrcBase = [

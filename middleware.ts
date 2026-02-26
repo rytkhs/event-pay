@@ -1,13 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { createServerClient } from "@supabase/ssr";
-
 import { DEMO_ALLOWED_PREFIXES, DEMO_REDIRECT_PATHS } from "@core/constants/demo-config";
 import {
   shouldShowMaintenancePage,
   getMaintenancePageHTML,
 } from "@core/maintenance/maintenance-page";
 import { buildCsp } from "@core/security/csp";
+import { createMiddlewareSupabaseClient } from "@core/supabase/middleware-client";
 import { getEnv } from "@core/utils/cloudflare-env";
 
 const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
@@ -173,23 +172,20 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set("x-nonce", nonce);
   }
 
-  // 5. CSP生成（本番のみ）
+  // 5. CSP生成（全環境）
   // requestHeadersにもセットすることで、Next.jsがレンダリング時にnonceを読み取れるようにする
-  const csp =
-    process.env.NODE_ENV === "production"
-      ? buildCsp({
-          mode: isStatic ? "static" : "dynamic",
-          nonce,
-          isDev: false,
-        })
-      : null;
+  const csp = buildCsp({
+    mode: isStatic ? "static" : "dynamic",
+    nonce,
+    isDev: process.env.NODE_ENV !== "production",
+  });
 
   if (csp) {
     requestHeaders.set("Content-Security-Policy", csp);
   }
 
   // 6. ベースレスポンス作成
-  const response = NextResponse.next({
+  let response = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
@@ -215,31 +211,38 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: "Missing Supabase configuration" }, { status: 500 });
   }
 
-  const supabase = createServerClient(supabaseUrl, supabaseKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookies: Array<{ name: string; value: string; options?: any }>) {
-        cookies.forEach(({ name, value, options }) => {
-          request.cookies.set({ name, value, ...options });
-          response.cookies.set({ name, value, ...options });
-        });
-      },
-    },
+  const { supabase, getResponse } = createMiddlewareSupabaseClient({
+    request,
+    requestHeaders,
+    response,
+    supabaseUrl,
+    supabaseAnonKey: supabaseKey,
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let claims: unknown | null = null;
+
+  try {
+    const { data, error } = await supabase.auth.getClaims();
+    if (!error) claims = data?.claims ?? null;
+  } catch {
+    // ここで claims=null 扱いにしてログイン誘導等に倒す
+  } finally {
+    response = getResponse();
+  }
 
   // 10. 認証ガード: 未ログインはログイン画面へ
-  if (!user) {
+  if (!claims) {
     // デモ環境かつログイン・登録ページの場合は、本番環境へリダイレクト
     if (isDemo && (pathname === "/login" || pathname === "/register")) {
       const redirectPageUrl = new URL("/demo-redirect", request.url);
       redirectPageUrl.searchParams.set("to", pathname);
       const redirectResponse = NextResponse.redirect(redirectPageUrl);
+
+      // Cookieをコピー（Cloudflare Workers環境での同期問題対策）
+      response.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie);
+      });
+
       applyCommonHeaders(redirectResponse, { requestId, nonce, isDemo, csp, reportUrl });
       return redirectResponse;
     }
@@ -283,7 +286,7 @@ export const config = {
   matcher: [
     {
       source:
-        "/((?!api/webhooks|api/cron|api/csp-report|api/errors|api/health|healthz|readyz|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|.well-known|apple-app-site-association|assetlinks.json|sw.js|service-worker.js|images|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json|css|js)$).*)",
+        "/((?!api(?:/|$)|healthz|readyz|_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml|manifest\\.webmanifest|\\.well-known(?:/|$)|apple-app-site-association|assetlinks\\.json|sw\\.js|service-worker\\.js|images|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json|css|js)$).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

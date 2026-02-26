@@ -12,7 +12,7 @@ describe("StripeWebhookEventHandler", () => {
   it("markSucceeded が失敗したら retryable failure を返し ledger を failed に更新する", async () => {
     const handleServerErrorSpy = jest
       .spyOn(errorHandler, "handleServerError")
-      .mockImplementation(() => undefined);
+      .mockImplementation(() => ({}) as any);
 
     const mockLedger = {
       beginProcessing: jest.fn().mockResolvedValue({

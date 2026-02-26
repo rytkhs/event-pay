@@ -1,12 +1,12 @@
 import { revalidatePath } from "next/cache";
 
-import { getCurrentUser } from "@core/auth/auth-utils";
+import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
 import { fail, ok } from "@core/errors/adapters/server-actions";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { accountDeletionRequestSchema } from "@core/validation/settings";
 
@@ -19,7 +19,7 @@ import { accountDeletionRequestSchema } from "@core/validation/settings";
 export async function requestAccountDeletionAction(formData: FormData): Promise<ActionResult> {
   try {
     // 認証
-    const user = await getCurrentUser();
+    const user = await getCurrentUserForServerAction();
     if (!user) {
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
@@ -38,11 +38,10 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
       });
     }
 
-    const supabase = createClient();
+    const supabase = await createServerActionSupabaseClient();
 
     // 1. Supabase Authのソフトデリート機能を使用
-    const factory = getSecureClientFactory();
-    const admin = await factory.createAuditedAdminClient(
+    const admin = await createAuditedAdminClient(
       AdminReason.ACCOUNT_DELETION,
       `User soft deletion: ${user.id}`,
       {

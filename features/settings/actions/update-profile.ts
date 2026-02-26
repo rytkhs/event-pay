@@ -1,17 +1,17 @@
 import { revalidatePath } from "next/cache";
 
-import { getCurrentUser } from "@core/auth/auth-utils";
+import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
 import { fail, ok } from "@core/errors/adapters/server-actions";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { updateProfileInputSchema } from "@core/validation/settings";
 
 export async function updateProfileAction(formData: FormData): Promise<ActionResult> {
   try {
     // 認証チェック
-    const user = await getCurrentUser();
+    const user = await getCurrentUserForServerAction();
     if (!user) {
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
@@ -30,7 +30,7 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
     const { name } = validationResult.data;
 
     // データベース更新
-    const supabase = createClient();
+    const supabase = await createServerActionSupabaseClient();
     const { error: updateError } = await supabase
       .from("users")
       .update({

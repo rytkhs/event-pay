@@ -194,11 +194,14 @@ export class StripeConnectService implements IStripeConnectService {
       try {
         // 型定義に search が無いStripeバージョンでもビルドを通すため、動的呼び出し
         const stripe = this.getStripeClient();
-        const accountsResource = stripe.accounts as unknown as {
-          search?: (params: { query: string }) => Promise<{ data: unknown[] }>;
-        };
-        if (accountsResource?.search) {
-          const searchResult = await accountsResource.search({
+        const maybeSearch = Reflect.get(stripe.accounts, "search");
+        if (typeof maybeSearch === "function") {
+          const searchResult = await (
+            maybeSearch as (
+              this: Stripe.AccountsResource,
+              params: { query: string }
+            ) => Promise<{ data: unknown[] }>
+          ).call(stripe.accounts, {
             query: `metadata['actor_id']:'${userId}'`,
           });
           if (Array.isArray(searchResult?.data) && searchResult.data.length > 0) {

@@ -29,12 +29,14 @@ describe("buildCsp", () => {
       const csp = buildCsp({ mode: "static", isDev: true });
 
       expect(csp).toContain("http://127.0.0.1:54321");
+      expect(csp).toContain("'unsafe-eval'");
     });
 
     test("本番環境でローカルSupabaseが許可されない", () => {
       const csp = buildCsp({ mode: "static", isDev: false });
 
       expect(csp).not.toContain("http://127.0.0.1:54321");
+      expect(csp).not.toContain("'unsafe-eval'");
     });
   });
 
@@ -52,6 +54,12 @@ describe("buildCsp", () => {
 
       // strict-dynamicが含まれることを確認
       expect(csp).toContain("'strict-dynamic'");
+    });
+
+    test("開発環境の動的モードでunsafe-evalが含まれる", () => {
+      const csp = buildCsp({ mode: "dynamic", nonce: "test-nonce-123", isDev: true });
+
+      expect(csp).toContain("'unsafe-eval'");
     });
 
     test("nonceがnullの場合、静的モードと同じ挙動", () => {

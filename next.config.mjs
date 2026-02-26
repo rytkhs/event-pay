@@ -1,35 +1,6 @@
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import withBundleAnalyzer from "@next/bundle-analyzer";
 
-const isDev = process.env.NODE_ENV === "development";
-const isProd = process.env.NODE_ENV === "production";
-
-// 開発時用 CSP（本番は middleware.ts で動的生成）
-// 許可ドメインの一次情報は core/security/csp.ts を参照
-// ※ next.config.mjs は ESM のため TypeScript モジュールを直接インポートできない
-const csp = [
-  "default-src 'self'",
-  // 開発時は HMR のため 'unsafe-eval' を許可
-  isDev
-    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://connect-js.stripe.com https://maps.googleapis.com https://*.googletagmanager.com https://static.cloudflareinsights.com"
-    : "script-src 'self' 'unsafe-inline' https://js.stripe.com https://connect-js.stripe.com https://maps.googleapis.com https://*.googletagmanager.com https://static.cloudflareinsights.com",
-  "script-src-attr 'none'",
-  "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "style-src-attr 'unsafe-inline'",
-  "img-src 'self' data: blob: https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com https://*.google-analytics.com https://*.googletagmanager.com",
-  "font-src 'self' https://fonts.gstatic.com",
-  isDev
-    ? "connect-src 'self' http://127.0.0.1:54321 https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://connect.stripe.com https://express.stripe.com https://dashboard.stripe.com https://connect-js.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://cloudflareinsights.com"
-    : "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://checkout.stripe.com https://connect.stripe.com https://express.stripe.com https://dashboard.stripe.com https://connect-js.stripe.com https://m.stripe.network https://q.stripe.com https://maps.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://cloudflareinsights.com",
-  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://connect.stripe.com https://express.stripe.com",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self' https://checkout.stripe.com",
-  "frame-ancestors 'none'",
-  "report-uri /api/csp-report",
-  ...(isProd ? ["upgrade-insecure-requests"] : []),
-].join("; ");
-
 const securityHeadersBase = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -51,9 +22,8 @@ const securityHeadersBase = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
 ];
 
-const securityHeaders = isProd
-  ? securityHeadersBase // 本番は CSP を Middleware に任せる
-  : [...securityHeadersBase, { key: "Content-Security-Policy", value: csp }];
+// CSP は middleware.ts + core/security/csp.ts で一元管理する
+const securityHeaders = securityHeadersBase;
 
 const nextConfig = {
   async headers() {
@@ -68,12 +38,6 @@ const nextConfig = {
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve = config.resolve || {};
-      config.resolve.alias = {
-        ...(config.resolve.alias ?? {}),
-        "@react-email/tailwind": false,
-        "@react-email/render": false,
-        "react-email": false,
-      };
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
@@ -112,9 +76,7 @@ const nextConfig = {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 
-  experimental: {
-    serverComponentsExternalPackages: ["pino"],
-  },
+  serverExternalPackages: ["pino"],
 };
 
 export default withBundleAnalyzer({

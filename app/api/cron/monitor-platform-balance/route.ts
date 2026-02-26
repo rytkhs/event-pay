@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { validateCronSecret, logCronActivity } from "@core/cron-auth";
 import { respondWithCode, respondWithProblem } from "@core/errors/server";
 import { EmailNotificationService } from "@core/notification/email-service";
+import { buildEmailIdempotencyKey } from "@core/notification/idempotency";
 import { getStripe } from "@core/stripe/client";
 import { getEnv } from "@core/utils/cloudflare-env";
 
@@ -41,10 +42,7 @@ export async function GET(request: NextRequest) {
 
     const availableJpy = sum(bal.available ?? []);
     const pendingJpy = sum(bal.pending ?? []);
-    const connectReservedJpy = sum(
-      (bal as unknown as { connect_reserved?: Array<{ amount: number; currency: string }> })
-        .connect_reserved || []
-    );
+    const connectReservedJpy = sum(bal.connect_reserved ?? []);
 
     const details = {
       available_jpy: availableJpy,
@@ -63,6 +61,10 @@ export async function GET(request: NextRequest) {
           subject: "Platform balance below threshold",
           message: "プラットフォーム残高が閾値を下回りました。迅速なTop-upをご検討ください。",
           details,
+          idempotencyKey: buildEmailIdempotencyKey({
+            scope: "platform-balance-alert",
+            parts: [new Date().toISOString().slice(0, 10), availableJpy, minThreshold],
+          }),
         });
         logCronActivity("warning", "Platform balance alert sent", details);
       } catch (e) {

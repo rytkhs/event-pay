@@ -18,7 +18,7 @@ import { logger } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit/index";
 import { hasAuthErrorCode, isResetPasswordResult } from "@core/supabase/auth-guards";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
@@ -75,7 +75,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
 
     // レート制限チェック（ip + emailHash の AND）
     try {
-      const headersList = headers();
+      const headersList = await headers();
       const ip = getClientIPFromHeaders(headersList);
       const keyInput = buildKey({ scope: "auth.login", ip, email: sanitizedEmail });
       const rateLimitResult = await enforceRateLimit({
@@ -108,7 +108,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
         userMessage: `アカウントがロックされています。${lockoutStatus.lockoutExpiresAt ? formatUtcToJst(lockoutStatus.lockoutExpiresAt, "HH:mm") : ""}頃に再試行してください。`,
       });
     }
-    const supabase = createClient();
+    const supabase = await createServerActionSupabaseClient();
 
     // ログイン試行実行（タイミング攻撃対策付き）
     const authResult = await TimingAttackProtection.normalizeResponseTime(
@@ -251,7 +251,7 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
 
     // レート制限チェック（ip + emailHash の AND）
     try {
-      const headersList = headers();
+      const headersList = await headers();
       const ip = getClientIPFromHeaders(headersList);
       const keyInput = buildKey({ scope: "auth.register", ip, email: sanitizedEmail });
       const rateLimitResult = await enforceRateLimit({
@@ -275,7 +275,7 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
       });
     }
 
-    const supabase = createClient();
+    const supabase = await createServerActionSupabaseClient();
 
     // ユーザー登録（メール確認必須）
     const registrationResult = await TimingAttackProtection.normalizeResponseTime(
@@ -439,7 +439,7 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
     }
 
     const { email, otp, type } = result.data;
-    const supabase = createClient();
+    const supabase = await createServerActionSupabaseClient();
 
     const { error: verifiedError } = await supabase.auth.verifyOtp({
       email,
@@ -514,7 +514,7 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
 
     // レート制限チェック（ip + emailHash の AND）
     try {
-      const headersList = headers();
+      const headersList = await headers();
       const ip = getClientIPFromHeaders(headersList);
       const sanitizedEmail = InputSanitizer.sanitizeEmail(email);
       const keyInput = buildKey({ scope: "auth.emailResend", ip, email: sanitizedEmail });
@@ -538,7 +538,7 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
       });
     }
 
-    const supabase = createClient();
+    const supabase = await createServerActionSupabaseClient();
 
     // タイプに応じて適切なメソッドを呼び出し
     let result;
@@ -622,7 +622,7 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
     }
     // レート制限チェック（ip + emailHash の AND）
     try {
-      const headersList = headers();
+      const headersList = await headers();
       const ip = getClientIPFromHeaders(headersList);
       const keyInput = buildKey({ scope: "auth.passwordReset", ip, email });
       const rateLimitResult = await enforceRateLimit({
@@ -646,7 +646,7 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
           rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
       });
     }
-    const supabase = createClient();
+    const supabase = await createServerActionSupabaseClient();
 
     // タイミング攻撃対策: 常に一定時間確保
     const resetResult = await TimingAttackProtection.normalizeResponseTime(
@@ -703,7 +703,7 @@ export async function completePasswordResetAction(formData: FormData): Promise<A
     }
 
     const { password } = result.data;
-    const supabase = createClient();
+    const supabase = await createServerActionSupabaseClient();
 
     // セッション存在チェック
     const { data: userData } = await supabase.auth.getUser();
@@ -749,7 +749,7 @@ export async function completePasswordResetAction(formData: FormData): Promise<A
  */
 export async function logoutAction(): Promise<ActionResult> {
   try {
-    const supabase = createClient();
+    const supabase = await createServerActionSupabaseClient();
 
     // ユーザーIDを取得（GA4イベント送信用）
     let userId: string | undefined;
