@@ -74,6 +74,16 @@ export function classifyEmailProviderError(error: unknown): EmailErrorInfo {
 
       return { type: "transient", message, name, statusCode };
     }
+
+    if (!(error instanceof Error)) {
+      const typeFromName = name ? resolveTypeFromErrorName(name) : null;
+      return {
+        type: typeFromName ?? "transient",
+        message,
+        name,
+        statusCode,
+      };
+    }
   }
 
   if (error instanceof Error) {
@@ -92,20 +102,6 @@ export function classifyEmailProviderError(error: unknown): EmailErrorInfo {
       message: error.message || "不明なエラー",
       name: error.name,
     };
-  }
-
-  if (isRecord(error)) {
-    const name = getStringProp(error, "name");
-    const message = getStringProp(error, "message");
-
-    if (name && message) {
-      const typeFromName = resolveTypeFromErrorName(name);
-      return {
-        type: typeFromName ?? "transient",
-        message,
-        name,
-      };
-    }
   }
 
   return {

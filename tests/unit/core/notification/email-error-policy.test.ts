@@ -68,4 +68,17 @@ describe("core/notification/email-error-policy", () => {
 
     expect(result.type).toBe("transient");
   });
+
+  it("message のみを持つ plain object の message を保持する", () => {
+    const result = classifyEmailProviderError({
+      message: "something went wrong",
+    });
+
+    expect(result).toEqual({
+      type: "transient",
+      message: "something went wrong",
+      name: undefined,
+      statusCode: undefined,
+    });
+  });
 });
