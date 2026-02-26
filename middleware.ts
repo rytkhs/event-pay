@@ -185,7 +185,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // 6. ベースレスポンス作成
-  const response = NextResponse.next({
+  let response = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
@@ -211,15 +211,24 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: "Missing Supabase configuration" }, { status: 500 });
   }
 
-  const supabase = createMiddlewareSupabaseClient({
+  const { supabase, getResponse } = createMiddlewareSupabaseClient({
     request,
+    requestHeaders,
     response,
     supabaseUrl,
     supabaseAnonKey: supabaseKey,
   });
 
-  const { data: claimsData } = await supabase.auth.getClaims();
-  const claims = claimsData?.claims;
+  let claims: unknown | null = null;
+
+  try {
+    const { data, error } = await supabase.auth.getClaims();
+    if (!error) claims = data?.claims ?? null;
+  } catch {
+    // ここで claims=null 扱いにしてログイン誘導等に倒す
+  } finally {
+    response = getResponse();
+  }
 
   // 10. 認証ガード: 未ログインはログイン画面へ
   if (!claims) {
@@ -228,6 +237,12 @@ export async function middleware(request: NextRequest) {
       const redirectPageUrl = new URL("/demo-redirect", request.url);
       redirectPageUrl.searchParams.set("to", pathname);
       const redirectResponse = NextResponse.redirect(redirectPageUrl);
+
+      // Cookieをコピー（Cloudflare Workers環境での同期問題対策）
+      response.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie);
+      });
+
       applyCommonHeaders(redirectResponse, { requestId, nonce, isDemo, csp, reportUrl });
       return redirectResponse;
     }
