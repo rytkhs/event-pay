@@ -58,8 +58,15 @@ describe("core/notification/email-service", () => {
     jest.clearAllMocks();
     jest.resetModules();
     jest.useRealTimers();
+    // Jitter（ゆらぎ）を無効化するために Math.random を固定 (0.5 * 2 - 1 = 0)
+    jest.spyOn(Math, "random").mockReturnValue(0.5);
     process.env.NODE_ENV = "production";
+    process.env.RESEND_API_KEY = defaultEnv.RESEND_API_KEY;
     mockGetEnv.mockReturnValue({ ...defaultEnv });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   afterAll(() => {
@@ -70,7 +77,6 @@ describe("core/notification/email-service", () => {
     mockResendSend.mockResolvedValue({
       data: { id: "email_1" },
       error: null,
-      headers: {},
     });
 
     const service = createService();
@@ -100,7 +106,6 @@ describe("core/notification/email-service", () => {
     mockResendSend.mockResolvedValue({
       data: { id: "email_2" },
       error: null,
-      headers: {},
     });
 
     const service = createService();
@@ -122,22 +127,66 @@ describe("core/notification/email-service", () => {
     );
   });
 
-  it("429 + retry-after ヘッダーがある場合は retry-after 秒で再試行する", async () => {
+  it("rate_limit_exceeded は RATE_LIMIT_RETRY_DELAY_MS (5000ms) で再試行する", async () => {
     jest.useFakeTimers();
     mockResendSend
       .mockResolvedValueOnce({
         data: null,
         error: {
           name: "rate_limit_exceeded",
-          statusCode: 429,
           message: "Too many requests",
         },
-        headers: { "retry-after": "7" },
+      })
+      .mockResolvedValueOnce({
+        data: { id: "email_retry_ok" },
+        error: null,
+      });
+
+    const service = createService();
+    const sending = service.sendEmail({
+      to: "user@example.com",
+      template: {
+        subject: "rate-limit",
+        html: "<p>rate-limit</p>",
+        text: "rate-limit",
+      },
+      idempotencyKey: "rate-limit-case",
+    });
+
+    await Promise.resolve();
+    expect(mockResendSend).toHaveBeenCalledTimes(1);
+
+    await jest.advanceTimersByTimeAsync(5000);
+    const result = await sending;
+
+    expect(result.success).toBe(true);
+    expect(mockResendSend).toHaveBeenCalledTimes(2);
+    expect(mockServiceLoggerInfo).toHaveBeenCalledWith(
+      "Retrying email send after delay",
+      expect.objectContaining({
+        delay_ms: 5000,
+      })
+    );
+  });
+
+  it("429 かつ retry-after ヘッダーがある場合は指定秒数で再試行する", async () => {
+    jest.useFakeTimers();
+    mockResendSend
+      .mockResolvedValueOnce({
+        data: null,
+        error: {
+          statusCode: 429,
+          name: "rate_limit_exceeded",
+          message: "Too many requests",
+        },
+        headers: {
+          "retry-after": "2",
+        },
       })
       .mockResolvedValueOnce({
         data: { id: "email_retry_after_ok" },
         error: null,
-        headers: {},
+        headers: null,
       });
 
     const service = createService();
@@ -154,7 +203,7 @@ describe("core/notification/email-service", () => {
     await Promise.resolve();
     expect(mockResendSend).toHaveBeenCalledTimes(1);
 
-    await jest.advanceTimersByTimeAsync(7000);
+    await jest.advanceTimersByTimeAsync(2000);
     const result = await sending;
 
     expect(result.success).toBe(true);
@@ -162,21 +211,18 @@ describe("core/notification/email-service", () => {
     expect(mockServiceLoggerInfo).toHaveBeenCalledWith(
       "Retrying email send after delay",
       expect.objectContaining({
-        delay_ms: 7000,
-        retry_after_seconds: 7,
+        delay_ms: 2000,
       })
     );
   });
 
-  it("429 monthly_quota_exceeded は恒久エラーとして即時終了する", async () => {
+  it("monthly_quota_exceeded は恒久エラーとして即時終了する", async () => {
     mockResendSend.mockResolvedValue({
       data: null,
       error: {
         name: "monthly_quota_exceeded",
-        statusCode: 429,
         message: "Monthly quota exceeded",
       },
-      headers: { "retry-after": "120" },
     });
 
     const service = createService();
@@ -194,9 +240,17 @@ describe("core/notification/email-service", () => {
     if (!result.success) {
       expect(result.meta?.errorType).toBe("permanent");
       expect(result.meta?.retryCount).toBe(0);
-      expect(result.meta?.retryAfterSeconds).toBe(120);
     }
     expect(mockResendSend).toHaveBeenCalledTimes(1);
+    expect(mockHandleServerError).toHaveBeenCalledWith(
+      "EMAIL_SENDING_FAILED",
+      expect.objectContaining({
+        additionalData: expect.objectContaining({
+          attempt: 1,
+          max_attempts: 2,
+        }),
+      })
+    );
   });
 
   it("409 concurrent_idempotent_requests は再試行する", async () => {
@@ -205,16 +259,14 @@ describe("core/notification/email-service", () => {
       .mockResolvedValueOnce({
         data: null,
         error: {
-          name: "concurrent_idempotent_requests",
           statusCode: 409,
+          name: "concurrent_idempotent_requests",
           message: "Request still in progress",
         },
-        headers: {},
       })
       .mockResolvedValueOnce({
         data: { id: "email_409_retry_ok" },
         error: null,
-        headers: {},
       });
 
     const service = createService();
@@ -241,10 +293,8 @@ describe("core/notification/email-service", () => {
       data: null,
       error: {
         name: "invalid_idempotent_request",
-        statusCode: 409,
         message: "Payload mismatch",
       },
-      headers: {},
     });
 
     const service = createService();
@@ -262,16 +312,150 @@ describe("core/notification/email-service", () => {
     if (!result.success) {
       expect(result.meta?.errorType).toBe("permanent");
       expect(result.meta?.retryCount).toBe(0);
-      expect(result.meta?.statusCode).toBe(409);
     }
     expect(mockResendSend).toHaveBeenCalledTimes(1);
+    expect(mockHandleServerError).toHaveBeenCalledWith(
+      "EMAIL_SENDING_FAILED",
+      expect.objectContaining({
+        additionalData: expect.objectContaining({
+          attempt: 1,
+          max_attempts: 2,
+        }),
+      })
+    );
+  });
+
+  it("daily_quota_exceeded は恒久エラーとして即時終了する", async () => {
+    mockResendSend.mockResolvedValue({
+      data: null,
+      error: {
+        name: "daily_quota_exceeded",
+        message: "Daily quota exceeded",
+      },
+    });
+
+    const service = createService();
+    const result = await service.sendEmail({
+      to: "user@example.com",
+      template: {
+        subject: "daily quota",
+        html: "<p>daily quota</p>",
+        text: "daily quota",
+      },
+      idempotencyKey: "daily-quota-case",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.meta?.errorType).toBe("permanent");
+    }
+    expect(mockResendSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("application_error (500) は一時的エラーとして再試行する", async () => {
+    jest.useFakeTimers();
+    mockResendSend
+      .mockResolvedValueOnce({
+        data: null,
+        error: {
+          name: "application_error",
+          message: "Internal server error",
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { id: "email_500_retry_ok" },
+        error: null,
+      });
+
+    const service = createService();
+    const sending = service.sendEmail({
+      to: "user@example.com",
+      template: {
+        subject: "500 retry",
+        html: "<p>500 retry</p>",
+        text: "500 retry",
+      },
+      idempotencyKey: "500-retry",
+    });
+
+    await Promise.resolve();
+    await jest.advanceTimersByTimeAsync(1000);
+    const result = await sending;
+
+    expect(result.success).toBe(true);
+    expect(mockResendSend).toHaveBeenCalledTimes(2);
+  });
+
+  it("validation_error (403) は恒久エラーとして即時終了する", async () => {
+    mockResendSend.mockResolvedValue({
+      data: null,
+      error: {
+        name: "validation_error",
+        message: "Domain not verified",
+      },
+    });
+
+    const service = createService();
+    const result = await service.sendEmail({
+      to: "user@example.com",
+      template: {
+        subject: "validation",
+        html: "<p>validation</p>",
+        text: "validation",
+      },
+      idempotencyKey: "validation-case",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.meta?.errorType).toBe("permanent");
+      expect(result.meta?.retryCount).toBe(0);
+    }
+    expect(mockResendSend).toHaveBeenCalledTimes(1);
+    expect(mockHandleServerError).toHaveBeenCalledWith(
+      "EMAIL_SENDING_FAILED",
+      expect.objectContaining({
+        additionalData: expect.objectContaining({
+          attempt: 1,
+          max_attempts: 2,
+        }),
+      })
+    );
+  });
+
+  it("ネイティブ Error の timeout はネットワークエラーとして分類される", async () => {
+    jest.useFakeTimers();
+    mockResendSend.mockRejectedValue(new Error("socket timeout"));
+
+    const service = createService();
+    const sending = service.sendEmail({
+      to: "user@example.com",
+      template: {
+        subject: "network timeout",
+        html: "<p>network timeout</p>",
+        text: "network timeout",
+      },
+      idempotencyKey: "native-error-timeout",
+    });
+
+    await Promise.resolve();
+    // INITIAL_RETRY_DELAY_MS (1000ms) 以上進める
+    await jest.advanceTimersByTimeAsync(1500);
+    const result = await sending;
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.message).toBe("ネットワークエラー");
+      expect(result.meta?.errorType).toBe("transient");
+      expect(result.meta?.retryCount).toBe(1);
+    }
+    expect(mockResendSend).toHaveBeenCalledTimes(2);
   });
 
   it("sendAdminAlert は idempotencyKey を sendEmail 経由で引き継ぐ", async () => {
     mockResendSend.mockResolvedValue({
       data: { id: "admin_alert_1" },
       error: null,
-      headers: {},
     });
 
     const service = createService();
