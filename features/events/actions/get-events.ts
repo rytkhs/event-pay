@@ -1,7 +1,7 @@
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import type { ErrorCode } from "@core/errors/types";
 import { generateSecureUuid } from "@core/security/crypto";
-import { createServerActionSupabaseClient } from "@core/supabase/factory";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import type { EventRow } from "@core/types/event";
 import {
   SortBy,
@@ -89,7 +89,7 @@ function getOrderColumn(sortBy: SortBy): string | null {
 export async function getEventsAction(options: GetEventsOptions = {}): Promise<GetEventsResult> {
   const correlationId = `get_events_${generateSecureUuid()}`;
   try {
-    const supabase = await createServerActionSupabaseClient();
+    const supabase = await createServerComponentSupabaseClient();
     const {
       limit = 50,
       offset = 0,

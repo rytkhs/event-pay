@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
-import { createServerActionSupabaseClient } from "@core/supabase/factory";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import type { EventDetail, EventRow } from "@core/types/event";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { validateEventId } from "@core/validation/event-id";
@@ -36,7 +36,7 @@ export async function getEventDetailAction(eventId: string): Promise<ActionResul
       return fail("EVENT_INVALID_ID", { userMessage: "無効なイベントID形式です" });
     }
 
-    const supabase = await createServerActionSupabaseClient();
+    const supabase = await createServerComponentSupabaseClient();
 
     // 認証確認
     const {

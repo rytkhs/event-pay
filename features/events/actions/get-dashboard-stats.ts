@@ -1,6 +1,6 @@
-import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
+import { getCurrentUserForServerComponent } from "@core/auth/auth-utils";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
-import { createServerActionSupabaseClient } from "@core/supabase/factory";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import type { AttendanceRow, EventRow } from "@core/types/event";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 
@@ -34,12 +34,12 @@ type EventForRecent = Pick<
  */
 export async function getDashboardStatsAction(): Promise<ActionResult<DashboardStats>> {
   try {
-    const user = await getCurrentUserForServerAction();
+    const user = await getCurrentUserForServerComponent();
     if (!user) {
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
-    const supabase = await createServerActionSupabaseClient();
+    const supabase = await createServerComponentSupabaseClient();
 
     // RPCを呼び出して統計を取得
     // get_dashboard_stats returns setof record, so we expect an array
@@ -75,12 +75,12 @@ export async function getDashboardStatsAction(): Promise<ActionResult<DashboardS
  */
 export async function getRecentEventsAction(): Promise<ActionResult<RecentEvent[]>> {
   try {
-    const user = await getCurrentUserForServerAction();
+    const user = await getCurrentUserForServerComponent();
     if (!user) {
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
-    const supabase = await createServerActionSupabaseClient();
+    const supabase = await createServerComponentSupabaseClient();
 
     // 最近のイベント（リスト表示用）- 上位5件
     const { data: recentEventsRaw, error } = await supabase

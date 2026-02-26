@@ -2,11 +2,17 @@ import { redirect } from "next/navigation";
 
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
-import { createServerActionSupabaseClient } from "@core/supabase/factory";
+import {
+  createServerActionSupabaseClient,
+  createServerComponentSupabaseClient,
+} from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 
-import { createUserStripeConnectServiceForServerAction } from "../services/factories";
+import {
+  createUserStripeConnectServiceForServerAction,
+  createUserStripeConnectServiceForServerComponent,
+} from "../services/factories";
 import type { ExpressDashboardAccessPayload } from "../types";
 
 /**
@@ -103,7 +109,7 @@ export async function checkExpressDashboardAccessAction(): Promise<
   let userId: string | undefined;
   try {
     // 1. 認証チェック
-    const supabase = await createServerActionSupabaseClient();
+    const supabase = await createServerComponentSupabaseClient();
     const {
       data: { user },
       error: authError,
@@ -115,7 +121,7 @@ export async function checkExpressDashboardAccessAction(): Promise<
     }
 
     // 2. StripeConnectServiceを初期化
-    const stripeConnectService = await createUserStripeConnectServiceForServerAction();
+    const stripeConnectService = await createUserStripeConnectServiceForServerComponent();
 
     // 3. Connect Accountの確認
     const account = await stripeConnectService.getConnectAccountByUser(user.id);
