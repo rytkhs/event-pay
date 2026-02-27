@@ -3,7 +3,6 @@ import { createClient } from "@supabase/supabase-js";
 
 import { generateRandomBytes, toBase64UrlSafe } from "@core/security/crypto";
 import type { InviteEventDetail, InviteValidationResult } from "@core/types/invite";
-import { getEnv } from "@core/utils/cloudflare-env";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleServerError } from "@core/utils/error-handler.server";
 
@@ -47,8 +46,8 @@ function validateInviteTokenFormat(token: string): boolean {
  * 招待トークン検証用の匿名Supabaseクライアントを作成
  */
 function createAnonClient(): SupabaseClient<Database> {
-  const supabaseUrl = getEnv().NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = getEnv().NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !anonKey) {
     throw new Error("Missing required Supabase environment variables");
   }
