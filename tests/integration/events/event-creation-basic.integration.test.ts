@@ -9,8 +9,8 @@
  * - 1.1.5 複数決済方法（現金+オンライン）の有料イベント作成
  */
 
-import { getCurrentUser } from "@core/auth/auth-utils";
-import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
+import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import type { EventRow } from "@core/types/event";
 
@@ -24,7 +24,7 @@ import {
 import { deleteTestUser, type TestUser } from "@/tests/helpers/test-user";
 
 // モックのセットアップ
-const mockGetCurrentUser = getCurrentUser as jest.MockedFunction<typeof getCurrentUser>;
+const mockGetCurrentUser = getCurrentUserForServerAction as jest.MockedFunction<typeof getCurrentUserForServerAction>;
 
 // adminClientを格納する変数（トップレベルのlet）
 let sharedAdminClient: any = null;

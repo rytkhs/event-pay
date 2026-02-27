@@ -1,4 +1,4 @@
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 export interface TestUser {
@@ -73,8 +73,7 @@ export async function createTestUser(
 
   return await withRetry(
     async () => {
-      const secureFactory = getSecureClientFactory();
-      const adminClient = await secureFactory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         `Creating or updating test user for E2E tests: ${email}`,
         {
@@ -296,8 +295,7 @@ export async function deleteTestUser(
 
   return await withRetry(
     async () => {
-      const secureFactory = getSecureClientFactory();
-      const adminClient = await secureFactory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.TEST_DATA_CLEANUP,
         `Deleting test user after E2E tests: ${email}`,
         {
@@ -468,8 +466,7 @@ async function cleanupTestUsers(users: TestUser[]): Promise<void> {
 export async function deleteAllTestUsers(): Promise<void> {
   console.warn("⚠ Deleting ALL test users - this is a destructive operation");
 
-  const secureFactory = getSecureClientFactory();
-  const adminClient = await secureFactory.createAuditedAdminClient(
+  const adminClient = await createAuditedAdminClient(
     AdminReason.TEST_DATA_CLEANUP,
     "Deleting all test users (cleanup operation)",
     {

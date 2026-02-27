@@ -7,7 +7,7 @@
 import { jest } from "@jest/globals";
 
 import { getPaymentPort, type PaymentPort } from "@core/ports/payments";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import * as DestinationChargesModule from "@core/stripe/destination-charges";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
@@ -57,8 +57,7 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
     testAttendance = setup.testAttendance;
 
     // fee_configのテストデータをセットアップ（共通セットアップで設定されていない場合のフォールバック）
-    const secureFactory = getSecureClientFactory();
-    const adminClient = await secureFactory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Setting up fee config for payment completion guard test",
       {

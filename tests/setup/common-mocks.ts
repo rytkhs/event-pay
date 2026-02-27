@@ -7,7 +7,7 @@
 
 import { NextRequest } from "next/server";
 
-import { getCurrentUser } from "@core/auth/auth-utils";
+import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
 import { logger } from "@core/logging/app-logger";
 import { buildKey, enforceRateLimit, withRateLimit } from "@core/rate-limit";
 import { logSecurityEvent } from "@core/security/security-logger";
@@ -36,7 +36,7 @@ export interface MockEnv {
  * 共通モック設定のインターフェース
  */
 export interface CommonMocks {
-  mockGetCurrentUser: jest.MockedFunction<typeof getCurrentUser>;
+  mockGetCurrentUser: jest.MockedFunction<typeof getCurrentUserForServerAction>;
   mockLogger?: jest.Mocked<typeof logger>;
   mockEnforceRateLimit?: jest.MockedFunction<typeof enforceRateLimit>;
   mockWithRateLimit?: jest.MockedFunction<typeof withRateLimit>;
@@ -58,7 +58,7 @@ export interface CommonMocks {
 /**
  * 認証モックを設定
  *
- * getCurrentUserのモックを設定します。
+ * getCurrentUserForServerActionのモックを設定します。
  * 注意: jest-setup.tsで既にモック化されているため、この関数はモックの値を設定するだけです。
  *
  * @param testUser テストユーザー情報
@@ -77,8 +77,8 @@ export interface CommonMocks {
  * });
  * ```
  */
-export function setupAuthMocks(testUser: TestUser): jest.MockedFunction<typeof getCurrentUser> {
-  const mockGetCurrentUser = getCurrentUser as jest.MockedFunction<typeof getCurrentUser>;
+export function setupAuthMocks(testUser: TestUser): jest.MockedFunction<typeof getCurrentUserForServerAction> {
+  const mockGetCurrentUser = getCurrentUserForServerAction as jest.MockedFunction<typeof getCurrentUserForServerAction>;
   mockGetCurrentUser.mockResolvedValue({
     id: testUser.id,
     email: testUser.email,

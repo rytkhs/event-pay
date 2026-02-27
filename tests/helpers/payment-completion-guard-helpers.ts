@@ -4,7 +4,7 @@
  * 仕様書と実装の差異検証のための専用ヘルパー
  */
 
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import { PaymentStatus } from "@features/payments";
@@ -32,8 +32,7 @@ export async function createPaymentWithStatus(
 
   const method = options.method ?? (status === "received" ? "cash" : "stripe");
 
-  const secureFactory = getSecureClientFactory();
-  const adminClient = await secureFactory.createAuditedAdminClient(
+  const adminClient = await createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     `Creating ${status} payment for completion guard test`,
     {
@@ -260,8 +259,7 @@ export async function testAllStatusGuardBehavior(
   const statuses: PaymentStatus[] = ["pending", "failed", "paid", "received", "refunded", "waived"];
   const results: Record<PaymentStatus, boolean> = {} as any;
 
-  const secureFactory = getSecureClientFactory();
-  const adminClient = await secureFactory.createAuditedAdminClient(
+  const adminClient = await createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     "Testing all payment statuses for completion guard",
     {
@@ -293,8 +291,7 @@ export async function testAllStatusGuardBehavior(
  * 決済データをクリアして初期状態にリセット
  */
 export async function resetPaymentState(attendanceId: string): Promise<void> {
-  const secureFactory = getSecureClientFactory();
-  const adminClient = await secureFactory.createAuditedAdminClient(
+  const adminClient = await createAuditedAdminClient(
     AdminReason.TEST_DATA_CLEANUP,
     "Reset payment state for completion guard test",
     {

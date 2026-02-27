@@ -4,7 +4,7 @@
 
 import { expect } from "@jest/globals";
 
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import { type TestPaymentUser, type TestPaymentEvent } from "@tests/helpers/test-payment-data";
@@ -46,8 +46,7 @@ export class DatabaseTestHelper {
    * attendancesテーブルに直接挿入（管理者権限・RLSバイパス）
    */
   static async createDirectAttendance(data: DirectAttendanceData): Promise<any> {
-    const clientFactory = getSecureClientFactory();
-    const adminClient = await clientFactory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "P0-2_DIRECT_ATTENDANCE_INSERT"
     );
@@ -66,8 +65,7 @@ export class DatabaseTestHelper {
    * paymentsテーブルに直接挿入（制約違反テスト用）
    */
   static async createDirectPayment(data: DirectPaymentData): Promise<any> {
-    const clientFactory = getSecureClientFactory();
-    const adminClient = await clientFactory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "P0-2_DIRECT_PAYMENT_INSERT"
     );
@@ -89,8 +87,7 @@ export class DatabaseTestHelper {
     functionName: string,
     params: Record<string, any>
   ): Promise<{ data: any; error: any }> {
-    const clientFactory = getSecureClientFactory();
-    const adminClient = await clientFactory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "P0-2_STORED_PROCEDURE_CALL"
     );
@@ -165,8 +162,7 @@ export class DatabaseTestHelper {
     paymentExists?: { attendanceId: string; shouldExist: boolean };
     attendanceCount?: { eventId: string; expectedCount: number };
   }): Promise<void> {
-    const clientFactory = getSecureClientFactory();
-    const adminClient = await clientFactory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "P0-2_DATABASE_STATE_VERIFICATION"
     );

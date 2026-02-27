@@ -72,60 +72,16 @@ jest.mock("@core/auth/auth-utils", () => ({
   getCurrentUser: jest.fn(),
 }));
 
-// SecureSupabaseClientFactoryのモック
-// createAuthenticatedClientがテスト用の認証済みクライアントを返すようにする
+// セキュアクライアントファクトリーのモック
+// .impl.tsから直接エクスポートされている関数をモック化
 jest.mock("@core/security/secure-client-factory.impl", () => {
   const actual = jest.requireActual("@core/security/secure-client-factory.impl");
 
   return {
     ...actual,
-    SecureSupabaseClientFactory: {
-      ...actual.SecureSupabaseClientFactory,
-      create: () => {
-        const originalFactory = new actual.SecureSupabaseClientFactory();
-
-        return {
-          ...originalFactory,
-          // createAuthenticatedClientをオーバーライド
-          createAuthenticatedClient: (options?: any) => {
-            // テスト用の認証済みクライアントが設定されていれば使用
-            const testClient = getAuthenticatedTestClient();
-            if (testClient) {
-              return testClient;
-            }
-            throw new Error(
-              "Authenticated test client is not configured. Call setupAuthenticatedTestClient() before createAuthenticatedClient()."
-            );
-          },
-          // 他のメソッドは元の実装を使用
-          createAuditedAdminClient: originalFactory.createAuditedAdminClient.bind(originalFactory),
-          createGuestClient: originalFactory.createGuestClient.bind(originalFactory),
-          createPublicClient: originalFactory.createPublicClient.bind(originalFactory),
-          createMiddlewareClient: originalFactory.createMiddlewareClient.bind(originalFactory),
-        };
-      },
-    },
-    getSecureClientFactory: () => {
-      const actual = jest.requireActual("@core/security/secure-client-factory.impl");
-      const originalFactory = new actual.SecureSupabaseClientFactory();
-
-      return {
-        ...originalFactory,
-        createAuthenticatedClient: (options?: any) => {
-          const testClient = getAuthenticatedTestClient();
-          if (testClient) {
-            return testClient;
-          }
-          throw new Error(
-            "Authenticated test client is not configured. Call setupAuthenticatedTestClient() before createAuthenticatedClient()."
-          );
-        },
-        createAuditedAdminClient: originalFactory.createAuditedAdminClient.bind(originalFactory),
-        createGuestClient: originalFactory.createGuestClient.bind(originalFactory),
-        createPublicClient: originalFactory.createPublicClient.bind(originalFactory),
-        createMiddlewareClient: originalFactory.createMiddlewareClient.bind(originalFactory),
-      };
-    },
+    // 関数をモック化
+    createGuestClient: actual.createGuestClient,
+    createAuditedAdminClient: actual.createAuditedAdminClient,
   };
 });
 

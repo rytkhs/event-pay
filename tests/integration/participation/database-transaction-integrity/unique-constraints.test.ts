@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "@jest/globals";
 
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import {
@@ -50,8 +50,7 @@ describe("カテゴリC: 一意制約・重複制約テスト（実DB版）", ()
       });
 
       // まず、paymentsテーブルに直接制約違反を引き起こす
-      const clientFactory = getSecureClientFactory();
-      const adminClient = await clientFactory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "P0-2_CONSTRAINT_VIOLATION_TEST"
       );
@@ -97,8 +96,7 @@ describe("カテゴリC: 一意制約・重複制約テスト（実DB版）", ()
       // セットアップ: 既存のゲストトークンを作成
       const duplicateToken = "gst_duplicate12345678901234567890123";
 
-      const clientFactory = getSecureClientFactory();
-      const adminClient = await clientFactory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "P0-2_GUEST_TOKEN_DUPLICATE_TEST"
       );
@@ -167,8 +165,7 @@ describe("カテゴリC: 一意制約・重複制約テスト（実DB版）", ()
       // セットアップ: 既存の参加者を作成
       const duplicateEmail = "duplicate@test.example.com";
 
-      const clientFactory = getSecureClientFactory();
-      const adminClient = await clientFactory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "P0-2_EMAIL_DUPLICATE_TEST"
       );
