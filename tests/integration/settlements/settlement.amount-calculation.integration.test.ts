@@ -1,4 +1,4 @@
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import { cleanupTestData } from "@tests/setup/common-cleanup";
@@ -29,7 +29,7 @@ describe("清算レポート - 金額計算の正確性", () => {
   const createdPaymentIds: string[] = [];
   const createdDisputeIds: string[] = [];
   let setup: Awaited<ReturnType<typeof createPaymentTestSetup>>;
-  const secureFactory = getSecureClientFactory();
+  // Import removed - no longer needed
 
   beforeAll(async () => {
     // Use payment test setup (includes event and one attendance)
@@ -63,7 +63,7 @@ describe("清算レポート - 金額計算の正確性", () => {
     });
 
     if (createdDisputeIds.length > 0) {
-      const adminClient = await secureFactory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.TEST_DATA_CLEANUP,
         "Cleanup test disputes",
         { accessedTables: ["public.payment_disputes"] }
@@ -96,7 +96,7 @@ describe("清算レポート - 金額計算の正確性", () => {
       });
       createdPaymentIds.push(payment2.id);
 
-      const adminClient = await secureFactory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "Settlement calculation test",
         {
@@ -151,7 +151,7 @@ describe("清算レポート - 金額計算の正確性", () => {
         applicationFeeRefundedAmount: 80, // アプリ手数料80円返金
       });
 
-      const adminClient = await secureFactory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "Settlement refund calculation test",
         {
@@ -207,7 +207,7 @@ describe("清算レポート - 金額計算の正確性", () => {
       });
       createdDisputeIds.push(disputeId.id);
 
-      const adminClient = await secureFactory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "Settlement dispute calculation test",
         {
@@ -259,7 +259,7 @@ describe("清算レポート - 金額計算の正確性", () => {
       });
       createdDisputeIds.push(wonDisputeId.id);
 
-      const adminClient = await secureFactory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "Settlement won dispute test",
         {
@@ -304,7 +304,7 @@ describe("清算レポート - 金額計算の正確性", () => {
         applicationFeeRefundedAmount: 120, // アプリ手数料100円を超過
       });
 
-      const adminClient = await secureFactory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "Edge case test: app fee refund overflow",
         {

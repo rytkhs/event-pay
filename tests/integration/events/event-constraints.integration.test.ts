@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import {
@@ -38,8 +38,7 @@ describe("Event constraints (schema-level)", () => {
   });
 
   test("stripe利用時のpayment_deadline必須CHECK", async () => {
-    const factory = getSecureClientFactory();
-    const admin = await factory.createAuditedAdminClient(
+    const admin = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Insert event with stripe method and null payment_deadline to trigger CHECK",
       { accessedTables: ["public.events"], operationType: "INSERT" }
@@ -79,8 +78,7 @@ describe("Event constraints (schema-level)", () => {
   });
 
   test("registration_deadline <= dateのCHECK", async () => {
-    const factory = getSecureClientFactory();
-    const admin = await factory.createAuditedAdminClient(
+    const admin = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Insert event with registration_deadline after event date to trigger CHECK",
       { accessedTables: ["public.events"], operationType: "INSERT" }
@@ -120,8 +118,7 @@ describe("Event constraints (schema-level)", () => {
   });
 
   test("events_fee_check: fee must be 0 or within [100, 1_000_000]", async () => {
-    const factory = getSecureClientFactory();
-    const admin = await factory.createAuditedAdminClient(
+    const admin = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "events fee boundary checks",
       { accessedTables: ["public.events"], operationType: "INSERT" }
@@ -194,8 +191,7 @@ describe("Event constraints (schema-level)", () => {
   });
 
   test("events_capacity_check: capacity must be > 0 or null", async () => {
-    const factory = getSecureClientFactory();
-    const admin = await factory.createAuditedAdminClient(
+    const admin = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "events capacity checks",
       { accessedTables: ["public.events"], operationType: "INSERT" }
@@ -263,8 +259,7 @@ describe("Event constraints (schema-level)", () => {
   });
 
   test("events_payment_deadline_within_30d_after_date & methods not empty (methods empty allowed by schema)", async () => {
-    const factory = getSecureClientFactory();
-    const admin = await factory.createAuditedAdminClient(
+    const admin = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "events deadline window and methods checks",
       { accessedTables: ["public.events"], operationType: "INSERT" }

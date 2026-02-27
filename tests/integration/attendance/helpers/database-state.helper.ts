@@ -5,7 +5,7 @@
  * 仕様書: P0-3_race_condition_specification.md 5.3節実装
  */
 
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import type { Database } from "@/types/database";
@@ -54,8 +54,7 @@ export class DatabaseStateHelper {
     status: AttendanceStatus = "attending"
   ): Promise<AttendanceCountResult> {
     try {
-      const clientFactory = getSecureClientFactory();
-      const adminClient = await clientFactory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "Verifying attendance count for race condition test"
       );
@@ -104,8 +103,7 @@ export class DatabaseStateHelper {
    */
   static async verifyPaymentConsistency(eventId: string): Promise<PaymentConsistencyResult> {
     try {
-      const clientFactory = getSecureClientFactory();
-      const adminClient = await clientFactory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "Verifying payment consistency for race condition test"
       );
@@ -183,8 +181,7 @@ export class DatabaseStateHelper {
     orphanedPayments?: any[];
   }> {
     try {
-      const clientFactory = getSecureClientFactory();
-      const adminClient = await clientFactory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "Checking for orphaned payments in race condition test"
       );
@@ -244,8 +241,7 @@ export class DatabaseStateHelper {
     duplicateEmails?: string[];
   }> {
     try {
-      const clientFactory = getSecureClientFactory();
-      const adminClient = await clientFactory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "Checking for duplicate emails in race condition test"
       );

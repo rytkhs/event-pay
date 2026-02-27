@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { generateInviteToken } from "@core/utils/invite-token";
 
@@ -44,10 +44,8 @@ export async function createTestEvent(
   createdBy: string,
   options: CreateTestEventOptions = {}
 ): Promise<TestEvent> {
-  const secureFactory = getSecureClientFactory();
-
   // 監査付き管理者クライアントを作成
-  const adminClient = await secureFactory.createAuditedAdminClient(
+  const adminClient = await createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     `Creating test event for E2E tests`,
     {
@@ -160,8 +158,7 @@ export async function createTestEventWithParticipants(
   const event = await createTestEvent(createdBy, options);
 
   // 参加者を作成
-  const secureFactory = getSecureClientFactory();
-  const adminClient = await secureFactory.createAuditedAdminClient(
+  const adminClient = await createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     `Creating test participants for event ${event.id}`,
     {
@@ -212,9 +209,7 @@ export async function createTestEventWithParticipants(
  * @param eventId 削除するイベントID
  */
 export async function deleteTestEvent(eventId: string): Promise<void> {
-  const secureFactory = getSecureClientFactory();
-
-  const adminClient = await secureFactory.createAuditedAdminClient(
+  const adminClient = await createAuditedAdminClient(
     AdminReason.TEST_DATA_CLEANUP,
     `Deleting test event after E2E tests: ${eventId}`,
     {

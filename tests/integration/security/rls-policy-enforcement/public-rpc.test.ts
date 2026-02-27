@@ -10,7 +10,7 @@
 
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient, createGuestClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import { setupRLSTest, type RLSTestSetup } from "./rls-test-setup";
@@ -27,7 +27,7 @@ describe("Invite Header Requirement", () => {
   });
 
   test("ヘッダー未設定ではrpc_public_get_eventは返らない", async () => {
-    const factory = getSecureClientFactory();
+    const admin = await createAuditedAdminClient(
     const anon = factory.createPublicClient();
 
     const { data: events, error } = await (anon as any).rpc("rpc_public_get_event", {
@@ -52,8 +52,7 @@ describe("Public Attending Count RPC", () => {
   });
 
   test("invite header required; with header returns correct count", async () => {
-    const factory = getSecureClientFactory();
-    const admin = await factory.createAuditedAdminClient(
+    const admin = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "setup event for attending count"
     );
@@ -141,7 +140,7 @@ describe("Public Connect Account RPC", () => {
   });
 
   test("guest can fetch minimal connect account info for event organizer", async () => {
-    const factory = getSecureClientFactory();
+    const admin = await createAuditedAdminClient(
     const anonWithHeader = factory.createPublicClient({
       headers: { "x-invite-token": setup.testInviteToken },
     });
@@ -161,7 +160,7 @@ describe("Public Connect Account RPC", () => {
   });
 
   test("mismatched creator_id returns empty", async () => {
-    const factory = getSecureClientFactory();
+    const admin = await createAuditedAdminClient(
     const anonWithHeader = factory.createPublicClient({
       headers: { "x-invite-token": setup.testInviteToken },
     });
@@ -189,8 +188,7 @@ describe("Latest payment via RPC", () => {
   });
 
   test("rpc_guest_get_latest_payment returns most recently created amount", async () => {
-    const factory = getSecureClientFactory();
-    const admin = await factory.createAuditedAdminClient(
+    const admin = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "setup payments for latest payment rpc"
     );
@@ -248,7 +246,7 @@ describe("Latest payment via RPC", () => {
       created_at: createdLate,
     });
 
-    const guest = factory.createGuestClient(token);
+    const guest = await createGuestClient(token);
     const { data, error } = await (guest as any).rpc("rpc_guest_get_latest_payment", {
       p_attendance_id: attIns.data.id,
       p_guest_token: token,

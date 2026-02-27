@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import {
@@ -188,8 +188,7 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     console.log("✓ Participation cancelled successfully");
 
     // pending決済はcanceledステータスに変更されることを確認（データベースで確認）
-    const secureFactory = getSecureClientFactory();
-    const adminClient = await secureFactory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Checking payment cancellation after attendance cancellation",
       {
@@ -239,8 +238,7 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     testAttendances.push(attendance);
 
     // received状態の現金決済を作成
-    const secureFactory = getSecureClientFactory();
-    const adminClient = await secureFactory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Creating cash payment with received status",
       {
@@ -569,8 +567,7 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     const event = await createPaidTestEvent(testUserWithConnect.id, 3000);
 
     // イベントの締切を手動で更新
-    const secureFactory = getSecureClientFactory();
-    const adminClient = await secureFactory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Updating event deadlines for after-deadline test",
       {

@@ -9,7 +9,7 @@
 
 import { jest } from "@jest/globals";
 
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import { setupNextCacheMocks, setupNextHeadersMocks } from "@tests/setup/common-mocks";
@@ -44,7 +44,7 @@ function setupAllowedHeaders() {
 // テスト内で createClient をモックする（DB操作はadmin clientを委譲し、auth.getUserのみテストユーザーを返す）
 async function mockSupabaseCreateClient(user: TestUser) {
   jest.resetModules();
-  const adminClient = await getSecureClientFactory().createAuditedAdminClient(
+  const adminClient = await createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     "event-edit integration",
     {

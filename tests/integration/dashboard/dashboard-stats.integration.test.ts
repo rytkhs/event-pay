@@ -18,10 +18,10 @@
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-import { getCurrentUser } from "@core/auth/auth-utils";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 
 import { setupAuthMocks } from "@tests/setup/common-mocks";
 import {
@@ -39,15 +39,15 @@ import {
 } from "@/tests/helpers/test-payment-data";
 import { createTestUser, deleteTestUser } from "@/tests/helpers/test-user";
 
-// createClientをモック
-jest.mock("@core/supabase/server", () => ({
-  createClient: jest.fn(),
+// createServerActionSupabaseClientをモック
+jest.mock("@core/supabase/factory", () => ({
+  createServerActionSupabaseClient: jest.fn(),
 }));
 
 describe("ダッシュボード統計情報 統合テスト", () => {
   let setup: CommonTestSetup;
-  let mockGetCurrentUser: jest.MockedFunction<typeof getCurrentUser>;
-  let mockCreateClient: jest.MockedFunction<typeof createClient>;
+  let mockGetCurrentUser: jest.MockedFunction<typeof getCurrentUserForServerAction>;
+  let mockCreateServerActionClient: jest.MockedFunction<typeof createServerActionSupabaseClient>;
   let cleanupHelper: ReturnType<typeof createTestDataCleanupHelper>;
 
   beforeAll(async () => {
@@ -57,7 +57,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       accessedTables: ["public.payments", "public.attendances", "public.events"],
     });
     mockGetCurrentUser = setupAuthMocks(setup.testUser);
-    mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+    mockCreateServerActionClient = createServerActionSupabaseClient as jest.MockedFunction<typeof createServerActionSupabaseClient>;
 
     // createTestDataCleanupHelperを使用してクリーンアップ処理を標準化
     cleanupHelper = createTestDataCleanupHelper(setup.adminClient);
@@ -96,12 +96,12 @@ describe("ダッシュボード統計情報 統合テスト", () => {
     }
 
     // Server Actionがこのクライアントを使用する
-    mockCreateClient.mockReturnValue(authClient as any);
+    mockCreateServerActionClient.mockResolvedValue(authClient as any);
   });
 
   afterEach(async () => {
     mockGetCurrentUser.mockReset();
-    mockCreateClient.mockReset();
+    mockCreateServerActionClient.mockReset();
 
     // テスト間でのデータクリーンアップ（createTestDataCleanupHelperを使用）
     try {
@@ -625,15 +625,14 @@ describe("ダッシュボード統計情報 統合テスト", () => {
         } as any);
 
         // 新しいユーザー用のadminクライアントを設定
-        const secureFactory = getSecureClientFactory();
-        const newUserAdminClient = await secureFactory.createAuditedAdminClient(
+        const newUserAdminClient = await createAuditedAdminClient(
           AdminReason.TEST_DATA_SETUP,
           "Mock Supabase client for new user test",
           {
             accessedTables: ["public.events", "public.attendances", "public.payments"],
           }
         );
-        mockCreateClient.mockReturnValue(newUserAdminClient as any);
+        mockCreateServerActionClient.mockResolvedValue(newUserAdminClient as any);
 
         const statsResult = await getDashboardStatsAction();
         const recentResult = await getRecentEventsAction();
@@ -664,7 +663,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
         } as any);
 
         // 元のadminクライアントに戻す
-        mockCreateClient.mockReturnValue(setup.adminClient as any);
+        mockCreateServerActionClient.mockResolvedValue(setup.adminClient as any);
       }
     });
 

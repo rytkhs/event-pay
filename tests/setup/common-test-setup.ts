@@ -5,9 +5,6 @@
  * 既存のヘルパー関数を活用し、よく使われるパターンを共通化
  */
 
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
-
 import {
   createPaidTestEvent,
   createTestAttendance,
@@ -18,6 +15,9 @@ import {
   type TestPaymentUser,
 } from "@tests/helpers/test-payment-data";
 import { createTestUser, deleteTestUser, type TestUser } from "@tests/helpers/test-user";
+
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 import type { Database } from "@/types/database";
@@ -279,8 +279,7 @@ export async function createCommonTestSetup(
   // Supabaseクライアント取得（オプションでスキップ可能）
   let adminClient: any;
   if (withAdminClient) {
-    const factory = getSecureClientFactory();
-    adminClient = await factory.createAuditedAdminClient(
+    adminClient = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       `${testName} test setup`,
       {
@@ -438,8 +437,7 @@ export async function createPaymentTestSetup(
   const testAttendance = await createTestAttendance(testEvent.id);
 
   // Supabaseクライアント取得
-  const factory = getSecureClientFactory();
-  const adminClient = await factory.createAuditedAdminClient(
+  const adminClient = await createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     `${testName} payment test setup`,
     {
@@ -590,8 +588,7 @@ export async function createMultiUserTestSetup(
   }
 
   // Supabaseクライアント取得
-  const factory = getSecureClientFactory();
-  const adminClient = await factory.createAuditedAdminClient(
+  const adminClient = await createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
     `${testName} multi-user test setup`,
     {

@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 
 import {
   createPaidTestEvent,
@@ -247,8 +247,7 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
 
       // 定員カウントに含まれないことを確認（管理者権限）
       const { AdminReason } = await import("@core/security/secure-client-factory.types");
-      const clientFactory = getSecureClientFactory();
-      const adminClient = await clientFactory.createAuditedAdminClient(
+      const adminClient = await createAuditedAdminClient(
         AdminReason.TEST_DATA_SETUP,
         "TEST_DB_VERIFICATION_CAPACITY_COUNT"
       );
@@ -284,8 +283,7 @@ class DatabaseAssertions {
   ): Promise<any> {
     // 管理者権限でRLSを迂回してデータ検証を行う
     const { AdminReason } = await import("@core/security/secure-client-factory.types");
-    const clientFactory = getSecureClientFactory();
-    const adminClient = await clientFactory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "TEST_DB_VERIFICATION_ATTENDANCE"
     );
@@ -316,8 +314,7 @@ class DatabaseAssertions {
   ): Promise<any> {
     // 管理者権限でRLSを迂回してデータ検証を行う
     const { AdminReason } = await import("@core/security/secure-client-factory.types");
-    const clientFactory = getSecureClientFactory();
-    const adminClient = await clientFactory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "TEST_DB_VERIFICATION_PAYMENT"
     );
@@ -345,8 +342,7 @@ class DatabaseAssertions {
   static async verifyNoPaymentCreated(attendanceId: string): Promise<void> {
     // 管理者権限でRLSを迂回してデータ検証を行う
     const { AdminReason } = await import("@core/security/secure-client-factory.types");
-    const clientFactory = getSecureClientFactory();
-    const adminClient = await clientFactory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "TEST_DB_VERIFICATION_NO_PAYMENT"
     );

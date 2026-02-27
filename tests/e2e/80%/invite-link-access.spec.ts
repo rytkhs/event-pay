@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { generateInviteToken } from "@core/utils/invite-token";
 
-import { getSecureClientFactory } from "@/core/security/secure-client-factory.impl";
+import { createAuditedAdminClient } from "@/core/security/secure-client-factory.impl";
 
 import { createTestEvent, deleteTestEvent, type TestEvent } from "../../helpers/test-event";
 import { createTestUser, deleteTestUser, type TestUser } from "../../helpers/test-user";
@@ -136,8 +136,7 @@ test.describe("招待リンクアクセス（E2E）", () => {
   });
 
   test("異常系：参加申込期限切れのトークンでエラーページが表示される", async ({ page }) => {
-    const secureFactory = getSecureClientFactory();
-    const adminClient = await secureFactory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Creating expired deadline event for invite link access test",
       {
