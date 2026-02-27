@@ -41,7 +41,6 @@ export function useContactForm() {
           setIsSuccess(true);
           form.reset();
         } else {
-          // エラーハンドリング（ServerActionError 準拠）
           const error = result.error;
 
           if (error.fieldErrors) {
