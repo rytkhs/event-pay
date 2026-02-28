@@ -67,7 +67,7 @@ export function useContactForm() {
             message: composed,
           });
         }
-      } catch (err) {
+      } catch (_err) {
         // 予期せぬエラー
         form.setError("root", {
           type: "manual",

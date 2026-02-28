@@ -168,7 +168,6 @@ export const logger = {
   },
 
   warn(msg: string, fields: Partial<EventPayLogFields> = {}) {
-    // eslint-disable-next-line no-console
     console.warn(
       JSON.stringify({
         level: "warn",
@@ -182,7 +181,6 @@ export const logger = {
   },
 
   error(msg: string, fields: Partial<EventPayLogFields> = {}) {
-    // eslint-disable-next-line no-console
     console.error(
       JSON.stringify({
         level: "error",
@@ -196,7 +194,6 @@ export const logger = {
   },
 
   critical(msg: string, fields: Partial<EventPayLogFields> = {}) {
-    // eslint-disable-next-line no-console
     console.error(
       JSON.stringify({
         level: "critical",

@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
       .single();
 
     // ゲストトークンの照合確認（セキュリティチェック）
-    if (!attendanceData || attendanceData.guest_token !== guestToken) {
+    if (attendanceData?.guest_token !== guestToken) {
       logSecurityEvent({
         type: "SUSPICIOUS_ACTIVITY",
         severity: "HIGH",
@@ -174,7 +174,7 @@ export async function GET(request: NextRequest) {
 
       // セッション ID でフィルタリング
       const matchingPayment = paymentArray.find(
-        (p) => p && p.stripe_checkout_session_id === session_id
+        (p) => p?.stripe_checkout_session_id === session_id
       );
 
       if (matchingPayment) {
