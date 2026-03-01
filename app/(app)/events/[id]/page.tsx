@@ -70,7 +70,7 @@ export default async function EventDetailPage(props: {
 
     // 現在のユーザーを取得して主催者かどうか判定
     const currentUser = await getCurrentUserForServerComponent();
-    const isOrganizer = currentUser && currentUser.id === eventDetail.created_by;
+    const isOrganizer = currentUser?.id === eventDetail.created_by;
 
     if (!isOrganizer) {
       // 主催者でない場合は権限エラーページへ（プレビューは /guest/... で行うため）

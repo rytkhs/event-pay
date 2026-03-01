@@ -28,7 +28,7 @@ export async function getEventStatsAction(eventId: string): Promise<ActionResult
     const maybe_count = (attendances || []).filter((a) => a.status === "maybe").length;
 
     return ok({ attending_count, maybe_count });
-  } catch (e) {
+  } catch (_e) {
     return fail("INTERNAL_ERROR", { userMessage: "統計の取得に失敗しました", retryable: false });
   }
 }

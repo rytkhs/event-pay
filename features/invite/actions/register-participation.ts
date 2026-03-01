@@ -54,7 +54,6 @@ async function extractAndValidateFormData(
     nickname: formData.get("nickname") as string,
     email: formData.get("email") as string,
     attendanceStatus: formData.get("attendanceStatus") as string,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     paymentMethod: rawPaymentMethod?.trim() || undefined, // 意図的に || を使用（空文字もundefinedに変換）
   };
 
@@ -329,7 +328,6 @@ async function executeRegistration(
     newAttendanceId = null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (rpcError || !newAttendanceId) {
     // データベースエラーをセキュリティログに記録（型安全）
     const errorMessage = rpcError?.message ?? "RPC call failed";
@@ -473,7 +471,6 @@ async function verifyGuestTokenStorage(
       error: PostgrestError | null;
     };
 
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (verifyError || !rpcRow) {
       logParticipationSecurityEvent(
         "SUSPICIOUS_ACTIVITY",

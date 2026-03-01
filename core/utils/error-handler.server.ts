@@ -91,7 +91,7 @@ export async function notifyError(error: AppError, context?: ErrorContext): Prom
     });
   } catch (sentryError) {
     // Sentry 送信失敗はログに記録するが、処理は継続
-    // eslint-disable-next-line no-console
+
     console.error("[notifyError] Sentry send failed:", sentryError);
   }
 
