@@ -1,23 +1,53 @@
+import { readdirSync } from 'node:fs'
 import { FlatCompat } from '@eslint/eslintrc'
 
 const compat = new FlatCompat({
   baseDirectory: import.meta.dirname,
 })
 
-const sourceFiles = ['**/*.{js,jsx,ts,tsx,mjs,cjs}']
+const sourceFiles = ['**/*.{ts,tsx}']
+const featureImportRestrictionPatterns = [
+  {
+    group: ['@/features/**'],
+    message: '@features/* を使用してください（@/features は禁止）',
+  },
+  {
+    group: ['@features/*/*', '!@features/*/server'],
+    message: 'features の deep import は禁止です。@features/<name> か @features/<name>/server を使用してください',
+  },
+]
+const featureSelfReferenceOverrides = readdirSync(new URL('./features', import.meta.url), {
+  withFileTypes: true,
+})
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .sort()
+  .map((featureName) => ({
+    files: [`features/${featureName}/**/*`],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            ...featureImportRestrictionPatterns,
+            {
+              group: [`@features/${featureName}`, `@features/${featureName}/**`],
+              message: `同一feature内では相対パスを使用してください（@features/${featureName} → ../...）`,
+            },
+          ],
+        },
+      ],
+    },
+  }))
 
 const eslintConfig = [
   ...compat
     .config({
       root: true,
-      env: {
-        browser: true,
-        es2017: true,
-        node: true,
-      },
       extends: [
-        'next/core-web-vitals',
-        'next/typescript',
+        'plugin:@next/next/core-web-vitals',
+        'plugin:react/recommended',
+        'plugin:react-hooks/recommended',
         'plugin:@typescript-eslint/recommended',
         'plugin:jsx-a11y/recommended',
         'plugin:import/recommended',
@@ -25,10 +55,10 @@ const eslintConfig = [
         'plugin:boundaries/recommended',
         'prettier',
       ],
-      plugins: ['@typescript-eslint', 'jsx-a11y', 'import', 'boundaries'],
+      plugins: ['@typescript-eslint', 'jsx-a11y', 'import', 'boundaries', 'react', 'react-hooks'],
       parser: '@typescript-eslint/parser',
       parserOptions: {
-        ecmaVersion: 2017,
+        ecmaVersion: 'latest',
         sourceType: 'module',
         ecmaFeatures: {
           jsx: true,
@@ -55,7 +85,7 @@ const eslintConfig = [
           },
           {
             type: 'features',
-            pattern: 'features/**/*',
+            pattern: 'features/*',
             capture: ['featureName'],
           },
           {
@@ -78,6 +108,7 @@ const eslintConfig = [
       },
       rules: {
       // ===== アーキテクチャ境界ルール =====
+      // 依存方向（レイヤ境界）は boundaries/element-types で一元管理
       'boundaries/element-types': [
         'error',
         {
@@ -111,14 +142,16 @@ const eslintConfig = [
           ],
         },
       ],
-      'boundaries/no-private': 'error',
-
-      // feature間の相互依存禁止 (featuresのみに適用)
+      // 公開入口（features配下のimport可能ファイル）は boundaries/entry-point で一元管理
       'boundaries/entry-point': [
         'error',
         {
           default: 'allow',
           rules: [
+            {
+              target: 'features',
+              disallow: ['**/*'],
+            },
             {
               target: 'features',
               allow: ['index.{js,ts,tsx}', 'server.{js,ts,tsx}'],
@@ -160,35 +193,20 @@ const eslintConfig = [
       'no-script-url': 'error',
       '@typescript-eslint/no-non-null-assertion': 'error',
       'no-restricted-syntax': 'off',
+      // import記法制約（features deep import禁止・alias統一）は no-restricted-imports で管理
       'no-restricted-imports': [
         'error',
         {
-          patterns: [
-            {
-              group: ['@/features/**'],
-              message: '@features/* を使用してください（@/features は禁止）',
-            },
-            {
-              group: ['@features/*/*', '!@features/*/server', '!@features/*/server/**'],
-              message:
-                'features の deep import は禁止です。@features/<name> か @features/<name>/server を使用してください',
-            },
-          ],
+          patterns: featureImportRestrictionPatterns,
         },
       ],
 
       // ===== Next.js & React ベストプラクティス =====
       'react/react-in-jsx-scope': 'off', // Next.js 13+では不要
       'react/prop-types': 'off', // TypeScriptを使用
-      'react/jsx-no-target-blank': 'error',
-      'react/jsx-key': 'error',
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
 
       // Next.js専用ルール
-      '@next/next/no-html-link-for-pages': 'error',
       '@next/next/no-img-element': 'error',
-      '@next/next/no-sync-scripts': 'error',
 
       // ===== インポート管理ルール =====
       'import/order': [
@@ -235,80 +253,15 @@ const eslintConfig = [
           },
         },
       ],
-      'import/no-unresolved': 'error',
       'import/no-cycle': 'error',
       'import/no-self-import': 'error',
 
-      // 新規コードでの古いパス使用を警告
-      'import/no-restricted-paths': [
-        'error',
-        {
-          zones: [
-            {
-              target: './features/**/*',
-              from: './lib/**/*',
-              message: 'features層では@core/*を使用してください（lib/*は段階的に廃止予定）',
-            },
-            {
-              target: './app/**/*',
-              from: './lib/**/*',
-              message: 'app層では@core/*または@features/*を使用してください（lib/*は段階的に廃止予定）',
-            },
-            {
-              target: './core/**/*',
-              from: './features/**/*',
-              message: 'core層からfeatures層の参照は禁止です（共有型は@core/typesへ集約）',
-            },
-            {
-              target: './components/ui/**/*',
-              from: './core/**/*',
-              message: 'components/ui は core への依存を禁止します（UIの独立性を維持）',
-            },
-            {
-              target: './**/*.client.ts',
-              from: './**/*.server.ts',
-              message:
-                'クライアント専用ファイル(*.client.ts)からサーバー専用ファイル(*.server.ts)はインポートできません',
-            },
-            {
-              target: './components/**/*.tsx',
-              from: './**/*.server.ts',
-              message: 'UIコンポーネントからサーバー専用ファイル(*.server.ts)はインポートできません',
-            },
-            {
-              target: './features/**/components/**/*.tsx',
-              from: './**/*.server.ts',
-              message: 'Featureコンポーネントからサーバー専用ファイル(*.server.ts)はインポートできません',
-            },
-            {
-              target: './core/hooks/**/*',
-              from: './**/*.server.ts',
-              message: 'Custom Hooksからサーバー専用ファイル(*.server.ts)はインポートできません',
-            },
-          ],
-        },
-      ],
-
-      // ===== アクセシビリティルール =====
-      'jsx-a11y/alt-text': 'error',
-      'jsx-a11y/anchor-has-content': 'error',
-      'jsx-a11y/anchor-is-valid': 'error',
-      'jsx-a11y/aria-props': 'error',
-      'jsx-a11y/aria-proptypes': 'error',
-      'jsx-a11y/aria-unsupported-elements': 'error',
-      'jsx-a11y/heading-has-content': 'error',
+      // ===== アクセシビリティルール（recommendedとの差分・追加のみ） =====
       'jsx-a11y/lang': 'error',
       'jsx-a11y/no-autofocus': 'warn',
 
       // ===== パフォーマンス関連ルール =====
-      'react/jsx-no-bind': [
-        'warn',
-        {
-          allowArrowFunctions: true,
-          allowBind: false,
-          allowFunctions: false,
-        },
-      ],
+      'react/jsx-no-bind': 'off',
       },
       overrides: [
       // テストファイル用の緩和設定
@@ -346,6 +299,7 @@ const eslintConfig = [
         files: ['app/api/**/*'],
         rules: {
           '@typescript-eslint/explicit-function-return-type': 'off',
+          // API Route は server-only 入口のみ許可する
           'no-restricted-imports': [
             'error',
             {
@@ -360,7 +314,6 @@ const eslintConfig = [
                     '!@features/*/',
                     '@features/*/*',
                     '!@features/*/server',
-                    '!@features/*/server/**',
                   ],
                   message: 'app/api では @features/*/server を使用してください（@features/* は禁止）',
                 },
@@ -393,132 +346,7 @@ const eslintConfig = [
           ],
         },
       },
-      // Feature自己参照の禁止
-      {
-        files: ['features/events/**/*'],
-        rules: {
-          'no-restricted-imports': [
-            'error',
-            {
-              patterns: [
-                {
-                  group: ['@/features/**'],
-                  message: '@features/* を使用してください（@/features は禁止）',
-                },
-                {
-                  group: ['@features/*/*', '!@features/*/server', '!@features/*/server/**'],
-                  message:
-                    'features の deep import は禁止です。@features/<name> か @features/<name>/server を使用してください',
-                },
-                {
-                  group: ['@features/events/**'],
-                  message: '同一feature内では相対パスを使用してください（@features/events → ../...）',
-                },
-              ],
-            },
-          ],
-        },
-      },
-      {
-        files: ['features/auth/**/*'],
-        rules: {
-          'no-restricted-imports': [
-            'error',
-            {
-              patterns: [
-                {
-                  group: ['@/features/**'],
-                  message: '@features/* を使用してください（@/features は禁止）',
-                },
-                {
-                  group: ['@features/*/*', '!@features/*/server', '!@features/*/server/**'],
-                  message:
-                    'features の deep import は禁止です。@features/<name> か @features/<name>/server を使用してください',
-                },
-                {
-                  group: ['@features/auth/**'],
-                  message: '同一feature内では相対パスを使用してください（@features/auth → ../...）',
-                },
-              ],
-            },
-          ],
-        },
-      },
-      {
-        files: ['features/payments/**/*'],
-        rules: {
-          'no-restricted-imports': [
-            'error',
-            {
-              patterns: [
-                {
-                  group: ['@/features/**'],
-                  message: '@features/* を使用してください（@/features は禁止）',
-                },
-                {
-                  group: ['@features/*/*', '!@features/*/server', '!@features/*/server/**'],
-                  message:
-                    'features の deep import は禁止です。@features/<name> か @features/<name>/server を使用してください',
-                },
-                {
-                  group: ['@features/payments/**'],
-                  message: '同一feature内では相対パスを使用してください（@features/payments → ../...）',
-                },
-              ],
-            },
-          ],
-        },
-      },
-      {
-        files: ['features/stripe-connect/**/*'],
-        rules: {
-          'no-restricted-imports': [
-            'error',
-            {
-              patterns: [
-                {
-                  group: ['@/features/**'],
-                  message: '@features/* を使用してください（@/features は禁止）',
-                },
-                {
-                  group: ['@features/*/*', '!@features/*/server', '!@features/*/server/**'],
-                  message:
-                    'features の deep import は禁止です。@features/<name> か @features/<name>/server を使用してください',
-                },
-                {
-                  group: ['@features/stripe-connect/**'],
-                  message: '同一feature内では相対パスを使用してください（@features/stripe-connect → ../...）',
-                },
-              ],
-            },
-          ],
-        },
-      },
-      {
-        files: ['features/settlements/**/*'],
-        rules: {
-          'no-restricted-imports': [
-            'error',
-            {
-              patterns: [
-                {
-                  group: ['@/features/**'],
-                  message: '@features/* を使用してください（@/features は禁止）',
-                },
-                {
-                  group: ['@features/*/*', '!@features/*/server', '!@features/*/server/**'],
-                  message:
-                    'features の deep import は禁止です。@features/<name> か @features/<name>/server を使用してください',
-                },
-                {
-                  group: ['@features/settlements/**'],
-                  message: '同一feature内では相対パスを使用してください（@features/settlements → ../...）',
-                },
-              ],
-            },
-          ],
-        },
-      },
+      ...featureSelfReferenceOverrides,
       ],
     })
     .map((config) => {
@@ -544,8 +372,6 @@ const eslintConfig = [
       'build/**',
       'coverage/**',
       '**/*.md',
-      '**/*.config.js',
-      '**/*.config.mjs',
       '.eslintrc.js',
     ],
   },
