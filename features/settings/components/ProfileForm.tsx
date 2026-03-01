@@ -60,7 +60,7 @@ export function ProfileForm({ currentName, updateProfileAction }: ProfileFormPro
             variant: "destructive",
           });
         }
-      } catch (error) {
+      } catch (_error) {
         toast({
           title: "エラー",
           description: "プロフィールの更新中にエラーが発生しました",

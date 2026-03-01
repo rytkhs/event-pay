@@ -30,18 +30,18 @@ export async function waitUntil(promise: Promise<unknown>): Promise<void> {
 
     // Workers環境: レスポンス後まで処理を待機させる
     ctx.waitUntil(promise);
-  } catch (error) {
+  } catch (_error) {
     // ローカル開発環境やビルド時など、Contextが取得できない場合
     if (process.env.NODE_ENV === "development") {
       // 開発環境: awaitして確実に完了させる（ログ欠損を防ぐ）
       // eslint-disable-next-line no-console
       console.log("[Dev:waitUntil] Context not found, awaiting promise...");
-      // eslint-disable-next-line no-console
+
       await promise.catch((e) => console.error("[Dev:waitUntil] Error:", e));
     } else {
       // 本番で万が一Contextが取れない場合は、Fire-and-Forget
       // エラーログは出すが、処理は続行する
-      // eslint-disable-next-line no-console
+
       promise.catch((e) => console.error("[waitUntil] Fallback error:", e));
     }
   }

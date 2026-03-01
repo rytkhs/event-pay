@@ -138,7 +138,7 @@ export function ParticipantsActionBarV2({
       setConfirmOverCapacity(null);
 
       window.location.reload();
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "エラーが発生しました",
         description: "参加者の追加に失敗しました",
@@ -193,7 +193,7 @@ export function ParticipantsActionBarV2({
           description: `${filename} をダウンロードしました。`,
         });
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "エクスポート失敗",
         description: "CSVエクスポートでエラーが発生しました。",

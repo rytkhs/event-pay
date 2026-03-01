@@ -99,7 +99,7 @@ export class PaymentAnalyticsService {
         amount,
         outcome: "success",
       });
-    } catch (error) {
+    } catch (_error) {
       handleServerError("GA4_TRACKING_FAILED", {
         category: "payment",
         action: "track_purchase_completion",

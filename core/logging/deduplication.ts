@@ -53,7 +53,6 @@ export async function shouldLogError(
   } catch (error) {
     // 構造化ログで記録
     if (typeof console.error === "function") {
-      // eslint-disable-next-line no-console
       console.error(
         JSON.stringify({
           level: "error",

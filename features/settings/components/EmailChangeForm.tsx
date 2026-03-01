@@ -64,7 +64,7 @@ export function EmailChangeForm({ currentEmail, updateEmailAction }: EmailChange
             variant: "destructive",
           });
         }
-      } catch (error) {
+      } catch (_error) {
         toast({
           title: "エラー",
           description: "メールアドレスの変更中にエラーが発生しました",
