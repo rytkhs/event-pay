@@ -12,7 +12,6 @@ import { getStripe, generateIdempotencyKey } from "@core/stripe/client";
 import { convertStripeError } from "@core/stripe/error-handler";
 import type { StripeConnectAccountUpdate } from "@core/types/stripe-connect";
 import type { AppSupabaseClient } from "@core/types/supabase";
-import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 import {
@@ -256,8 +255,7 @@ export class StripeConnectService implements IStripeConnectService {
       if (!stripeAccount) {
         const idempotencyKey = generateIdempotencyKey("connect");
         const stripe = this.getStripeClient();
-        const env = getEnv();
-        if (env.NODE_ENV === "test") {
+        if (process.env.NODE_ENV === "test") {
           // テスト環境では引数シグネチャ互換のためリクエストオプションを渡さない
           stripeAccount = await stripe.accounts.create(createParams);
         } else {
@@ -277,8 +275,7 @@ export class StripeConnectService implements IStripeConnectService {
 
       if (dbError) {
         // Stripeアカウントは作成されたが、DBへの保存に失敗した場合は補償削除を試行
-        const env = getEnv();
-        if (createdNewAccount && stripeAccount && env.NODE_ENV !== "test") {
+        if (createdNewAccount && stripeAccount && process.env.NODE_ENV !== "test") {
           try {
             const stripe = this.getStripeClient();
             await stripe.accounts.del(stripeAccount.id);

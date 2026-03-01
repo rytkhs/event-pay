@@ -23,16 +23,6 @@ export interface MockHeaders {
 }
 
 /**
- * 環境変数モックの型
- */
-export interface MockEnv {
-  RL_HMAC_SECRET?: string;
-  ADMIN_EMAIL?: string;
-  SLACK_CONTACT_WEBHOOK_URL?: string;
-  [key: string]: any;
-}
-
-/**
  * 共通モック設定のインターフェース
  */
 export interface CommonMocks {
@@ -44,7 +34,6 @@ export interface CommonMocks {
   mockLogSecurityEvent?: jest.MockedFunction<typeof logSecurityEvent>;
   mockHeaders?: MockHeaders;
   mockSupabaseClient?: ReturnType<typeof createMockSupabaseClient>;
-  mockGetEnv?: jest.MockedFunction<() => MockEnv>;
   mockGetClientIPFromHeaders?: jest.MockedFunction<() => string>;
   mockEmailService?: {
     sendEmail: jest.MockedFunction<any>;
@@ -77,8 +66,12 @@ export interface CommonMocks {
  * });
  * ```
  */
-export function setupAuthMocks(testUser: TestUser): jest.MockedFunction<typeof getCurrentUserForServerAction> {
-  const mockGetCurrentUser = getCurrentUserForServerAction as jest.MockedFunction<typeof getCurrentUserForServerAction>;
+export function setupAuthMocks(
+  testUser: TestUser
+): jest.MockedFunction<typeof getCurrentUserForServerAction> {
+  const mockGetCurrentUser = getCurrentUserForServerAction as jest.MockedFunction<
+    typeof getCurrentUserForServerAction
+  >;
   mockGetCurrentUser.mockResolvedValue({
     id: testUser.id,
     email: testUser.email,
@@ -264,11 +257,6 @@ export function setupSecurityLoggerMocks(): jest.MockedFunction<typeof logSecuri
  *         "x-forwarded-for": "192.168.1.1",
  *         "user-agent": "test-agent",
  *       },
- *       includeCloudflareEnv: true,
- *       customEnv: {
- *         RL_HMAC_SECRET: "custom-secret",
- *         ADMIN_EMAIL: "custom-admin@example.com",
- *       },
  *       includeIPDetection: true,
  *       ipAddress: "192.168.1.1",
  *     });
@@ -313,8 +301,6 @@ export function setupCommonMocks(
     includeNextHeaders?: boolean;
     customHeaders?: Record<string, string>;
     includeSupabaseClient?: boolean;
-    includeCloudflareEnv?: boolean;
-    customEnv?: Partial<MockEnv>;
     includeIPDetection?: boolean;
     ipAddress?: string;
     includeEmailService?: boolean;
@@ -334,8 +320,6 @@ export function setupCommonMocks(
     includeNextHeaders = false,
     customHeaders,
     includeSupabaseClient = false,
-    includeCloudflareEnv = false,
-    customEnv,
     includeIPDetection = false,
     ipAddress,
     includeEmailService = false,
@@ -371,10 +355,6 @@ export function setupCommonMocks(
 
   if (includeSupabaseClient) {
     mocks.mockSupabaseClient = setupSupabaseClientMocks();
-  }
-
-  if (includeCloudflareEnv) {
-    mocks.mockGetEnv = setupCloudflareEnvMocks(customEnv);
   }
 
   if (includeIPDetection) {
@@ -431,63 +411,27 @@ export function setupNextHeadersMocks(customHeaders: Record<string, string> = {}
 /**
  * Supabaseクライアントモックを設定
  *
- * @core/supabase/serverのモックを設定します。
- * 注意: この関数を呼び出す前に、jest.mock("@core/supabase/server")でモック化されている必要があります。
+ * @core/supabase/factory のモック戻り値として使用するSupabaseクライアントを生成します。
+ * 注意: 実際に利用する createServerActionSupabaseClient / createServerComponentSupabaseClient /
+ * createRouteHandlerSupabaseClient のいずれかを、テスト側で jest.mock("@core/supabase/factory")
+ * してこの戻り値を返してください。
  *
  * @param options モックオプション（オプション）
  * @returns モックされたSupabaseクライアント
  *
  * @example
  * ```typescript
- * jest.mock("@core/supabase/server", () => ({
- *   createClient: jest.fn(),
+ * jest.mock("@core/supabase/factory", () => ({
+ *   createServerActionSupabaseClient: jest.fn(),
  * }));
  *
  * const mockSupabase = setupSupabaseClientMocks();
+ * const { createServerActionSupabaseClient } = require("@core/supabase/factory");
+ * (createServerActionSupabaseClient as jest.Mock).mockResolvedValue(mockSupabase);
  * ```
  */
 export function setupSupabaseClientMocks(): ReturnType<typeof createMockSupabaseClient> {
   return createMockSupabaseClient();
-}
-
-/**
- * 環境変数モックを設定
- *
- * @core/utils/cloudflare-envのモックを設定します。
- * 注意: この関数を呼び出す前に、jest.mock("@core/utils/cloudflare-env")でモック化されている必要があります。
- *
- * @param customEnv カスタム環境変数（オプション）
- * @returns モック関数
- *
- * @example
- * ```typescript
- * jest.mock("@core/utils/cloudflare-env", () => ({
- *   getEnv: jest.fn(),
- * }));
- *
- * const mockGetEnv = setupCloudflareEnvMocks({
- *   RL_HMAC_SECRET: "custom-secret",
- *   ADMIN_EMAIL: "custom-admin@example.com",
- * });
- * ```
- */
-export function setupCloudflareEnvMocks(
-  customEnv: Partial<MockEnv> = {}
-): jest.MockedFunction<() => MockEnv> {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { getEnv } = require("@core/utils/cloudflare-env");
-  const mockGetEnv = getEnv as jest.MockedFunction<() => MockEnv>;
-
-  const defaultEnv: MockEnv = {
-    RL_HMAC_SECRET: "test-secret-key",
-    ADMIN_EMAIL: "admin@example.com",
-    SLACK_CONTACT_WEBHOOK_URL: undefined,
-    ...customEnv,
-  };
-
-  mockGetEnv.mockReturnValue(defaultEnv);
-
-  return mockGetEnv;
 }
 
 /**
@@ -672,10 +616,6 @@ export function resetCommonMocks(mocks: CommonMocks): void {
 
   if (mocks.mockLogSecurityEvent) {
     mocks.mockLogSecurityEvent.mockReset();
-  }
-
-  if (mocks.mockGetEnv) {
-    mocks.mockGetEnv.mockReset();
   }
 
   if (mocks.mockGetClientIPFromHeaders) {

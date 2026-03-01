@@ -1,6 +1,5 @@
 import { Redis } from "@upstash/redis";
 
-import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 // アカウントロックアウト設定
@@ -24,8 +23,8 @@ export interface LockoutStatus {
 
 // Redis設定の検証と作成
 function createRedisInstance(): Redis {
-  const url = getEnv().UPSTASH_REDIS_REST_URL;
-  const token = getEnv().UPSTASH_REDIS_REST_TOKEN;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
   if (!url || !token) {
     throw new Error(

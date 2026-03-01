@@ -2,9 +2,8 @@ import { jest } from "@jest/globals";
 
 const mockCreateServerClient = jest.fn(() => ({ from: jest.fn() }));
 const mockCookies = jest.fn();
-const mockGetSupabaseCookieConfig = jest.fn(() => ({ name: "sb-test-auth-token" }));
-const mockGetEnv = jest.fn();
 const mockHandleServerError = jest.fn();
+const originalEnv = process.env;
 
 jest.mock("@supabase/ssr", () => ({
   createServerClient: mockCreateServerClient,
@@ -12,14 +11,6 @@ jest.mock("@supabase/ssr", () => ({
 
 jest.mock("next/headers", () => ({
   cookies: mockCookies,
-}));
-
-jest.mock("@core/supabase/config", () => ({
-  getSupabaseCookieConfig: mockGetSupabaseCookieConfig,
-}));
-
-jest.mock("@core/utils/cloudflare-env", () => ({
-  getEnv: mockGetEnv,
 }));
 
 jest.mock("@core/utils/error-handler.server", () => ({
@@ -34,11 +25,16 @@ import {
 describe("core/supabase/factory", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetEnv.mockReturnValue({
+    process.env = {
+      ...originalEnv,
       NEXT_PUBLIC_SUPABASE_URL: "https://test-project.supabase.co",
       NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key",
       NODE_ENV: "test",
-    });
+    };
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
   });
 
   it("Server Component では setAll 書き込み失敗を無視する", async () => {

@@ -5,7 +5,7 @@ const mockServiceLoggerWarn = jest.fn();
 const mockServiceLoggerError = jest.fn();
 const mockRootLoggerWarn = jest.fn();
 const mockHandleServerError = jest.fn();
-const mockGetEnv = jest.fn();
+const originalEnv = process.env;
 
 jest.mock("resend", () => ({
   Resend: jest.fn().mockImplementation((apiKey: string) => {
@@ -33,12 +33,6 @@ jest.mock("@core/utils/error-handler.server", () => ({
   handleServerError: mockHandleServerError,
 }));
 
-jest.mock("@core/utils/cloudflare-env", () => ({
-  getEnv: mockGetEnv,
-}));
-
-const originalNodeEnv = process.env.NODE_ENV;
-
 const defaultEnv = {
   RESEND_API_KEY: "re_test_123",
   FROM_EMAIL: "noreply@example.com",
@@ -60,9 +54,10 @@ describe("core/notification/email-service", () => {
     jest.useRealTimers();
     // Jitter（ゆらぎ）を無効化するために Math.random を固定 (0.5 * 2 - 1 = 0)
     jest.spyOn(Math, "random").mockReturnValue(0.5);
-    process.env.NODE_ENV = "production";
-    process.env.RESEND_API_KEY = defaultEnv.RESEND_API_KEY;
-    mockGetEnv.mockReturnValue({ ...defaultEnv });
+    process.env = {
+      ...originalEnv,
+      ...defaultEnv,
+    };
   });
 
   afterEach(() => {
@@ -70,7 +65,7 @@ describe("core/notification/email-service", () => {
   });
 
   afterAll(() => {
-    process.env.NODE_ENV = originalNodeEnv;
+    process.env = originalEnv;
   });
 
   it("sendEmail は指定された idempotencyKey を Resend SDK に渡す", async () => {

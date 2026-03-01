@@ -1,33 +1,70 @@
-import {
-  handleOnboardingReturnAction,
-  handleOnboardingRefreshAction,
-} from "@features/stripe-connect/server";
+import { redirect } from "next/navigation";
 
 import { setupSupabaseClientMocks } from "../../setup/common-mocks";
-import { setupStripeConnectServiceMock } from "../../setup/stripe-connect-mock";
-import { createMockSupabaseClient, setTestUserById } from "../../setup/supabase-auth-mock";
+import { setTestUserById } from "../../setup/supabase-auth-mock";
+const originalEnv = process.env;
+const defaultUserId = "550e8400-e29b-41d4-a716-446655440000";
 
-// Supabase 認証モック（共通モックを使用）
-jest.mock("@core/supabase/server", () => ({
-  createClient: jest.fn(),
+jest.mock("next/navigation", () => ({
+  redirect: jest.fn(),
 }));
 
-// Stripe Connect サービスのモック（共通モックを使用）
-jest.mock("@features/stripe-connect/server", () => {
-  const { setupStripeConnectServiceMock } = require("../../setup/stripe-connect-mock");
-  return setupStripeConnectServiceMock({
-    getAccountInfo: {
+// Supabase 認証モック（共通モックを使用）
+jest.mock("@core/supabase/factory", () => ({
+  createServerActionSupabaseClient: jest.fn(),
+  createServerComponentSupabaseClient: jest.fn(),
+}));
+
+jest.mock("@features/stripe-connect/services/factories", () => {
+  const __mockStripeConnectService = {
+    getConnectAccountByUser: jest.fn().mockResolvedValue({
+      stripe_account_id: "acct_test",
+      user_id: "550e8400-e29b-41d4-a716-446655440000",
+      status: "unverified",
+      charges_enabled: false,
+      payouts_enabled: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }),
+    createExpressAccount: jest.fn().mockResolvedValue({
       accountId: "acct_test",
-      status: "onboarding",
-      chargesEnabled: false,
-      payoutsEnabled: false,
-    },
-    createAccountLink: {
+      status: "unverified",
+    }),
+    createAccountLink: jest.fn().mockResolvedValue({
       url: "https://connect.stripe.com/setup/e/acct_test/session_token",
       expiresAt: Math.floor(Date.now() / 1000) + 300,
-    },
-  });
+    }),
+    updateAccountStatus: jest.fn().mockResolvedValue(undefined),
+  };
+
+  return {
+    __mockStripeConnectService,
+    createUserStripeConnectServiceForServerAction: jest
+      .fn()
+      .mockResolvedValue(__mockStripeConnectService),
+    createUserStripeConnectServiceForServerComponent: jest
+      .fn()
+      .mockResolvedValue(__mockStripeConnectService),
+  };
 });
+
+jest.mock("@features/stripe-connect/services/status-sync-service", () => ({
+  StatusSyncService: jest.fn().mockImplementation(() => ({
+    syncAccountStatus: jest.fn().mockResolvedValue({
+      id: "acct_test",
+      requirements: {
+        currently_due: [],
+        eventually_due: [],
+        past_due: [],
+        pending_verification: [],
+      },
+      capabilities: {
+        card_payments: "inactive",
+        transfers: "inactive",
+      },
+    }),
+  })),
+}));
 
 describe("Stripe Connect return/refresh actions", () => {
   let mockSupabase: ReturnType<typeof setupSupabaseClientMocks>;
@@ -36,45 +73,69 @@ describe("Stripe Connect return/refresh actions", () => {
     // 共通モックを使用してSupabaseクライアントを設定
     mockSupabase = setupSupabaseClientMocks();
     // テスト用ユーザーを設定
-    const { createClient } = require("@core/supabase/server");
-    (createClient as jest.MockedFunction<typeof createClient>).mockReturnValue(mockSupabase as any);
+    const {
+      createServerActionSupabaseClient,
+      createServerComponentSupabaseClient,
+    } = require("@core/supabase/factory");
+    (
+      createServerActionSupabaseClient as jest.MockedFunction<
+        typeof createServerActionSupabaseClient
+      >
+    ).mockResolvedValue(mockSupabase as any);
+    (
+      createServerComponentSupabaseClient as jest.MockedFunction<
+        typeof createServerComponentSupabaseClient
+      >
+    ).mockResolvedValue(mockSupabase as any);
   });
 
   beforeEach(() => {
-    (process.env as Record<string, string | undefined>).NODE_ENV = "test";
-    process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+    process.env = {
+      ...originalEnv,
+      NODE_ENV: "test",
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+    };
     // afterEachでSupabase認証モックがリセットされるため毎回ユーザーを再設定
-    setTestUserById("user_test", "u@example.com");
+    setTestUserById(defaultUserId, "u@example.com");
+    const { __mockStripeConnectService } = jest.requireMock(
+      "@features/stripe-connect/services/factories"
+    );
+    __mockStripeConnectService.getConnectAccountByUser.mockResolvedValue({
+      stripe_account_id: "acct_test",
+      user_id: defaultUserId,
+      status: "unverified",
+      charges_enabled: false,
+      payouts_enabled: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    (redirect as unknown as jest.Mock).mockClear();
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
   });
 
   it("return action: 既存アカウント同期を実行する", async () => {
-    const { __mockFns } = jest.requireMock("@features/stripe-connect/server");
-    __mockFns.getConnectAccountByUser.mockResolvedValue({
-      user_id: "user_test",
-      stripe_account_id: "acct_test",
-    });
+    const { handleOnboardingReturnAction } = require("@features/stripe-connect/server");
+    const { __mockStripeConnectService } = jest.requireMock(
+      "@features/stripe-connect/services/factories"
+    );
 
-    try {
-      await handleOnboardingReturnAction();
-    } catch (_e) {
-      // redirect 例外は握る
-    }
-
-    expect(__mockFns.updateAccountStatus).toHaveBeenCalled();
+    const result = await handleOnboardingReturnAction();
+    expect(result.success).toBe(true);
+    expect(__mockStripeConnectService.getConnectAccountByUser).toHaveBeenCalled();
   });
 
   it("refresh action: アカウントリンクを再生成してリダイレクトする", async () => {
-    const { __mockFns } = jest.requireMock("@features/stripe-connect/server");
-    __mockFns.getConnectAccountByUser.mockResolvedValue({
-      user_id: "user_test",
-      stripe_account_id: "acct_test",
-    });
-    try {
-      await handleOnboardingRefreshAction();
-    } catch (_e) {
-      // redirect 捕捉
-    }
+    const { handleOnboardingRefreshAction } = require("@features/stripe-connect/server");
+    const { __mockStripeConnectService } = jest.requireMock(
+      "@features/stripe-connect/services/factories"
+    );
 
-    expect(__mockFns.getConnectAccountByUser).toHaveBeenCalled();
+    await handleOnboardingRefreshAction();
+    expect(__mockStripeConnectService.getConnectAccountByUser).toHaveBeenCalled();
+    expect(__mockStripeConnectService.createAccountLink).toHaveBeenCalled();
+    expect(redirect).toHaveBeenCalledWith(expect.stringContaining("https://connect.stripe.com"));
   });
 });
