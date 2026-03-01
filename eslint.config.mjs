@@ -16,6 +16,10 @@ const featureImportRestrictionPatterns = [
     message: 'features の deep import は禁止です。@features/<name> か @features/<name>/server を使用してください',
   },
 ]
+const featureDatabaseImportRestrictionPattern = {
+  group: ['@/types/database'],
+  message: 'features層では@/types/databaseを直接importせず、@core/types/* を使用してください',
+}
 const featureSelfReferenceOverrides = readdirSync(new URL('./features', import.meta.url), {
   withFileTypes: true,
 })
@@ -30,6 +34,7 @@ const featureSelfReferenceOverrides = readdirSync(new URL('./features', import.m
         {
           patterns: [
             ...featureImportRestrictionPatterns,
+            featureDatabaseImportRestrictionPattern,
             {
               group: [`@features/${featureName}`, `@features/${featureName}/**`],
               message: `同一feature内では相対パスを使用してください（@features/${featureName} → ../...）`,
@@ -337,11 +342,12 @@ const eslintConfig = [
       {
         files: ['features/**/*'],
         rules: {
-          'no-restricted-syntax': [
+          'no-restricted-imports': [
             'error',
             {
-              selector: "ImportDeclaration[source.value='@/types/database']",
-              message: 'features層では@/types/databaseを直接importせず、@core/types/* を使用してください',
+              patterns: [
+                featureDatabaseImportRestrictionPattern,
+              ],
             },
           ],
         },
