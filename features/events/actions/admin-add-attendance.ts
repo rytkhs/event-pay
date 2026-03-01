@@ -92,7 +92,7 @@ export async function adminAddAttendanceAction(
       }
 
       attendanceId = rpcResult;
-    } catch (error) {
+    } catch (_error) {
       return fail("INTERNAL_ERROR", { userMessage: "参加者追加処理でエラーが発生しました" });
     }
 

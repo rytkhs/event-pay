@@ -63,7 +63,7 @@ export function PasswordChangeForm({ changePasswordAction }: PasswordChangeFormP
             variant: "destructive",
           });
         }
-      } catch (error) {
+      } catch (_error) {
         toast({
           title: "エラー",
           description: "パスワードの更新中にエラーが発生しました",

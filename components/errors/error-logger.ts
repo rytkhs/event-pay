@@ -127,13 +127,13 @@ class ErrorLogger {
     if (this.config.environment === "development") {
       // eslint-disable-next-line no-console
       console.group(`🚨 Error: ${errorInfo.title || errorInfo.code}`);
-      // eslint-disable-next-line no-console
+
       console.error("Error Info:", errorInfo);
-      // eslint-disable-next-line no-console
+
       console.error("Original Error:", originalError);
-      // eslint-disable-next-line no-console
+
       console.error("Context:", context);
-      // eslint-disable-next-line no-console
+
       console.error("Stack Trace:", originalError?.stack);
       // eslint-disable-next-line no-console
       console.groupEnd();
@@ -144,7 +144,6 @@ class ErrorLogger {
       try {
         await this.sendErrorReport(logEntry);
       } catch (reportError) {
-        // eslint-disable-next-line no-console
         console.error("Failed to send error report:", reportError);
       }
     }

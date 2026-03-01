@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
     const processingTime = Date.now() - startTime;
 
     // ハンドラが失敗を返した場合の処理
-    if (processingResult && processingResult.success === false) {
+    if (processingResult?.success === false) {
       const isTerminal = processingResult.meta?.terminal ?? !processingResult.error.retryable;
       const reason = processingResult.meta?.reason;
       const error = processingResult.error.userMessage || processingResult.error.message;

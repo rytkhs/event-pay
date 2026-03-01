@@ -30,7 +30,7 @@ export async function updateGuestAttendanceAction(
     const userAgent = headersList.get("user-agent") || undefined;
     const ip = getClientIPFromHeaders(headersList);
     securityContext = { userAgent, ip };
-  } catch (error) {
+  } catch (_error) {
     // テスト環境など、headers()が利用できない場合は空のコンテキストを使用
     if (process.env.NODE_ENV === "test") {
       securityContext = { userAgent: "test-agent", ip: "127.0.0.1" };

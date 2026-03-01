@@ -137,6 +137,6 @@ components/ui/ (UI部品層・最下位)
 
 ## Links
 
-- ESLint設定: `.eslintrc.json` - boundaries/element-typesとboundaries/entry-pointルール
+- ESLint設定: `eslint.config.mjs` - boundaries/element-typesとboundaries/entry-pointルール
 - 参考: eslint-plugin-boundaries公式ドキュメント
 - ADR-0011: Featureのserver-only公開エントリ（server.ts）の導入
