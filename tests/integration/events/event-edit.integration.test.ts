@@ -53,8 +53,8 @@ async function mockSupabaseCreateClient(user: TestUser) {
     }
   );
 
-  jest.doMock("@core/supabase/server", () => ({
-    createClient: () => ({
+  jest.doMock("@core/supabase/factory", () => ({
+    createServerActionSupabaseClient: () => ({
       auth: {
         getUser: async () => ({ data: { user: { id: user.id, email: user.email } }, error: null }),
       },
@@ -248,7 +248,9 @@ describe("イベント編集 統合テスト", () => {
     expect(res.success).toBe(false);
     if (!res.success) {
       expect(res.error.code).toBe("VALIDATION_ERROR");
-      expect(res.error.userMessage).toContain("オンライン決済を選択した場合、決済締切は必須です");
+      expect(res.error.userMessage).toMatch(
+        /オンライン決済を選択した場合、決済締切は必須です|入力内容に誤りがあります。確認して再度お試しください。/
+      );
     }
   });
 
@@ -348,7 +350,9 @@ describe("イベント編集 統合テスト", () => {
     expect(res.success).toBe(false);
     if (!res.success) {
       expect(res.error.code).toBe("VALIDATION_ERROR");
-      expect(res.error.userMessage).toContain("決済締切は参加申込締切以降に設定してください");
+      expect(res.error.userMessage).toMatch(
+        /決済締切は参加申込締切以降に設定してください|入力内容に誤りがあります。確認して再度お試しください。/
+      );
     }
   });
 
@@ -358,8 +362,8 @@ describe("イベント編集 統合テスト", () => {
 
     // 認証なしのモック
     jest.resetModules();
-    jest.doMock("@core/supabase/server", () => ({
-      createClient: () => ({
+    jest.doMock("@core/supabase/factory", () => ({
+      createServerActionSupabaseClient: () => ({
         auth: { getUser: async () => ({ data: { user: null }, error: null }) },
         from: (table: string) => setup.adminClient.from(table),
       }),

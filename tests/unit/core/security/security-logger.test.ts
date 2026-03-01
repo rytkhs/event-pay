@@ -11,6 +11,7 @@
 import { logger } from "@core/logging/app-logger";
 import { logSecurityEvent } from "@core/security/security-logger";
 import type { SecurityEvent } from "@core/security/security-logger";
+const originalEnv = process.env;
 
 // Mock dependencies
 jest.mock("@core/logging/app-logger", () => ({
@@ -20,14 +21,6 @@ jest.mock("@core/logging/app-logger", () => ({
     error: jest.fn(),
     debug: jest.fn(),
   },
-}));
-
-jest.mock("@core/utils/cloudflare-env", () => ({
-  getEnv: jest.fn(() => ({
-    NODE_ENV: "production",
-    NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co",
-    SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",
-  })),
 }));
 
 jest.mock("@supabase/supabase-js", () => {
@@ -65,6 +58,12 @@ describe("security-logger", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env = {
+      ...originalEnv,
+      NODE_ENV: "production",
+      NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co",
+      SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",
+    };
 
     // Get mock instances
     mockLogger = logger as jest.Mocked<typeof logger>;
@@ -83,6 +82,10 @@ describe("security-logger", () => {
       success: true,
       messageId: "test-message-id",
     });
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
   });
 
   describe("U-S-01: IPアドレスのマスク", () => {
