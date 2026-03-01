@@ -17,7 +17,6 @@ import {
 } from "@core/security/stripe-ip-allowlist";
 import { getWebhookSecrets, getStripe } from "@core/stripe/client";
 import { StripeWebhookSignatureVerifier } from "@core/stripe/webhook-signature-verifier";
-import { getEnv } from "@core/utils/cloudflare-env";
 import { getClientIP } from "@core/utils/ip-detection";
 import { toErrorLike } from "@core/utils/type-guards";
 
@@ -29,7 +28,7 @@ export const dynamic = "force-dynamic";
 
 // QStashクライアント初期化
 const getQstashClient = () => {
-  const token = getEnv().QSTASH_TOKEN;
+  const token = process.env.QSTASH_TOKEN;
   if (!token) {
     throw new Error("QSTASH_TOKEN environment variable is required");
   }
@@ -136,7 +135,7 @@ export async function POST(request: NextRequest) {
 
     // テスト環境での同期処理モード（E2Eテスト用）
     // SKIP_QSTASH_IN_TEST=true の場合、QStashをスキップして直接処理
-    const shouldProcessSync = getEnv().SKIP_QSTASH_IN_TEST === "true";
+    const shouldProcessSync = process.env.SKIP_QSTASH_IN_TEST === "true";
 
     if (shouldProcessSync) {
       logger.info("Test mode: Processing webhook synchronously (QStash skipped)", {
@@ -202,7 +201,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 本番環境: QStashに転送（完全なイベントデータを送信）
-    const workerUrl = `${getEnv().NEXT_PUBLIC_APP_URL}/api/workers/stripe-webhook`;
+    const workerUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/workers/stripe-webhook`;
 
     // 完全なイベントデータを送信（イベント再取得を不要にする）
     const qstashBody = {

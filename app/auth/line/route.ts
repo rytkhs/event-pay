@@ -15,14 +15,12 @@ import {
   generateCodeVerifier,
   generateCodeChallenge,
 } from "@core/auth/line-utils";
-import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const env = getEnv();
-  const channelId = env.NEXT_PUBLIC_LINE_CHANNEL_ID;
+  const channelId = process.env.NEXT_PUBLIC_LINE_CHANNEL_ID;
 
   if (!channelId) {
     handleServerError("ENV_VAR_MISSING", {

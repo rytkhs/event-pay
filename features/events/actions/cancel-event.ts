@@ -7,7 +7,6 @@ import { type ActionResult, fail, ok } from "@core/errors/adapters/server-action
 import { logger } from "@core/logging/app-logger";
 import { logEventManagement } from "@core/logging/system-logger";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
-import { getEnv } from "@core/utils/cloudflare-env";
 
 type CancelEventInput = {
   eventId: string;
@@ -15,7 +14,7 @@ type CancelEventInput = {
 };
 
 function getQstashClient() {
-  const token = getEnv().QSTASH_TOKEN;
+  const token = process.env.QSTASH_TOKEN;
   if (!token) {
     throw new Error("QSTASH_TOKEN environment variable is required");
   }
@@ -70,7 +69,7 @@ export async function cancelEventAction(
       if (!updatedRows || updatedRows.length === 0) {
         return ok({ status: "canceled" as const }, { message: "イベントを中止しました" });
       }
-      const workerUrl = `${getEnv().NEXT_PUBLIC_APP_URL}/api/workers/event-cancel`;
+      const workerUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/workers/event-cancel`;
       const body = { eventId, message: params.message };
 
       const qstash = getQstashClient();

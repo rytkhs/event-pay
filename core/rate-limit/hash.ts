@@ -1,13 +1,10 @@
 import { createHmac } from "crypto";
 
-import { getEnv } from "@core/utils/cloudflare-env";
-
 let cachedHmacSecret: string;
 
 function getHmacSecret(): string {
   if (!cachedHmacSecret) {
-    const env = getEnv();
-    cachedHmacSecret = env.RL_HMAC_SECRET || "dev-rl-hmac-secret";
+    cachedHmacSecret = process.env.RL_HMAC_SECRET || "dev-rl-hmac-secret";
   }
   return cachedHmacSecret;
 }

@@ -4,7 +4,6 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { SUPABASE_COOKIE_CONFIG } from "@core/supabase/config";
-import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 import type { Database } from "@/types/database";
@@ -33,7 +32,7 @@ async function getRequestCookieStoreOrThrow(): Promise<CookieStoreLike> {
       additionalData: {
         reason: "NEXT_HEADERS_UNAVAILABLE",
         error_message: error instanceof Error ? error.message : String(error),
-        environment: getEnv().NODE_ENV,
+        environment: process.env.NODE_ENV,
       },
     });
 
@@ -42,8 +41,7 @@ async function getRequestCookieStoreOrThrow(): Promise<CookieStoreLike> {
 }
 
 function getURL(): string {
-  const env = getEnv();
-  const value = env.NEXT_PUBLIC_SUPABASE_URL;
+  const value = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!value) {
     const key = "NEXT_PUBLIC_SUPABASE_URL";
     const message = `Missing required environment variable: ${key}`;
@@ -61,8 +59,7 @@ function getURL(): string {
 }
 
 function getAnonKey(): string {
-  const env = getEnv();
-  const value = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const value = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!value) {
     const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
     const message = `Missing required environment variable: ${key}`;
@@ -113,7 +110,7 @@ async function createRequestServerClient({
               reason: "COOKIE_WRITE_FAILED",
               context,
               error_message: error instanceof Error ? error.message : String(error),
-              environment: getEnv().NODE_ENV,
+              environment: process.env.NODE_ENV,
             },
           });
 

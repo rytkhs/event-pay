@@ -7,7 +7,6 @@ import {
 } from "@core/maintenance/maintenance-page";
 import { buildCsp } from "@core/security/csp";
 import { createMiddlewareSupabaseClient } from "@core/supabase/middleware-client";
-import { getEnv } from "@core/utils/cloudflare-env";
 
 const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
 
@@ -124,9 +123,8 @@ export async function middleware(request: NextRequest) {
   const reportUrl = new URL("/api/csp-report", request.url).toString();
 
   // 1. メンテナンスモードチェック（最優先）
-  const env = getEnv();
-  const maintenanceMode = env.MAINTENANCE_MODE;
-  const bypassToken = env.MAINTENANCE_BYPASS_TOKEN;
+  const maintenanceMode = process.env.MAINTENANCE_MODE;
+  const bypassToken = process.env.MAINTENANCE_BYPASS_TOKEN;
   const searchParams = request.nextUrl.searchParams;
 
   if (shouldShowMaintenancePage(pathname, searchParams, maintenanceMode, bypassToken)) {
@@ -204,8 +202,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // 9. 認証が必要なページ: Supabase SSRクライアント
-  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     return NextResponse.json({ error: "Missing Supabase configuration" }, { status: 500 });

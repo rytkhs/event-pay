@@ -8,7 +8,6 @@ import { createAuditedAdminClient } from "@core/security/secure-client-factory.i
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createRouteHandlerSupabaseClient } from "@core/supabase/factory";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
-import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
 
@@ -17,7 +16,6 @@ import { LineTokenResponse, LineVerifyResponse } from "@/types/line";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const env = getEnv();
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
@@ -66,8 +64,8 @@ export async function GET(request: Request) {
     // URL構造: /auth/callback/line
     const redirectUri = `${origin}/auth/callback/line`;
 
-    const channelId = env.NEXT_PUBLIC_LINE_CHANNEL_ID;
-    const channelSecret = env.LINE_CHANNEL_SECRET;
+    const channelId = process.env.NEXT_PUBLIC_LINE_CHANNEL_ID;
+    const channelSecret = process.env.LINE_CHANNEL_SECRET;
 
     if (!channelId || !channelSecret) {
       throw new Error("LINE Channel ID or Secret is not configured");

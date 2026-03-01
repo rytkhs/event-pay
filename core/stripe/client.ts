@@ -3,7 +3,6 @@ import "server-only";
 import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
-import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 // 明示固定: Stripe APIバージョン（SDK更新時はこの値を意図的に見直す）
@@ -16,8 +15,7 @@ export function getStripe(): Stripe {
     return stripeInstance;
   }
 
-  const env = getEnv();
-  const stripeSecretKey = env.STRIPE_SECRET_KEY;
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
   if (!stripeSecretKey) {
     const key = "STRIPE_SECRET_KEY";
@@ -42,7 +40,7 @@ export function getStripe(): Stripe {
     key_has_newlines: stripeSecretKey.includes("\n"),
     key_has_spaces: stripeSecretKey.includes(" "),
     key_has_tabs: stripeSecretKey.includes("\t"),
-    node_env: env.NODE_ENV,
+    node_env: process.env.NODE_ENV,
     outcome: "success",
   });
 
@@ -61,7 +59,7 @@ export function getStripe(): Stripe {
   });
 
   // Publishable Key はクライアント用。サーバー専用プロセスでは未設定でも動作させる。
-  if (!env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+  if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
     logger.warn(
       "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set – client-side Stripe.js may fail to initialize",
       {
@@ -76,7 +74,7 @@ export function getStripe(): Stripe {
 
   // 本番ではログを抑制。必要なときだけ `STRIPE_LOG_VERBOSE=true` を設定して有効化する
   const shouldEnableStripeLogging =
-    env.NODE_ENV !== "production" || env.STRIPE_LOG_VERBOSE === "true";
+    process.env.NODE_ENV !== "production" || process.env.STRIPE_LOG_VERBOSE === "true";
 
   if (shouldEnableStripeLogging) {
     instance.on("request", (req: Stripe.RequestEvent) => {
@@ -117,14 +115,14 @@ export function getStripe(): Stripe {
  * いずれか存在するものを順序付き配列で返す。
  */
 export const getWebhookSecrets = (): string[] => {
-  const env = getEnv();
-  const isProd = env.NODE_ENV === "production";
+  const isProd = process.env.NODE_ENV === "production";
   const primary = isProd
-    ? env.STRIPE_WEBHOOK_SECRET
-    : (env.STRIPE_WEBHOOK_SECRET_TEST ?? env.STRIPE_WEBHOOK_SECRET);
+    ? process.env.STRIPE_WEBHOOK_SECRET
+    : (process.env.STRIPE_WEBHOOK_SECRET_TEST ?? process.env.STRIPE_WEBHOOK_SECRET);
   const secondary = isProd
-    ? env.STRIPE_WEBHOOK_SECRET_SECONDARY
-    : (env.STRIPE_WEBHOOK_SECRET_TEST_SECONDARY ?? env.STRIPE_WEBHOOK_SECRET_SECONDARY);
+    ? process.env.STRIPE_WEBHOOK_SECRET_SECONDARY
+    : (process.env.STRIPE_WEBHOOK_SECRET_TEST_SECONDARY ??
+      process.env.STRIPE_WEBHOOK_SECRET_SECONDARY);
   const secrets = [primary, secondary].filter(
     (s): s is string => typeof s === "string" && s.length > 0
   );
@@ -142,15 +140,14 @@ export const getWebhookSecrets = (): string[] => {
  * - テスト: STRIPE_CONNECT_WEBHOOK_SECRET_TEST (primary), STRIPE_CONNECT_WEBHOOK_SECRET_TEST_SECONDARY
  */
 export const getConnectWebhookSecrets = (): string[] => {
-  const env = getEnv();
-  const isProd = env.NODE_ENV === "production";
+  const isProd = process.env.NODE_ENV === "production";
   const primary = isProd
-    ? env.STRIPE_CONNECT_WEBHOOK_SECRET
-    : (env.STRIPE_CONNECT_WEBHOOK_SECRET_TEST ?? env.STRIPE_CONNECT_WEBHOOK_SECRET);
+    ? process.env.STRIPE_CONNECT_WEBHOOK_SECRET
+    : (process.env.STRIPE_CONNECT_WEBHOOK_SECRET_TEST ?? process.env.STRIPE_CONNECT_WEBHOOK_SECRET);
   const secondary = isProd
-    ? env.STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY
-    : (env.STRIPE_CONNECT_WEBHOOK_SECRET_TEST_SECONDARY ??
-      env.STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY);
+    ? process.env.STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY
+    : (process.env.STRIPE_CONNECT_WEBHOOK_SECRET_TEST_SECONDARY ??
+      process.env.STRIPE_CONNECT_WEBHOOK_SECRET_SECONDARY);
   const secrets = [primary, secondary].filter(
     (s): s is string => typeof s === "string" && s.length > 0
   );
