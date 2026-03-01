@@ -12,21 +12,11 @@ const mockCookies = {
 const mockHeaders = {
   get: jest.fn(),
 };
+const originalEnv = process.env;
 
 jest.mock("next/headers", () => ({
   cookies: () => mockCookies,
   headers: () => mockHeaders,
-}));
-
-// Cloudflare環境変数のモック
-// jest-setup.tsでdotenvが読み込まれるが、テスト用に特定の値を設定
-jest.mock("@core/utils/cloudflare-env", () => ({
-  getEnv: jest.fn(() => ({
-    NEXT_PUBLIC_LINE_CHANNEL_ID: "test-channel-id",
-    LINE_CHANNEL_SECRET: "test-channel-secret",
-    NEXT_PUBLIC_APP_URL: "http://localhost:3000",
-    NODE_ENV: "test",
-  })),
 }));
 
 // ロガーのモック
@@ -59,10 +49,11 @@ const mockSupabaseClient = {
 };
 
 jest.mock("@core/security/secure-client-factory.impl", () => ({
-  getSecureClientFactory: () => ({
-    createAuditedAdminClient: jest.fn().mockResolvedValue(mockSupabaseAdmin),
-    createAuthenticatedClient: jest.fn().mockReturnValue(mockSupabaseClient),
-  }),
+  createAuditedAdminClient: jest.fn(),
+}));
+
+jest.mock("@core/supabase/factory", () => ({
+  createRouteHandlerSupabaseClient: jest.fn(),
 }));
 
 // GA4関連のモック
@@ -86,7 +77,23 @@ jest.mock("@core/utils/cloudflare-ctx", () => ({
 describe("LINE Login Auth Flow", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    const { createAuditedAdminClient } = require("@core/security/secure-client-factory.impl");
+    (createAuditedAdminClient as jest.Mock).mockResolvedValue(mockSupabaseAdmin);
+    const { createRouteHandlerSupabaseClient } = require("@core/supabase/factory");
+    (createRouteHandlerSupabaseClient as jest.Mock).mockResolvedValue(mockSupabaseClient);
+
+    process.env = {
+      ...originalEnv,
+      NEXT_PUBLIC_LINE_CHANNEL_ID: "test-channel-id",
+      LINE_CHANNEL_SECRET: "test-channel-secret",
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+      NODE_ENV: "test",
+    };
     mockHeaders.get.mockReturnValue(null); // Default headers
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
   });
 
   describe("GET /auth/line", () => {

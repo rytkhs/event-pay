@@ -220,17 +220,15 @@ describe("環境変数テスト", () => {
   let mocks: CommonMocks;
 
   beforeAll(async () => {
+    process.env.RL_HMAC_SECRET = "custom-secret";
+    process.env.ADMIN_EMAIL = "custom-admin@example.com";
+
     setup = await createCommonTestSetup();
     mocks = setupCommonMocks(setup.testUser, {
       includeNextHeaders: true,
       customHeaders: {
         "x-forwarded-for": "192.168.1.1",
         "user-agent": "test-agent",
-      },
-      includeCloudflareEnv: true,
-      customEnv: {
-        RL_HMAC_SECRET: "custom-secret",
-        ADMIN_EMAIL: "custom-admin@example.com",
       },
       includeIPDetection: true,
       ipAddress: "192.168.1.1",

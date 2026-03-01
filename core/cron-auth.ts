@@ -3,7 +3,6 @@
 import "server-only";
 
 import { logger } from "@core/logging/app-logger";
-import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 const BEARER_PREFIX = "Bearer ";
@@ -28,7 +27,7 @@ interface RequestWithHeaders {
  */
 export function validateCronSecret(request: RequestWithHeaders): AuthResult {
   // 環境変数からCRON_SECRETを取得
-  const expectedSecret = getEnv().CRON_SECRET;
+  const expectedSecret = process.env.CRON_SECRET;
   if (!expectedSecret) {
     return {
       isValid: false,

@@ -14,6 +14,7 @@ import { expectActionFailure } from "@tests/helpers/assert-result";
 
 import { submitContact } from "@/app/(public)/contact/actions";
 import { ContactInputSchema } from "@/app/(public)/contact/useContactForm";
+const originalEnv = process.env;
 
 // モック化の宣言（共通関数を使用するため、モック化のみ宣言）
 // Next.js headers モック
@@ -21,9 +22,14 @@ jest.mock("next/headers", () => ({
   headers: jest.fn(),
 }));
 
+// setupCommonMocks が利用する認証ヘルパーをモック化
+jest.mock("@core/auth/auth-utils", () => ({
+  getCurrentUserForServerAction: jest.fn(),
+}));
+
 // Supabase client をモック化
-jest.mock("@core/supabase/server", () => ({
-  createClient: jest.fn(),
+jest.mock("@core/supabase/factory", () => ({
+  createServerActionSupabaseClient: jest.fn(),
 }));
 
 // レート制限のモック（POLICIESも保持）
@@ -32,6 +38,7 @@ jest.mock("@core/rate-limit", () => {
   return {
     ...actual,
     enforceRateLimit: jest.fn(),
+    withRateLimit: jest.fn(),
     buildKey: jest.fn(),
     POLICIES: {
       ...actual.POLICIES,
@@ -48,11 +55,6 @@ jest.mock("@core/rate-limit", () => {
 // IP検出のモック
 jest.mock("@core/utils/ip-detection", () => ({
   getClientIPFromHeaders: jest.fn(),
-}));
-
-// 環境変数のモック
-jest.mock("@core/utils/cloudflare-env", () => ({
-  getEnv: jest.fn(),
 }));
 
 // ロガーのモック（ログ出力を抑制）
@@ -79,10 +81,14 @@ describe("submitContact Server Action - 統合テスト", () => {
   let mockSupabase: ReturnType<typeof setupSupabaseClientMocks>;
 
   beforeAll(() => {
-    // Supabase clientのモックを個別に設定（createClientのモックが必要なため）
+    // Supabase clientのモックを個別に設定
     mockSupabase = setupSupabaseClientMocks();
-    const { createClient } = require("@core/supabase/server");
-    (createClient as jest.MockedFunction<typeof createClient>).mockReturnValue(mockSupabase as any);
+    const { createServerActionSupabaseClient } = require("@core/supabase/factory");
+    (
+      createServerActionSupabaseClient as jest.MockedFunction<
+        typeof createServerActionSupabaseClient
+      >
+    ).mockResolvedValue(mockSupabase as any);
 
     // ダミーのtestUserを作成（認証は不要だが、setupCommonMocksの型要件のため）
     const dummyUser = {
@@ -98,12 +104,6 @@ describe("submitContact Server Action - 統合テスト", () => {
       includeNextHeaders: true,
       customHeaders: { "user-agent": "test-user-agent" },
       includeSupabaseClient: false, // 個別に設定済み
-      includeCloudflareEnv: true,
-      customEnv: {
-        RL_HMAC_SECRET: "test-secret-key",
-        ADMIN_EMAIL: "admin@example.com",
-        SLACK_CONTACT_WEBHOOK_URL: undefined,
-      },
       includeIPDetection: true,
       ipAddress: "127.0.0.1",
       includeEmailService: true,
@@ -112,7 +112,7 @@ describe("submitContact Server Action - 統合テスト", () => {
       slackSuccess: true,
     });
 
-    // Supabase clientを個別に設定（setupCommonMocksではcreateClientのモックができないため）
+    // Supabase clientを個別に設定
     mocks.mockSupabaseClient = mockSupabase;
 
     // レート制限のbuildKeyを設定（setupCommonMocksではカスタムキーが設定できないため）
@@ -123,6 +123,13 @@ describe("submitContact Server Action - 統合テスト", () => {
 
   // モックのリセット
   beforeEach(() => {
+    process.env = {
+      ...originalEnv,
+      NODE_ENV: "test",
+      RL_HMAC_SECRET: "test-secret-key",
+      ADMIN_EMAIL: "admin@example.com",
+    };
+
     // Next.js headersのモックを設定
     const { headers } = require("next/headers");
     (headers as jest.MockedFunction<typeof headers>).mockReturnValue(mocks.mockHeaders as any);
@@ -139,6 +146,10 @@ describe("submitContact Server Action - 統合テスト", () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
   });
 
   describe("正常系 (200)", () => {

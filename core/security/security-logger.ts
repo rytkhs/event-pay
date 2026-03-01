@@ -12,7 +12,6 @@ import {
 } from "@core/logging/app-logger";
 import { buildEmailIdempotencyKey } from "@core/notification/idempotency";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
-import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 export interface SecurityEvent {
@@ -346,8 +345,7 @@ export { maskSessionId, maskPaymentId } from "@core/utils/mask";
  */
 async function sendSecurityAlert(logEntry: Record<string, unknown>): Promise<void> {
   // 開発環境では警告を出力
-  const env = getEnv();
-  if (env.NODE_ENV === "development") {
+  if (process.env.NODE_ENV === "development") {
     handleServerError("ADMIN_ALERT_FAILED", {
       category: "security",
       action: "security_alert",
@@ -358,7 +356,7 @@ async function sendSecurityAlert(logEntry: Record<string, unknown>): Promise<voi
     });
   }
 
-  if (env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production") {
     try {
       // 1. メール通知 (HIGH/CRITICAL のみ)
       if (logEntry.security_severity === "HIGH" || logEntry.security_severity === "CRITICAL") {

@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 const mockLoggerInfo = jest.fn();
 const mockLoggerWarn = jest.fn();
 const mockHandleServerError = jest.fn();
-const mockGetEnv = jest.fn();
+const originalEnv = process.env;
 
 type MockStripeHandler = (payload: Stripe.RequestEvent | Stripe.ResponseEvent) => void;
 type MockStripeInstance = {
@@ -21,10 +21,6 @@ jest.mock("@core/logging/app-logger", () => ({
     info: mockLoggerInfo,
     warn: mockLoggerWarn,
   },
-}));
-
-jest.mock("@core/utils/cloudflare-env", () => ({
-  getEnv: mockGetEnv,
 }));
 
 jest.mock("@core/utils/error-handler.server", () => ({
@@ -72,8 +68,14 @@ describe("core/stripe/client", () => {
     mockLoggerInfo.mockClear();
     mockLoggerWarn.mockClear();
     mockHandleServerError.mockClear();
-    mockGetEnv.mockReset();
-    mockGetEnv.mockReturnValue({ ...defaultEnv });
+    process.env = {
+      ...originalEnv,
+      ...defaultEnv,
+    };
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
   });
 
   it("getStripe は singleton インスタンスを返し、明示固定 apiVersion を使う", () => {

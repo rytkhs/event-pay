@@ -10,7 +10,6 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
-import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 import { validateGuestTokenFormat } from "./crypto";
@@ -27,8 +26,7 @@ import {
  * Supabase URLを取得
  */
 function getSupabaseUrl(): string {
-  const env = getEnv();
-  const value = env.NEXT_PUBLIC_SUPABASE_URL;
+  const value = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!value) {
     const key = "NEXT_PUBLIC_SUPABASE_URL";
     const message = `Missing required environment variable: ${key}`;
@@ -49,8 +47,7 @@ function getSupabaseUrl(): string {
  * Supabase Anon Keyを取得
  */
 function getAnonKey(): string {
-  const env = getEnv();
-  const value = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const value = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!value) {
     const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
     const message = `Missing required environment variable: ${key}`;
@@ -71,8 +68,7 @@ function getAnonKey(): string {
  * Supabase Service Role Keyを取得
  */
 function getServiceRoleKey(): string {
-  const env = getEnv();
-  const value = env.SUPABASE_SERVICE_ROLE_KEY;
+  const value = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!value) {
     const key = "SUPABASE_SERVICE_ROLE_KEY";
     const message = `Missing required environment variable: ${key}`;

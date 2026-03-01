@@ -12,7 +12,6 @@ import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { hmacSha256Hex } from "@core/rate-limit/hash";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
-import { getEnv } from "@core/utils/cloudflare-env";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
@@ -90,7 +89,7 @@ export async function submitContact(input: ContactInput) {
 
   // 5. メタデータ収集
   const userAgent = h.get("user-agent") ?? null;
-  const ipHash = getEnv().RL_HMAC_SECRET && ip ? hmacSha256Hex(ip) : null;
+  const ipHash = process.env.RL_HMAC_SECRET && ip ? hmacSha256Hex(ip) : null;
 
   // 6. DB保存
   const supabase = await createServerActionSupabaseClient();
@@ -156,7 +155,7 @@ export async function submitContact(input: ContactInput) {
         const emailService = new EmailNotificationService();
 
         const result = await emailService.sendEmail({
-          to: getEnv().ADMIN_EMAIL || "admin@eventpay.jp",
+          to: process.env.ADMIN_EMAIL || "admin@eventpay.jp",
           template: buildAdminContactNoticeTemplate({
             name: nameSanitized,
             email,
@@ -192,7 +191,7 @@ export async function submitContact(input: ContactInput) {
       }
 
       // Slack通知（任意）
-      if (getEnv().SLACK_CONTACT_WEBHOOK_URL) {
+      if (process.env.SLACK_CONTACT_WEBHOOK_URL) {
         try {
           const jstStr = formatUtcToJst(receivedAt, "yyyy-MM-dd HH:mm 'JST'");
           const slackText = `[Contact] ${nameSanitized} <${email}>\n受信: ${jstStr}\n\n${excerpt}`;

@@ -87,7 +87,9 @@ describe("updateEventAction", () => {
       }),
     } as any;
 
-    jest.doMock("@core/supabase/server", () => ({ createClient: () => mockSupabase }));
+    jest.doMock("@core/supabase/factory", () => ({
+      createServerActionSupabaseClient: () => mockSupabase,
+    }));
 
     return { mockSupabase, captured };
   }

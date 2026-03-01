@@ -667,15 +667,15 @@ describe("イベント作成統合テスト", () => {
 import { createCommonTestSetup, type CommonTestSetup } from "@tests/setup/common-test-setup";
 import { setupAuthMocks } from "@tests/setup/common-mocks";
 import { getCurrentUser } from "@core/auth/auth-utils";
-import { createClient } from "@core/supabase/server";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 
-jest.mock("@core/supabase/server", () => ({
-  createClient: jest.fn(),
+jest.mock("@core/supabase/factory", () => ({
+  createServerActionSupabaseClient: jest.fn(),
 }));
 
 export interface DashboardStatsTestSetup extends CommonTestSetup {
   mockGetCurrentUser: jest.MockedFunction<typeof getCurrentUser>;
-  mockCreateClient: jest.MockedFunction<typeof createClient>;
+  mockCreateServerActionClient: jest.MockedFunction<typeof createServerActionSupabaseClient>;
 }
 
 export async function setupDashboardStatsTest(): Promise<DashboardStatsTestSetup> {
@@ -689,7 +689,9 @@ export async function setupDashboardStatsTest(): Promise<DashboardStatsTestSetup
   return {
     ...commonSetup,
     mockGetCurrentUser,
-    mockCreateClient: createClient as jest.MockedFunction<typeof createClient>,
+    mockCreateServerActionClient: createServerActionSupabaseClient as jest.MockedFunction<
+      typeof createServerActionSupabaseClient
+    >,
   };
 }
 ```

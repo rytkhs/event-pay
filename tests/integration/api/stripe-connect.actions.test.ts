@@ -1,47 +1,75 @@
-//
-
 import { redirect } from "next/navigation";
 
-import { startOnboardingAction, getStripeBalanceAction } from "@features/stripe-connect/server";
-
 import { setupSupabaseClientMocks } from "../../setup/common-mocks";
-import { createMockSupabaseClient, setTestUserById } from "../../setup/supabase-auth-mock";
+import { setTestUserById } from "../../setup/supabase-auth-mock";
+const originalEnv = process.env;
+const defaultUserId = "550e8400-e29b-41d4-a716-446655440000";
 
 // Mock next/navigation
 jest.mock("next/navigation", () => ({
   redirect: jest.fn(),
 }));
 
-// Stripe Connect サービスのモック（共通モックを使用）
-jest.mock("@features/stripe-connect/server", () => {
-  const { setupStripeConnectServiceMock } = jest.requireActual<
-    typeof import("../../setup/stripe-connect-mock")
-  >("../../setup/stripe-connect-mock");
-
-  return setupStripeConnectServiceMock({
-    getConnectAccountByUser: {
+// Stripe Connect サービスの依存をモック
+jest.mock("@features/stripe-connect/services/factories", () => {
+  const __mockStripeConnectService = {
+    getConnectAccountByUser: jest.fn().mockResolvedValue({
       stripe_account_id: "acct_test",
-      user_id: "user_test",
+      user_id: "550e8400-e29b-41d4-a716-446655440000",
       status: "unverified",
       charges_enabled: false,
       payouts_enabled: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    },
-    createExpressAccount: {
+    }),
+    createExpressAccount: jest.fn().mockResolvedValue({
       accountId: "acct_test",
       status: "unverified",
-    },
-    createAccountLink: {
+    }),
+    createAccountLink: jest.fn().mockResolvedValue({
       url: "https://connect.stripe.com/setup/e/acct_test/session_token",
       expiresAt: Math.floor(Date.now() / 1000) + 300,
-    },
-  });
+    }),
+    createLoginLink: jest.fn().mockResolvedValue({
+      url: "https://connect.stripe.com/express/acct_test/login",
+      created: Math.floor(Date.now() / 1000),
+    }),
+    updateAccountStatus: jest.fn().mockResolvedValue(undefined),
+  };
+
+  return {
+    __mockStripeConnectService,
+    createUserStripeConnectServiceForServerAction: jest
+      .fn()
+      .mockResolvedValue(__mockStripeConnectService),
+    createUserStripeConnectServiceForServerComponent: jest
+      .fn()
+      .mockResolvedValue(__mockStripeConnectService),
+  };
 });
 
+jest.mock("@features/stripe-connect/services/status-sync-service", () => ({
+  StatusSyncService: jest.fn().mockImplementation(() => ({
+    syncAccountStatus: jest.fn().mockResolvedValue({
+      id: "acct_test",
+      requirements: {
+        currently_due: [],
+        eventually_due: [],
+        past_due: [],
+        pending_verification: [],
+      },
+      capabilities: {
+        card_payments: "inactive",
+        transfers: "inactive",
+      },
+    }),
+  })),
+}));
+
 // Supabase 認証モック（共通モックを使用）
-jest.mock("@core/supabase/server", () => ({
-  createClient: jest.fn(),
+jest.mock("@core/supabase/factory", () => ({
+  createServerActionSupabaseClient: jest.fn(),
+  createServerComponentSupabaseClient: jest.fn(),
 }));
 
 jest.mock("next/cache", () => ({
@@ -76,52 +104,59 @@ jest.mock("@core/stripe/client", () => ({
   generateIdempotencyKey: jest.fn(() => "test_idempotency_key"),
 }));
 
-jest.mock("@core/utils/cloudflare-env", () => {
-  const defaultEnv = {
-    NEXT_PUBLIC_APP_URL: "http://localhost:3000",
-    ALLOWED_ORIGINS: undefined,
-    FORCE_SECURE_COOKIES: "false",
-    NODE_ENV: "test",
-    COOKIE_DOMAIN: undefined,
-  } as const;
-
-  return {
-    getEnv: jest.fn(() => ({ ...defaultEnv })),
-  };
-});
-
 describe("Stripe Connect actions", () => {
   let mockSupabase: ReturnType<typeof setupSupabaseClientMocks>;
-  let getEnvMock: jest.Mock;
 
   beforeAll(() => {
     // 共通モックを使用してSupabaseクライアントを設定
     mockSupabase = setupSupabaseClientMocks();
     // テスト用ユーザーを設定
-    setTestUserById("user_test", "u@example.com");
-    const { createClient } = require("@core/supabase/server");
-    (createClient as jest.MockedFunction<typeof createClient>).mockReturnValue(mockSupabase as any);
-
-    const { getEnv } = require("@core/utils/cloudflare-env");
-    getEnvMock = getEnv as jest.Mock;
+    setTestUserById(defaultUserId, "u@example.com");
+    const {
+      createServerActionSupabaseClient,
+      createServerComponentSupabaseClient,
+    } = require("@core/supabase/factory");
+    (
+      createServerActionSupabaseClient as jest.MockedFunction<
+        typeof createServerActionSupabaseClient
+      >
+    ).mockResolvedValue(mockSupabase as any);
+    (
+      createServerComponentSupabaseClient as jest.MockedFunction<
+        typeof createServerComponentSupabaseClient
+      >
+    ).mockResolvedValue(mockSupabase as any);
   });
 
   beforeEach(() => {
-    (process.env as Record<string, string | undefined>).NODE_ENV = "test";
-    process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
-    setTestUserById("user_test", "u@example.com");
-    getEnvMock.mockReturnValue({
-      NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-      ALLOWED_ORIGINS: undefined,
-      FORCE_SECURE_COOKIES: "false",
-      NODE_ENV: process.env.NODE_ENV,
-      COOKIE_DOMAIN: undefined,
+    process.env = {
+      ...originalEnv,
+      NODE_ENV: "test",
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+    };
+    setTestUserById(defaultUserId, "u@example.com");
+    const { __mockStripeConnectService } = jest.requireMock(
+      "@features/stripe-connect/services/factories"
+    );
+    __mockStripeConnectService.getConnectAccountByUser.mockResolvedValue({
+      stripe_account_id: "acct_test",
+      user_id: defaultUserId,
+      status: "unverified",
+      charges_enabled: false,
+      payouts_enabled: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     });
     (redirect as unknown as jest.Mock).mockClear();
   });
 
+  afterAll(() => {
+    process.env = originalEnv;
+  });
+
   describe("startOnboardingAction", () => {
     it("正常にオンボーディングを開始してリダイレクトする", async () => {
+      const { startOnboardingAction } = require("@features/stripe-connect/server");
       await startOnboardingAction();
       expect(redirect).toHaveBeenCalledWith(expect.stringContaining("https://connect.stripe.com"));
     });
@@ -129,6 +164,7 @@ describe("Stripe Connect actions", () => {
 
   describe("getStripeBalanceAction", () => {
     it("should return cached balance (calculated from available + pending)", async () => {
+      const { getStripeBalanceAction } = require("@features/stripe-connect/server");
       // Use a valid UUID to pass validateUserId check in real Service
       const validUserId = "550e8400-e29b-41d4-a716-446655440000";
       setTestUserById(validUserId, "u@example.com");

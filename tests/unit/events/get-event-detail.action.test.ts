@@ -98,8 +98,8 @@ describe("getEventDetailAction", () => {
       creatorName: "Organizer",
     });
 
-    jest.doMock("@core/supabase/server", () => ({
-      createClient: () => mockSupabase,
+    jest.doMock("@core/supabase/factory", () => ({
+      createServerComponentSupabaseClient: () => mockSupabase,
     }));
 
     const { getEventDetailAction } = await import("@/features/events/actions/get-event-detail");
@@ -117,8 +117,8 @@ describe("getEventDetailAction", () => {
       eventData: null,
     });
 
-    jest.doMock("@core/supabase/server", () => ({
-      createClient: () => mockSupabase,
+    jest.doMock("@core/supabase/factory", () => ({
+      createServerComponentSupabaseClient: () => mockSupabase,
     }));
 
     const { getEventDetailAction } = await import("@/features/events/actions/get-event-detail");
@@ -153,8 +153,8 @@ describe("getEventDetailAction", () => {
       attendancesError: { message: "count failed" },
     });
 
-    jest.doMock("@core/supabase/server", () => ({
-      createClient: () => mockSupabase,
+    jest.doMock("@core/supabase/factory", () => ({
+      createServerComponentSupabaseClient: () => mockSupabase,
     }));
 
     const { getEventDetailAction } = await import("@/features/events/actions/get-event-detail");

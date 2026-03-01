@@ -3,27 +3,23 @@ import * as crypto from "crypto";
 import type { ResponseCookie } from "next/dist/compiled/@edge-runtime/cookies";
 import { headers } from "next/headers";
 
-import { getEnv } from "@core/utils/cloudflare-env";
-
 import { LINE_OAUTH_CONFIG } from "./line-constants";
 
 /**
  * リクエストからoriginを構築
  */
 export async function buildOrigin(): Promise<string> {
-  const env = getEnv();
   const hdrs = await headers();
   const proto = hdrs.get("x-forwarded-proto") ?? "http";
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
-  return env.NEXT_PUBLIC_APP_URL ?? `${proto}://${host}`;
+  return process.env.NEXT_PUBLIC_APP_URL ?? `${proto}://${host}`;
 }
 
 /**
  * LINE OAuth用Cookie設定を生成
  */
 export function createLineOAuthCookieOptions(): Partial<ResponseCookie> {
-  const env = getEnv();
-  const isProd = env.NODE_ENV === "production";
+  const isProd = process.env.NODE_ENV === "production";
 
   return {
     httpOnly: true,

@@ -1,7 +1,6 @@
 import { handleServerError } from "@core/utils/error-handler.server";
 import { toErrorLike } from "@core/utils/type-guards";
 
-import { getEnv } from "./cloudflare-env";
 import { getClientIPFromHeaders } from "./ip-detection";
 
 /**
@@ -53,7 +52,7 @@ export async function getHeaders(): Promise<{
       additionalData: {
         reason: "NEXT_HEADERS_UNAVAILABLE",
         error_message: error instanceof Error ? error.message : String(error),
-        environment: getEnv().NODE_ENV,
+        environment: process.env.NODE_ENV,
       },
     });
 
