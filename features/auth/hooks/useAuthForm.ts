@@ -223,11 +223,12 @@ export function useRegisterFormRHF<T extends ActionResult>(
             options.onSuccess(result);
           }
 
-          if (result.needsVerification) {
-            router.push("/auth/verify-email");
+          if (result.redirectUrl) {
+            router.push(result.redirectUrl);
+          } else if (result.needsVerification) {
+            router.push("/verify-email");
           } else {
-            const redirectUrl = result.redirectUrl || "/dashboard";
-            router.push(redirectUrl);
+            router.push("/dashboard");
           }
         } else {
           // サーバーエラーをフォームエラーとして設定
