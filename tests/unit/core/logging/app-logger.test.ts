@@ -383,12 +383,21 @@ describe("AppLogger", () => {
 
       const circular: Record<string, unknown> = { name: "circular" };
       circular.self = circular;
+      const circularArray: unknown[] = [];
+      circularArray.push(circularArray);
+      const circularMap = new Map<string, unknown>();
+      circularMap.set("self", circularMap);
+      const circularSet = new Set<unknown>();
+      circularSet.add(circularSet);
 
       logger.error("JSON safe metadata", {
         category: "system",
         action: "unit_test_json_safe_metadata",
         large_id: BigInt(42),
         circular,
+        circularArray,
+        circularMap,
+        circularSet,
         error: new Error("metadata error"),
         fn: () => "skip",
       });
@@ -397,6 +406,9 @@ describe("AppLogger", () => {
       const insertPayload = mockSupabaseInsert.mock.calls[0][0];
       expect(insertPayload.metadata.large_id).toBe("42");
       expect(insertPayload.metadata.circular.self).toBe("[Circular]");
+      expect(insertPayload.metadata.circularArray).toEqual(["[Circular]"]);
+      expect(insertPayload.metadata.circularMap).toEqual({ self: "[Circular]" });
+      expect(insertPayload.metadata.circularSet).toEqual(["[Circular]"]);
       expect(insertPayload.metadata.error).toMatchObject({
         name: "Error",
         message: "metadata error",

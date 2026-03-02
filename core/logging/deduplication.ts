@@ -49,7 +49,7 @@ export async function createErrorDedupeHash(message: string, stack?: string): Pr
 export async function shouldLogError(
   message: string,
   stack?: string,
-  envVars?: { redisUrl?: string; redisToken?: string },
+  envVars?: { redisUrl?: string; redisToken?: string; dedupeHash?: string },
   ttlSeconds: number = 300
 ): Promise<boolean> {
   const url = envVars?.redisUrl ?? process.env.UPSTASH_REDIS_REST_URL;
@@ -63,7 +63,7 @@ export async function shouldLogError(
   const redis = getRedisClient(url, token);
 
   try {
-    const hash = await createErrorDedupeHash(message, stack);
+    const hash = envVars?.dedupeHash ?? (await createErrorDedupeHash(message, stack));
 
     const key = `error_dedupe:${hash}`;
 

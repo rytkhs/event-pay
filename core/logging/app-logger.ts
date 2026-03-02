@@ -68,6 +68,13 @@ function toJsonSafe(value: unknown, seen: WeakSet<object> = new WeakSet<object>(
     return value.toString();
   }
 
+  if (typeof value === "object") {
+    if (seen.has(value)) {
+      return "[Circular]";
+    }
+    seen.add(value);
+  }
+
   if (value instanceof Error) {
     return toJsonSafe(
       {
@@ -99,11 +106,6 @@ function toJsonSafe(value: unknown, seen: WeakSet<object> = new WeakSet<object>(
   }
 
   if (typeof value === "object") {
-    if (seen.has(value)) {
-      return "[Circular]";
-    }
-    seen.add(value);
-
     const normalizedObject: JsonObject = {};
     for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
       if (
@@ -262,6 +264,7 @@ async function persistToSupabase(
       const shouldLog = await shouldLogError(msg, errorStack, {
         redisUrl: envVars.redisUrl,
         redisToken: envVars.redisToken,
+        dedupeHash: dedupeKey,
       });
       if (!shouldLog) return;
     }
