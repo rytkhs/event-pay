@@ -106,3 +106,38 @@ export async function shouldLogError(
     return true; // Fail-safe
   }
 }
+
+/**
+ * 先行確保した重複排除キーを解放する。
+ * DB永続化に失敗した場合などに呼び出し、誤抑制を防ぐ。
+ */
+export async function releaseErrorDedupeHash(
+  dedupeHash: string,
+  envVars?: { redisUrl?: string; redisToken?: string }
+): Promise<void> {
+  const url = envVars?.redisUrl ?? process.env.UPSTASH_REDIS_REST_URL;
+  const token = envVars?.redisToken ?? process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (!url || !token) {
+    return;
+  }
+
+  const redis = getRedisClient(url, token);
+
+  try {
+    await redis.del(`error_dedupe:${dedupeHash}`);
+  } catch (error) {
+    if (typeof console.error === "function") {
+      console.error(
+        JSON.stringify({
+          level: "error",
+          msg: "Deduplication Redis key release failed",
+          timestamp: new Date().toISOString(),
+          service: "eventpay",
+          tag: "deduplicationReleaseError",
+          error_message: error instanceof Error ? error.message : String(error),
+        })
+      );
+    }
+  }
+}

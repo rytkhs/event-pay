@@ -6,6 +6,7 @@ jest.mock("@core/security/crypto", () => ({
 describe("deduplication", () => {
   let mockRedis: {
     set: jest.Mock;
+    del: jest.Mock;
     incr: jest.Mock;
     expire: jest.Mock;
   };
@@ -17,6 +18,10 @@ describe("deduplication", () => {
     envVars?: { redisUrl?: string; redisToken?: string },
     ttlSeconds?: number
   ) => Promise<boolean>;
+  let releaseErrorDedupeHash: (
+    dedupeHash: string,
+    envVars?: { redisUrl?: string; redisToken?: string }
+  ) => Promise<void>;
   let createErrorDedupeHash: (message: string, stack?: string) => Promise<string>;
 
   beforeEach(() => {
@@ -35,6 +40,7 @@ describe("deduplication", () => {
 
     const dedupeModule = require("@core/logging/deduplication");
     shouldLogError = dedupeModule.shouldLogError;
+    releaseErrorDedupeHash = dedupeModule.releaseErrorDedupeHash;
     createErrorDedupeHash = dedupeModule.createErrorDedupeHash;
   });
 
@@ -125,5 +131,23 @@ describe("deduplication", () => {
     });
 
     expect(RedisMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("U-D-07: 解放関数は dedupe キーを削除する", async () => {
+    mockRedis.del.mockResolvedValue(1);
+
+    await releaseErrorDedupeHash("release-hash");
+
+    expect(mockRedis.del).toHaveBeenCalledWith("error_dedupe:release-hash");
+  });
+
+  it("U-D-08: 解放処理で Redis エラーが発生しても throw しない", async () => {
+    mockRedis.del.mockRejectedValue(new Error("Redis release failed"));
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(releaseErrorDedupeHash("release-error-hash")).resolves.toBeUndefined();
+    expect(consoleSpy).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
   });
 });

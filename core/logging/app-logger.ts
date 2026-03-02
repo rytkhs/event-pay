@@ -10,7 +10,7 @@ import { toErrorLike } from "@core/utils/type-guards";
 
 import type { Database, Json } from "@/types/database";
 
-import { createErrorDedupeHash, shouldLogError } from "./deduplication";
+import { createErrorDedupeHash, releaseErrorDedupeHash, shouldLogError } from "./deduplication";
 
 /** ログレベル定義 */
 export type LogLevel = Database["public"]["Enums"]["log_level_enum"];
@@ -242,6 +242,9 @@ async function persistToSupabase(
     return;
   }
 
+  let dedupeKey: string | undefined;
+  let shouldReleaseDedupeKey = false;
+
   try {
     if (!hasRequiredPersistenceFields(fields)) {
       emitConsoleLog("error", "error", "[AppLogger] Missing required log fields for persistence", {
@@ -256,7 +259,6 @@ async function persistToSupabase(
     }
 
     const errorStack = fields.error_stack || extractErrorStack(fields.error);
-    let dedupeKey: string | undefined;
 
     // エラーの重複排除
     if (level === "error" || level === "critical") {
@@ -267,6 +269,7 @@ async function persistToSupabase(
         dedupeHash: dedupeKey,
       });
       if (!shouldLog) return;
+      shouldReleaseDedupeKey = true;
     }
 
     const supabase = createSupabaseClient(envVars.url, envVars.key);
@@ -296,11 +299,19 @@ async function persistToSupabase(
     const { error } = await supabase.from("system_logs").insert(insertPayload);
     if (error) {
       if (error.code === "23505" && error.message?.includes("dedupe_key")) {
+        shouldReleaseDedupeKey = false;
         return;
       }
       throw new Error(`Failed to insert system log: ${error.message}`);
     }
+    shouldReleaseDedupeKey = false;
   } catch (e) {
+    if (dedupeKey && shouldReleaseDedupeKey) {
+      await releaseErrorDedupeHash(dedupeKey, {
+        redisUrl: envVars.redisUrl,
+        redisToken: envVars.redisToken,
+      });
+    }
     console.error("[AppLogger] Failed to persist to Supabase:", e);
   }
 }

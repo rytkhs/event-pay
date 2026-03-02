@@ -3,11 +3,16 @@ import { createClient } from "@supabase/supabase-js";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 
 import { logger } from "@core/logging/app-logger";
-import { createErrorDedupeHash, shouldLogError } from "@core/logging/deduplication";
+import {
+  createErrorDedupeHash,
+  releaseErrorDedupeHash,
+  shouldLogError,
+} from "@core/logging/deduplication";
 
 // Mock dependencies
 jest.mock("@core/logging/deduplication", () => ({
   createErrorDedupeHash: jest.fn(),
+  releaseErrorDedupeHash: jest.fn(),
   shouldLogError: jest.fn(),
 }));
 
@@ -47,6 +52,7 @@ describe("AppLogger", () => {
 
     // Default deduplication mock (allow logging)
     (createErrorDedupeHash as jest.Mock).mockResolvedValue("test-dedupe-hash");
+    (releaseErrorDedupeHash as jest.Mock).mockResolvedValue(undefined);
     (shouldLogError as jest.Mock).mockResolvedValue(true);
   });
 
@@ -220,6 +226,13 @@ describe("AppLogger", () => {
       expect(consoleErrorSpy.mock.calls[1][0]).toContain(
         "[AppLogger] Failed to persist to Supabase:"
       );
+      expect(releaseErrorDedupeHash).toHaveBeenCalledWith(
+        "test-dedupe-hash",
+        expect.objectContaining({
+          redisUrl: process.env.UPSTASH_REDIS_REST_URL,
+          redisToken: process.env.UPSTASH_REDIS_REST_TOKEN,
+        })
+      );
     });
 
     it("should handle Supabase insert response errors gracefully", async () => {
@@ -240,6 +253,13 @@ describe("AppLogger", () => {
       expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
       expect(consoleErrorSpy.mock.calls[1][0]).toContain(
         "[AppLogger] Failed to persist to Supabase:"
+      );
+      expect(releaseErrorDedupeHash).toHaveBeenCalledWith(
+        "test-dedupe-hash",
+        expect.objectContaining({
+          redisUrl: process.env.UPSTASH_REDIS_REST_URL,
+          redisToken: process.env.UPSTASH_REDIS_REST_TOKEN,
+        })
       );
     });
 
@@ -263,6 +283,7 @@ describe("AppLogger", () => {
 
       // エラーとして扱わず、通常ログ1回のみ
       expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      expect(releaseErrorDedupeHash).not.toHaveBeenCalled();
     });
   });
 
