@@ -1,19 +1,25 @@
-import { Redis } from "@upstash/redis";
-
-import { shouldLogError } from "@core/logging/deduplication";
-import { hashToken } from "@core/security/crypto";
-
 // Mock crypto dependency
 jest.mock("@core/security/crypto", () => ({
   hashToken: jest.fn(),
 }));
 
-describe("shouldLogError", () => {
-  let mockRedis: any;
-  let shouldLogError: any;
-  let mockHashToken: any;
+describe("deduplication", () => {
+  let mockRedis: {
+    set: jest.Mock;
+    incr: jest.Mock;
+    expire: jest.Mock;
+  };
+  let RedisMock: jest.Mock & { fromEnv: jest.Mock };
+  let mockHashToken: jest.Mock;
+  let shouldLogError: (
+    message: string,
+    stack?: string,
+    envVars?: { redisUrl?: string; redisToken?: string },
+    ttlSeconds?: number
+  ) => Promise<boolean>;
+  let createErrorDedupeHash: (message: string, stack?: string) => Promise<string>;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     jest.clearAllMocks();
     jest.resetModules();
 
@@ -21,6 +27,7 @@ describe("shouldLogError", () => {
     process.env.UPSTASH_REDIS_REST_TOKEN = "mock-token";
 
     const redisModule = require("@upstash/redis");
+    RedisMock = redisModule.Redis;
     mockRedis = redisModule.Redis.fromEnv();
 
     const cryptoModule = require("@core/security/crypto");
@@ -28,6 +35,7 @@ describe("shouldLogError", () => {
 
     const dedupeModule = require("@core/logging/deduplication");
     shouldLogError = dedupeModule.shouldLogError;
+    createErrorDedupeHash = dedupeModule.createErrorDedupeHash;
   });
 
   afterEach(() => {
@@ -35,76 +43,87 @@ describe("shouldLogError", () => {
     delete process.env.UPSTASH_REDIS_REST_TOKEN;
   });
 
-  it("U-D-01: 同じメッセージとスタックに対して、一貫したハッシュを生成する", async () => {
+  it("U-D-01: 同じ入力に対して一貫したハッシュを生成する", async () => {
     const message = "Error message";
     const stack = "Error: message\n    at func1 (file.ts:1:1)\n    at func2 (file.ts:2:2)";
     mockHashToken.mockResolvedValue("mock-hash");
-    (mockRedis.get as jest.Mock).mockResolvedValue(null);
 
-    await shouldLogError(message, stack);
+    const hash = await createErrorDedupeHash(message, stack);
 
-    expect(mockHashToken).toHaveBeenCalledWith(expect.stringContaining(message));
-    const expectedStackPart = stack.split("\n").slice(0, 3).join("\n");
-    expect(mockHashToken).toHaveBeenCalledWith(message + expectedStackPart);
+    expect(hash).toBe("mock-hash");
+    expect(mockHashToken).toHaveBeenCalledWith(
+      "Error message\nError: message\n    at func1 (file.ts)\n    at func2 (file.ts)"
+    );
   });
 
-  it("U-D-02: スタックトレースの最初の3行のみを使用する", async () => {
+  it("U-D-02: スタックトレースは最初の3行のみを使用する", async () => {
     const message = "Error message";
-    const longStack = Array.from({ length: 100 }, (_, i) => `at line ${i}`).join("\n");
+    const longStack = [
+      "Error: failed",
+      "    at first (file.ts:1:1)",
+      "    at second (file.ts:2:2)",
+      "    at third (file.ts:3:3)",
+      "    at fourth (file.ts:4:4)",
+    ].join("\n");
     mockHashToken.mockResolvedValue("mock-hash");
-    (mockRedis.get as jest.Mock).mockResolvedValue(null);
 
-    await shouldLogError(message, longStack);
+    await createErrorDedupeHash(message, longStack);
 
-    const expectedStackPart = longStack.split("\n").slice(0, 3).join("\n");
-    expect(mockHashToken).toHaveBeenCalledWith(message + expectedStackPart);
+    expect(mockHashToken).toHaveBeenCalledWith(
+      "Error message\nError: failed\n    at first (file.ts)\n    at second (file.ts)"
+    );
   });
 
   it("U-D-03: 新しいエラーの場合、trueを返し、キーを設定する", async () => {
-    const message = "New Error";
-    const stack = "stack";
     mockHashToken.mockResolvedValue("new-hash");
-    (mockRedis.get as jest.Mock).mockResolvedValue(null);
+    mockRedis.set.mockResolvedValue("OK");
 
-    const result = await shouldLogError(message, stack);
+    const result = await shouldLogError("New Error", "stack");
 
     expect(result).toBe(true);
-    expect(mockRedis.get).toHaveBeenCalledWith("error_dedupe:new-hash");
-    expect(mockRedis.set).toHaveBeenCalledWith("error_dedupe:new-hash", "1", { ex: 300 });
+    expect(mockRedis.set).toHaveBeenCalledWith("error_dedupe:new-hash", "1", {
+      ex: 300,
+      nx: true,
+    });
     expect(mockRedis.set).toHaveBeenCalledWith("error_count:new-hash", "1", { ex: 300 });
   });
 
-  it("U-D-04: 重複するエラーの場合、falseを返し、カウンターを増加させる", async () => {
-    const message = "Duplicate Error";
-    const stack = "stack";
+  it("U-D-04: 重複エラーの場合、falseを返し、カウンタを増加する", async () => {
     mockHashToken.mockResolvedValue("dup-hash");
-    (mockRedis.get as jest.Mock).mockImplementation((k) => {
-      console.log("DEBUG: mockRedis.get called with:", k);
-      return Promise.resolve("1");
-    });
+    mockRedis.set.mockResolvedValueOnce(null);
 
-    const result = await shouldLogError(message, stack);
+    const result = await shouldLogError("Duplicate Error", "stack");
 
     expect(result).toBe(false);
-    expect(mockRedis.get).toHaveBeenCalledWith("error_dedupe:dup-hash");
     expect(mockRedis.incr).toHaveBeenCalledWith("error_count:dup-hash");
-    // Should NOT set the key again
-    expect(mockRedis.set).not.toHaveBeenCalled();
+    expect(mockRedis.expire).toHaveBeenCalledWith("error_count:dup-hash", 300);
   });
 
-  it("U-D-05: Redisがエラーを返す場合、trueを返し、コンソールに出力する", async () => {
-    const message = "Redis Error";
-    const stack = "stack";
+  it("U-D-05: Redis エラー時は true を返し、コンソールに出力する", async () => {
     mockHashToken.mockResolvedValue("redis-err-hash");
-    (mockRedis.get as jest.Mock).mockRejectedValue(new Error("Redis connection failed"));
+    mockRedis.set.mockRejectedValue(new Error("Redis connection failed"));
 
     const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-
-    const result = await shouldLogError(message, stack);
+    const result = await shouldLogError("Redis Error", "stack");
 
     expect(result).toBe(true);
     expect(consoleSpy).toHaveBeenCalled();
-
     consoleSpy.mockRestore();
+  });
+
+  it("U-D-06: 同一 URL/token では Redis クライアントを再利用する", async () => {
+    mockHashToken.mockResolvedValue("same-hash");
+    mockRedis.set.mockResolvedValue("OK");
+
+    await shouldLogError("Error One", "stack", {
+      redisUrl: "https://mock-redis.upstash.io",
+      redisToken: "mock-token",
+    });
+    await shouldLogError("Error Two", "stack", {
+      redisUrl: "https://mock-redis.upstash.io",
+      redisToken: "mock-token",
+    });
+
+    expect(RedisMock).toHaveBeenCalledTimes(1);
   });
 });
