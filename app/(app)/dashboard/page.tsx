@@ -1,11 +1,8 @@
 import { Suspense } from "react";
 
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { Plus } from "lucide-react";
-
-import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 
 import { Button } from "@/components/ui/button";
 
@@ -21,17 +18,6 @@ import {
 import { StripeAccountCard } from "./components/StripeAccountCard";
 
 export default async function DashboardPage() {
-  // 認証状態チェック
-  const supabase = await createServerComponentSupabaseClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    redirect("/login?redirectTo=/dashboard");
-  }
-
   return (
     <div className="min-h-screen bg-muted/30">
       <div className="max-w-7xl mx-auto sm:py-6 lg:py-8 sm:px-4 lg:px-8">

@@ -1,13 +1,11 @@
 import { Suspense } from "react";
 
-import { redirect } from "next/navigation";
-
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
-import { createServerComponentSupabaseClient } from "@core/supabase/factory";
+import { requireCurrentUserForServerComponent } from "@core/auth/auth-utils";
 
 import { AccountStatus, CONNECT_REFRESH_PATH, OnboardingForm } from "@features/stripe-connect";
 import {
@@ -43,15 +41,7 @@ interface PaymentSettingsSearchParams {
 }
 
 async function PaymentSettingsContent({ searchParams }: PaymentSettingsContentProps) {
-  const supabase = await createServerComponentSupabaseClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    redirect("/login");
-  }
+  const user = await requireCurrentUserForServerComponent();
 
   // StripeConnectServiceを初期化
   const stripeConnectService = await createUserStripeConnectServiceForServerComponent();

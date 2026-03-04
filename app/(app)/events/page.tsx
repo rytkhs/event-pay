@@ -1,7 +1,6 @@
 import React, { Suspense } from "react";
 
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { Plus } from "lucide-react";
 
@@ -80,20 +79,20 @@ async function EventsContent({ searchParams }: EventsContentProps) {
   });
 
   if (!result.success) {
-    // 認証エラーの場合はログインページにリダイレクト
-    if (result.error?.userMessage?.includes("認証")) {
-      redirect("/login");
-    }
+    const isUnauthorized = result.error.code === "UNAUTHORIZED";
 
-    // その他のエラー
     return (
       <InlineErrorCard
-        code="INTERNAL_ERROR"
-        category="business"
+        code={result.error.code}
+        category={isUnauthorized ? "auth" : "business"}
         severity="medium"
-        title="イベントの読み込みエラー"
-        message={result.error?.userMessage}
-        description="イベント一覧の取得に失敗しました。ページを再読み込みしてください。"
+        title={isUnauthorized ? "認証エラー" : "イベントの読み込みエラー"}
+        message={result.error.userMessage}
+        description={
+          isUnauthorized
+            ? "セッション情報を確認できませんでした。時間をおいて再度お試しください。"
+            : "イベント一覧の取得に失敗しました。ページを再読み込みしてください。"
+        }
         showRetry={true}
         compact={false}
       />

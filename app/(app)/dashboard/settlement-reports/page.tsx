@@ -1,8 +1,6 @@
 import React from "react";
 
-import { redirect } from "next/navigation";
-
-import { getCurrentUserForServerComponent } from "@core/auth/auth-utils";
+import { requireCurrentUserForServerComponent } from "@core/auth/auth-utils";
 import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 
@@ -20,10 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export const dynamic = "force-dynamic";
 
 export default async function SettlementReportsPage() {
-  const user = await getCurrentUserForServerComponent();
-  if (!user?.id) {
-    redirect("/login");
-  }
+  const user = await requireCurrentUserForServerComponent();
 
   const supabase = await createServerComponentSupabaseClient();
   const service = new SettlementReportService(supabase);

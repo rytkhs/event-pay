@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 
 import { ArrowLeft } from "lucide-react";
 
+import { requireCurrentUserForServerComponent } from "@core/auth/auth-utils";
 import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import type { Event, EventRow } from "@core/types/event";
 import type { AttendanceStatus } from "@core/types/statuses";
@@ -50,20 +51,12 @@ type EventEditQueryRow = Pick<
 export default async function EventEditPage(props: EventEditPageProps) {
   const params = await props.params;
   const supabase = await createServerComponentSupabaseClient();
+  const user = await requireCurrentUserForServerComponent();
 
   // IDバリデーション（形式不正のみ404）
   const validation = validateEventId(params.id);
   if (!validation.success) {
     notFound();
-  }
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    redirect("/login");
   }
 
   // イベントの取得（RLSで他人イベントは0件として見える）

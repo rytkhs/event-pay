@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-
+import { requireCurrentUserForServerComponent } from "@core/auth/auth-utils";
 import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 
 export const dynamic = "force-dynamic";
@@ -12,14 +11,7 @@ import { requestAccountDeletionAction, updateEmailAction, updateProfileAction } 
 
 export default async function ProfileSettingsPage() {
   const supabase = await createServerComponentSupabaseClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    redirect("/login");
-  }
+  const user = await requireCurrentUserForServerComponent();
 
   // ユーザープロフィール情報を取得
   const { data: profile } = await supabase
