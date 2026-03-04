@@ -16,7 +16,7 @@ function RedirectHandler() {
 
   useEffect(() => {
     window.location.replace(`${productionUrl}${targetPath}`);
-  }, [targetPath]);
+  }, [productionUrl, targetPath]);
 
   return null;
 }
