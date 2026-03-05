@@ -332,5 +332,37 @@ describe("ErrorLogger", () => {
       // スタックトレースが含まれていないこと
       expect(requestBody.stackTrace).toBeUndefined();
     });
+
+    it("referrer が空文字の場合、page.referrer を送信しないこと", async () => {
+      await logger.logError(mockErrorInfo, undefined, {
+        pathname: "/test",
+        referrer: "",
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const requestBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+
+      expect(requestBody.page).toMatchObject({
+        pathname: "/test",
+      });
+      expect(requestBody.page.referrer).toBeUndefined();
+    });
+
+    it("page 情報がすべて空の場合、page を送信しないこと", async () => {
+      await logger.logError(mockErrorInfo, undefined, {
+        referrer: "",
+        url: "",
+        pathname: "",
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const requestBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+
+      expect(requestBody.page).toBeUndefined();
+    });
   });
 });

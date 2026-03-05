@@ -20,7 +20,7 @@ import { StripeAccountCard } from "./components/StripeAccountCard";
 export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-muted/30">
-      <div className="max-w-7xl mx-auto sm:py-6 lg:py-8 sm:px-4 lg:px-8">
+      <div className="max-w-7xl mx-auto sm:py-6 lg:py-8 sm:px-4 lg:px-8 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] sm:pb-0">
         {/* ダッシュボードヘッダー */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
           <div>
@@ -58,7 +58,7 @@ export default async function DashboardPage() {
         </Suspense>
 
         {/* フローティングアクションボタン（FAB） - モバイル専用 */}
-        <div className="fixed bottom-6 right-4 z-50 sm:hidden">
+        <div className="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+1rem)] z-50 sm:hidden">
           <Button
             asChild
             size="lg"

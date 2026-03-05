@@ -1,125 +1,130 @@
 /**
  * エラー収集API統合テスト
  *
- * /api/errors エンドポイントのリクエストからDB保存までのフローを検証
+ * /api/errors エンドポイントの主要契約を検証
  */
 
 import { NextRequest } from "next/server";
 
-import { describe, test, expect, beforeEach, afterEach } from "@jest/globals";
-
-// モックは他のインポートより前に宣言
-jest.mock("@upstash/redis");
-jest.mock("@upstash/ratelimit");
-jest.mock("@core/logging/deduplication");
-
-// Supabase Service Role用のモッククライアント作成
-const mockSupabaseInsert = jest.fn();
-const mockSupabaseFrom = jest.fn(() => ({
-  insert: mockSupabaseInsert,
-}));
-
-// createClientをモック化
-jest.mock("@supabase/supabase-js", () => ({
-  createClient: jest.fn(() => ({
-    from: mockSupabaseFrom,
-  })),
-}));
-
-// @core/security をモック化
-jest.mock("@core/security", () => ({
-  AdminReason: {
-    ERROR_COLLECTION: "error_collection",
-  },
-  createSecureSupabaseClient: jest.fn(() => ({
-    createAuditedAdminClient: jest.fn().mockResolvedValue({
-      from: mockSupabaseFrom,
-    }),
-  })),
-}));
+import { afterEach, beforeEach, describe, expect, test } from "@jest/globals";
 
 describe("エラー収集API統合テスト (/api/errors)", () => {
-  // モック関数をテストスコープで定義
-  let mockLimit: jest.MockedFunction<any>;
-  let errorHandler: any;
+  const mockSupabaseInsert = jest.fn();
+  const mockSupabaseFrom = jest.fn(() => ({
+    insert: mockSupabaseInsert,
+  }));
+  const mockCreateErrorDedupeHash = jest.fn();
+  const mockShouldLogError = jest.fn();
+  const mockReleaseErrorDedupeHash = jest.fn();
+  const mockCreateAuditedAdminClient = jest.fn();
+  const mockCreateRouteHandlerSupabaseClient = jest.fn();
+  const mockHandleServerError = jest.fn();
+  const mockNotifyError = jest.fn();
+  const mockWaitUntil = jest.fn();
+  const mockBuildKey = jest.fn();
+  const mockEnforceRateLimit = jest.fn();
+
+  let postHandler: (request: NextRequest) => Promise<Response>;
 
   beforeEach(async () => {
-    // モジュールをリセット
     jest.resetModules();
+    jest.clearAllMocks();
+    jest.restoreAllMocks();
 
-    // 環境変数の設定
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
-    process.env.UPSTASH_REDIS_REST_URL = "https://test.upstash.io";
-    process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+    mockCreateErrorDedupeHash.mockResolvedValue("dedupe-hash");
+    mockShouldLogError.mockResolvedValue(true);
+    mockReleaseErrorDedupeHash.mockResolvedValue(undefined);
+    mockCreateAuditedAdminClient.mockResolvedValue({ from: mockSupabaseFrom });
+    mockCreateRouteHandlerSupabaseClient.mockResolvedValue({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({
+          data: { user: null },
+          error: null,
+        }),
+      },
+    });
+    mockHandleServerError.mockImplementation(() => undefined);
+    mockNotifyError.mockResolvedValue(undefined);
+    mockWaitUntil.mockResolvedValue(undefined);
 
-    // モックをクリア
-    mockSupabaseInsert.mockClear();
+    mockSupabaseInsert.mockResolvedValue({ error: null, data: [] });
     mockSupabaseFrom.mockClear();
 
-    // デフォルトのモック動作を設定
-    mockSupabaseInsert.mockResolvedValue({ error: null, data: [] });
+    mockBuildKey.mockReturnValue("RL:error.report:ip:8.8.8.8");
+    mockEnforceRateLimit.mockResolvedValue({ allowed: true, remaining: 49 });
 
-    // レート制限モックの設定（デフォルトは制限にかからない）
-    mockLimit = jest.fn().mockResolvedValue({
-      success: true,
-      remaining: 49,
-    });
-
-    // @upstash/ratelimitのモック設定
-    const RatelimitMock: any = jest.fn().mockImplementation(() => ({
-      limit: mockLimit,
-    }));
-    RatelimitMock.slidingWindow = jest.fn((tokens: number, window: string) => ({
-      type: "slidingWindow",
-      tokens,
-      window,
+    jest.doMock("@core/rate-limit", () => ({
+      POLICIES: {
+        "error.report": { scope: "error.report", limit: 50, window: "1 m", blockMs: 60_000 },
+      },
+      buildKey: mockBuildKey,
+      enforceRateLimit: mockEnforceRateLimit,
     }));
 
-    // @upstash/redisのモック設定
-    const RedisMock = {
-      fromEnv: jest.fn(() => ({})),
-    };
-
-    // モジュールのモックを再設定
-    jest.doMock("@upstash/ratelimit", () => ({
-      Ratelimit: RatelimitMock,
+    jest.doMock("@core/logging/deduplication", () => ({
+      createErrorDedupeHash: mockCreateErrorDedupeHash,
+      shouldLogError: mockShouldLogError,
+      releaseErrorDedupeHash: mockReleaseErrorDedupeHash,
     }));
 
-    jest.doMock("@upstash/redis", () => ({
-      Redis: RedisMock,
+    jest.doMock("@core/security/secure-client-factory.impl", () => ({
+      createAuditedAdminClient: mockCreateAuditedAdminClient,
     }));
 
-    // モック設定後にルートハンドラーを動的インポート
-    const module = await import("@/app/api/errors/route");
-    errorHandler = module.POST;
+    jest.doMock("@core/supabase/factory", () => ({
+      createRouteHandlerSupabaseClient: mockCreateRouteHandlerSupabaseClient,
+    }));
+
+    jest.doMock("@core/utils/error-handler.server", () => ({
+      handleServerError: mockHandleServerError,
+      notifyError: mockNotifyError,
+    }));
+
+    jest.doMock("@core/utils/cloudflare-ctx", () => ({
+      waitUntil: mockWaitUntil,
+    }));
+
+    const routeModule = await import("@/app/api/errors/route");
+    postHandler = routeModule.POST;
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
-  /**
-   * I-A-01: 正常系 - 新規エラー登録
-   */
-  test("I-A-01: 正常系 - 新規エラーが正しくDB保存される", async () => {
-    // deduplicationモックの設定（新規エラーとして扱う）
-    const { shouldLogError } = require("@core/logging/deduplication");
-    (shouldLogError as jest.MockedFunction<any>).mockResolvedValue(true);
+  test("I-A-01: 正常系 - 認証情報を優先してDB保存し204を返す", async () => {
+    const authUserId = "3c219fd5-4ea6-4e1a-9f31-2e18cbeb4f2b";
 
-    // リクエストペイロード
+    mockCreateRouteHandlerSupabaseClient.mockResolvedValue({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({
+          data: {
+            user: {
+              id: authUserId,
+              email: "auth-user@example.com",
+            },
+          },
+          error: null,
+        }),
+      },
+    });
+
     const payload = {
       error: {
         code: "TEST_ERROR",
-        category: "client_error",
+        category: "system",
         severity: "error",
         title: "Test Error",
         message: "This is a test error message",
       },
-      stackTrace: "Error: Test\n    at test.ts:10:5",
+      stackTrace: "Error: Test\\n    at test.ts:10:5",
       user: {
-        id: "test-user-id",
-        email: "test@example.com",
+        id: "eb4f30d3-e356-46d9-b06a-3637028f9134",
+        email: "client-claimed@example.com",
         userAgent: "test-agent",
       },
       page: {
@@ -131,118 +136,98 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
       environment: "test",
     };
 
-    // リクエスト作成
     const request = new NextRequest("https://example.com/api/errors", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-forwarded-for": "192.168.1.1",
+        "cf-connecting-ip": "8.8.8.8",
       },
       body: JSON.stringify(payload),
     });
 
-    // APIハンドラー実行
-    const response = await errorHandler(request);
+    const response = await postHandler(request);
 
-    // レスポンス検証
     expect(response.status).toBe(204);
-
-    // DB insert が呼ばれたことを検証
     expect(mockSupabaseInsert).toHaveBeenCalledTimes(1);
-    const insertArgs = mockSupabaseInsert.mock.calls[0][0];
 
-    // insert の引数を検証
+    const insertArgs = mockSupabaseInsert.mock.calls[0][0];
     expect(insertArgs).toMatchObject({
       log_level: "error",
       log_category: "system",
       actor_type: "user",
-      actor_identifier: "test@example.com",
-      user_id: "test-user-id",
+      actor_identifier: "auth-user@example.com",
+      user_id: authUserId,
       action: "client_error",
       message: "This is a test error message",
       outcome: "failure",
+      ip_address: "8.8.8.8",
       error_code: "UNKNOWN_ERROR",
       error_message: "This is a test error message",
-      error_stack: "Error: Test\n    at test.ts:10:5",
+      error_stack: "Error: Test\\n    at test.ts:10:5",
+      dedupe_key: "dedupe-hash",
     });
+
     expect(insertArgs.metadata).toMatchObject({
-      error_info: payload.error,
-      page: payload.page,
-      breadcrumbs: [],
-      environment: "test",
+      client_reported_user: {
+        id: "eb4f30d3-e356-46d9-b06a-3637028f9134",
+        email: "client-claimed@example.com",
+        userAgent: "test-agent",
+      },
+      auth_user: {
+        id: authUserId,
+        email: "auth-user@example.com",
+      },
     });
-    expect(insertArgs.tags).toContain("system");
-    expect(insertArgs.tags).toContain("severity:medium");
+
+    expect(mockCreateAuditedAdminClient).toHaveBeenCalledWith(
+      "error_collection",
+      "Client Error Collection",
+      expect.objectContaining({ userId: authUserId, ipAddress: "8.8.8.8" })
+    );
   });
 
-  /**
-   * I-A-02: 正常系 - 重複エラーのデデュプリケーション
-   */
-  test("I-A-02: 正常系 - 重複エラーはDB保存されない", async () => {
-    // deduplicationモックの設定（重複エラーとして扱う）
-    const { shouldLogError } = require("@core/logging/deduplication");
-    (shouldLogError as jest.MockedFunction<any>).mockResolvedValue(false);
+  test("I-A-02: 正常系 - 重複エラーはDB保存されず204", async () => {
+    mockShouldLogError.mockResolvedValue(false);
 
-    // リクエストペイロード
-    const payload = {
-      error: {
-        message: "Duplicate error message",
-      },
-      stackTrace: "Error: Duplicate\n    at test.ts:20:5",
-    };
-
-    // リクエスト作成
     const request = new NextRequest("https://example.com/api/errors", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-forwarded-for": "192.168.1.1",
+        "cf-connecting-ip": "8.8.8.8",
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        error: {
+          message: "Duplicate error message",
+        },
+        stackTrace: "Error: Duplicate\\n    at test.ts:20:5",
+      }),
     });
 
-    // APIハンドラー実行
-    const response = await errorHandler(request);
+    const response = await postHandler(request);
 
-    // レスポンス検証
     expect(response.status).toBe(204);
-
-    // DB insert が呼ばれていないことを検証
     expect(mockSupabaseInsert).not.toHaveBeenCalled();
+
+    expect(mockCreateAuditedAdminClient).not.toHaveBeenCalled();
   });
 
-  /**
-   * I-A-03: バリデーションエラー
-   */
-  test("I-A-03: バリデーションエラー - 必須項目が欠けている", async () => {
-    // 不正なペイロード（messageが欠けている）
-    const invalidPayload = {
-      error: {
-        code: "TEST_ERROR",
-        // message が欠けている
-      },
-    };
-
-    // リクエスト作成
+  test("I-A-03: バリデーションエラー - 必須項目不足は422", async () => {
     const request = new NextRequest("https://example.com/api/errors", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-forwarded-for": "192.168.1.1",
       },
-      body: JSON.stringify(invalidPayload),
+      body: JSON.stringify({
+        error: {
+          code: "TEST_ERROR",
+        },
+      }),
     });
 
-    // APIハンドラー実行
-    const response = await errorHandler(request);
+    const response = await postHandler(request);
 
-    // レスポンス検証
-    // レスポンス検証
-    // respondWithCode("VALIDATION_ERROR") は 422 Unprocessable Entity を返す
     expect(response.status).toBe(422);
     const responseData = await response.json();
-
-    // Problem Details 形式の検証
     expect(responseData).toMatchObject({
       type: "https://minnano-shukin.com/errors/validation-error",
       status: 422,
@@ -251,46 +236,53 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
       instance: "/api/errors",
     });
 
-    // DB insert が呼ばれていないことを検証
     expect(mockSupabaseInsert).not.toHaveBeenCalled();
   });
 
-  /**
-   * I-A-04: レート制限発動
-   */
-  test("I-A-04: レート制限発動 - 429エラーとRetry-Afterヘッダー", async () => {
-    // レート制限モックの設定（制限超過）
-    mockLimit.mockResolvedValue({
-      success: false,
-      remaining: 0,
-    });
-
-    // リクエストペイロード
-    const payload = {
-      error: {
-        message: "Test error",
-      },
-    };
-
-    // リクエスト作成
+  test("I-A-04: 不正JSONは400(INVALID_JSON)", async () => {
     const request = new NextRequest("https://example.com/api/errors", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-forwarded-for": "192.168.1.1",
       },
-      body: JSON.stringify(payload),
+      body: "{invalid-json",
     });
 
-    // APIハンドラー実行
-    const response = await errorHandler(request);
+    const response = await postHandler(request);
 
-    // レスポンス検証
-    // レスポンス検証
+    expect(response.status).toBe(400);
+    const responseData = await response.json();
+    expect(responseData).toMatchObject({
+      type: "https://minnano-shukin.com/errors/invalid-json",
+      status: 400,
+      code: "INVALID_JSON",
+      detail: "Invalid JSON in request body",
+      instance: "/api/errors",
+    });
+
+    expect(mockSupabaseInsert).not.toHaveBeenCalled();
+  });
+
+  test("I-A-05: レート制限発動 - 429とヘッダー", async () => {
+    mockEnforceRateLimit.mockResolvedValue({ allowed: false, retryAfter: 60, remaining: 0 });
+
+    const request = new NextRequest("https://example.com/api/errors", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-forwarded-for": "8.8.8.8, 1.1.1.1",
+      },
+      body: JSON.stringify({
+        error: {
+          message: "Test error",
+        },
+      }),
+    });
+
+    const response = await postHandler(request);
+
     expect(response.status).toBe(429);
     const responseData = await response.json();
-
-    // Problem Details 形式の検証
     expect(responseData).toMatchObject({
       type: "https://minnano-shukin.com/errors/rate-limited",
       status: 429,
@@ -299,98 +291,138 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
       instance: "/api/errors",
     });
 
-    // ヘッダー検証
     expect(response.headers.get("Retry-After")).toBe("60");
     expect(response.headers.get("X-RateLimit-Remaining")).toBe("0");
-
-    // DB insert が呼ばれていないことを検証
-    expect(mockSupabaseInsert).not.toHaveBeenCalled();
-  });
-
-  /**
-   * I-A-05: IPアドレス取得
-   */
-  test("I-A-05: IPアドレス取得 - x-forwarded-forから最初のIPを使用", async () => {
-    // リクエストペイロード
-    const payload = {
-      error: {
-        message: "Test error",
+    expect(mockBuildKey).toHaveBeenCalledWith({ scope: "error.report", ip: "8.8.8.8" });
+    expect(mockEnforceRateLimit).toHaveBeenCalledWith({
+      keys: ["RL:error.report:ip:8.8.8.8"],
+      policy: {
+        scope: "error.report",
+        limit: 50,
+        window: "1 m",
+        blockMs: 60_000,
       },
-    };
-
-    // リクエスト作成（複数のIPアドレスを含むx-forwarded-for）
-    const request = new NextRequest("https://example.com/api/errors", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-forwarded-for": "1.2.3.4, 5.6.7.8",
-      },
-      body: JSON.stringify(payload),
     });
-
-    // APIハンドラー実行
-    await errorHandler(request);
-
-    // レート制限のキーとして最初のIPアドレスが使用されることを検証
-    expect(mockLimit).toHaveBeenCalledWith("error_log_1.2.3.4");
   });
 
-  /**
-   * I-A-06: DBエラー時の挙動
-   */
-  test("I-A-06: DBエラー時の挙動 - 500エラー、エラー詳細は非表示", async () => {
-    // deduplicationモックの設定
-    const { shouldLogError } = require("@core/logging/deduplication");
-    (shouldLogError as jest.MockedFunction<any>).mockResolvedValue(true);
-
-    // DB insertエラーをシミュレート
+  test("I-A-06: DB保存エラー時も204を返しdedupeキーを解放", async () => {
     mockSupabaseInsert.mockResolvedValue({
       error: {
+        code: "XX000",
         message: "Database connection failed",
-        details: "Sensitive database error details",
       },
       data: null,
     });
 
-    // リクエストペイロード
-    const payload = {
-      error: {
-        message: "Test error",
-      },
-    };
-
-    // リクエスト作成
     const request = new NextRequest("https://example.com/api/errors", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-forwarded-for": "192.168.1.1",
+        "cf-connecting-ip": "8.8.8.8",
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        error: {
+          message: "Test error",
+        },
+      }),
     });
 
-    // APIハンドラー実行
-    const response = await errorHandler(request);
+    const response = await postHandler(request);
 
-    // レスポンス検証
-    // レスポンス検証
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(204);
+
+    expect(mockReleaseErrorDedupeHash).toHaveBeenCalledWith("dedupe-hash");
+    expect(mockHandleServerError).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "XX000" }),
+      expect.objectContaining({ action: "error_collection_insert_failed" })
+    );
+  });
+
+  test("I-A-07: dedupe_key一意制約エラー時は204かつdedupeキーを解放しない", async () => {
+    mockSupabaseInsert.mockResolvedValue({
+      error: {
+        code: "23505",
+        message: "duplicate key value violates unique constraint dedupe_key",
+      },
+      data: null,
+    });
+
+    const request = new NextRequest("https://example.com/api/errors", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        error: {
+          message: "Test error",
+        },
+      }),
+    });
+
+    const response = await postHandler(request);
+
+    expect(response.status).toBe(204);
+
+    expect(mockReleaseErrorDedupeHash).not.toHaveBeenCalled();
+  });
+
+  test("I-A-08: user.id が UUID 形式でない場合は422", async () => {
+    const request = new NextRequest("https://example.com/api/errors", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        error: {
+          message: "Test error",
+        },
+        user: {
+          id: "not-a-uuid",
+        },
+      }),
+    });
+
+    const response = await postHandler(request);
+
+    expect(response.status).toBe(422);
     const responseData = await response.json();
-
-    // Problem Details 形式の検証
     expect(responseData).toMatchObject({
-      type: "https://minnano-shukin.com/errors/database-error",
-      status: 500,
-      code: "DATABASE_ERROR",
-      detail: "Failed to save log", // センシティブ情報は含まない
-      instance: "/api/errors",
+      code: "VALIDATION_ERROR",
+      status: 422,
+    });
+    expect(mockSupabaseInsert).not.toHaveBeenCalled();
+  });
+
+  test("I-A-09: page.url/referrer が空文字でも422にせず204で受理する", async () => {
+    const request = new NextRequest("https://example.com/api/errors", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        error: {
+          message: "Test error",
+        },
+        page: {
+          url: "",
+          pathname: "/events",
+          referrer: "",
+        },
+      }),
     });
 
-    // エラー詳細が含まれていないことを確認（セキュリティ）
-    expect(JSON.stringify(responseData)).not.toContain("Database connection failed");
-    expect(JSON.stringify(responseData)).not.toContain("Sensitive database error details");
+    const response = await postHandler(request);
 
-    // Cache-Controlヘッダーの検証
-    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(response.status).toBe(204);
+    expect(mockSupabaseInsert).toHaveBeenCalledTimes(1);
+
+    const insertArgs = mockSupabaseInsert.mock.calls[0][0];
+    expect(insertArgs.metadata).toMatchObject({
+      page: {
+        pathname: "/events",
+      },
+    });
+    expect(insertArgs.metadata.page.url).toBeUndefined();
+    expect(insertArgs.metadata.page.referrer).toBeUndefined();
   });
 });

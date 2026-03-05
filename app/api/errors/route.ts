@@ -1,31 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
+import type { User } from "@supabase/supabase-js";
 
 import { AppError, isErrorCode } from "@core/errors";
-import { respondWithCode, respondWithProblem } from "@core/errors/server";
+import { respondWithCode } from "@core/errors/server";
 import type { ErrorCategory, ErrorCode } from "@core/errors/types";
+import {
+  createErrorDedupeHash,
+  releaseErrorDedupeHash,
+  shouldLogError,
+} from "@core/logging/deduplication";
+import { POLICIES, buildKey, enforceRateLimit } from "@core/rate-limit";
 import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
-import { notifyError } from "@core/utils/error-handler.server";
+import { createRouteHandlerSupabaseClient } from "@core/supabase/factory";
+import { handleServerError, notifyError } from "@core/utils/error-handler.server";
+import { getClientIP } from "@core/utils/ip-detection";
 import { errorReportSchema } from "@core/validation/error-report";
 
-import type { Database } from "@/types/database";
+import type { Database, Json } from "@/types/database";
 
 export const dynamic = "force-dynamic";
 
-// レート制限設定
-const ratelimit =
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
-    ? new Ratelimit({
-        redis: Redis.fromEnv(),
-        limiter: Ratelimit.slidingWindow(50, "1 m"), // 1分間に50リクエスト
-        analytics: true,
-      })
-    : null;
-
 type LogCategory = Database["public"]["Enums"]["log_category_enum"];
+type SystemLogInsert = Database["public"]["Tables"]["system_logs"]["Insert"];
 
 const LOG_CATEGORY_VALUES: LogCategory[] = [
   "authentication",
@@ -86,49 +84,161 @@ function resolveLogCategory(raw: unknown, fallback: ErrorCategory): LogCategory 
   return ERROR_CATEGORY_TO_LOG_CATEGORY[fallback];
 }
 
+const API_INSTANCE = "/api/errors";
+const MAX_ACTION_LENGTH = 120;
 const MAX_CLIENT_MESSAGE_LENGTH = 200;
 
+const SUCCESS_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate",
+  "X-Content-Type-Options": "nosniff",
+} as const;
+
+const BASE_LOG_CONTEXT = { category: "system" as const, actorType: "system" as const };
+
+function toNoContentResponse(): NextResponse {
+  return new NextResponse(null, { status: 204, headers: SUCCESS_HEADERS });
+}
+
+function sanitizeText(message: string, maxLength: number): string {
+  return message.replace(/[\r\n]+/g, " ").slice(0, maxLength);
+}
+
 function sanitizeClientMessage(message: string): string {
-  return message.replace(/[\r\n]+/g, " ").slice(0, MAX_CLIENT_MESSAGE_LENGTH);
+  return sanitizeText(message, MAX_CLIENT_MESSAGE_LENGTH);
+}
+
+function sanitizeAction(raw: unknown): string {
+  if (typeof raw !== "string") {
+    return "client_error";
+  }
+  const value = sanitizeText(raw, MAX_ACTION_LENGTH).trim();
+  return value.length > 0 ? value : "client_error";
+}
+
+function isDedupeUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+  const code = "code" in error ? error.code : undefined;
+  const message = "message" in error ? error.message : undefined;
+  return (
+    code === "23505" && typeof message === "string" && message.toLowerCase().includes("dedupe_key")
+  );
+}
+
+async function resolveAuthenticatedUser(): Promise<User | null> {
+  try {
+    const client = await createRouteHandlerSupabaseClient();
+    const {
+      data: { user },
+      error,
+    } = await client.auth.getUser();
+
+    if (error) {
+      handleServerError(error, {
+        category: "authentication",
+        actorType: "system",
+        action: "error_collection_auth_lookup_failed",
+      });
+      return null;
+    }
+
+    return user;
+  } catch (error) {
+    handleServerError(error, {
+      category: "authentication",
+      actorType: "system",
+      action: "error_collection_auth_lookup_unhandled",
+    });
+    return null;
+  }
+}
+
+function queueErrorNotification(
+  appError: AppError,
+  userId: string | undefined,
+  payload: unknown
+): void {
+  const severity = appError.severity;
+  const shouldAlert = severity === "high" || severity === "critical";
+  if (!shouldAlert) {
+    return;
+  }
+
+  void import("@core/utils/cloudflare-ctx")
+    .then(({ waitUntil }) =>
+      waitUntil(
+        notifyError(appError, {
+          action: "client_error_report",
+          userId,
+          additionalData: payload as Record<string, unknown>,
+        }).catch((error) => {
+          handleServerError(error, {
+            ...BASE_LOG_CONTEXT,
+            action: "error_collection_notification_failed",
+            additionalData: { error_code: appError.code },
+          });
+        })
+      )
+    )
+    .catch((error) => {
+      handleServerError(error, {
+        ...BASE_LOG_CONTEXT,
+        action: "error_collection_wait_until_failed",
+        additionalData: { error_code: appError.code },
+      });
+    });
 }
 
 export async function POST(req: NextRequest) {
+  const clientIp = getClientIP(req);
+  const requestUserAgent = req.headers.get("user-agent") || undefined;
+
   try {
-    const baseLogContext = { category: "system" as const, actorType: "system" as const };
-    const successHeaders = {
-      "Cache-Control": "no-store, no-cache, must-revalidate",
-      "X-Content-Type-Options": "nosniff",
-    };
-
-    // 1. レート制限チェック
-    if (ratelimit) {
-      const forwarded = req.headers.get("x-forwarded-for");
-      const ip =
-        req.headers.get("cf-connecting-ip") || (forwarded ? forwarded.split(",")[0] : "unknown");
-
-      const { success: rateLimitOk, remaining } = await ratelimit.limit(`error_log_${ip}`);
-
-      if (!rateLimitOk) {
-        return respondWithCode("RATE_LIMITED", {
-          instance: "/api/errors",
-          detail: "Too many requests",
-          logContext: { ...baseLogContext, action: "error_collection_rate_limited" },
-          headers: {
-            "X-RateLimit-Remaining": String(remaining),
-          },
-        });
-      }
+    const rateLimitKey = buildKey({
+      scope: POLICIES["error.report"].scope,
+      ip: clientIp,
+    });
+    const rateLimitKeys = Array.isArray(rateLimitKey) ? rateLimitKey : [rateLimitKey];
+    const rateLimitResult = await enforceRateLimit({
+      keys: rateLimitKeys,
+      policy: POLICIES["error.report"],
+    });
+    if (!rateLimitResult.allowed) {
+      return respondWithCode("RATE_LIMITED", {
+        instance: API_INSTANCE,
+        detail: "Too many requests",
+        logContext: { ...BASE_LOG_CONTEXT, action: "error_collection_rate_limited" },
+        headers: {
+          "Retry-After": String(rateLimitResult.retryAfter || 60),
+          "X-RateLimit-Remaining": "0",
+        },
+      });
     }
 
-    // 2. バリデーション
-    const body = await req.json();
-    const validation = errorReportSchema.safeParse(body);
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch (error) {
+      return respondWithCode("INVALID_JSON", {
+        instance: API_INSTANCE,
+        detail: "Invalid JSON in request body",
+        logContext: {
+          ...BASE_LOG_CONTEXT,
+          action: "error_collection_invalid_json",
+          additionalData: {
+            error_message: error instanceof Error ? error.message : String(error),
+          },
+        },
+      });
+    }
 
+    const validation = errorReportSchema.safeParse(body);
     if (!validation.success) {
       return respondWithCode("VALIDATION_ERROR", {
-        instance: "/api/errors",
+        instance: API_INSTANCE,
         detail: "Invalid request body",
-        logContext: { ...baseLogContext, action: "error_collection_invalid_request" },
+        logContext: { ...BASE_LOG_CONTEXT, action: "error_collection_invalid_request" },
       });
     }
 
@@ -138,7 +248,7 @@ export async function POST(req: NextRequest) {
       (typeof rawContext.logCategory === "string" && rawContext.logCategory) ||
       (typeof rawContext.category === "string" && rawContext.category) ||
       data.error.category;
-    const action = (typeof rawContext.action === "string" && rawContext.action) || "client_error";
+    const action = sanitizeAction(rawContext.action);
     const resolvedCode: ErrorCode =
       data.error.code && isErrorCode(data.error.code) ? data.error.code : "UNKNOWN_ERROR";
     const sanitizedMessage = sanitizeClientMessage(data.error.message);
@@ -158,94 +268,124 @@ export async function POST(req: NextRequest) {
     });
     const logCategory = resolveLogCategory(rawLogCategory, appError.category);
 
-    const supabase = await createAuditedAdminClient(
-      AdminReason.ERROR_COLLECTION,
-      "Client Error Collection"
-    );
+    const authUser = await resolveAuthenticatedUser();
+    const actorType: SystemLogInsert["actor_type"] = authUser ? "user" : "anonymous";
+    const actorIdentifier = authUser?.email ?? undefined;
+    const userId = authUser?.id;
+    const userAgent = data.user?.userAgent || requestUserAgent;
 
-    // 4. 重複チェック
-    const { shouldLogError } = await import("@core/logging/deduplication");
-    const shouldLog = await shouldLogError(data.error.message, data.stackTrace);
-
+    const dedupeHash = await createErrorDedupeHash(sanitizedMessage, data.stackTrace);
+    const shouldLog = await shouldLogError(sanitizedMessage, data.stackTrace, { dedupeHash });
     if (!shouldLog) {
-      return new NextResponse(null, { status: 204, headers: successHeaders });
+      return toNoContentResponse();
     }
 
-    // 5. DB保存
-    const { error: insertError } = await supabase.from("system_logs").insert({
-      log_level: "error",
-      log_category: logCategory,
-      actor_type: data.user?.id ? "user" : "anonymous",
-      actor_identifier: data.user?.email,
-      user_id: data.user?.id,
-      action,
-      message: data.error.message,
-      outcome: "failure",
-      ip_address:
-        req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || undefined,
-      user_agent: data.user?.userAgent || req.headers.get("user-agent") || undefined,
-      error_code: appError.code,
-      error_message: data.error.message,
-      error_stack: data.stackTrace,
-      metadata: {
-        error_info: data.error,
-        resolved_error: {
-          code: appError.code,
-          severity: appError.severity,
-          retryable: appError.retryable,
-          correlationId: appError.correlationId,
-          category: appError.category,
-        },
-        page: data.page,
-        breadcrumbs: data.breadcrumbs,
-        environment: data.environment,
-      },
-      tags: [logCategory, `severity:${appError.severity}`],
-    });
-
-    if (insertError) {
-      return respondWithProblem(insertError, {
-        instance: "/api/errors",
-        detail: "Failed to save log",
-        defaultCode: "DATABASE_ERROR",
-        logContext: { ...baseLogContext, action: "error_collection_insert_failed" },
-      });
-    }
-
-    // 6. 重要エラーの通知（Sentry/Slack）
-    // Registry 由来の severity を使用する
-    const severity = appError.severity;
-    const shouldAlert = severity === "high" || severity === "critical";
-
-    if (shouldAlert) {
-      // const { notifyError } = await import("@core/utils/error-handler.server");
-      const { waitUntil } = await import("@core/utils/cloudflare-ctx");
-
-      waitUntil(
-        notifyError(appError, {
-          action: "client_error_report",
-          // actorType: data.user?.id ? "user" : "anonymous",
-          userId: data.user?.id,
-          additionalData: {
-            clientMessage: sanitizedMessage,
-            clientUserMessage: sanitizedUserMessage,
-            userAgent: data.user?.userAgent,
-            page: data.page,
-            environment: data.environment,
-            stack: data.stackTrace,
-            breadcrumbs: data.breadcrumbs,
-          },
-        })
+    let shouldReleaseDedupeKey = true;
+    try {
+      const supabase = await createAuditedAdminClient(
+        AdminReason.ERROR_COLLECTION,
+        "Client Error Collection",
+        {
+          userId,
+          ipAddress: clientIp,
+          userAgent,
+          requestPath: API_INSTANCE,
+          requestMethod: req.method,
+          operationType: "INSERT",
+          accessedTables: ["system_logs"],
+        }
       );
+
+      const insertPayload: SystemLogInsert = {
+        log_level: "error",
+        log_category: logCategory,
+        actor_type: actorType,
+        actor_identifier: actorIdentifier,
+        user_id: userId,
+        action,
+        message: sanitizedMessage,
+        outcome: "failure",
+        ip_address: clientIp,
+        user_agent: userAgent,
+        error_code: appError.code,
+        error_message: sanitizedMessage,
+        error_stack: data.stackTrace,
+        dedupe_key: dedupeHash,
+        metadata: {
+          error_info: {
+            ...data.error,
+            message: sanitizedMessage,
+            userMessage: sanitizedUserMessage ?? null,
+          },
+          resolved_error: {
+            code: appError.code,
+            severity: appError.severity,
+            retryable: appError.retryable,
+            correlationId: appError.correlationId,
+            category: appError.category,
+          },
+          auth_user: authUser ? { id: authUser.id, email: authUser.email ?? null } : null,
+          client_reported_user: data.user ?? null,
+          page: data.page,
+          breadcrumbs: data.breadcrumbs,
+          environment: data.environment,
+        } as Json,
+        tags: [logCategory, `severity:${appError.severity}`],
+      };
+
+      const { error: insertError } = await supabase.from("system_logs").insert(insertPayload);
+      if (insertError) {
+        if (isDedupeUniqueViolation(insertError)) {
+          shouldReleaseDedupeKey = false;
+          return toNoContentResponse();
+        }
+        throw insertError;
+      }
+      shouldReleaseDedupeKey = false;
+    } catch (error) {
+      handleServerError(error, {
+        ...BASE_LOG_CONTEXT,
+        action: "error_collection_insert_failed",
+        additionalData: {
+          code: appError.code,
+          log_category: logCategory,
+          action_name: action,
+        },
+      });
+    } finally {
+      if (shouldReleaseDedupeKey) {
+        await releaseErrorDedupeHash(dedupeHash).catch((error) => {
+          handleServerError(error, {
+            ...BASE_LOG_CONTEXT,
+            action: "error_collection_dedupe_release_failed",
+            additionalData: {
+              dedupe_hash: dedupeHash,
+              code: appError.code,
+            },
+          });
+        });
+      }
     }
 
-    return new NextResponse(null, { status: 204, headers: successHeaders });
-  } catch (error) {
-    return respondWithProblem(error, {
-      instance: "/api/errors",
-      detail: "Internal Server Error",
-      defaultCode: "INTERNAL_ERROR",
-      logContext: { category: "system", actorType: "system", action: "error_collection_unhandled" },
+    queueErrorNotification(appError, userId, {
+      clientMessage: sanitizedMessage,
+      clientUserMessage: sanitizedUserMessage,
+      userAgent,
+      page: data.page,
+      environment: data.environment,
+      stack: data.stackTrace,
+      breadcrumbs: data.breadcrumbs,
     });
+
+    return toNoContentResponse();
+  } catch (error) {
+    handleServerError(error, {
+      ...BASE_LOG_CONTEXT,
+      action: "error_collection_unhandled",
+      additionalData: {
+        path: API_INSTANCE,
+      },
+    });
+    return toNoContentResponse();
   }
 }

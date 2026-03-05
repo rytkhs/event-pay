@@ -277,6 +277,7 @@ export const POLICIES: Record<string, RateLimitPolicy> = {
     window: "1 m",
     blockMs: 5 * 60 * 1000,
   },
+  "error.report": { scope: "error.report", limit: 50, window: "1 m", blockMs: 60 * 1000 },
   "export.participantsCsv": {
     scope: "export.participantsCsv",
     limit: 5,
