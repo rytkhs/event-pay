@@ -6,14 +6,15 @@ import { sendSlackText } from "@core/notification/slack";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { formatUtcToJst } from "@core/utils/timezone";
+
 import { registerAction as registerActionImpl } from "@features/auth/server";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
-import { getRequestIp } from "./_shared/request-context";
-import { projectAuthCommandResult } from "./_shared/result-projection";
 import { trackAuthEvent } from "./_shared/auth-telemetry";
 import { formDataToObject } from "./_shared/form-data";
+import { getRequestIp } from "./_shared/request-context";
+import { projectAuthCommandResult } from "./_shared/result-projection";
 
 /**
  * ユーザー登録

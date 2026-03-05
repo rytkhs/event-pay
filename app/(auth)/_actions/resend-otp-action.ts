@@ -1,6 +1,7 @@
 "use server";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
+
 import { resendOtpAction as resendOtpActionImpl } from "@features/auth/server";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";

@@ -1,14 +1,15 @@
 "use server";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
+
 import { loginAction as loginActionImpl } from "@features/auth/server";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
-import { getRequestIp } from "./_shared/request-context";
-import { projectAuthCommandResult } from "./_shared/result-projection";
 import { trackAuthEvent } from "./_shared/auth-telemetry";
 import { formDataToObject } from "./_shared/form-data";
+import { getRequestIp } from "./_shared/request-context";
+import { projectAuthCommandResult } from "./_shared/result-projection";
 
 /**
  * ログイン

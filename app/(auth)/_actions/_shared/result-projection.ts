@@ -1,8 +1,9 @@
+import type { AppResult } from "@core/errors";
 import {
   toActionResultFromAppResult,
   type ActionResult,
 } from "@core/errors/adapters/server-actions";
-import type { AppResult } from "@core/errors";
+
 import type { AuthCommandResult, AuthSideEffects } from "@features/auth/server";
 
 export function projectAuthCommandResult<T>(result: AuthCommandResult<T>): {

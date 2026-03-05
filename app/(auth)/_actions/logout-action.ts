@@ -3,12 +3,13 @@
 import { revalidatePath } from "next/cache";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
+
 import { logoutAction as logoutActionImpl } from "@features/auth/server";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
-import { projectAuthCommandResult } from "./_shared/result-projection";
 import { trackAuthEvent } from "./_shared/auth-telemetry";
+import { projectAuthCommandResult } from "./_shared/result-projection";
 
 /**
  * ログアウト

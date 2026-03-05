@@ -1,12 +1,13 @@
 "use server";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
+
 import { verifyOtpAction as verifyOtpActionImpl } from "@features/auth/server";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
-import { projectAuthCommandResult } from "./_shared/result-projection";
 import { formDataToObject } from "./_shared/form-data";
+import { projectAuthCommandResult } from "./_shared/result-projection";
 
 /**
  * OTP検証

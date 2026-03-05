@@ -1,12 +1,13 @@
 "use server";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
+
 import { completePasswordResetAction as completePasswordResetActionImpl } from "@features/auth/server";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
-import { projectAuthCommandResult } from "./_shared/result-projection";
 import { formDataToObject } from "./_shared/form-data";
+import { projectAuthCommandResult } from "./_shared/result-projection";
 
 /**
  * パスワード更新（リセット後）
