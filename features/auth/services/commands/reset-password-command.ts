@@ -1,85 +1,17 @@
 import "server-only";
 
-import { InputSanitizer, TimingAttackProtection } from "@core/auth-security";
+import { TimingAttackProtection } from "@core/auth-security";
 import { AppError, errResult, okResult } from "@core/errors";
-import { logger } from "@core/logging/app-logger";
-import { buildKey, enforceRateLimit, POLICIES } from "@core/rate-limit/index";
 import { isResetPasswordResult } from "@core/supabase/auth-guards";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { resetPasswordInputSchema } from "@core/validation/auth";
 
-import type {
-  AuthCommandResult,
-  AuthRateLimitScope,
-  ResetPasswordCommandInput,
-} from "../auth-command-service.types";
-
-type AuthRateLimitOptions = {
-  scope: AuthRateLimitScope;
-  email: string;
-  ip?: string;
-  blockedMessage: string;
-  failureLogMessage: string;
-  normalizeEmail?: (email: string) => string;
-  withConstantDelay?: () => Promise<void>;
-};
-
-function validationErrorResult(
-  userMessage: string,
-  fieldErrors?: Record<string, string[] | undefined>
-): AuthCommandResult<never> {
-  return errResult(
-    new AppError("VALIDATION_ERROR", {
-      userMessage,
-      details: fieldErrors,
-    })
-  );
-}
-
-async function checkAuthRateLimit(
-  options: AuthRateLimitOptions
-): Promise<AuthCommandResult<never> | null> {
-  try {
-    const normalizedEmail = options.normalizeEmail
-      ? options.normalizeEmail(options.email)
-      : options.email;
-
-    const keyInput = buildKey({
-      scope: options.scope,
-      ip: options.ip,
-      email: normalizedEmail,
-    });
-
-    const rateLimitResult = await enforceRateLimit({
-      keys: Array.isArray(keyInput) ? keyInput : [keyInput],
-      policy: POLICIES[options.scope],
-    });
-
-    if (!rateLimitResult.allowed) {
-      if (options.withConstantDelay) {
-        await options.withConstantDelay();
-      }
-
-      return errResult(
-        new AppError("RATE_LIMITED", {
-          userMessage: options.blockedMessage,
-          retryable: true,
-        })
-      );
-    }
-  } catch (rateLimitError) {
-    logger.warn(options.failureLogMessage, {
-      category: "security",
-      action: "rateLimitCheckFailed",
-      error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
-      error_message:
-        rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
-    });
-  }
-
-  return null;
-}
+import type { AuthCommandResult, ResetPasswordCommandInput } from "../auth-command-service.types";
+import { logAuthError } from "../shared/auth-logging";
+import { checkAuthRateLimit } from "../shared/auth-rate-limit";
+import { sanitizeEmailOrNull } from "../shared/auth-sanitizer";
+import { validationErrorResult } from "../shared/auth-validation-error";
 
 export async function resetPasswordAction(
   input: ResetPasswordCommandInput
@@ -95,18 +27,16 @@ export async function resetPasswordAction(
       );
     }
 
-    let { email } = validationResult.data;
+    const sanitizedEmail = sanitizeEmailOrNull(validationResult.data.email);
 
-    try {
-      email = InputSanitizer.sanitizeEmail(email);
-    } catch {
+    if (!sanitizedEmail) {
       await TimingAttackProtection.addConstantDelay();
       return validationErrorResult("有効なメールアドレスを入力してください");
     }
 
     const rateLimitError = await checkAuthRateLimit({
       scope: "auth.passwordReset",
-      email,
+      email: sanitizedEmail,
       ip: input.requestContext.ip,
       blockedMessage:
         "パスワードリセット試行回数が上限に達しました。しばらく時間をおいてからお試しください",
@@ -120,24 +50,21 @@ export async function resetPasswordAction(
     const supabase = await createServerActionSupabaseClient();
 
     const resetResult = await TimingAttackProtection.normalizeResponseTime(
-      async () => await supabase.auth.resetPasswordForEmail(email),
+      async () => await supabase.auth.resetPasswordForEmail(sanitizedEmail),
       300
     );
 
     if (isResetPasswordResult(resetResult) && resetResult.error) {
-      handleServerError(resetResult.error, {
-        category: "authentication",
+      logAuthError(resetResult.error, {
         action: "resetPasswordOtpFailed",
-        additionalData: {
-          sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
-        },
+        email: sanitizedEmail,
       });
     }
 
     return okResult(undefined, {
       message: "パスワードリセット用の確認コードを送信しました（登録済みのアドレスの場合）",
       needsVerification: true,
-      redirectUrl: `/verify-otp?email=${encodeURIComponent(email)}&type=recovery`,
+      redirectUrl: `/verify-otp?email=${encodeURIComponent(sanitizedEmail)}&type=recovery`,
     });
   } catch (error) {
     handleServerError("RESET_PASSWORD_UNEXPECTED_ERROR", {

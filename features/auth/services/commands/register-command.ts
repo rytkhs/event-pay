@@ -1,110 +1,21 @@
 import "server-only";
 
-import { InputSanitizer, TimingAttackProtection } from "@core/auth-security";
+import { TimingAttackProtection } from "@core/auth-security";
 import { AppError, errResult, okResult } from "@core/errors";
-import { logger } from "@core/logging/app-logger";
-import { buildKey, enforceRateLimit, POLICIES } from "@core/rate-limit/index";
-import { hasAuthErrorCode } from "@core/supabase/auth-guards";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { registerInputSchema } from "@core/validation/auth";
 
-import type {
-  AuthCommandResult,
-  AuthRateLimitScope,
-  RegisterCommandInput,
-} from "../auth-command-service.types";
-
-type AuthRateLimitOptions = {
-  scope: AuthRateLimitScope;
-  email: string;
-  ip?: string;
-  blockedMessage: string;
-  failureLogMessage: string;
-  normalizeEmail?: (email: string) => string;
-  withConstantDelay?: () => Promise<void>;
-};
-
-function validationErrorResult(
-  userMessage: string,
-  fieldErrors?: Record<string, string[] | undefined>
-): AuthCommandResult<never> {
-  return errResult(
-    new AppError("VALIDATION_ERROR", {
-      userMessage,
-      details: fieldErrors,
-    })
-  );
-}
-
-async function checkAuthRateLimit(
-  options: AuthRateLimitOptions
-): Promise<AuthCommandResult<never> | null> {
-  try {
-    const normalizedEmail = options.normalizeEmail
-      ? options.normalizeEmail(options.email)
-      : options.email;
-
-    const keyInput = buildKey({
-      scope: options.scope,
-      ip: options.ip,
-      email: normalizedEmail,
-    });
-
-    const rateLimitResult = await enforceRateLimit({
-      keys: Array.isArray(keyInput) ? keyInput : [keyInput],
-      policy: POLICIES[options.scope],
-    });
-
-    if (!rateLimitResult.allowed) {
-      if (options.withConstantDelay) {
-        await options.withConstantDelay();
-      }
-
-      return errResult(
-        new AppError("RATE_LIMITED", {
-          userMessage: options.blockedMessage,
-          retryable: true,
-        })
-      );
-    }
-  } catch (rateLimitError) {
-    logger.warn(options.failureLogMessage, {
-      category: "security",
-      action: "rateLimitCheckFailed",
-      error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
-      error_message:
-        rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
-    });
-  }
-
-  return null;
-}
-
-function mapRegisterAuthErrorResult(signUpError: unknown): AuthCommandResult<never> {
-  if (hasAuthErrorCode(signUpError, "user_already_exists")) {
-    return errResult(
-      new AppError("ALREADY_EXISTS", {
-        userMessage: "このメールアドレスは既に登録されています",
-      })
-    );
-  }
-
-  if (hasAuthErrorCode(signUpError, "over_email_send_limit")) {
-    return errResult(
-      new AppError("RATE_LIMITED", {
-        userMessage: "送信回数の上限に達しました。しばらく時間をおいてからお試しください",
-        retryable: true,
-      })
-    );
-  }
-
-  return errResult(
-    new AppError("REGISTRATION_UNEXPECTED_ERROR", {
-      userMessage: "登録処理中にエラーが発生しました",
-    })
-  );
-}
+import type { AuthCommandResult, RegisterCommandInput } from "../auth-command-service.types";
+import { mapRegisterAuthErrorResult } from "../shared/auth-error-mappers";
+import { logAuthError } from "../shared/auth-logging";
+import { checkAuthRateLimit } from "../shared/auth-rate-limit";
+import {
+  sanitizeEmailOrNull,
+  sanitizeName,
+  sanitizePasswordOrNull,
+} from "../shared/auth-sanitizer";
+import { validationErrorResult } from "../shared/auth-validation-error";
 
 export async function registerAction(
   input: RegisterCommandInput
@@ -122,9 +33,15 @@ export async function registerAction(
 
     const { name, email, password } = validationResult.data;
 
-    const sanitizedEmail = InputSanitizer.sanitizeEmail(email);
-    const sanitizedPassword = InputSanitizer.sanitizePassword(password);
-    const sanitizedName = name.trim();
+    const sanitizedEmail = sanitizeEmailOrNull(email);
+    const sanitizedPassword = sanitizePasswordOrNull(password);
+
+    if (!sanitizedEmail || !sanitizedPassword) {
+      await TimingAttackProtection.addConstantDelay();
+      return validationErrorResult("入力内容を確認してください");
+    }
+
+    const sanitizedName = sanitizeName(name);
 
     const rateLimitError = await checkAuthRateLimit({
       scope: "auth.register",
@@ -158,12 +75,9 @@ export async function registerAction(
     const { data: signUpData, error: signUpError } = registrationResult;
 
     if (signUpError) {
-      handleServerError(signUpError, {
-        category: "authentication",
+      logAuthError(signUpError, {
         action: "registrationFailed",
-        additionalData: {
-          sanitized_email: sanitizedEmail.replace(/(.)(.*)(@.*)/, "$1***$3"),
-        },
+        email: sanitizedEmail,
       });
 
       return mapRegisterAuthErrorResult(signUpError);

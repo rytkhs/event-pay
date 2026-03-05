@@ -3,48 +3,14 @@ import "server-only";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { AppError, errResult, okResult } from "@core/errors";
-import { hasAuthErrorCode } from "@core/supabase/auth-guards";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { verifyOtpInputSchema } from "@core/validation/auth";
 
 import type { AuthCommandResult, VerifyOtpCommandInput } from "../auth-command-service.types";
-
-function validationErrorResult(
-  userMessage: string,
-  fieldErrors?: Record<string, string[] | undefined>
-): AuthCommandResult<never> {
-  return errResult(
-    new AppError("VALIDATION_ERROR", {
-      userMessage,
-      details: fieldErrors,
-    })
-  );
-}
-
-function mapVerifyOtpErrorResult(verifiedError: unknown): AuthCommandResult<never> {
-  if (hasAuthErrorCode(verifiedError, "otp_expired")) {
-    return errResult(
-      new AppError("OTP_EXPIRED", {
-        userMessage: "確認コードが無効、もしくは有効期限が切れています",
-      })
-    );
-  }
-
-  if (hasAuthErrorCode(verifiedError, "otp_invalid")) {
-    return errResult(
-      new AppError("OTP_INVALID", {
-        userMessage: "無効な確認コードです",
-      })
-    );
-  }
-
-  return errResult(
-    new AppError("OTP_INVALID", {
-      userMessage: "確認コードが正しくありません",
-    })
-  );
-}
+import { mapVerifyOtpErrorResult } from "../shared/auth-error-mappers";
+import { logAuthError } from "../shared/auth-logging";
+import { validationErrorResult } from "../shared/auth-validation-error";
 
 export async function verifyOtpAction(input: VerifyOtpCommandInput): Promise<AuthCommandResult> {
   try {
@@ -67,12 +33,9 @@ export async function verifyOtpAction(input: VerifyOtpCommandInput): Promise<Aut
     });
 
     if (verifiedError) {
-      handleServerError(verifiedError, {
-        category: "authentication",
+      logAuthError(verifiedError, {
         action: "otpVerificationFailed",
-        additionalData: {
-          sanitized_email: email.replace(/(.)(.*)(@.*)/, "$1***$3"),
-        },
+        email,
       });
 
       return mapVerifyOtpErrorResult(verifiedError);

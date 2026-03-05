@@ -9,18 +9,8 @@ import type {
   AuthCommandResult,
   CompletePasswordResetCommandInput,
 } from "../auth-command-service.types";
-
-function validationErrorResult(
-  userMessage: string,
-  fieldErrors?: Record<string, string[] | undefined>
-): AuthCommandResult<never> {
-  return errResult(
-    new AppError("VALIDATION_ERROR", {
-      userMessage,
-      details: fieldErrors,
-    })
-  );
-}
+import { logAuthError } from "../shared/auth-logging";
+import { validationErrorResult } from "../shared/auth-validation-error";
 
 export async function completePasswordResetAction(
   input: CompletePasswordResetCommandInput
@@ -55,8 +45,7 @@ export async function completePasswordResetAction(
     });
 
     if (updateError) {
-      handleServerError(updateError, {
-        category: "authentication",
+      logAuthError(updateError, {
         action: "updatePasswordFailed",
         actorType: "user",
       });
