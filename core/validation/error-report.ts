@@ -1,5 +1,17 @@
 import { z } from "zod";
 
+const emptyStringToUndefined = (value: unknown): unknown => {
+  if (typeof value !== "string") {
+    return value;
+  }
+  return value.trim().length === 0 ? undefined : value;
+};
+
+const optionalUrlSchema = z.preprocess(
+  emptyStringToUndefined,
+  z.string().url().max(2000).optional()
+);
+
 export const errorReportSchema = z.object({
   error: z.object({
     code: z.string().min(1).max(100).optional(),
@@ -22,9 +34,9 @@ export const errorReportSchema = z.object({
     .optional(),
   page: z
     .object({
-      url: z.string().url().max(2000).optional(),
+      url: optionalUrlSchema,
       pathname: z.string().max(2048).optional(),
-      referrer: z.string().url().max(2000).optional(),
+      referrer: optionalUrlSchema,
     })
     .optional(),
   breadcrumbs: z.array(z.unknown()).max(100).optional(),

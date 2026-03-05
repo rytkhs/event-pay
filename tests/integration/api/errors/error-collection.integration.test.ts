@@ -392,4 +392,37 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
     });
     expect(mockSupabaseInsert).not.toHaveBeenCalled();
   });
+
+  test("I-A-09: page.url/referrer が空文字でも422にせず204で受理する", async () => {
+    const request = new NextRequest("https://example.com/api/errors", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        error: {
+          message: "Test error",
+        },
+        page: {
+          url: "",
+          pathname: "/events",
+          referrer: "",
+        },
+      }),
+    });
+
+    const response = await postHandler(request);
+
+    expect(response.status).toBe(204);
+    expect(mockSupabaseInsert).toHaveBeenCalledTimes(1);
+
+    const insertArgs = mockSupabaseInsert.mock.calls[0][0];
+    expect(insertArgs.metadata).toMatchObject({
+      page: {
+        pathname: "/events",
+      },
+    });
+    expect(insertArgs.metadata.page.url).toBeUndefined();
+    expect(insertArgs.metadata.page.referrer).toBeUndefined();
+  });
 });

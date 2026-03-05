@@ -34,8 +34,8 @@ export interface ErrorLogEntry {
     ip?: string;
   };
   page?: {
-    url: string;
-    pathname: string;
+    url?: string;
+    pathname?: string;
     referrer?: string;
   };
   environment: "development" | "preview" | "production";
@@ -67,6 +67,13 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
+function toOptionalNonEmptyString(value: string | undefined): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  return value.trim().length > 0 ? value : undefined;
+}
+
 /**
  * エラーロガークラス
  */
@@ -94,6 +101,30 @@ class ErrorLogger {
       referrer?: string;
     }
   ): Promise<void> {
+    const page = (() => {
+      if (!context) {
+        return undefined;
+      }
+
+      const resolvedPage = {
+        url: toOptionalNonEmptyString(
+          context.url || (typeof window !== "undefined" ? window.location.href : undefined)
+        ),
+        pathname: toOptionalNonEmptyString(
+          context.pathname || (typeof window !== "undefined" ? window.location.pathname : undefined)
+        ),
+        referrer: toOptionalNonEmptyString(
+          context.referrer || (typeof document !== "undefined" ? document.referrer : undefined)
+        ),
+      };
+
+      if (!resolvedPage.url && !resolvedPage.pathname && !resolvedPage.referrer) {
+        return undefined;
+      }
+
+      return resolvedPage;
+    })();
+
     const logEntry: ErrorLogEntry = {
       id: generateId(),
       timestamp: new Date(),
@@ -112,15 +143,7 @@ class ErrorLogger {
             ip: undefined, // サーバーサイドで追加される
           }
         : undefined,
-      page: context
-        ? {
-            url: context.url || (typeof window !== "undefined" ? window.location.href : ""),
-            pathname:
-              context.pathname || (typeof window !== "undefined" ? window.location.pathname : ""),
-            referrer:
-              context.referrer || (typeof document !== "undefined" ? document.referrer : undefined),
-          }
-        : undefined,
+      page,
     };
 
     // 開発環境ではコンソールに出力
