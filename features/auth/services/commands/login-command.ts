@@ -85,6 +85,7 @@ export async function loginAction(
       });
 
       const lockoutResult = await AccountLockoutService.recordFailedAttempt(sanitizedEmail);
+      await TimingAttackProtection.addConstantDelay();
       return mapLoginAuthErrorResult({
         signInError,
         sanitizedEmail,
