@@ -14,6 +14,6 @@ export function projectAuthCommandResult<T>(result: AuthCommandResult<T>): {
 
   return {
     actionResult: toActionResultFromAppResult(result as AppResult<T>, options),
-    sideEffects,
+    sideEffects: result.success ? sideEffects : undefined,
   };
 }
