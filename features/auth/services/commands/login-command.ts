@@ -111,18 +111,15 @@ export async function loginAction(
       }
     );
   } catch (error) {
-    handleServerError("LOGIN_UNEXPECTED_ERROR", {
+    const appError = new AppError("LOGIN_UNEXPECTED_ERROR", {
+      userMessage: "ログイン処理中にエラーが発生しました",
+      cause: error,
+    });
+
+    handleServerError(appError, {
       action: "loginActionError",
-      additionalData: {
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-      },
     });
     await TimingAttackProtection.addConstantDelay();
-    return errResult(
-      new AppError("LOGIN_UNEXPECTED_ERROR", {
-        userMessage: "ログイン処理中にエラーが発生しました",
-      })
-    );
+    return errResult(appError);
   }
 }

@@ -61,18 +61,15 @@ export async function completePasswordResetAction(
       redirectUrl: "/dashboard",
     });
   } catch (error) {
-    handleServerError("UPDATE_PASSWORD_UNEXPECTED_ERROR", {
-      action: "updatePasswordActionError",
-      additionalData: {
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-      },
+    const appError = new AppError("UPDATE_PASSWORD_UNEXPECTED_ERROR", {
+      userMessage: "処理中にエラーが発生しました",
+      cause: error,
     });
 
-    return errResult(
-      new AppError("UPDATE_PASSWORD_UNEXPECTED_ERROR", {
-        userMessage: "処理中にエラーが発生しました",
-      })
-    );
+    handleServerError(appError, {
+      action: "updatePasswordActionError",
+    });
+
+    return errResult(appError);
   }
 }

@@ -63,18 +63,15 @@ export async function verifyOtpAction(input: VerifyOtpCommandInput): Promise<Aut
       redirectUrl,
     });
   } catch (error) {
-    handleServerError("OTP_UNEXPECTED_ERROR", {
-      action: "verifyOtpActionError",
-      additionalData: {
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-      },
+    const appError = new AppError("OTP_UNEXPECTED_ERROR", {
+      userMessage: "確認処理中にエラーが発生しました",
+      cause: error,
     });
 
-    return errResult(
-      new AppError("OTP_UNEXPECTED_ERROR", {
-        userMessage: "確認処理中にエラーが発生しました",
-      })
-    );
+    handleServerError(appError, {
+      action: "verifyOtpActionError",
+    });
+
+    return errResult(appError);
   }
 }

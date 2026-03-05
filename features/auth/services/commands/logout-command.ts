@@ -41,22 +41,18 @@ export async function logoutAction(): Promise<AuthCommandResult> {
       },
     });
   } catch (error) {
-    handleServerError("LOGOUT_UNEXPECTED_ERROR", {
+    const appError = new AppError("LOGOUT_UNEXPECTED_ERROR", {
+      userMessage: "ログアウト処理中にエラーが発生しました。再度お試しください。",
+      cause: error,
+    });
+
+    handleServerError(appError, {
       action: "logoutActionError",
-      additionalData: {
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-      },
     });
 
     await TimingAttackProtection.addConstantDelay();
-    return errResult(
-      new AppError("LOGOUT_UNEXPECTED_ERROR", {
-        userMessage: "ログアウト処理中にエラーが発生しました。再度お試しください。",
-      }),
-      {
-        redirectUrl: "/login",
-      }
-    );
+    return errResult(appError, {
+      redirectUrl: "/login",
+    });
   }
 }

@@ -76,18 +76,15 @@ export async function resendOtpAction(input: ResendOtpCommandInput): Promise<Aut
       message: "確認コードを再送信しました",
     });
   } catch (error) {
-    handleServerError("RESEND_OTP_UNEXPECTED_ERROR", {
-      action: "resendOtpActionError",
-      additionalData: {
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-      },
+    const appError = new AppError("RESEND_OTP_UNEXPECTED_ERROR", {
+      userMessage: "再送信中にエラーが発生しました",
+      cause: error,
     });
 
-    return errResult(
-      new AppError("RESEND_OTP_UNEXPECTED_ERROR", {
-        userMessage: "再送信中にエラーが発生しました",
-      })
-    );
+    handleServerError(appError, {
+      action: "resendOtpActionError",
+    });
+
+    return errResult(appError);
   }
 }

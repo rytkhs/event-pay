@@ -67,19 +67,16 @@ export async function resetPasswordAction(
       redirectUrl: `/verify-otp?email=${encodeURIComponent(sanitizedEmail)}&type=recovery`,
     });
   } catch (error) {
-    handleServerError("RESET_PASSWORD_UNEXPECTED_ERROR", {
+    const appError = new AppError("RESET_PASSWORD_UNEXPECTED_ERROR", {
+      userMessage: "処理中にエラーが発生しました",
+      cause: error,
+    });
+
+    handleServerError(appError, {
       action: "resetPasswordActionError",
-      additionalData: {
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-      },
     });
 
     await TimingAttackProtection.addConstantDelay();
-    return errResult(
-      new AppError("RESET_PASSWORD_UNEXPECTED_ERROR", {
-        userMessage: "処理中にエラーが発生しました",
-      })
-    );
+    return errResult(appError);
   }
 }
