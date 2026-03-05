@@ -76,7 +76,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ us
     // レート制限チェック（ip + emailHash の AND）
     try {
       const headersList = await headers();
-      const ip = getClientIPFromHeaders(headersList);
+      const ip = getClientIPFromHeaders(headersList) ?? undefined;
       const keyInput = buildKey({ scope: "auth.login", ip, email: sanitizedEmail });
       const rateLimitResult = await enforceRateLimit({
         keys: Array.isArray(keyInput) ? keyInput : [keyInput],
@@ -252,7 +252,7 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
     // レート制限チェック（ip + emailHash の AND）
     try {
       const headersList = await headers();
-      const ip = getClientIPFromHeaders(headersList);
+      const ip = getClientIPFromHeaders(headersList) ?? undefined;
       const keyInput = buildKey({ scope: "auth.register", ip, email: sanitizedEmail });
       const rateLimitResult = await enforceRateLimit({
         keys: Array.isArray(keyInput) ? keyInput : [keyInput],
@@ -515,7 +515,7 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
     // レート制限チェック（ip + emailHash の AND）
     try {
       const headersList = await headers();
-      const ip = getClientIPFromHeaders(headersList);
+      const ip = getClientIPFromHeaders(headersList) ?? undefined;
       const sanitizedEmail = InputSanitizer.sanitizeEmail(email);
       const keyInput = buildKey({ scope: "auth.emailResend", ip, email: sanitizedEmail });
       const rateLimitResult = await enforceRateLimit({
@@ -623,7 +623,7 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
     // レート制限チェック（ip + emailHash の AND）
     try {
       const headersList = await headers();
-      const ip = getClientIPFromHeaders(headersList);
+      const ip = getClientIPFromHeaders(headersList) ?? undefined;
       const keyInput = buildKey({ scope: "auth.passwordReset", ip, email });
       const rateLimitResult = await enforceRateLimit({
         keys: Array.isArray(keyInput) ? keyInput : [keyInput],

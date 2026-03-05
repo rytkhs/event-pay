@@ -28,7 +28,7 @@ export async function updateGuestAttendanceAction(
   try {
     const headersList = await headers();
     const userAgent = headersList.get("user-agent") || undefined;
-    const ip = getClientIPFromHeaders(headersList);
+    const ip = getClientIPFromHeaders(headersList) ?? undefined;
     securityContext = { userAgent, ip };
   } catch (_error) {
     // テスト環境など、headers()が利用できない場合は空のコンテキストを使用

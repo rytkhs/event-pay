@@ -37,7 +37,7 @@ export async function getHeaders(): Promise<{
 
     if (headersList) {
       const userAgent = headersList.get("user-agent") ?? undefined;
-      const ip = getClientIPFromHeaders(headersList);
+      const ip = getClientIPFromHeaders(headersList) ?? undefined;
       return { headersList, context: { userAgent, ip } };
     }
 

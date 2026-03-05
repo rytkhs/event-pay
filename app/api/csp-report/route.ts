@@ -40,7 +40,7 @@ const MAX_PAYLOAD_SIZE = 10 * 1024;
  */
 export async function POST(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") || generateSecureUuid();
-  const clientIP = getClientIP(request);
+  const clientIP = getClientIP(request) ?? undefined;
 
   try {
     // レート制限チェック

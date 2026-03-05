@@ -35,11 +35,13 @@ interface VerificationResult {
 
 export async function GET(request: NextRequest) {
   try {
+    const clientIP = getClientIP(request) ?? undefined;
+
     // 事前レート制限（署名検証互換: ボディ未消費）
     const mw = withRateLimit(POLICIES["stripe.checkout"], (r) =>
       buildKey({
         scope: "stripe.checkout",
-        ip: getClientIP(r),
+        ip: clientIP,
         token: r.headers.get("x-guest-token") || undefined,
       })
     );
@@ -61,7 +63,7 @@ export async function GET(request: NextRequest) {
         details: {
           endpoint: "/api/payments/verify-session",
         },
-        ip: getClientIP(request),
+        ip: clientIP,
         timestamp: new Date(),
       });
       return respondWithCode("MISSING_PARAMETER", {
@@ -149,7 +151,7 @@ export async function GET(request: NextRequest) {
           tokenMatch: false,
           attendanceExists: !!attendanceData,
         },
-        ip: getClientIP(request),
+        ip: clientIP,
         timestamp: new Date(),
       });
 
@@ -284,7 +286,7 @@ export async function GET(request: NextRequest) {
                   paymentId: fallbackPayment.id,
                   reason: "session_outdated",
                 },
-                ip: getClientIP(request),
+                ip: clientIP,
                 timestamp: new Date(),
               });
 
@@ -306,7 +308,7 @@ export async function GET(request: NextRequest) {
                 paymentId: fallbackPayment.id,
                 reason: "fallback_matched",
               },
-              ip: getClientIP(request),
+              ip: clientIP,
               timestamp: new Date(),
             });
           }
@@ -325,7 +327,7 @@ export async function GET(request: NextRequest) {
             hasGuestToken: !!guestToken,
             dbErrorCode: dbError ? toErrorLike(dbError).code : undefined,
           },
-          ip: getClientIP(request),
+          ip: clientIP,
           timestamp: new Date(),
         });
 

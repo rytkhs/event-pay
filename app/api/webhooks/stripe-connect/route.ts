@@ -38,7 +38,7 @@ const getQstashClient = () => {
 export async function POST(request: NextRequest) {
   ensureFeaturesRegistered();
 
-  const _clientIP = getClientIP(request);
+  const _clientIP = getClientIP(request) ?? undefined;
   const requestId = request.headers.get("x-request-id") || generateSecureUuid();
   const baseLogContext = { category: "stripe_webhook" as const, actorType: "webhook" as const };
   const connectLogger = logger.withContext({
@@ -55,6 +55,22 @@ export async function POST(request: NextRequest) {
     // 本番のみ: Stripe Webhook 送信元 IP の許可リスト検証
     if (shouldEnforceStripeWebhookIpCheck()) {
       const clientIp = _clientIP;
+      if (!clientIp) {
+        logger.warn("Webhook IP missing", {
+          category: "security",
+          action: "webhook_ip_check",
+          actor_type: "webhook",
+          userAgent: request.headers.get("user-agent") || undefined,
+          outcome: "failure",
+        });
+        return respondWithCode("FORBIDDEN", {
+          instance: "/api/webhooks/stripe-connect",
+          detail: "IP not allowed",
+          correlationId: requestId,
+          logContext: { ...baseLogContext, action: "webhook_ip_missing" },
+        });
+      }
+
       const allowed = await isStripeWebhookIpAllowed(clientIp);
       if (!allowed) {
         // Security logging replaced with standard logger

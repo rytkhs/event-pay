@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
   const messageId = request.headers.get("Upstash-Message-Id");
   const retried = request.headers.get("Upstash-Retried");
   const retriedCount = retried ? parseInt(retried, 10) : 0;
+  const clientIP = getClientIP(request) ?? undefined;
 
   const qstashLogger = logger.withContext({
     category: "stripe_webhook",
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
           path: "/api/workers/stripe-webhook",
         },
         userAgent: request.headers.get("user-agent") || undefined,
-        ip: getClientIP(request),
+        ip: clientIP,
         timestamp: new Date(),
       });
       qstashLogger.warn("Missing QStash signature - non-retryable", {
@@ -148,7 +149,7 @@ export async function POST(request: NextRequest) {
           path: "/api/workers/stripe-webhook",
         },
         userAgent: request.headers.get("user-agent") || undefined,
-        ip: getClientIP(request),
+        ip: clientIP,
         timestamp: new Date(),
       });
       qstashLogger.warn("Invalid QStash signature - non-retryable", {
