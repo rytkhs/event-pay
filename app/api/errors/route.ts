@@ -191,7 +191,7 @@ function queueErrorNotification(
 }
 
 export async function POST(req: NextRequest) {
-  const clientIp = getClientIP(req);
+  const clientIp = getClientIP(req) ?? undefined;
   const requestUserAgent = req.headers.get("user-agent") || undefined;
 
   try {

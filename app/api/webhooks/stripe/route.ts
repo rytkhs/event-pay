@@ -50,10 +50,31 @@ export async function POST(request: NextRequest) {
   });
 
   try {
-    const clientIP = getClientIP(request);
+    const clientIP = getClientIP(request) ?? undefined;
 
     // IP許可リストのチェック（本番環境でのセキュリティ）
     if (shouldEnforceStripeWebhookIpCheck()) {
+      if (!clientIP) {
+        logSecurityEvent({
+          type: "WEBHOOK_IP_REJECTED",
+          severity: "MEDIUM",
+          message: "Webhook request missing CF-Connecting-IP",
+          details: {
+            request_id: requestId,
+            path: "/api/webhooks/stripe",
+            reason: "missing_client_ip",
+          },
+          userAgent: request.headers.get("user-agent") || undefined,
+          timestamp: new Date(),
+        });
+        return respondWithCode("FORBIDDEN", {
+          instance: "/api/webhooks/stripe",
+          detail: "IP address not authorized for webhook access",
+          correlationId: requestId,
+          logContext: { ...baseLogContext, action: "webhook_ip_missing" },
+        });
+      }
+
       const allowed = await isStripeWebhookIpAllowed(clientIP);
       if (!allowed) {
         logSecurityEvent({

@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
   const start = Date.now();
   const corr = `qstash_cancel_${generateSecureUuid()}`;
   const baseLogContext = { category: "event_management" as const, actorType: "webhook" as const };
+  const clientIP = getClientIP(request) ?? undefined;
 
   const cancelLogger = logger.withContext({
     category: "event_management",
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
         message: "Missing QStash signature (event-cancel)",
         details: { correlation_id: corr, path: "/api/workers/event-cancel" },
         userAgent: request.headers.get("user-agent") || undefined,
-        ip: getClientIP(request),
+        ip: clientIP,
         timestamp: new Date(),
       });
       return respondWithCode("UNAUTHORIZED", {
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
         message: "Invalid QStash signature (event-cancel)",
         details: { correlation_id: corr, path: "/api/workers/event-cancel" },
         userAgent: request.headers.get("user-agent") || undefined,
-        ip: getClientIP(request),
+        ip: clientIP,
         timestamp: new Date(),
       });
       return respondWithCode("UNAUTHORIZED", {

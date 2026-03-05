@@ -105,7 +105,7 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
       method: "POST",
       headers: {
         "content-type": "application/csp-report",
-        "x-forwarded-for": "203.0.113.1",
+        "cf-connecting-ip": "203.0.113.1",
         "user-agent": "Mozilla/5.0",
       },
       body: JSON.stringify(cspReport),
@@ -178,7 +178,7 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
       method: "POST",
       headers: {
         "content-type": "application/reports+json",
-        "x-forwarded-for": "203.0.113.1",
+        "cf-connecting-ip": "203.0.113.1",
       },
       body: JSON.stringify(reports),
     });
@@ -230,7 +230,7 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
       method: "POST",
       headers: {
         "content-type": "text/plain", // 不正なContent-Type
-        "x-forwarded-for": "203.0.113.1",
+        "cf-connecting-ip": "203.0.113.1",
       },
       body: JSON.stringify(cspReport),
     });
@@ -278,7 +278,7 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
       headers: {
         "content-type": "application/csp-report",
         "content-length": String(payloadString.length),
-        "x-forwarded-for": "203.0.113.1",
+        "cf-connecting-ip": "203.0.113.1",
       },
       body: payloadString,
     });
@@ -329,7 +329,7 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
       method: "POST",
       headers: {
         "content-type": "application/csp-report",
-        "x-forwarded-for": "203.0.113.1",
+        "cf-connecting-ip": "203.0.113.1",
       },
       body: JSON.stringify(cspReport),
     });
@@ -369,7 +369,7 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
       method: "POST",
       headers: {
         "content-type": "application/csp-report",
-        "x-forwarded-for": "203.0.113.1",
+        "cf-connecting-ip": "203.0.113.1",
       },
       body: invalidJSON,
     });
@@ -411,7 +411,7 @@ describe("CSPレポートAPI統合テスト (/api/csp-report)", () => {
       method: "POST",
       headers: {
         "content-type": "application/csp-report",
-        "x-forwarded-for": "203.0.113.1",
+        "cf-connecting-ip": "203.0.113.1",
       },
       body: JSON.stringify(invalidReport),
     });

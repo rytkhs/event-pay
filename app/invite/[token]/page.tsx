@@ -27,7 +27,7 @@ export default async function InvitePage(props: InvitePageProps) {
   // リクエスト情報を取得（セキュリティログ用）
   const headersList = await headers();
   const userAgent = headersList.get("user-agent") || undefined;
-  const ip = getClientIPFromHeaders(headersList);
+  const ip = getClientIPFromHeaders(headersList) ?? undefined;
 
   try {
     if (!params?.token) {

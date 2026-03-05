@@ -40,7 +40,7 @@ export async function submitContact(input: ContactInput) {
   }
 
   const h = await headers();
-  const ip = getClientIPFromHeaders(h);
+  const ip = getClientIPFromHeaders(h) ?? undefined;
 
   // 2. レート制限チェック
   const rateLimitKey = buildKey({ scope: "contact.submit", ip });

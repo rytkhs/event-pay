@@ -270,7 +270,7 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-forwarded-for": "8.8.8.8, 1.1.1.1",
+        "cf-connecting-ip": "8.8.8.8",
       },
       body: JSON.stringify({
         error: {

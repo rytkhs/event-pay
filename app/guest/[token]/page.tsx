@@ -65,7 +65,7 @@ export default async function GuestPage(props: GuestPageProps) {
     // リクエスト情報を取得（セキュリティログ用）
     const headersList = await headers();
     const userAgent = headersList.get("user-agent") || undefined;
-    const ip = getClientIPFromHeaders(headersList);
+    const ip = getClientIPFromHeaders(headersList) ?? undefined;
 
     // ゲストトークンの検証
     const validation = await getGuestValidation(token);
@@ -104,7 +104,7 @@ export default async function GuestPage(props: GuestPageProps) {
     // リクエスト情報を取得（エラーハンドリング用）
     const errorHeadersList = await headers();
     const errorUserAgent = errorHeadersList.get("user-agent") || undefined;
-    const errorIp = getClientIPFromHeaders(errorHeadersList);
+    const errorIp = getClientIPFromHeaders(errorHeadersList) ?? undefined;
 
     const errorContext = {
       action: "guest_page_load",

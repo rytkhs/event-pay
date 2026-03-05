@@ -142,6 +142,7 @@ export class VerifySessionTestHelper {
 
     const headers = new Headers();
     headers.set("Content-Type", "application/json");
+    headers.set("cf-connecting-ip", "203.0.113.10");
     if (guestToken) headers.set("x-guest-token", guestToken);
 
     return new NextRequest(url, { headers });
@@ -177,6 +178,7 @@ export class VerifySessionTestHelper {
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
+      "cf-connecting-ip": "203.0.113.10",
     };
 
     if (guestToken) {
