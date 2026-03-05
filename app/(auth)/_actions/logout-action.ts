@@ -1,15 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 
 import { TimingAttackProtection } from "@core/auth-security";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
-import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { handleServerError } from "@core/utils/error-handler.server";
-import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
+
+import { trackAuthEvent } from "./_shared/auth-telemetry";
 
 /**
  * ログアウト
@@ -40,36 +39,7 @@ export async function logoutAction(): Promise<ActionResult> {
       });
     }
 
-    // GA4: ログアウトイベントを送信（非同期、エラーは無視）
-    waitUntil(
-      (async () => {
-        try {
-          const { ga4Server } = await import("@core/analytics/ga4-server");
-
-          // _ga CookieからClient IDを取得
-          const cookieStore = await cookies();
-          const gaCookie = cookieStore.get("_ga")?.value;
-          const clientId = extractClientIdFromGaCookie(gaCookie);
-
-          await ga4Server.sendEvent(
-            {
-              name: "logout",
-              params: {},
-            },
-            clientId ?? undefined,
-            userId,
-            undefined, // sessionId（現時点では未設定）
-            undefined // engagementTimeMsec（現時点では未設定）
-          );
-        } catch (error) {
-          logger.debug("[GA4] Failed to send logout event", {
-            category: "system",
-            action: "ga4LogoutEventFailed",
-            error_message: error instanceof Error ? error.message : String(error),
-          });
-        }
-      })()
-    );
+    trackAuthEvent({ name: "logout", userId });
 
     return ok(undefined, { message: "ログアウトしました", redirectUrl: "/login" });
   } catch (error) {

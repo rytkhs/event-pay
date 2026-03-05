@@ -3,18 +3,12 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
-import { hasAuthErrorCode } from "@core/supabase/auth-guards";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { verifyOtpInputSchema } from "@core/validation/auth";
 
-function formDataToObject(formData: FormData): Record<string, string> {
-  const data: Record<string, string> = {};
-  for (const [key, value] of formData.entries()) {
-    data[key] = value.toString();
-  }
-  return data;
-}
+import { mapVerifyOtpErrorToFail } from "./_shared/auth-error-mappers";
+import { formDataToObject } from "./_shared/form-data";
 
 /**
  * OTP検証
@@ -49,17 +43,7 @@ export async function verifyOtpAction(formData: FormData): Promise<ActionResult>
         },
       });
 
-      let errorMessage = "確認コードが正しくありません";
-      let errorCode: "OTP_INVALID" | "OTP_EXPIRED" = "OTP_INVALID";
-      if (hasAuthErrorCode(verifiedError, "otp_expired")) {
-        errorMessage = "確認コードが無効、もしくは有効期限が切れています";
-        errorCode = "OTP_EXPIRED";
-      } else if (hasAuthErrorCode(verifiedError, "otp_invalid")) {
-        errorMessage = "無効な確認コードです";
-        errorCode = "OTP_INVALID";
-      }
-
-      return fail(errorCode, { userMessage: errorMessage });
+      return mapVerifyOtpErrorToFail(verifiedError);
     }
 
     // タイプに応じてリダイレクト先を決定

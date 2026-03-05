@@ -1,5 +1,3 @@
-"use server";
-
 export { loginAction } from "./_actions/login-action";
 export { registerAction } from "./_actions/register-action";
 export { verifyOtpAction } from "./_actions/verify-otp-action";

@@ -5,13 +5,7 @@ import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { completePasswordResetInputSchema } from "@core/validation/auth";
 
-function formDataToObject(formData: FormData): Record<string, string> {
-  const data: Record<string, string> = {};
-  for (const [key, value] of formData.entries()) {
-    data[key] = value.toString();
-  }
-  return data;
-}
+import { formDataToObject } from "./_shared/form-data";
 
 /**
  * パスワード更新（リセット後）

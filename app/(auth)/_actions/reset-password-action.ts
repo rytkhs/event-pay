@@ -1,24 +1,14 @@
 "use server";
 
-import { headers } from "next/headers";
-
 import { TimingAttackProtection, InputSanitizer } from "@core/auth-security";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
-import { logger } from "@core/logging/app-logger";
-import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit/index";
 import { isResetPasswordResult } from "@core/supabase/auth-guards";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
-import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { resetPasswordInputSchema } from "@core/validation/auth";
 
-function formDataToObject(formData: FormData): Record<string, string> {
-  const data: Record<string, string> = {};
-  for (const [key, value] of formData.entries()) {
-    data[key] = value.toString();
-  }
-  return data;
-}
+import { checkAuthRateLimit } from "./_shared/auth-rate-limit";
+import { formDataToObject } from "./_shared/form-data";
 
 /**
  * パスワードリセット要求
@@ -47,30 +37,16 @@ export async function resetPasswordAction(formData: FormData): Promise<ActionRes
       return fail("VALIDATION_ERROR", { userMessage: "有効なメールアドレスを入力してください" });
     }
     // レート制限チェック（ip + emailHash の AND）
-    try {
-      const headersList = await headers();
-      const ip = getClientIPFromHeaders(headersList) ?? undefined;
-      const keyInput = buildKey({ scope: "auth.passwordReset", ip, email });
-      const rateLimitResult = await enforceRateLimit({
-        keys: Array.isArray(keyInput) ? keyInput : [keyInput],
-        policy: POLICIES["auth.passwordReset"],
-      });
-      if (!rateLimitResult.allowed) {
-        await TimingAttackProtection.addConstantDelay();
-        return fail("RATE_LIMITED", {
-          userMessage:
-            "パスワードリセット試行回数が上限に達しました。しばらく時間をおいてからお試しください",
-          retryable: true,
-        });
-      }
-    } catch (rateLimitError) {
-      logger.warn("Rate limit check failed during password reset", {
-        category: "security",
-        action: "rateLimitCheckFailed",
-        error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
-        error_message:
-          rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
-      });
+    const rateLimitCheck = await checkAuthRateLimit({
+      scope: "auth.passwordReset",
+      email,
+      blockedMessage:
+        "パスワードリセット試行回数が上限に達しました。しばらく時間をおいてからお試しください",
+      failureLogMessage: "Rate limit check failed during password reset",
+      withConstantDelay: async () => await TimingAttackProtection.addConstantDelay(),
+    });
+    if (!rateLimitCheck.allowed) {
+      return rateLimitCheck.result;
     }
     const supabase = await createServerActionSupabaseClient();
 

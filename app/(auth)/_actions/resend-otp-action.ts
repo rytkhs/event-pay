@@ -1,16 +1,13 @@
 "use server";
 
-import { headers } from "next/headers";
-
 import { InputSanitizer } from "@core/auth-security";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
-import { logger } from "@core/logging/app-logger";
-import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit/index";
-import { hasAuthErrorCode } from "@core/supabase/auth-guards";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
-import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { emailCheckSchema } from "@core/validation/auth";
+
+import { mapResendOtpErrorToFail } from "./_shared/auth-error-mappers";
+import { checkAuthRateLimit } from "./_shared/auth-rate-limit";
 
 /**
  * OTP再送信
@@ -25,29 +22,15 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
     }
 
     // レート制限チェック（ip + emailHash の AND）
-    try {
-      const headersList = await headers();
-      const ip = getClientIPFromHeaders(headersList) ?? undefined;
-      const sanitizedEmail = InputSanitizer.sanitizeEmail(email);
-      const keyInput = buildKey({ scope: "auth.emailResend", ip, email: sanitizedEmail });
-      const rateLimitResult = await enforceRateLimit({
-        keys: Array.isArray(keyInput) ? keyInput : [keyInput],
-        policy: POLICIES["auth.emailResend"],
-      });
-      if (!rateLimitResult.allowed) {
-        return fail("RATE_LIMITED", {
-          userMessage: "送信回数の上限に達しました。しばらく時間をおいてからお試しください",
-          retryable: true,
-        });
-      }
-    } catch (rateLimitError) {
-      logger.warn("Rate limit check failed during email resend", {
-        category: "security",
-        action: "rateLimitCheckFailed",
-        error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
-        error_message:
-          rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
-      });
+    const rateLimitCheck = await checkAuthRateLimit({
+      scope: "auth.emailResend",
+      email,
+      blockedMessage: "送信回数の上限に達しました。しばらく時間をおいてからお試しください",
+      failureLogMessage: "Rate limit check failed during email resend",
+      normalizeEmail: InputSanitizer.sanitizeEmail,
+    });
+    if (!rateLimitCheck.allowed) {
+      return rateLimitCheck.result;
     }
 
     const supabase = await createServerActionSupabaseClient();
@@ -79,16 +62,7 @@ export async function resendOtpAction(formData: FormData): Promise<ActionResult>
         },
       });
 
-      if (hasAuthErrorCode(error, "over_email_send_limit")) {
-        return fail("RATE_LIMITED", {
-          userMessage: "送信回数の上限に達しました。しばらく時間をおいてからお試しください",
-          retryable: true,
-        });
-      }
-
-      return fail("RESEND_OTP_UNEXPECTED_ERROR", {
-        userMessage: "再送信中にエラーが発生しました",
-      });
+      return mapResendOtpErrorToFail(error);
     }
 
     return ok(undefined, { message: "確認コードを再送信しました" });

@@ -1,28 +1,19 @@
 "use server";
 
-import { cookies, headers } from "next/headers";
-
 import { TimingAttackProtection, InputSanitizer } from "@core/auth-security";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
-import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit/index";
-import { hasAuthErrorCode } from "@core/supabase/auth-guards";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { handleServerError } from "@core/utils/error-handler.server";
-import { extractClientIdFromGaCookie } from "@core/utils/ga-cookie";
-import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { formatUtcToJst } from "@core/utils/timezone";
 import { registerInputSchema } from "@core/validation/auth";
 
-function formDataToObject(formData: FormData): Record<string, string> {
-  const data: Record<string, string> = {};
-  for (const [key, value] of formData.entries()) {
-    data[key] = value.toString();
-  }
-  return data;
-}
+import { mapRegisterAuthErrorToFail } from "./_shared/auth-error-mappers";
+import { checkAuthRateLimit } from "./_shared/auth-rate-limit";
+import { trackAuthEvent } from "./_shared/auth-telemetry";
+import { formDataToObject } from "./_shared/form-data";
 
 /**
  * ユーザー登録
@@ -48,29 +39,15 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
     const sanitizedName = name.trim();
 
     // レート制限チェック（ip + emailHash の AND）
-    try {
-      const headersList = await headers();
-      const ip = getClientIPFromHeaders(headersList) ?? undefined;
-      const keyInput = buildKey({ scope: "auth.register", ip, email: sanitizedEmail });
-      const rateLimitResult = await enforceRateLimit({
-        keys: Array.isArray(keyInput) ? keyInput : [keyInput],
-        policy: POLICIES["auth.register"],
-      });
-      if (!rateLimitResult.allowed) {
-        await TimingAttackProtection.addConstantDelay();
-        return fail("RATE_LIMITED", {
-          userMessage: "登録試行回数が上限に達しました。しばらく時間をおいてからお試しください",
-          retryable: true,
-        });
-      }
-    } catch (rateLimitError) {
-      logger.warn("Rate limit check failed during registration", {
-        category: "security",
-        action: "rateLimitCheckFailed",
-        error_name: rateLimitError instanceof Error ? rateLimitError.name : "Unknown",
-        error_message:
-          rateLimitError instanceof Error ? rateLimitError.message : String(rateLimitError),
-      });
+    const rateLimitCheck = await checkAuthRateLimit({
+      scope: "auth.register",
+      email: sanitizedEmail,
+      blockedMessage: "登録試行回数が上限に達しました。しばらく時間をおいてからお試しください",
+      failureLogMessage: "Rate limit check failed during registration",
+      withConstantDelay: async () => await TimingAttackProtection.addConstantDelay(),
+    });
+    if (!rateLimitCheck.allowed) {
+      return rateLimitCheck.result;
     }
 
     const supabase = await createServerActionSupabaseClient();
@@ -103,63 +80,16 @@ export async function registerAction(formData: FormData): Promise<ActionResult<{
         },
       });
 
-      // ユーザー列挙攻撃対策: 詳細なエラー情報を隠す
-      let errorMessage = "登録処理中にエラーが発生しました";
-      let errorCode: "ALREADY_EXISTS" | "RATE_LIMITED" | "REGISTRATION_UNEXPECTED_ERROR" =
-        "REGISTRATION_UNEXPECTED_ERROR";
-
-      if (hasAuthErrorCode(signUpError, "user_already_exists")) {
-        // 既存ユーザー情報の漏洩を防ぐため、統一されたメッセージ
-        errorMessage = "このメールアドレスは既に登録されています";
-        errorCode = "ALREADY_EXISTS";
-      } else if (hasAuthErrorCode(signUpError, "over_email_send_limit")) {
-        errorMessage = "送信回数の上限に達しました。しばらく時間をおいてからお試しください";
-        errorCode = "RATE_LIMITED";
-      }
-
-      return fail(errorCode, {
-        userMessage: errorMessage,
-        retryable: errorCode === "RATE_LIMITED",
-      });
+      return mapRegisterAuthErrorToFail(signUpError);
     }
 
     // Database Triggerがpublic.usersプロファイルを自動作成
 
-    // GA4: サインアップイベントを送信（非同期、エラーは無視）
-    waitUntil(
-      (async () => {
-        try {
-          const { ga4Server } = await import("@core/analytics/ga4-server");
-
-          // _ga CookieからClient IDを取得
-          const cookieStore = await cookies();
-          const gaCookie = cookieStore.get("_ga")?.value;
-          const clientId = extractClientIdFromGaCookie(gaCookie);
-
-          // ユーザーIDを取得（Client IDがない場合のフォールバック）
-          const userId = signUpData?.user?.id;
-
-          await ga4Server.sendEvent(
-            {
-              name: "sign_up",
-              params: {
-                method: "password",
-              },
-            },
-            clientId ?? undefined,
-            userId,
-            undefined, // sessionId（現時点では未設定）
-            undefined // engagementTimeMsec（現時点では未設定）
-          );
-        } catch (error) {
-          logger.debug("[GA4] Failed to send sign_up event", {
-            category: "system",
-            action: "ga4SignUpEventFailed",
-            error_message: error instanceof Error ? error.message : String(error),
-          });
-        }
-      })()
-    );
+    trackAuthEvent({
+      name: "sign_up",
+      method: "password",
+      userId: signUpData?.user?.id,
+    });
 
     // Slack通知（新規アカウント作成）
     waitUntil(
