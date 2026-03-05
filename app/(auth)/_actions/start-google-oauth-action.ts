@@ -5,7 +5,14 @@ import { redirect } from "next/navigation";
 
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 
-export async function startGoogleOAuth(formData: FormData) {
+/**
+ * Google OAuth 認証を開始する (redirect-only)
+ *
+ * @remarks
+ * 成功時: Google の OAuth 画面へ redirect
+ * 失敗時: /auth/auth-code-error へ redirect
+ */
+export async function startGoogleOAuth(formData: FormData): Promise<never> {
   const nextParam = (formData.get("next") as string) || "/";
 
   const hdrs = await headers();

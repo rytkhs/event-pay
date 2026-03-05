@@ -11,7 +11,7 @@ import { LINE_ERROR_MESSAGES } from "@core/auth/line-error-messages";
 
 import { useLoginFormRHF } from "@features/auth";
 
-import { loginAction } from "@/app/(auth)/actions";
+import { loginAction, startGoogleOAuth } from "@/app/(auth)/actions";
 import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
 import { LINELoginButton } from "@/components/auth/LINELoginButton";
 import { Button } from "@/components/ui/button";
@@ -26,8 +26,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-
-import { startGoogleOAuth } from "./actions";
 
 function LoginForm() {
   const searchParams = useSearchParams();
