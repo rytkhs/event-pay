@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import type { User } from "@supabase/supabase-js";
-import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
 
 import { AppError, isErrorCode } from "@core/errors";
 import { respondWithCode } from "@core/errors/server";
@@ -12,6 +10,7 @@ import {
   releaseErrorDedupeHash,
   shouldLogError,
 } from "@core/logging/deduplication";
+import { POLICIES, buildKey, enforceRateLimit } from "@core/rate-limit";
 import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createRouteHandlerSupabaseClient } from "@core/supabase/factory";
@@ -22,16 +21,6 @@ import { errorReportSchema } from "@core/validation/error-report";
 import type { Database, Json } from "@/types/database";
 
 export const dynamic = "force-dynamic";
-
-// レート制限設定
-const ratelimit =
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
-    ? new Ratelimit({
-        redis: Redis.fromEnv(),
-        limiter: Ratelimit.slidingWindow(50, "1 m"), // 1分間に50リクエスト
-        analytics: true,
-      })
-    : null;
 
 type LogCategory = Database["public"]["Enums"]["log_category_enum"];
 type SystemLogInsert = Database["public"]["Tables"]["system_logs"]["Insert"];
@@ -206,16 +195,25 @@ export async function POST(req: NextRequest) {
   const requestUserAgent = req.headers.get("user-agent") || undefined;
 
   try {
-    if (ratelimit) {
-      const { success: rateLimitOk, remaining } = await ratelimit.limit(`error_log_${clientIp}`);
-      if (!rateLimitOk) {
-        return respondWithCode("RATE_LIMITED", {
-          instance: API_INSTANCE,
-          detail: "Too many requests",
-          logContext: { ...BASE_LOG_CONTEXT, action: "error_collection_rate_limited" },
-          headers: { "X-RateLimit-Remaining": String(remaining) },
-        });
-      }
+    const rateLimitKey = buildKey({
+      scope: POLICIES["error.report"].scope,
+      ip: clientIp,
+    });
+    const rateLimitKeys = Array.isArray(rateLimitKey) ? rateLimitKey : [rateLimitKey];
+    const rateLimitResult = await enforceRateLimit({
+      keys: rateLimitKeys,
+      policy: POLICIES["error.report"],
+    });
+    if (!rateLimitResult.allowed) {
+      return respondWithCode("RATE_LIMITED", {
+        instance: API_INSTANCE,
+        detail: "Too many requests",
+        logContext: { ...BASE_LOG_CONTEXT, action: "error_collection_rate_limited" },
+        headers: {
+          "Retry-After": String(rateLimitResult.retryAfter || 60),
+          "X-RateLimit-Remaining": "0",
+        },
+      });
     }
 
     let body: unknown;

@@ -21,11 +21,10 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
   const mockHandleServerError = jest.fn();
   const mockNotifyError = jest.fn();
   const mockWaitUntil = jest.fn();
+  const mockBuildKey = jest.fn();
+  const mockEnforceRateLimit = jest.fn();
 
   let postHandler: (request: NextRequest) => Promise<Response>;
-  let mockLimit: jest.MockedFunction<
-    (key: string) => Promise<{ success: boolean; remaining: number }>
-  >;
 
   beforeEach(async () => {
     jest.resetModules();
@@ -35,9 +34,6 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
-    process.env.UPSTASH_REDIS_REST_URL = "https://test.upstash.io";
-    process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
-
     mockCreateErrorDedupeHash.mockResolvedValue("dedupe-hash");
     mockShouldLogError.mockResolvedValue(true);
     mockReleaseErrorDedupeHash.mockResolvedValue(undefined);
@@ -57,26 +53,15 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
     mockSupabaseInsert.mockResolvedValue({ error: null, data: [] });
     mockSupabaseFrom.mockClear();
 
-    mockLimit = jest
-      .fn<(key: string) => Promise<{ success: boolean; remaining: number }>>()
-      .mockResolvedValue({ success: true, remaining: 49 });
+    mockBuildKey.mockReturnValue("RL:error.report:ip:8.8.8.8");
+    mockEnforceRateLimit.mockResolvedValue({ allowed: true, remaining: 49 });
 
-    jest.doMock("@upstash/ratelimit", () => {
-      const RatelimitMock: any = jest.fn().mockImplementation(() => ({
-        limit: mockLimit,
-      }));
-      RatelimitMock.slidingWindow = jest.fn((tokens: number, window: string) => ({
-        type: "slidingWindow",
-        tokens,
-        window,
-      }));
-      return { Ratelimit: RatelimitMock };
-    });
-
-    jest.doMock("@upstash/redis", () => ({
-      Redis: {
-        fromEnv: jest.fn(() => ({})),
+    jest.doMock("@core/rate-limit", () => ({
+      POLICIES: {
+        "error.report": { scope: "error.report", limit: 50, window: "1 m", blockMs: 60_000 },
       },
+      buildKey: mockBuildKey,
+      enforceRateLimit: mockEnforceRateLimit,
     }));
 
     jest.doMock("@core/logging/deduplication", () => ({
@@ -279,7 +264,7 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
   });
 
   test("I-A-05: レート制限発動 - 429とヘッダー", async () => {
-    mockLimit.mockResolvedValue({ success: false, remaining: 0 });
+    mockEnforceRateLimit.mockResolvedValue({ allowed: false, retryAfter: 60, remaining: 0 });
 
     const request = new NextRequest("https://example.com/api/errors", {
       method: "POST",
@@ -308,7 +293,16 @@ describe("エラー収集API統合テスト (/api/errors)", () => {
 
     expect(response.headers.get("Retry-After")).toBe("60");
     expect(response.headers.get("X-RateLimit-Remaining")).toBe("0");
-    expect(mockLimit).toHaveBeenCalledWith("error_log_8.8.8.8");
+    expect(mockBuildKey).toHaveBeenCalledWith({ scope: "error.report", ip: "8.8.8.8" });
+    expect(mockEnforceRateLimit).toHaveBeenCalledWith({
+      keys: ["RL:error.report:ip:8.8.8.8"],
+      policy: {
+        scope: "error.report",
+        limit: 50,
+        window: "1 m",
+        blockMs: 60_000,
+      },
+    });
   });
 
   test("I-A-06: DB保存エラー時も204を返しdedupeキーを解放", async () => {
