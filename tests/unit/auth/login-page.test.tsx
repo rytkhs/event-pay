@@ -32,8 +32,11 @@ jest.mock("@features/auth", () => ({
 }));
 
 // コンポーネントのモック
-jest.mock("@/components/auth", () => ({
+jest.mock("@/components/auth/GoogleLoginButton", () => ({
   GoogleLoginButton: () => <button>Google Login</button>,
+}));
+
+jest.mock("@/components/auth/LINELoginButton", () => ({
   LINELoginButton: ({ href }: { href: string }) => <a href={href}>LINE Login</a>,
 }));
 
