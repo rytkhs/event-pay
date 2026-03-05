@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { requireCurrentUserForServerComponent } from "@core/auth/auth-utils";
 import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 
 import { DemoBanner } from "@features/demo";
@@ -18,23 +19,18 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
  * アプリケーションサイドバー（AppSidebar）とメインコンテンツエリアを提供します。
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  // 認証状態を取得（middlewareで認証済みであることが保証されている）
+  const user = await requireCurrentUserForServerComponent();
   const supabase = await createServerComponentSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   // usersテーブルからユーザー情報を取得
-  const currentUser = user
-    ? await supabase
-        .from("users")
-        .select("id, name, created_at, updated_at")
-        .eq("id", user.id)
-        .single()
-        .then(({ data, error }) =>
-          error ? { ...user, name: user.email } : { ...user, name: data?.name || user.email }
-        )
-    : null;
+  const currentUser = await supabase
+    .from("users")
+    .select("id, name, created_at, updated_at")
+    .eq("id", user.id)
+    .single()
+    .then(({ data, error }) =>
+      error ? { ...user, name: user.email } : { ...user, name: data?.name || user.email }
+    );
 
   return (
     <SidebarProvider>

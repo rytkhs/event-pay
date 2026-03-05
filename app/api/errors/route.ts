@@ -13,6 +13,8 @@ import { errorReportSchema } from "@core/validation/error-report";
 
 import type { Database } from "@/types/database";
 
+export const dynamic = "force-dynamic";
+
 // レート制限設定
 const ratelimit =
   process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN

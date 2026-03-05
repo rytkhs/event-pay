@@ -54,7 +54,6 @@ const CONFIG = {
 };
 
 // --- 定数・ユーティリティ ---
-const DEMO_STRIPE_ACCOUNT_ID = process.env.DEMO_STRIPE_ACCOUNT_ID;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const iso = (d: Date) => d.toISOString();
@@ -262,6 +261,8 @@ async function waitForPublicUserRow(client: AppSupabaseClient, userId: string) {
 }
 
 async function setupUserAndStripe(client: AppSupabaseClient, userId: string, now: Date) {
+  const demoStripeAccountId = process.env.DEMO_STRIPE_ACCOUNT_ID;
+
   await waitForPublicUserRow(client, userId);
 
   const { data: authUserRes, error: authUserErr } = await client.auth.admin.getUserById(userId);
@@ -281,7 +282,7 @@ async function setupUserAndStripe(client: AppSupabaseClient, userId: string, now
   const { error: stripeErr } = await client.from("stripe_connect_accounts").upsert(
     {
       user_id: userId,
-      stripe_account_id: DEMO_STRIPE_ACCOUNT_ID ?? "",
+      stripe_account_id: demoStripeAccountId ?? "",
       status: "verified" as StripeAccountStatus,
       charges_enabled: true,
       payouts_enabled: true,

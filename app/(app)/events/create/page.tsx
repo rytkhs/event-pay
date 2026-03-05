@@ -1,7 +1,3 @@
-import { redirect } from "next/navigation";
-
-import { createServerComponentSupabaseClient } from "@core/supabase/factory";
-
 export const dynamic = "force-dynamic";
 
 import { SinglePageEventForm } from "@features/events";
@@ -10,17 +6,6 @@ import { getDetailedAccountStatusAction } from "@features/stripe-connect/server"
 import { createEventAction } from "./actions";
 
 export default async function CreateEventPage() {
-  const supabase = await createServerComponentSupabaseClient();
-
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    redirect("/login");
-  }
-
   // Stripe Connectの詳細状態を取得し、オンライン決済可否を決定
   const detailedStatus = await getDetailedAccountStatusAction();
 

@@ -11,9 +11,11 @@ export const metadata: Metadata = {
   robots: "noindex, nofollow, noarchive",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function StartDemoPage() {
   const isDemo = process.env.NEXT_PUBLIC_IS_DEMO === "true";
-  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || "https://minnanoshukin.com";
+  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || "https://minnano-shukin.com";
 
   if (!isDemo) {
     // 本番環境ではアクセス不可
