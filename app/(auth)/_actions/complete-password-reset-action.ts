@@ -1,65 +1,22 @@
 "use server";
 
-import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
-import { createServerActionSupabaseClient } from "@core/supabase/factory";
-import { handleServerError } from "@core/utils/error-handler.server";
-import { completePasswordResetInputSchema } from "@core/validation/auth";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
+import { completePasswordResetAction as completePasswordResetActionImpl } from "@features/auth/server";
 
+import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
+
+import { projectAuthCommandResult } from "./_shared/result-projection";
 import { formDataToObject } from "./_shared/form-data";
 
 /**
  * パスワード更新（リセット後）
  */
 export async function completePasswordResetAction(formData: FormData): Promise<ActionResult> {
-  try {
-    const rawData = formDataToObject(formData);
-    const result = completePasswordResetInputSchema.safeParse(rawData);
+  ensureFeaturesRegistered();
 
-    if (!result.success) {
-      return fail("VALIDATION_ERROR", {
-        userMessage: "入力内容を確認してください",
-        fieldErrors: result.error.flatten().fieldErrors,
-      });
-    }
+  const result = await completePasswordResetActionImpl({
+    rawData: formDataToObject(formData),
+  });
 
-    const { password } = result.data;
-    const supabase = await createServerActionSupabaseClient();
-
-    // セッション存在チェック
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData?.user) {
-      return fail("TOKEN_EXPIRED", {
-        userMessage: "セッションが期限切れです。確認コードを再入力してください",
-        redirectUrl: "/verify-otp",
-      });
-    }
-
-    const { error: updateError } = await supabase.auth.updateUser({
-      password,
-    });
-
-    if (updateError) {
-      handleServerError(updateError, {
-        category: "authentication",
-        action: "updatePasswordFailed",
-        actorType: "user",
-      });
-      return fail("UPDATE_PASSWORD_UNEXPECTED_ERROR", {
-        userMessage: "パスワードの更新に失敗しました",
-      });
-    }
-
-    return ok(undefined, { message: "パスワードが更新されました", redirectUrl: "/dashboard" });
-  } catch (error) {
-    handleServerError("UPDATE_PASSWORD_UNEXPECTED_ERROR", {
-      action: "updatePasswordActionError",
-      additionalData: {
-        error_name: error instanceof Error ? error.name : "Unknown",
-        error_message: error instanceof Error ? error.message : String(error),
-      },
-    });
-    return fail("UPDATE_PASSWORD_UNEXPECTED_ERROR", {
-      userMessage: "処理中にエラーが発生しました",
-    });
-  }
+  return projectAuthCommandResult(result).actionResult;
 }

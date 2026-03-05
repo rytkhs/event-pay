@@ -23,6 +23,10 @@ jest.mock("@core/supabase/factory", () => ({
   createServerActionSupabaseClient: jest.fn(async () => mockSupabase),
 }));
 
+jest.mock("@/app/_init/feature-registrations", () => ({
+  ensureFeaturesRegistered: jest.fn(),
+}));
+
 // auth-securityモジュールをモック化
 jest.mock("../../../core/auth-security", () => ({
   TimingAttackProtection: {
