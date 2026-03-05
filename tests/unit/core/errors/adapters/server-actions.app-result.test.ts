@@ -1,11 +1,11 @@
-import { AppError } from "@core/errors/app-error";
-import { errResult, okResult } from "@core/errors/app-result";
 import {
   fail,
   ok,
   toActionResultFromAppResult,
   toAppResultFromActionResult,
 } from "@core/errors/adapters/server-actions";
+import { AppError } from "@core/errors/app-error";
+import { errResult, okResult } from "@core/errors/app-result";
 
 describe("core/errors/adapters/server-actions AppResult conversions", () => {
   it("toActionResultFromAppResult maps success", () => {
@@ -34,6 +34,23 @@ describe("core/errors/adapters/server-actions AppResult conversions", () => {
       expect(action.error.userMessage).toBe("bad");
       expect(action.error.retryable).toBe(false);
       expect(action.error.correlationId.startsWith("sa_")).toBe(true);
+    }
+  });
+
+  it("toActionResultFromAppResult drops duplicated validation field errors from details", () => {
+    const error = new AppError("VALIDATION_ERROR", {
+      userMessage: "bad input",
+      details: { email: ["invalid"], _form: ["failed"] },
+    });
+    const result = errResult(error);
+    const action = toActionResultFromAppResult(result);
+    expect(action.success).toBe(false);
+    if (!action.success) {
+      expect(action.error.fieldErrors).toEqual({
+        email: ["invalid"],
+        _form: ["failed"],
+      });
+      expect(action.error.details).toBeUndefined();
     }
   });
 

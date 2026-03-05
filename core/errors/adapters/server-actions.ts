@@ -118,7 +118,13 @@ function toActionError(
   const fieldErrors =
     options.fieldErrors ??
     (appError.code === "VALIDATION_ERROR" ? coerceFieldErrors(mergedDetails) : undefined);
-  const sanitizedDetails = sanitizeDetails(mergedDetails);
+  const detailsWithoutFieldErrors =
+    fieldErrors && mergedDetails
+      ? Object.fromEntries(
+          Object.entries(mergedDetails).filter(([key]) => !Object.hasOwn(fieldErrors, key))
+        )
+      : mergedDetails;
+  const sanitizedDetails = sanitizeDetails(detailsWithoutFieldErrors);
 
   return {
     code: appError.code,
