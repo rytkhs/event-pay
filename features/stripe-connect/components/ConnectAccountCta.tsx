@@ -78,11 +78,6 @@ export function ConnectAccountCta({ status }: ConnectAccountCtaProps) {
             <Button asChild className={`${classes.button} shadow-sm`} size="sm">
               <Link href={status.actionUrl}>{status.actionText}</Link>
             </Button>
-            {status.statusType === "requirements_due" && (
-              <p className={`text-xs ${classes.description} opacity-75`}>
-                今すぐ対応することをお勧めします
-              </p>
-            )}
           </div>
         </div>
       </div>

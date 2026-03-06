@@ -21,9 +21,9 @@ describe("ConnectAccountCtaWrapper", () => {
         stripeCtaStatus: Promise.resolve({
           statusType: "requirements_due",
           severity: "warning",
-          title: "設定を完了してください",
+          title: "決済機能はまだ利用開始前です",
           description: "追加情報が必要です",
-          actionText: "設定を続ける",
+          actionText: "状況を確認",
           actionUrl: "/settings/payments",
         }),
       }),
@@ -31,7 +31,9 @@ describe("ConnectAccountCtaWrapper", () => {
 
     render(ui);
 
-    expect(screen.getByTestId("connect-account-cta")).toHaveTextContent("設定を完了してください");
+    expect(screen.getByTestId("connect-account-cta")).toHaveTextContent(
+      "決済機能はまだ利用開始前です"
+    );
   });
 
   it("returns null when CTA status is unavailable", async () => {
