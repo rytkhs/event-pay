@@ -1,11 +1,13 @@
 import { cache } from "react";
 
+import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
 import {
   createServerActionSupabaseClient,
   createServerComponentSupabaseClient,
 } from "@core/supabase/factory";
+import { isMissingAuthSessionError } from "@core/supabase/auth-guards";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 type AuthLookupContext = "server_action" | "server_component";
@@ -17,6 +19,8 @@ export type CurrentAppUser = {
   email?: string | null;
   name: string | null;
 };
+
+const LOGIN_PATH = "/login";
 
 async function getCurrentUserWithClient(createClient: CreateUserClient) {
   const supabase = await createClient();
@@ -49,7 +53,19 @@ function throwMissingAuthenticatedUser(context: AuthLookupContext): never {
   throw error;
 }
 
+function isUnauthenticatedLookupResult(result: UserLookupResult): boolean {
+  if (!result.user && !result.authError) {
+    return true;
+  }
+
+  return !result.user && isMissingAuthSessionError(result.authError);
+}
+
 function resolveRequiredUser(result: UserLookupResult, context: AuthLookupContext): User {
+  if (context === "server_component" && isUnauthenticatedLookupResult(result)) {
+    redirect(LOGIN_PATH);
+  }
+
   if (result.authError) {
     logAuthLookupError(context, result.authError);
     throw new Error("Failed to resolve authenticated user from Supabase Auth.");
@@ -72,12 +88,18 @@ async function getCurrentUserLookup(context: AuthLookupContext): Promise<UserLoo
 }
 
 async function getOptionalCurrentUser(context: AuthLookupContext): Promise<User | null> {
-  const { user, authError } = await getCurrentUserLookup(context);
-  if (authError) {
-    logAuthLookupError(context, authError);
+  const result = await getCurrentUserLookup(context);
+
+  if (isUnauthenticatedLookupResult(result)) {
     return null;
   }
-  return user;
+
+  if (result.authError) {
+    logAuthLookupError(context, result.authError);
+    return null;
+  }
+
+  return result.user;
 }
 
 async function requireCurrentUser(context: AuthLookupContext): Promise<User> {

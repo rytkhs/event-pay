@@ -1,4 +1,4 @@
-import { AuthError, isAuthApiError } from "@supabase/supabase-js";
+import { AuthError, isAuthApiError, isAuthSessionMissingError } from "@supabase/supabase-js";
 
 /**
  * AuthErrorのmessageプロパティを安全に取得
@@ -25,6 +25,21 @@ export function hasAuthErrorCode(error: unknown, code: string): boolean {
   if (isAuthApiError(error)) {
     return error.code === code;
   }
+  return false;
+}
+
+/**
+ * セッション欠如を表す認証エラーかどうかを判定する
+ */
+export function isMissingAuthSessionError(error: unknown): boolean {
+  if (hasAuthErrorCode(error, "session_missing")) {
+    return true;
+  }
+
+  if (isAuthSessionMissingError(error)) {
+    return true;
+  }
+
   return false;
 }
 
