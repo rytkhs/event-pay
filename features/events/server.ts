@@ -7,6 +7,7 @@ export { deleteEventAction } from "./actions/delete-event";
 export { exportParticipantsCsvAction } from "./actions/export-participants-csv";
 export { generateInviteTokenAction } from "./actions/generate-invite-token";
 export { getDashboardStatsAction, getRecentEventsAction } from "./actions/get-dashboard-stats";
+export type { DashboardStats, RecentEvent } from "./actions/get-dashboard-stats";
 export { getEventDetailAction } from "./actions/get-event-detail";
 export { getEventParticipantsAction } from "./actions/get-event-participants";
 export { getEventPaymentsAction } from "./actions/get-event-payments";

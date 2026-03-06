@@ -1,7 +1,7 @@
 import { getCurrentUserForServerComponent } from "@core/auth/auth-utils";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import { createServerComponentSupabaseClient } from "@core/supabase/factory";
-import type { AttendanceRow, EventRow } from "@core/types/event";
+import type { EventRow } from "@core/types/event";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 
 export interface DashboardStats {
@@ -15,7 +15,7 @@ export interface RecentEvent {
   id: string;
   title: string;
   date: string;
-  status: string;
+  status: "upcoming" | "ongoing" | "past" | "canceled";
   fee: number;
   attendances_count: number;
   capacity: number | null;
@@ -26,7 +26,7 @@ type EventForRecent = Pick<
   EventRow,
   "id" | "title" | "date" | "fee" | "capacity" | "canceled_at" | "location"
 > & {
-  attendances: Pick<AttendanceRow, "status">[];
+  attendances_count: number;
 };
 
 /**
@@ -83,40 +83,20 @@ export async function getRecentEventsAction(): Promise<ActionResult<RecentEvent[
     const supabase = await createServerComponentSupabaseClient();
 
     // 最近のイベント（リスト表示用）- 上位5件
-    const { data: recentEventsRaw, error } = await supabase
-      .from("events")
-      .select(
-        `
-        id,
-        title,
-        date,
-        fee,
-        capacity,
-        canceled_at,
-        location,
-        attendances (status)
-      `
-      )
-      .eq("created_by", user.id)
-      .order("date", { ascending: false })
-      .limit(5)
-      .overrideTypes<EventForRecent[], { merge: false }>();
+    const { data, error } = await supabase.rpc("get_recent_events");
 
     if (error) {
       throw error;
     }
 
-    const recentEvents: RecentEvent[] = (recentEventsRaw || []).map((event) => {
-      const attendances = event.attendances || [];
-      const attendances_count = attendances.filter((a) => a.status === "attending").length;
-
+    const recentEvents: RecentEvent[] = ((data as EventForRecent[] | null) || []).map((event) => {
       return {
         id: event.id,
         title: event.title,
         date: event.date,
         status: deriveEventStatus(event.date, event.canceled_at),
         fee: event.fee,
-        attendances_count,
+        attendances_count: Number(event.attendances_count),
         capacity: event.capacity,
         location: event.location,
       };

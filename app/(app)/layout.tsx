@@ -9,6 +9,7 @@ import { Header } from "@components/layout/Header";
 
 import { logoutAction } from "@/app/(auth)/actions";
 import { createExpressDashboardLoginLinkAction } from "@/app/_actions/stripe-connect/actions";
+import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 /**
@@ -18,6 +19,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
  * アプリケーションサイドバー（AppSidebar）とメインコンテンツエリアを提供します。
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
+  ensureFeaturesRegistered();
   const currentUser = await requireCurrentAppUserForServerComponent();
 
   return (
