@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -34,6 +34,8 @@ import {
 
 import { navigationConfig, userMenuItems } from "./GlobalHeader/navigation-config";
 
+const LOGOUT_ERROR_MESSAGE = "ログアウトに失敗しました。再度お試しください。";
+
 type AppSidebarProps = {
   user: {
     name?: string | null;
@@ -53,6 +55,9 @@ export function AppSidebar({
   const { isMobile, setOpenMobile } = useSidebar();
 
   const [isPending, startTransition] = useTransition();
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
 
   // 画面遷移時にモバイル用サイドバーを自動的に閉じる
   useEffect(() => {
@@ -62,10 +67,23 @@ export function AppSidebar({
   }, [pathname, isMobile, setOpenMobile]);
 
   const handleLogout = async () => {
-    const result = await logoutAction();
-    // ActionResult の redirectUrl を使用してリダイレクト
-    const redirectUrl = result.redirectUrl || "/login";
-    window.location.href = redirectUrl;
+    setIsLoggingOut(true);
+    setLogoutError(null);
+
+    try {
+      const result = await logoutAction();
+      if (!result.success) {
+        setLogoutError(result.error.userMessage || LOGOUT_ERROR_MESSAGE);
+        return;
+      }
+
+      const redirectUrl = result.redirectUrl || "/login";
+      window.location.href = redirectUrl;
+    } catch {
+      setLogoutError(LOGOUT_ERROR_MESSAGE);
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   // クリック時のハンドラ
@@ -145,7 +163,15 @@ export function AppSidebar({
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
+            <DropdownMenu
+              open={isUserMenuOpen}
+              onOpenChange={(open) => {
+                setIsUserMenuOpen(open);
+                if (!open) {
+                  setLogoutError(null);
+                }
+              }}
+            >
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   size="lg"
@@ -184,12 +210,30 @@ export function AppSidebar({
                 ))}
 
                 <DropdownMenuItem
-                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    void handleLogout();
+                  }}
                   className="text-destructive focus:text-destructive cursor-pointer"
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  ログアウト
+                  {isLoggingOut ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <LogOut className="mr-2 h-4 w-4" />
+                  )}
+                  {isLoggingOut ? "ログアウト中..." : "ログアウト"}
                 </DropdownMenuItem>
+
+                {logoutError && (
+                  <div
+                    className="mx-2 mt-2 rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+                    role="alert"
+                    aria-live="assertive"
+                  >
+                    {logoutError}
+                  </div>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>

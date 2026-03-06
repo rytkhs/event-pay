@@ -11,6 +11,8 @@ import { Separator } from "@components/ui/separator";
 import { userMenuItems } from "./navigation-config";
 import { UserMenuProps } from "./types";
 
+const LOGOUT_ERROR_MESSAGE = "ログアウトに失敗しました。再度お試しください。";
+
 /**
  * ユーザーメニューコンポーネント
  * 認証済みユーザーのドロップダウンメニューを提供
@@ -27,6 +29,7 @@ export function UserMenu({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -60,51 +63,74 @@ export function UserMenu({
   }, [isOpen]);
 
   const toggleMenu = () => {
+    if (!isOpen) {
+      setLogoutError(null);
+    }
     setIsOpen(!isOpen);
   };
 
   const closeMenu = () => {
     setIsOpen(false);
+    setLogoutError(null);
     onItemClick?.();
   };
 
   const handleLogoutClick = async () => {
     setIsLoggingOut(true);
+    setLogoutError(null);
+
     try {
-      if (logoutAction) {
-        const result = await logoutAction();
-        // ActionResult の redirectUrl を使用してリダイレクト
-        const redirectUrl = result.redirectUrl || "/login";
-        window.location.href = redirectUrl;
-      } else {
-        window.location.href = "/login";
+      if (!logoutAction) {
+        setLogoutError(LOGOUT_ERROR_MESSAGE);
+        return;
       }
-    } catch (error) {
-      console.error("Logout failed:", error);
-      // エラー時も強制的にログインページへリダイレクト
-      window.location.href = "/login";
+
+      const result = await logoutAction();
+      if (!result.success) {
+        setLogoutError(result.error.userMessage || LOGOUT_ERROR_MESSAGE);
+        return;
+      }
+
+      const redirectUrl = result.redirectUrl || "/login";
+      window.location.href = redirectUrl;
+    } catch {
+      setLogoutError(LOGOUT_ERROR_MESSAGE);
+    } finally {
+      setIsLoggingOut(false);
     }
-    // setIsLoggingOut(false) は不要（ページが破棄されるため）
   };
 
   // モバイル版（ログアウトボタンのみ）
   if (isMobile) {
     return (
-      <button
-        onClick={handleLogoutClick}
-        disabled={isLoggingOut}
-        className="group w-full flex items-center justify-between px-4 py-4 text-base font-medium transition-all duration-200 text-red-600 hover:text-red-700 hover:bg-red-50/80 rounded-xl disabled:opacity-50"
-      >
-        <div className="flex items-center space-x-3">
-          <LogOut className="h-5 w-5 flex-shrink-0" />
-          <span>{isLoggingOut ? "ログアウト中..." : "ログアウト"}</span>
-        </div>
-        {!isLoggingOut && (
-          <ChevronRight className="h-4 w-4 text-red-400 group-hover:text-red-600 transition-colors" />
+      <div className="space-y-2">
+        <button
+          onClick={handleLogoutClick}
+          disabled={isLoggingOut}
+          className="group w-full flex items-center justify-between px-4 py-4 text-base font-medium transition-all duration-200 text-red-600 hover:text-red-700 hover:bg-red-50/80 rounded-xl disabled:opacity-50"
+        >
+          <div className="flex items-center space-x-3">
+            <LogOut className="h-5 w-5 flex-shrink-0" />
+            <span>{isLoggingOut ? "ログアウト中..." : "ログアウト"}</span>
+          </div>
+          {!isLoggingOut && (
+            <ChevronRight className="h-4 w-4 text-red-400 group-hover:text-red-600 transition-colors" />
+          )}
+        </button>
+        {logoutError && (
+          <div
+            className="mx-4 rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            role="alert"
+            aria-live="assertive"
+          >
+            {logoutError}
+          </div>
         )}
-      </button>
+      </div>
     );
   }
+
+  const logoutButtonLabel = isLoggingOut ? "ログアウト中..." : "ログアウト";
 
   // デスクトップ版（ドロップダウンメニュー）
   return (
@@ -176,9 +202,21 @@ export function UserMenu({
                 role="menuitem"
               >
                 <LogOut className="h-4 w-4 mr-3" />
-                {isLoggingOut ? "ログアウト中..." : "ログアウト"}
+                {logoutButtonLabel}
               </button>
             </div>
+
+            {logoutError && (
+              <div className="px-4 pb-3 pt-1">
+                <div
+                  className="rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                  role="alert"
+                  aria-live="assertive"
+                >
+                  {logoutError}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

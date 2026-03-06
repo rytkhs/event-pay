@@ -20,14 +20,21 @@ export async function logoutAction(): Promise<AuthCommandResult> {
       // ユーザー取得エラーは無視
     }
 
-    const { error } = await supabase.auth.signOut();
+    const { error: signOutError } = await supabase.auth.signOut();
 
-    if (error) {
-      logger.warn("Logout error (non-critical)", {
+    if (signOutError) {
+      logger.warn("Logout error", {
         category: "authentication",
         action: "logoutError",
-        error_message: error.message,
+        error_message: signOutError.message,
       });
+
+      return errResult(
+        new AppError("LOGOUT_UNEXPECTED_ERROR", {
+          userMessage: "ログアウトに失敗しました。再度お試しください。",
+          cause: signOutError,
+        })
+      );
     }
 
     return okResult(undefined, {
@@ -51,8 +58,6 @@ export async function logoutAction(): Promise<AuthCommandResult> {
     });
 
     await TimingAttackProtection.addConstantDelay();
-    return errResult(appError, {
-      redirectUrl: "/login",
-    });
+    return errResult(appError);
   }
 }

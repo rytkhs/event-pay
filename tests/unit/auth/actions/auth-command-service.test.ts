@@ -179,7 +179,7 @@ describe("auth-command-service", () => {
     expect(result.meta?.redirectUrl).toBe("/verify-otp");
   });
 
-  test("logout: signOutエラーでも成功扱い", async () => {
+  test("logout: signOutエラーは失敗として返す", async () => {
     mockSupabase.auth.signOut.mockResolvedValue({
       error: {
         message: "network error",
@@ -188,16 +188,13 @@ describe("auth-command-service", () => {
 
     const result = await logoutAction();
 
-    expect(result.success).toBe(true);
-    if (!result.success) {
-      throw new Error("expected success");
+    expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error("expected failure");
     }
 
-    expect(result.meta?.message).toBe("ログアウトしました");
-    expect(result.meta?.redirectUrl).toBe("/login");
-    expect(result.meta?.sideEffects?.telemetry).toEqual({
-      name: "logout",
-      userId: "user_1",
-    });
+    expect(result.error.code).toBe("LOGOUT_UNEXPECTED_ERROR");
+    expect(result.error.userMessage).toBe("ログアウトに失敗しました。再度お試しください。");
+    expect(result.meta?.sideEffects?.telemetry).toBeUndefined();
   });
 });
