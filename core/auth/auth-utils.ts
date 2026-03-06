@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import type { User } from "@supabase/supabase-js";
 
 import {
@@ -8,6 +10,13 @@ import { handleServerError } from "@core/utils/error-handler.server";
 
 type AuthLookupContext = "server_action" | "server_component";
 type CreateUserClient = () => ReturnType<typeof createServerComponentSupabaseClient>;
+type UserLookupResult = Awaited<ReturnType<typeof getCurrentUserWithClient>>;
+
+export type CurrentAppUser = {
+  id: string;
+  email?: string | null;
+  name: string | null;
+};
 
 async function getCurrentUserWithClient(createClient: CreateUserClient) {
   const supabase = await createClient();
@@ -17,7 +26,7 @@ async function getCurrentUserWithClient(createClient: CreateUserClient) {
     error: authError,
   } = await supabase.auth.getUser();
 
-  return { user, authError };
+  return { supabase, user, authError };
 }
 
 function logAuthLookupError(context: AuthLookupContext, error: unknown): void {
@@ -40,11 +49,30 @@ function throwMissingAuthenticatedUser(context: AuthLookupContext): never {
   throw error;
 }
 
-async function getOptionalCurrentUser(
-  createClient: CreateUserClient,
-  context: AuthLookupContext
-): Promise<User | null> {
-  const { user, authError } = await getCurrentUserWithClient(createClient);
+function resolveRequiredUser(result: UserLookupResult, context: AuthLookupContext): User {
+  if (result.authError) {
+    logAuthLookupError(context, result.authError);
+    throw new Error("Failed to resolve authenticated user from Supabase Auth.");
+  }
+  if (!result.user) {
+    throwMissingAuthenticatedUser(context);
+  }
+  return result.user;
+}
+
+const getCachedCurrentUserWithServerComponent = cache(async () => {
+  return await getCurrentUserWithClient(createServerComponentSupabaseClient);
+});
+
+async function getCurrentUserLookup(context: AuthLookupContext): Promise<UserLookupResult> {
+  if (context === "server_component") {
+    return await getCachedCurrentUserWithServerComponent();
+  }
+  return await getCurrentUserWithClient(createServerActionSupabaseClient);
+}
+
+async function getOptionalCurrentUser(context: AuthLookupContext): Promise<User | null> {
+  const { user, authError } = await getCurrentUserLookup(context);
   if (authError) {
     logAuthLookupError(context, authError);
     return null;
@@ -52,35 +80,25 @@ async function getOptionalCurrentUser(
   return user;
 }
 
-async function requireCurrentUser(
-  createClient: CreateUserClient,
-  context: AuthLookupContext
-): Promise<User> {
-  const { user, authError } = await getCurrentUserWithClient(createClient);
-  if (authError) {
-    logAuthLookupError(context, authError);
-    throw new Error("Failed to resolve authenticated user from Supabase Auth.");
-  }
-  if (!user) {
-    throwMissingAuthenticatedUser(context);
-  }
-  return user;
+async function requireCurrentUser(context: AuthLookupContext): Promise<User> {
+  const result = await getCurrentUserLookup(context);
+  return resolveRequiredUser(result, context);
 }
 
 export async function getOptionalCurrentUserForServerAction() {
-  return await getOptionalCurrentUser(createServerActionSupabaseClient, "server_action");
+  return await getOptionalCurrentUser("server_action");
 }
 
 export async function getOptionalCurrentUserForServerComponent() {
-  return await getOptionalCurrentUser(createServerComponentSupabaseClient, "server_component");
+  return await getOptionalCurrentUser("server_component");
 }
 
 export async function requireCurrentUserForServerAction() {
-  return await requireCurrentUser(createServerActionSupabaseClient, "server_action");
+  return await requireCurrentUser("server_action");
 }
 
 export async function requireCurrentUserForServerComponent() {
-  return await requireCurrentUser(createServerComponentSupabaseClient, "server_component");
+  return await requireCurrentUser("server_component");
 }
 
 export async function getCurrentUserForServerAction() {
@@ -89,4 +107,35 @@ export async function getCurrentUserForServerAction() {
 
 export async function getCurrentUserForServerComponent() {
   return await getOptionalCurrentUserForServerComponent();
+}
+
+const getCachedCurrentAppUserForServerComponent = cache(async (): Promise<CurrentAppUser> => {
+  const result = await getCachedCurrentUserWithServerComponent();
+  const user = resolveRequiredUser(result, "server_component");
+
+  const { data: profile, error } = await result.supabase
+    .from("users")
+    .select("name")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (error) {
+    handleServerError(error, {
+      category: "authentication",
+      action: "current_app_user_profile_lookup_failed",
+      actorType: "system",
+      userId: user.id,
+      additionalData: { context: "server_component" },
+    });
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    name: error ? (user.email ?? null) : (profile?.name ?? user.email ?? null),
+  };
+});
+
+export async function requireCurrentAppUserForServerComponent(): Promise<CurrentAppUser> {
+  return await getCachedCurrentAppUserForServerComponent();
 }
