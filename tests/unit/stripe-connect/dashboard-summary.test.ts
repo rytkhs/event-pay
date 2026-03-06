@@ -1,6 +1,7 @@
 import { fetchStripeBalanceByAccountId } from "@features/stripe-connect/actions/get-balance";
 import {
-  getDashboardConnectSummary,
+  getDashboardConnectBalance,
+  getDashboardConnectCtaStatus,
   resolveDashboardConnectCtaStatus,
 } from "@features/stripe-connect/services/dashboard-summary";
 
@@ -38,12 +39,9 @@ describe("dashboard stripe summary", () => {
       error: null,
     });
 
-    const summary = await getDashboardConnectSummary(supabase as any, "user-1");
+    const ctaStatus = await getDashboardConnectCtaStatus(supabase as any, "user-1");
 
-    expect(summary).toEqual({
-      balance: 0,
-      ctaStatus: expect.objectContaining({ statusType: "no_account" }),
-    });
+    expect(ctaStatus).toEqual(expect.objectContaining({ statusType: "no_account" }));
     expect(from).toHaveBeenCalledWith("stripe_connect_accounts");
     expect(select).toHaveBeenCalledWith("status, payouts_enabled, stripe_account_id");
     expect(eq).toHaveBeenCalledWith("user_id", "user-1");
@@ -51,6 +49,55 @@ describe("dashboard stripe summary", () => {
   });
 
   it("returns no CTA for verified accounts with payouts enabled", async () => {
+    const { supabase } = createSupabaseMock({
+      data: {
+        status: "verified",
+        payouts_enabled: true,
+        stripe_account_id: "acct_ready",
+      },
+      error: null,
+    });
+
+    const ctaStatus = await getDashboardConnectCtaStatus(supabase as any, "user-2");
+
+    expect(ctaStatus).toBeUndefined();
+    expect(mockedFetchStripeBalanceByAccountId).not.toHaveBeenCalled();
+  });
+
+  it("returns a simplified setup CTA for onboarding accounts", async () => {
+    const { supabase } = createSupabaseMock({
+      data: {
+        status: "onboarding",
+        payouts_enabled: false,
+        stripe_account_id: "acct_onboarding",
+      },
+      error: null,
+    });
+
+    const ctaStatus = await getDashboardConnectCtaStatus(supabase as any, "user-3");
+
+    expect(ctaStatus).toEqual(
+      expect.objectContaining({
+        statusType: "requirements_due",
+        actionUrl: "/settings/payments",
+      })
+    );
+    expect(mockedFetchStripeBalanceByAccountId).not.toHaveBeenCalled();
+  });
+
+  it("returns null balance when no connect account exists", async () => {
+    const { supabase } = createSupabaseMock({
+      data: null,
+      error: null,
+    });
+
+    const balance = await getDashboardConnectBalance(supabase as any, "user-4");
+
+    expect(balance).toBeNull();
+    expect(mockedFetchStripeBalanceByAccountId).not.toHaveBeenCalled();
+  });
+
+  it("fetches balance when connect account exists", async () => {
     mockedFetchStripeBalanceByAccountId.mockResolvedValue(4200);
     const { supabase } = createSupabaseMock({
       data: {
@@ -61,34 +108,25 @@ describe("dashboard stripe summary", () => {
       error: null,
     });
 
-    const summary = await getDashboardConnectSummary(supabase as any, "user-2");
+    const balance = await getDashboardConnectBalance(supabase as any, "user-5");
 
-    expect(summary).toEqual({
-      balance: 4200,
-      ctaStatus: undefined,
-    });
+    expect(balance).toBe(4200);
     expect(mockedFetchStripeBalanceByAccountId).toHaveBeenCalledWith("acct_ready");
   });
 
-  it("returns a simplified setup CTA for onboarding accounts", async () => {
-    mockedFetchStripeBalanceByAccountId.mockResolvedValue(0);
+  it("propagates balance fetch failures without affecting CTA resolution path", async () => {
+    mockedFetchStripeBalanceByAccountId.mockRejectedValue(new Error("stripe down"));
     const { supabase } = createSupabaseMock({
       data: {
         status: "onboarding",
         payouts_enabled: false,
-        stripe_account_id: "acct_onboarding",
+        stripe_account_id: "acct_broken",
       },
       error: null,
     });
 
-    const summary = await getDashboardConnectSummary(supabase as any, "user-3");
-
-    expect(summary.balance).toBe(0);
-    expect(summary.ctaStatus).toEqual(
-      expect.objectContaining({
-        statusType: "requirements_due",
-        actionUrl: "/settings/payments",
-      })
+    await expect(getDashboardConnectBalance(supabase as any, "user-6")).rejects.toThrow(
+      "stripe down"
     );
   });
 

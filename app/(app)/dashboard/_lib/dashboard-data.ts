@@ -8,14 +8,16 @@ import {
   type RecentEvent,
 } from "@features/events/server";
 import {
-  getDashboardConnectSummary,
-  type DashboardConnectSummary,
+  getDashboardConnectBalance,
+  getDashboardConnectCtaStatus,
+  type DetailedAccountStatus,
 } from "@features/stripe-connect/server";
 
 export type DashboardDataResource = {
   stats: Promise<DashboardStats>;
   recentEvents: Promise<RecentEvent[]>;
-  stripeSummary: Promise<DashboardConnectSummary>;
+  stripeBalance: Promise<number | null>;
+  stripeCtaStatus: Promise<DetailedAccountStatus | undefined>;
 };
 
 export async function createDashboardDataResource(): Promise<DashboardDataResource> {
@@ -25,6 +27,7 @@ export async function createDashboardDataResource(): Promise<DashboardDataResour
   return {
     stats: fetchDashboardStats(supabase),
     recentEvents: fetchRecentEvents(supabase),
-    stripeSummary: getDashboardConnectSummary(supabase, user.id),
+    stripeBalance: getDashboardConnectBalance(supabase, user.id),
+    stripeCtaStatus: getDashboardConnectCtaStatus(supabase, user.id),
   };
 }

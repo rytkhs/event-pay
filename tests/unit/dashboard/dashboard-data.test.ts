@@ -2,7 +2,8 @@ const requireCurrentUserForServerComponent = jest.fn();
 const createServerComponentSupabaseClient = jest.fn();
 const fetchDashboardStats = jest.fn();
 const fetchRecentEvents = jest.fn();
-const getDashboardConnectSummary = jest.fn();
+const getDashboardConnectBalance = jest.fn();
+const getDashboardConnectCtaStatus = jest.fn();
 
 jest.mock("@core/auth/auth-utils", () => ({
   requireCurrentUserForServerComponent,
@@ -18,7 +19,8 @@ jest.mock("@features/events/server", () => ({
 }));
 
 jest.mock("@features/stripe-connect/server", () => ({
-  getDashboardConnectSummary,
+  getDashboardConnectBalance,
+  getDashboardConnectCtaStatus,
 }));
 
 describe("dashboard shared data loader", () => {
@@ -28,7 +30,8 @@ describe("dashboard shared data loader", () => {
     createServerComponentSupabaseClient.mockReset();
     fetchDashboardStats.mockReset();
     fetchRecentEvents.mockReset();
-    getDashboardConnectSummary.mockReset();
+    getDashboardConnectBalance.mockReset();
+    getDashboardConnectCtaStatus.mockReset();
   });
 
   it("reuses auth and supabase setup across dashboard slices", async () => {
@@ -51,29 +54,31 @@ describe("dashboard shared data loader", () => {
         location: "Tokyo",
       },
     ];
-    const stripeSummary = {
-      balance: 2500,
-      ctaStatus: undefined,
-    };
+    const stripeBalance = 2500;
+    const stripeCtaStatus = undefined;
 
     requireCurrentUserForServerComponent.mockResolvedValue({ id: "user-1" });
     createServerComponentSupabaseClient.mockResolvedValue(supabase);
     fetchDashboardStats.mockResolvedValue(stats);
     fetchRecentEvents.mockResolvedValue(recentEvents);
-    getDashboardConnectSummary.mockResolvedValue(stripeSummary);
+    getDashboardConnectBalance.mockResolvedValue(stripeBalance);
+    getDashboardConnectCtaStatus.mockResolvedValue(stripeCtaStatus);
 
     const dashboardData = await import("@/app/(app)/dashboard/_lib/dashboard-data");
     const resource = await dashboardData.createDashboardDataResource();
 
-    const [resolvedStats, resolvedEvents, resolvedStripe] = await Promise.all([
-      resource.stats,
-      resource.recentEvents,
-      resource.stripeSummary,
-    ]);
+    const [resolvedStats, resolvedEvents, resolvedStripeBalance, resolvedStripeCtaStatus] =
+      await Promise.all([
+        resource.stats,
+        resource.recentEvents,
+        resource.stripeBalance,
+        resource.stripeCtaStatus,
+      ]);
 
     expect(resolvedStats).toEqual(stats);
     expect(resolvedEvents).toEqual(recentEvents);
-    expect(resolvedStripe).toEqual(stripeSummary);
+    expect(resolvedStripeBalance).toEqual(stripeBalance);
+    expect(resolvedStripeCtaStatus).toEqual(stripeCtaStatus);
 
     expect(requireCurrentUserForServerComponent).toHaveBeenCalledTimes(1);
     expect(createServerComponentSupabaseClient).toHaveBeenCalledTimes(1);
@@ -81,7 +86,9 @@ describe("dashboard shared data loader", () => {
     expect(fetchDashboardStats).toHaveBeenCalledWith(supabase);
     expect(fetchRecentEvents).toHaveBeenCalledTimes(1);
     expect(fetchRecentEvents).toHaveBeenCalledWith(supabase);
-    expect(getDashboardConnectSummary).toHaveBeenCalledTimes(1);
-    expect(getDashboardConnectSummary).toHaveBeenCalledWith(supabase, "user-1");
+    expect(getDashboardConnectBalance).toHaveBeenCalledTimes(1);
+    expect(getDashboardConnectBalance).toHaveBeenCalledWith(supabase, "user-1");
+    expect(getDashboardConnectCtaStatus).toHaveBeenCalledTimes(1);
+    expect(getDashboardConnectCtaStatus).toHaveBeenCalledWith(supabase, "user-1");
   });
 });

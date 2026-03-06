@@ -19,9 +19,8 @@ export async function StripeAccountCard({
   let balance: number | null = null;
 
   try {
-    const { stripeSummary } = await dashboardDataResource;
-    const resolvedStripeSummary = await stripeSummary;
-    balance = resolvedStripeSummary.balance;
+    const { stripeBalance } = await dashboardDataResource;
+    balance = await stripeBalance;
   } catch {
     balance = null;
   }

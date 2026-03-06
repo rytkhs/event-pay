@@ -17,11 +17,6 @@ type DashboardConnectAccountRow = Pick<
   "status" | "payouts_enabled" | "stripe_account_id"
 >;
 
-export interface DashboardConnectSummary {
-  balance: number;
-  ctaStatus?: DetailedAccountStatus;
-}
-
 export function resolveDashboardConnectCtaStatus(
   account: DashboardConnectAccountRow | null
 ): DetailedAccountStatus | undefined {
@@ -42,10 +37,10 @@ export function resolveDashboardConnectCtaStatus(
   }
 }
 
-export async function getDashboardConnectSummary(
+async function getDashboardConnectAccount(
   supabase: AppSupabaseClient,
   userId: string
-): Promise<DashboardConnectSummary> {
+): Promise<DashboardConnectAccountRow | null> {
   const { data, error } = await supabase
     .from("stripe_connect_accounts")
     .select("status, payouts_enabled, stripe_account_id")
@@ -56,17 +51,26 @@ export async function getDashboardConnectSummary(
     throw error;
   }
 
-  if (!data) {
-    return {
-      balance: 0,
-      ctaStatus: resolveDashboardConnectCtaStatus(null),
-    };
+  return data;
+}
+
+export async function getDashboardConnectCtaStatus(
+  supabase: AppSupabaseClient,
+  userId: string
+): Promise<DetailedAccountStatus | undefined> {
+  const account = await getDashboardConnectAccount(supabase, userId);
+  return resolveDashboardConnectCtaStatus(account);
+}
+
+export async function getDashboardConnectBalance(
+  supabase: AppSupabaseClient,
+  userId: string
+): Promise<number | null> {
+  const account = await getDashboardConnectAccount(supabase, userId);
+
+  if (!account) {
+    return null;
   }
 
-  const balance = await fetchStripeBalanceByAccountId(data.stripe_account_id);
-
-  return {
-    balance,
-    ctaStatus: resolveDashboardConnectCtaStatus(data),
-  };
+  return await fetchStripeBalanceByAccountId(account.stripe_account_id);
 }

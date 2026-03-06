@@ -8,14 +8,14 @@ export async function ConnectAccountCtaWrapper({
   dashboardDataResource: Promise<DashboardDataResource>;
 }) {
   try {
-    const { stripeSummary } = await dashboardDataResource;
-    const resolvedStripeSummary = await stripeSummary;
+    const { stripeCtaStatus } = await dashboardDataResource;
+    const resolvedStripeCtaStatus = await stripeCtaStatus;
 
-    if (!resolvedStripeSummary.ctaStatus) {
+    if (!resolvedStripeCtaStatus) {
       return null;
     }
 
-    return <ConnectAccountCta status={resolvedStripeSummary.ctaStatus} />;
+    return <ConnectAccountCta status={resolvedStripeCtaStatus} />;
   } catch {
     return null;
   }
