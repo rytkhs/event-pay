@@ -12,10 +12,16 @@ export {
   createExpressDashboardLoginLinkAction,
 } from "./actions/express-dashboard";
 export { getStripeBalanceAction } from "./actions/get-balance";
+export { fetchStripeBalanceByAccountId } from "./actions/get-balance";
 export {
   createUserStripeConnectServiceForServerAction,
   createUserStripeConnectServiceForServerComponent,
 } from "./services/factories";
+export {
+  getDashboardConnectSummary,
+  resolveDashboardConnectCtaStatus,
+} from "./services/dashboard-summary";
+export type { DashboardConnectSummary } from "./services/dashboard-summary";
 export { registerStripeConnectAdapters } from "./adapters/stripe-connect-port.adapter";
 export { AccountStatusClassifier } from "./services/account-status-classifier";
 export { logStatusChange } from "./services/audit-logger";

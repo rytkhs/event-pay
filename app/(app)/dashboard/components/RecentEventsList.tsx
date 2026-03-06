@@ -2,16 +2,28 @@ import Link from "next/link";
 
 import { ArrowRight, Calendar } from "lucide-react";
 
-import { getRecentEventsAction } from "@features/events/server";
+import type { RecentEvent } from "@features/events/server";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+import type { DashboardDataResource } from "../_lib/dashboard-data";
+
 import { DashboardRecentEventItem } from "./DashboardRecentEventItem";
 
-export async function RecentEventsList() {
-  const result = await getRecentEventsAction();
-  const events = result.success && result.data ? result.data : [];
+export async function RecentEventsList({
+  dashboardDataResource,
+}: {
+  dashboardDataResource: Promise<DashboardDataResource>;
+}) {
+  let events: RecentEvent[] = [];
+
+  try {
+    const { recentEvents } = await dashboardDataResource;
+    events = await recentEvents;
+  } catch {
+    events = [];
+  }
 
   return (
     <Card className="border shadow-sm overflow-hidden">

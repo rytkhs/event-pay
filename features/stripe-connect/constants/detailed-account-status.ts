@@ -39,6 +39,16 @@ export const RESTRICTED_STATUS: DetailedAccountStatus = {
   severity: "error",
 };
 
+export const DASHBOARD_SETUP_INCOMPLETE_STATUS: DetailedAccountStatus = {
+  statusType: "requirements_due",
+  title: "決済設定を完了してください",
+  description:
+    "オンライン決済を利用するには、Stripeアカウントの設定完了が必要です。設定画面から続けてください。",
+  actionText: "設定を続ける",
+  actionUrl: "/settings/payments",
+  severity: "warning",
+};
+
 export function buildRequirementsDueStatus(input: {
   hasPastDue: boolean;
   hasCurrentlyDue: boolean;

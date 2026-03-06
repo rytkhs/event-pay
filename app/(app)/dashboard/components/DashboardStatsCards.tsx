@@ -1,8 +1,8 @@
 import { CalendarDays, DollarSign, Users } from "lucide-react";
 
-import { getDashboardStatsAction } from "@features/events/server";
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import type { DashboardDataResource } from "../_lib/dashboard-data";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("ja-JP", {
@@ -11,11 +11,23 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export async function DashboardStatsCards() {
-  const result = await getDashboardStatsAction();
+export async function DashboardStatsCards({
+  dashboardDataResource,
+}: {
+  dashboardDataResource: Promise<DashboardDataResource>;
+}) {
+  try {
+    const { stats } = await dashboardDataResource;
+    const resolvedStats = await stats;
 
-  if (!result.success || !result.data) {
-    // エラー時は0を表示、あるいはエラーUIでも良いが、並列ロードの一部なので0でフォールバック
+    return (
+      <StatsCardsContent
+        upcomingEventsCount={resolvedStats.upcomingEventsCount}
+        totalUpcomingParticipants={resolvedStats.totalUpcomingParticipants}
+        unpaidFeesTotal={resolvedStats.unpaidFeesTotal}
+      />
+    );
+  } catch {
     return (
       <StatsCardsContent
         upcomingEventsCount={0}
@@ -24,16 +36,6 @@ export async function DashboardStatsCards() {
       />
     );
   }
-
-  const stats = result.data;
-
-  return (
-    <StatsCardsContent
-      upcomingEventsCount={stats.upcomingEventsCount}
-      totalUpcomingParticipants={stats.totalUpcomingParticipants}
-      unpaidFeesTotal={stats.unpaidFeesTotal}
-    />
-  );
 }
 
 function StatsCardsContent({
