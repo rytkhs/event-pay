@@ -30,9 +30,9 @@ export async function DashboardStatsCards({
   } catch {
     return (
       <StatsCardsContent
-        upcomingEventsCount={0}
-        totalUpcomingParticipants={0}
-        unpaidFeesTotal={0}
+        upcomingEventsCount={null}
+        totalUpcomingParticipants={null}
+        unpaidFeesTotal={null}
       />
     );
   }
@@ -43,9 +43,9 @@ function StatsCardsContent({
   totalUpcomingParticipants,
   unpaidFeesTotal,
 }: {
-  upcomingEventsCount: number;
-  totalUpcomingParticipants: number;
-  unpaidFeesTotal: number;
+  upcomingEventsCount: number | null;
+  totalUpcomingParticipants: number | null;
+  unpaidFeesTotal: number | null;
 }) {
   return (
     <>
@@ -60,8 +60,14 @@ function StatsCardsContent({
         </CardHeader>
         <CardContent className="relative pt-0">
           <div className="flex items-baseline gap-2">
-            <div className="text-xl font-bold text-gray-900">{upcomingEventsCount}</div>
-            <div className="text-sm text-gray-500">件</div>
+            <div className="text-xl font-bold text-gray-900">
+              {upcomingEventsCount === null ? (
+                <span className="text-muted-foreground text-lg">-</span>
+              ) : (
+                upcomingEventsCount
+              )}
+            </div>
+            {upcomingEventsCount !== null && <div className="text-sm text-gray-500">件</div>}
           </div>
           <div className="mt-2 text-xs text-gray-500">今後のイベント数</div>
         </CardContent>
@@ -78,8 +84,14 @@ function StatsCardsContent({
         </CardHeader>
         <CardContent className="relative pt-0">
           <div className="flex items-baseline gap-2">
-            <div className="text-xl font-bold text-gray-900">{totalUpcomingParticipants}</div>
-            <div className="text-sm text-gray-500">名</div>
+            <div className="text-xl font-bold text-gray-900">
+              {totalUpcomingParticipants === null ? (
+                <span className="text-muted-foreground text-lg">-</span>
+              ) : (
+                totalUpcomingParticipants
+              )}
+            </div>
+            {totalUpcomingParticipants !== null && <div className="text-sm text-gray-500">名</div>}
           </div>
           <div className="mt-2 text-xs text-gray-500">今後の参加予定者</div>
         </CardContent>
@@ -96,7 +108,11 @@ function StatsCardsContent({
         </CardHeader>
         <CardContent className="relative pt-0">
           <div className="text-xl font-bold text-gray-900 leading-tight">
-            {formatCurrency(unpaidFeesTotal)}
+            {unpaidFeesTotal === null ? (
+              <span className="text-muted-foreground text-lg">-</span>
+            ) : (
+              formatCurrency(unpaidFeesTotal)
+            )}
           </div>
           <div className="mt-2 text-xs text-gray-500">集金待ちの金額</div>
         </CardContent>

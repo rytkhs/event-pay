@@ -16,14 +16,14 @@ export async function StripeAccountCard({
 }: {
   dashboardDataResource: Promise<DashboardDataResource>;
 }) {
-  let balance = 0;
+  let balance: number | null = null;
 
   try {
     const { stripeSummary } = await dashboardDataResource;
     const resolvedStripeSummary = await stripeSummary;
     balance = resolvedStripeSummary.balance;
   } catch {
-    balance = 0;
+    balance = null;
   }
 
   return (
@@ -38,7 +38,11 @@ export async function StripeAccountCard({
       </CardHeader>
       <CardContent className="relative pt-0">
         <div className="text-xl font-bold text-gray-900 leading-tight">
-          {formatCurrency(balance)}
+          {balance === null ? (
+            <span className="text-muted-foreground text-lg">-</span>
+          ) : (
+            formatCurrency(balance)
+          )}
         </div>
         <div className="mt-2 text-xs text-gray-500">Stripe残高</div>
       </CardContent>
