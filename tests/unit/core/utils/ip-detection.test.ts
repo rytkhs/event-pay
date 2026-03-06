@@ -42,4 +42,13 @@ describe("ip-detection", () => {
 
     expect(getClientIP(requestLike as Parameters<typeof getClientIP>[0])).toBe("198.51.100.44");
   });
+
+  test("Next.js ReadonlyHeaders 互換オブジェクトでも取得できる", () => {
+    const headers = createHeaderLike({ "cf-connecting-ip": "198.51.100.55" });
+    const nextReadonlyHeadersLike = Object.assign(headers, {
+      headers: { "cf-connecting-ip": "198.51.100.55" },
+    });
+
+    expect(getClientIPFromHeaders(nextReadonlyHeadersLike)).toBe("198.51.100.55");
+  });
 });
