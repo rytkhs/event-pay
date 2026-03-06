@@ -1,5 +1,4 @@
-import { requireCurrentUserForServerComponent } from "@core/auth/auth-utils";
-import { createServerComponentSupabaseClient } from "@core/supabase/factory";
+import { requireCurrentAppUserForServerComponent } from "@core/auth/auth-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -10,15 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { requestAccountDeletionAction, updateEmailAction, updateProfileAction } from "./actions";
 
 export default async function ProfileSettingsPage() {
-  const supabase = await createServerComponentSupabaseClient();
-  const user = await requireCurrentUserForServerComponent();
-
-  // ユーザープロフィール情報を取得
-  const { data: profile } = await supabase
-    .from("users")
-    .select("id, name, created_at")
-    .eq("id", user.id)
-    .single();
+  const user = await requireCurrentAppUserForServerComponent();
 
   return (
     <div className="space-y-6">
@@ -29,10 +20,7 @@ export default async function ProfileSettingsPage() {
           <CardDescription>イベント作成時に表示される情報を設定します</CardDescription>
         </CardHeader>
         <CardContent>
-          <ProfileForm
-            currentName={profile?.name || ""}
-            updateProfileAction={updateProfileAction}
-          />
+          <ProfileForm currentName={user.name || ""} updateProfileAction={updateProfileAction} />
         </CardContent>
       </Card>
 
