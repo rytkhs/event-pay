@@ -9,6 +9,12 @@ interface HeaderLike {
   get(name: string): string | null;
 }
 
+function hasGetMethod(value: unknown): value is HeaderLike {
+  return (
+    typeof value === "object" && value !== null && "get" in value && typeof value.get === "function"
+  );
+}
+
 /**
  * IPアドレス検証用の正規表現
  */
@@ -68,8 +74,25 @@ function normalizeCandidateIP(raw: string | null): string | null {
 export function getClientIP(request: NextRequest): string | null;
 export function getClientIP(headers: HeaderLike): string | null;
 export function getClientIP(requestOrHeaders: NextRequest | HeaderLike): string | null {
-  // NextRequestかHeaderLikeかを判定
-  const headers = "headers" in requestOrHeaders ? requestOrHeaders.headers : requestOrHeaders;
+  // Next.js の ReadonlyHeaders 実装は `.headers` プロパティを内部に持つため、
+  // `headers in value` のみで判定すると HeaderLike を誤って NextRequest 扱いしてしまう。
+  const headers = hasGetMethod(requestOrHeaders)
+    ? requestOrHeaders
+    : hasGetMethod(requestOrHeaders.headers)
+      ? requestOrHeaders.headers
+      : null;
+
+  if (!headers) {
+    if (process.env.NODE_ENV !== "test") {
+      logger.warn("Unable to resolve client IP because headers-like access is unavailable", {
+        category: "system",
+        action: "ip_detection_invalid_headers_shape",
+        actor_type: "system",
+        outcome: "failure",
+      });
+    }
+    return null;
+  }
 
   const rawIp = headers.get("cf-connecting-ip");
   const normalizedIP = normalizeCandidateIP(rawIp);
