@@ -140,7 +140,7 @@ describe("dashboard stripe summary", () => {
     expect(ctaStatus).toEqual(
       expect.objectContaining({
         statusType: "requirements_due",
-        actionText: "設定を続ける",
+        actionText: "状況を確認",
       })
     );
   });
