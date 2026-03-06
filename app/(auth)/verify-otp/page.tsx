@@ -255,10 +255,14 @@ function VerifyOtpContent() {
               <ul className="list-disc list-inside space-y-1 text-xs">
                 <li>迷惑メールフォルダをご確認ください</li>
                 <li>ドメイン受信設定をご確認ください</li>
-                <li>
-                  <span className="font-medium text-foreground">登録済みメールアドレス</span>
-                  でない場合、コードは送信されません
-                </li>
+                {type === "recovery" ? (
+                  <li>
+                    <span className="font-medium text-foreground">登録済みメールアドレス</span>
+                    でない場合、コードは送信されません
+                  </li>
+                ) : (
+                  <li>入力されたメールアドレスに間違いがないかご確認ください</li>
+                )}
               </ul>
             </div>
           </div>
