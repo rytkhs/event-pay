@@ -12,10 +12,16 @@ export {
   createExpressDashboardLoginLinkAction,
 } from "./actions/express-dashboard";
 export { getStripeBalanceAction } from "./actions/get-balance";
+export { fetchStripeBalanceByAccountId } from "./actions/get-balance";
 export {
   createUserStripeConnectServiceForServerAction,
   createUserStripeConnectServiceForServerComponent,
 } from "./services/factories";
+export {
+  getDashboardConnectBalance,
+  getDashboardConnectCtaStatus,
+  resolveDashboardConnectCtaStatus,
+} from "./services/dashboard-summary";
 export { registerStripeConnectAdapters } from "./adapters/stripe-connect-port.adapter";
 export { AccountStatusClassifier } from "./services/account-status-classifier";
 export { logStatusChange } from "./services/audit-logger";
@@ -31,3 +37,4 @@ export { UIStatusMapper } from "./services/ui-status-mapper";
 export { ConnectWebhookHandler } from "./services/webhook/connect-webhook-handler";
 export type { ConnectWebhookResult } from "./services/webhook/connect-webhook.types";
 export type { StatusChangeLog } from "./types/audit-log";
+export type { DetailedAccountStatus } from "./types";

@@ -1,12 +1,22 @@
 import { ConnectAccountCta } from "@features/stripe-connect";
-import { getDetailedAccountStatusAction } from "@features/stripe-connect/server";
 
-export async function ConnectAccountCtaWrapper() {
-  const result = await getDetailedAccountStatusAction();
+import type { DashboardDataResource } from "../_lib/dashboard-data";
 
-  if (!result.success || !result.data?.status) {
+export async function ConnectAccountCtaWrapper({
+  dashboardDataResource,
+}: {
+  dashboardDataResource: Promise<DashboardDataResource>;
+}) {
+  try {
+    const { stripeCtaStatus } = await dashboardDataResource;
+    const resolvedStripeCtaStatus = await stripeCtaStatus;
+
+    if (!resolvedStripeCtaStatus) {
+      return null;
+    }
+
+    return <ConnectAccountCta status={resolvedStripeCtaStatus} />;
+  } catch {
     return null;
   }
-
-  return <ConnectAccountCta status={result.data.status} />;
 }

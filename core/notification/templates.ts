@@ -129,15 +129,15 @@ function toSafeString(value: unknown): string {
 
 export function buildAccountVerifiedTemplate(params: { userName: string }): EmailTemplate {
   const userName = escapeHtml(params.userName);
-  const subject = "Stripeアカウントの認証が完了しました";
+  const subject = "Stripeアカウントの設定が完了しました";
 
   const html = renderLayout({
     preheader: subject,
     contentHtml: `
       <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${userName} 様</p>
-      <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">アカウント認証が完了しました</h1>
+      <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">アカウント設定が完了しました</h1>
       <div style="background:#f0fdf4;border-left:4px solid #22c55e;padding:14px 16px;border-radius:4px;margin-bottom:20px;color:#166534;line-height:1.7;">
-        Stripeアカウントの認証が正常に完了しました。イベントの売上を自動的に受け取れる状態です。
+        Stripeアカウントの設定が正常に完了しました。オンライン決済を有効化できます。
       </div>
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;">
         ${renderKeyValueRows([
@@ -154,9 +154,7 @@ export function buildAccountVerifiedTemplate(params: { userName: string }): Emai
   const text = [
     `${params.userName} 様`,
     "",
-    "アカウント認証が完了しました",
-    "Stripeアカウントの認証が正常に完了しました。",
-    "イベントの売上を自動的に受け取れる状態です。",
+    "Stripeアカウントの設定が正常に完了しました。",
     "",
     "ご利用いただける機能:",
     "- オンライン決済が選択可能になりました。",

@@ -1,8 +1,8 @@
 import { Landmark } from "lucide-react";
 
-import { getStripeBalanceAction } from "@features/stripe-connect/server";
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import type { DashboardDataResource } from "../_lib/dashboard-data";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("ja-JP", {
@@ -11,9 +11,19 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export async function StripeAccountCard() {
-  const balanceResult = await getStripeBalanceAction();
-  const balance = balanceResult.success ? (balanceResult.data ?? 0) : 0;
+export async function StripeAccountCard({
+  dashboardDataResource,
+}: {
+  dashboardDataResource: Promise<DashboardDataResource>;
+}) {
+  let balance: number | null = null;
+
+  try {
+    const { stripeBalance } = await dashboardDataResource;
+    balance = await stripeBalance;
+  } catch {
+    balance = null;
+  }
 
   return (
     <Card className="relative overflow-hidden border-0 bg-green-50/30 shadow-sm">
@@ -27,7 +37,11 @@ export async function StripeAccountCard() {
       </CardHeader>
       <CardContent className="relative pt-0">
         <div className="text-xl font-bold text-gray-900 leading-tight">
-          {formatCurrency(balance)}
+          {balance === null ? (
+            <span className="text-muted-foreground text-lg">-</span>
+          ) : (
+            formatCurrency(balance)
+          )}
         </div>
         <div className="mt-2 text-xs text-gray-500">Stripe残高</div>
       </CardContent>

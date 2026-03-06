@@ -1,8 +1,8 @@
 import { CalendarDays, DollarSign, Users } from "lucide-react";
 
-import { getDashboardStatsAction } from "@features/events/server";
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import type { DashboardDataResource } from "../_lib/dashboard-data";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("ja-JP", {
@@ -11,29 +11,31 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export async function DashboardStatsCards() {
-  const result = await getDashboardStatsAction();
+export async function DashboardStatsCards({
+  dashboardDataResource,
+}: {
+  dashboardDataResource: Promise<DashboardDataResource>;
+}) {
+  try {
+    const { stats } = await dashboardDataResource;
+    const resolvedStats = await stats;
 
-  if (!result.success || !result.data) {
-    // エラー時は0を表示、あるいはエラーUIでも良いが、並列ロードの一部なので0でフォールバック
     return (
       <StatsCardsContent
-        upcomingEventsCount={0}
-        totalUpcomingParticipants={0}
-        unpaidFeesTotal={0}
+        upcomingEventsCount={resolvedStats.upcomingEventsCount}
+        totalUpcomingParticipants={resolvedStats.totalUpcomingParticipants}
+        unpaidFeesTotal={resolvedStats.unpaidFeesTotal}
+      />
+    );
+  } catch {
+    return (
+      <StatsCardsContent
+        upcomingEventsCount={null}
+        totalUpcomingParticipants={null}
+        unpaidFeesTotal={null}
       />
     );
   }
-
-  const stats = result.data;
-
-  return (
-    <StatsCardsContent
-      upcomingEventsCount={stats.upcomingEventsCount}
-      totalUpcomingParticipants={stats.totalUpcomingParticipants}
-      unpaidFeesTotal={stats.unpaidFeesTotal}
-    />
-  );
 }
 
 function StatsCardsContent({
@@ -41,9 +43,9 @@ function StatsCardsContent({
   totalUpcomingParticipants,
   unpaidFeesTotal,
 }: {
-  upcomingEventsCount: number;
-  totalUpcomingParticipants: number;
-  unpaidFeesTotal: number;
+  upcomingEventsCount: number | null;
+  totalUpcomingParticipants: number | null;
+  unpaidFeesTotal: number | null;
 }) {
   return (
     <>
@@ -58,8 +60,14 @@ function StatsCardsContent({
         </CardHeader>
         <CardContent className="relative pt-0">
           <div className="flex items-baseline gap-2">
-            <div className="text-xl font-bold text-gray-900">{upcomingEventsCount}</div>
-            <div className="text-sm text-gray-500">件</div>
+            <div className="text-xl font-bold text-gray-900">
+              {upcomingEventsCount === null ? (
+                <span className="text-muted-foreground text-lg">-</span>
+              ) : (
+                upcomingEventsCount
+              )}
+            </div>
+            {upcomingEventsCount !== null && <div className="text-sm text-gray-500">件</div>}
           </div>
           <div className="mt-2 text-xs text-gray-500">今後のイベント数</div>
         </CardContent>
@@ -76,8 +84,14 @@ function StatsCardsContent({
         </CardHeader>
         <CardContent className="relative pt-0">
           <div className="flex items-baseline gap-2">
-            <div className="text-xl font-bold text-gray-900">{totalUpcomingParticipants}</div>
-            <div className="text-sm text-gray-500">名</div>
+            <div className="text-xl font-bold text-gray-900">
+              {totalUpcomingParticipants === null ? (
+                <span className="text-muted-foreground text-lg">-</span>
+              ) : (
+                totalUpcomingParticipants
+              )}
+            </div>
+            {totalUpcomingParticipants !== null && <div className="text-sm text-gray-500">名</div>}
           </div>
           <div className="mt-2 text-xs text-gray-500">今後の参加予定者</div>
         </CardContent>
@@ -94,7 +108,11 @@ function StatsCardsContent({
         </CardHeader>
         <CardContent className="relative pt-0">
           <div className="text-xl font-bold text-gray-900 leading-tight">
-            {formatCurrency(unpaidFeesTotal)}
+            {unpaidFeesTotal === null ? (
+              <span className="text-muted-foreground text-lg">-</span>
+            ) : (
+              formatCurrency(unpaidFeesTotal)
+            )}
           </div>
           <div className="mt-2 text-xs text-gray-500">集金待ちの金額</div>
         </CardContent>

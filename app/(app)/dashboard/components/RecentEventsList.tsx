@@ -2,16 +2,28 @@ import Link from "next/link";
 
 import { ArrowRight, Calendar } from "lucide-react";
 
-import { getRecentEventsAction } from "@features/events/server";
+import type { RecentEvent } from "@features/events/server";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+import type { DashboardDataResource } from "../_lib/dashboard-data";
+
 import { DashboardRecentEventItem } from "./DashboardRecentEventItem";
 
-export async function RecentEventsList() {
-  const result = await getRecentEventsAction();
-  const events = result.success && result.data ? result.data : [];
+export async function RecentEventsList({
+  dashboardDataResource,
+}: {
+  dashboardDataResource: Promise<DashboardDataResource>;
+}) {
+  let events: RecentEvent[] | null = null;
+
+  try {
+    const { recentEvents } = await dashboardDataResource;
+    events = await recentEvents;
+  } catch {
+    events = null;
+  }
 
   return (
     <Card className="border shadow-sm overflow-hidden">
@@ -39,7 +51,13 @@ export async function RecentEventsList() {
       </CardHeader>
 
       <CardContent className="p-0">
-        {events.length === 0 ? (
+        {events === null ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+            <p className="text-sm font-semibold text-muted-foreground">
+              データの取得に失敗しました
+            </p>
+          </div>
+        ) : events.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-4">
             <div className="relative mb-4">
               <div className="absolute inset-0 bg-primary/10 rounded-full blur-xl scale-150" />

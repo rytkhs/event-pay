@@ -12,10 +12,10 @@ export const NO_ACCOUNT_STATUS: DetailedAccountStatus = {
 
 export const UNVERIFIED_STATUS: DetailedAccountStatus = {
   statusType: "unverified",
-  title: "アカウント認証を完了してください",
+  title: "アカウント設定を完了してください",
   description:
-    "Stripeアカウントの認証が完了していません。認証を完了することで決済を受け取れるようになります。",
-  actionText: "認証を完了する",
+    "Stripeアカウントの設定が完了していません。設定を完了することでオンライン決済を有効化できます。",
+  actionText: "設定を完了する",
   actionUrl: "/settings/payments?action=complete",
   severity: "warning",
 };
@@ -37,6 +37,16 @@ export const RESTRICTED_STATUS: DetailedAccountStatus = {
   actionText: "Stripeで状況を確認",
   actionUrl: "/settings/payments?action=update",
   severity: "error",
+};
+
+export const DASHBOARD_SETUP_INCOMPLETE_STATUS: DetailedAccountStatus = {
+  statusType: "requirements_due",
+  title: "決済機能はまだ利用開始前です",
+  description:
+    "Stripeアカウントの設定完了、またはStripeによる審査完了を待っている状態です。設定画面から状況を確認できます。",
+  actionText: "状況を確認",
+  actionUrl: "/settings/payments",
+  severity: "warning",
 };
 
 export function buildRequirementsDueStatus(input: {

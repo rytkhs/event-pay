@@ -55,6 +55,10 @@ const getCachedBalance = (accountId: string) =>
     }
   )();
 
+export async function fetchStripeBalanceByAccountId(accountId: string): Promise<number> {
+  return await getCachedBalance(accountId);
+}
+
 /**
  * ユーザーのStripe Connectアカウント残高を取得する
  * @returns アカウント残高（JPY）
@@ -87,7 +91,7 @@ export async function getStripeBalanceAction(): Promise<ActionResult<number>> {
 
     // 残高を取得
     // 残高を取得 (キャッシュを使用)
-    const balance = await getCachedBalance(connectAccount.stripe_account_id);
+    const balance = await fetchStripeBalanceByAccountId(connectAccount.stripe_account_id);
 
     return ok(balance);
   } catch (error) {

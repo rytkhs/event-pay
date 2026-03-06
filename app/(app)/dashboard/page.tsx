@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
+import { createDashboardDataResource } from "./_lib/dashboard-data";
 import { ConnectAccountCtaWrapper } from "./components/ConnectAccountCtaWrapper";
 import { DashboardStatsCards } from "./components/DashboardStatsCards";
 import { RecentEventsList } from "./components/RecentEventsList";
@@ -18,6 +19,8 @@ import {
 import { StripeAccountCard } from "./components/StripeAccountCard";
 
 export default async function DashboardPage() {
+  const dashboardDataResource = createDashboardDataResource();
+
   return (
     <div className="min-h-screen bg-muted/30">
       <div className="max-w-7xl mx-auto sm:py-6 lg:py-8 sm:px-4 lg:px-8 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] sm:pb-0">
@@ -40,21 +43,21 @@ export default async function DashboardPage() {
         {/* 統計カードセクション（4つのカード） */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
           <Suspense fallback={<DashboardStatsSkeleton />}>
-            <DashboardStatsCards />
+            <DashboardStatsCards dashboardDataResource={dashboardDataResource} />
           </Suspense>
           <Suspense fallback={<StripeAccountSkeleton />}>
-            <StripeAccountCard />
+            <StripeAccountCard dashboardDataResource={dashboardDataResource} />
           </Suspense>
         </div>
 
         {/* Stripe Connect アカウント設定CTA */}
         <Suspense fallback={<ConnectAccountCtaSkeleton />}>
-          <ConnectAccountCtaWrapper />
+          <ConnectAccountCtaWrapper dashboardDataResource={dashboardDataResource} />
         </Suspense>
 
         {/* 最近のイベント（全幅版） */}
         <Suspense fallback={<RecentEventsSkeleton />}>
-          <RecentEventsList />
+          <RecentEventsList dashboardDataResource={dashboardDataResource} />
         </Suspense>
 
         {/* フローティングアクションボタン（FAB） - モバイル専用 */}
