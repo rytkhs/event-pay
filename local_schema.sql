@@ -895,6 +895,37 @@ COMMENT ON FUNCTION "public"."get_min_payout_amount"() IS '最小送金金額（
 
 
 
+CREATE OR REPLACE FUNCTION "public"."get_recent_events"() RETURNS TABLE("id" "uuid", "title" "text", "date" timestamp with time zone, "fee" integer, "capacity" integer, "canceled_at" timestamp with time zone, "location" "text", "attendances_count" bigint)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+  SELECT
+    e.id,
+    e.title,
+    e.date,
+    e.fee,
+    e.capacity,
+    e.canceled_at,
+    e.location,
+    COUNT(a.id)::bigint AS attendances_count
+  FROM events e
+  LEFT JOIN attendances a
+    ON e.id = a.event_id
+   AND a.status = 'attending'
+  WHERE e.created_by = auth.uid()
+  GROUP BY e.id
+  ORDER BY e.date DESC, e.id DESC
+  LIMIT 5;
+$$;
+
+
+ALTER FUNCTION "public"."get_recent_events"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."get_recent_events"() IS 'ユーザーの最近のイベント一覧を参加予定人数付きで取得する関数';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."get_settlement_report_details"("input_created_by" "uuid", "input_event_ids" "uuid"[] DEFAULT NULL::"uuid"[], "p_from_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_to_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("report_id" "uuid", "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "stripe_account_id" character varying, "transfer_group" character varying, "generated_at" timestamp with time zone, "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer)
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
@@ -3653,6 +3684,11 @@ REVOKE ALL ON FUNCTION "public"."get_min_payout_amount"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "anon";
 GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_recent_events"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_recent_events"() TO "service_role";
 
 
 

@@ -837,6 +837,19 @@ export type Database = {
       };
       get_guest_token: { Args: never; Returns: string };
       get_min_payout_amount: { Args: never; Returns: number };
+      get_recent_events: {
+        Args: never;
+        Returns: {
+          attendances_count: number;
+          canceled_at: string;
+          capacity: number;
+          date: string;
+          fee: number;
+          id: string;
+          location: string;
+          title: string;
+        }[];
+      };
       get_settlement_report_details: {
         Args: {
           input_created_by: string;

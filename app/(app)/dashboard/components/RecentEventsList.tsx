@@ -2,11 +2,12 @@ import Link from "next/link";
 
 import { ArrowRight, Calendar } from "lucide-react";
 
-import { EventCard } from "@features/events";
+import { getRecentEventsAction } from "@features/events/server";
 
-import { getRecentEventsAction } from "@/app/(app)/events/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { DashboardRecentEventItem } from "./DashboardRecentEventItem";
 
 export async function RecentEventsList() {
   const result = await getRecentEventsAction();
@@ -56,8 +57,8 @@ export async function RecentEventsList() {
           </div>
         ) : (
           <div className="divide-y divide-border/60">
-            {events.slice(0, 5).map((event) => (
-              <EventCard key={event.id} event={event} mode="compact" />
+            {events.map((event) => (
+              <DashboardRecentEventItem key={event.id} event={event} />
             ))}
           </div>
         )}
