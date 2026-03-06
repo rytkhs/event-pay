@@ -73,6 +73,7 @@ export function AppSidebar({
     try {
       const result = await logoutAction();
       if (!result.success) {
+        setIsLoggingOut(false);
         setLogoutError(result.error.userMessage || LOGOUT_ERROR_MESSAGE);
         return;
       }
@@ -80,9 +81,8 @@ export function AppSidebar({
       const redirectUrl = result.redirectUrl || "/login";
       window.location.href = redirectUrl;
     } catch {
-      setLogoutError(LOGOUT_ERROR_MESSAGE);
-    } finally {
       setIsLoggingOut(false);
+      setLogoutError(LOGOUT_ERROR_MESSAGE);
     }
   };
 
