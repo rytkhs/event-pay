@@ -2,9 +2,9 @@
  * @jest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { render, screen } from "@testing-library/react";
-import React from "react";
 import { useSearchParams } from "next/navigation";
+
+import { render, screen } from "@testing-library/react";
 
 // ログインページのコンポーネントをテストするために、
 // 必要なモックを設定してから、動的インポートでコンポーネントを読み込む
@@ -17,6 +17,7 @@ jest.mock("next/navigation", () => ({
 // Server Actionのモック
 jest.mock("@/app/(auth)/actions", () => ({
   loginAction: jest.fn(),
+  startGoogleOAuth: jest.fn(),
 }));
 
 // useLoginFormRHFのモック
@@ -32,8 +33,11 @@ jest.mock("@features/auth", () => ({
 }));
 
 // コンポーネントのモック
-jest.mock("@/components/auth", () => ({
+jest.mock("@/components/auth/GoogleLoginButton", () => ({
   GoogleLoginButton: () => <button>Google Login</button>,
+}));
+
+jest.mock("@/components/auth/LINELoginButton", () => ({
   LINELoginButton: ({ href }: { href: string }) => <a href={href}>LINE Login</a>,
 }));
 
@@ -65,11 +69,6 @@ jest.mock("@/components/ui/input", () => ({
 
 jest.mock("@/components/ui/password-input", () => ({
   PasswordInput: (props: any) => <input type="password" {...props} />,
-}));
-
-// Server Actionsのモック
-jest.mock("../../../app/(auth)/login/actions", () => ({
-  startGoogleOAuth: jest.fn(),
 }));
 
 describe("Login Page - LINE Error Display", () => {

@@ -10,7 +10,7 @@ import { Lock } from "lucide-react";
 
 import { useRegisterFormRHF } from "@features/auth";
 
-import { registerAction } from "@/app/(auth)/actions";
+import { registerAction, startGoogleOAuth } from "@/app/(auth)/actions";
 import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
 import { LINELoginButton } from "@/components/auth/LINELoginButton";
 import { Button } from "@/components/ui/button";
@@ -26,8 +26,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-
-import { startGoogleOAuth } from "../login/actions";
 
 function RegisterForm() {
   const searchParams = useSearchParams();

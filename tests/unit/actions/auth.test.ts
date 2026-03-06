@@ -19,8 +19,12 @@ jest.mock("next/headers", () => ({
 // Supabase client をモック化（共通モックを使用）
 const mockSupabase = createMockSupabaseClient();
 
-jest.mock("../../../core/supabase/server", () => ({
-  createClient: jest.fn(() => mockSupabase),
+jest.mock("@core/supabase/factory", () => ({
+  createServerActionSupabaseClient: jest.fn(async () => mockSupabase),
+}));
+
+jest.mock("@/app/_init/feature-registrations", () => ({
+  ensureFeaturesRegistered: jest.fn(),
 }));
 
 // auth-securityモジュールをモック化
