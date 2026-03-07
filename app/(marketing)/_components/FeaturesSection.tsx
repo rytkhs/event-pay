@@ -47,11 +47,7 @@ export const FeaturesSection: React.FC = () => {
                   <Zap size={24} aria-hidden="true" />
                   <span>圧倒的な手軽さ</span>
                 </div>
-                <h3 className="text-2xl md:text-3xl font-bold mb-4">
-                  アプリ不要・登録不要。
-                  <br />
-                  URLを送るだけ。
-                </h3>
+                <h3 className="text-2xl md:text-3xl font-bold mb-4">アプリ不要・登録不要。</h3>
                 <p className="text-slate-300 text-lg leading-relaxed">
                   参加者に新しいアプリを入れてもらう必要はありません。招待リンクをLINEやSlackに貼るだけ。参加者は「ニックネーム」と「メールアドレス」だけで、10秒で参加表明が完了します。
                 </p>
