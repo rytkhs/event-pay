@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react";
 
+import Link from "next/link";
+
 import { AlertCircle } from "lucide-react";
 
 import type { BeginCheckoutParams } from "@core/analytics/event-types";
@@ -232,12 +234,12 @@ export function GuestPageClient({
       <footer className="py-8 text-center text-gray-400 text-xs space-y-3">
         {attendance.event.created_by && process.env.NEXT_PUBLIC_IS_DEMO !== "true" && (
           <div className="flex justify-center gap-4">
-            <a
+            <Link
               href={`/tokushoho/${attendance.event.created_by}`}
               className="hover:text-gray-600 underline"
             >
               特定商取引法に基づく表記
-            </a>
+            </Link>
           </div>
         )}
         <div>

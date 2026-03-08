@@ -5,6 +5,8 @@
 
 "use client";
 
+import Link from "next/link";
+
 import { AlertCircle, ExternalLink } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -26,12 +28,12 @@ export function UnverifiedView({ refreshUrl }: UnverifiedViewProps) {
         </AlertDescription>
       </Alert>
 
-      <a href={refreshUrl} className="block">
-        <Button type="button" className="w-full">
+      <Button asChild className="w-full">
+        <Link href={refreshUrl} prefetch={false}>
           <ExternalLink className="h-4 w-4 mr-2" />
           Stripeで設定を始める
-        </Button>
-      </a>
+        </Link>
+      </Button>
     </div>
   );
 }

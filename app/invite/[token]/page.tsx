@@ -1,4 +1,5 @@
 import { cookies, headers } from "next/headers";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import type { Metadata } from "next";
@@ -161,13 +162,13 @@ export default async function InvitePage(props: InvitePageProps) {
             if (!organizerId || isDemo) return null;
             return (
               <div className="mt-8 text-center">
-                <a
+                <Link
                   href={`/tokushoho/${organizerId}`}
                   className="text-xs underline text-muted-foreground hover:no-underline"
                   aria-label="主催者の特定商取引法に基づく表記を確認する"
                 >
                   特定商取引法に基づく表記（イベント）
-                </a>
+                </Link>
               </div>
             );
           })()}
