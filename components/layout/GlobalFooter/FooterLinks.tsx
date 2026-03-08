@@ -48,7 +48,12 @@ export function FooterLinks({
               {link.label}
             </a>
           ) : (
-            <Link href={link.href} className={linkBaseStyles} aria-label={link.ariaLabel}>
+            <Link
+              href={link.href}
+              prefetch={false}
+              className={linkBaseStyles}
+              aria-label={link.ariaLabel}
+            >
               {link.label}
             </Link>
           )}
