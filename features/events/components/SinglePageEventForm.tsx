@@ -2,6 +2,8 @@
 
 import { useEffect, useState, type JSX } from "react";
 
+import Link from "next/link";
+
 import { format } from "date-fns";
 import {
   MapPinIcon,
@@ -136,13 +138,13 @@ function SinglePageEventForm({
       {/* Header */}
       <header className="mb-6">
         <div className="flex items-center gap-2 mb-2">
-          <a
+          <Link
             href="/dashboard"
             className="flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors"
           >
             <ChevronLeftIcon className="w-4 h-4 mr-1" />
             ダッシュボードに戻る
-          </a>
+          </Link>
         </div>
         <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
           新しいイベントを作成
@@ -495,12 +497,12 @@ function SinglePageEventForm({
                         {!canUseOnlinePayments && (
                           <p className="text-xs text-muted-foreground mt-2">
                             オンライン決済を利用するにはStripeアカウントの設定が必要です。
-                            <a
+                            <Link
                               href={connectStatus?.actionUrl ?? "/settings/payments"}
                               className="underline ml-1"
                             >
                               設定に進む
-                            </a>
+                            </Link>
                           </p>
                         )}
                         <FormMessage />

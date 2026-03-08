@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 
+import Link from "next/link";
+
 import { cn } from "@core/utils";
 
 import { navigationConfig, marketingCTA } from "./navigation-config";
@@ -70,7 +72,7 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
 
                 if (isHashLink) {
                   return (
-                    <a
+                    <Link
                       key={item.href}
                       href={item.href}
                       className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium transition-all duration-200 hover:text-primary hover:bg-primary/5 rounded-md"
@@ -78,7 +80,7 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
                     >
                       {item.icon && <span className="h-4 w-4 flex-shrink-0">{item.icon}</span>}
                       {item.label}
-                    </a>
+                    </Link>
                   );
                 }
 
@@ -103,12 +105,12 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
               </NavLink>
 
               {/* CTA ボタン */}
-              <a
+              <Link
                 href={marketingCTA.href}
                 className="ml-2 bg-primary hover:bg-primary/80 text-white px-5 py-2 rounded-full font-bold transition-all shadow-lg hover:shadow-blue-200"
               >
                 {marketingCTA.label}
-              </a>
+              </Link>
             </nav>
 
             {/* モバイル用ナビゲーション */}
@@ -122,12 +124,12 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
               </NavLink>
 
               {/* モバイル用CTA ボタン */}
-              <a
+              <Link
                 href={marketingCTA.href}
                 className="text-xs bg-primary hover:bg-primary/80 text-white px-4 py-2 rounded-full font-bold transition-all shadow-lg hover:shadow-blue-200 whitespace-nowrap"
               >
                 {marketingCTA.label}
-              </a>
+              </Link>
             </div>
           </div>
         </div>

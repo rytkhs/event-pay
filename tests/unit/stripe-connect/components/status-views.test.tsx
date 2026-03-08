@@ -29,7 +29,7 @@ describe("Status View Components", () => {
     it("should display setup button", () => {
       render(<NoAccountView refreshUrl={mockRefreshUrl} />);
 
-      expect(screen.getByRole("button", { name: /Stripeで設定を始める/i })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /Stripeで設定を始める/i })).toBeInTheDocument();
     });
   });
 
@@ -91,7 +91,7 @@ describe("Status View Components", () => {
     it("should display continue button when not under review", () => {
       render(<RequirementsDueView status={mockStatus} refreshUrl={mockRefreshUrl} />);
 
-      expect(screen.getByRole("button", { name: /Stripeで設定を続行/i })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /Stripeで設定を続行/i })).toBeInTheDocument();
     });
 
     it("should display review pending message when under review", () => {

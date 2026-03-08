@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 
+import Link from "next/link";
+
 import { LogOut, User, ChevronDown, ChevronRight } from "lucide-react";
 
 import { cn } from "@core/utils";
@@ -174,7 +176,7 @@ export function UserMenu({
             {/* メニューアイテム */}
             <div className="py-1">
               {userMenuItems.map((item) => (
-                <a
+                <Link
                   key={item.href}
                   href={item.href}
                   className="group flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
@@ -187,7 +189,7 @@ export function UserMenu({
                     </span>
                   )}
                   {item.label}
-                </a>
+                </Link>
               ))}
             </div>
 

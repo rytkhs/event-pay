@@ -1,13 +1,14 @@
 import { cache } from "react";
 
 import { redirect } from "next/navigation";
+
 import type { User } from "@supabase/supabase-js";
 
+import { isMissingAuthSessionError } from "@core/supabase/auth-guards";
 import {
   createServerActionSupabaseClient,
   createServerComponentSupabaseClient,
 } from "@core/supabase/factory";
-import { isMissingAuthSessionError } from "@core/supabase/auth-guards";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 type AuthLookupContext = "server_action" | "server_component";
