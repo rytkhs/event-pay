@@ -170,6 +170,7 @@ function RegisterForm() {
                     送信することで、
                     <Link
                       href="/terms"
+                      prefetch={false}
                       className="text-primary hover:text-primary/80 underline"
                       target="_blank"
                       rel="noopener noreferrer"
@@ -179,6 +180,7 @@ function RegisterForm() {
                     と
                     <Link
                       href="/privacy"
+                      prefetch={false}
                       className="text-primary hover:text-primary/80 underline"
                       target="_blank"
                       rel="noopener noreferrer"
