@@ -164,6 +164,7 @@ export default async function InvitePage(props: InvitePageProps) {
               <div className="mt-8 text-center">
                 <Link
                   href={`/tokushoho/${organizerId}`}
+                  prefetch={false}
                   className="text-xs underline text-muted-foreground hover:no-underline"
                   aria-label="主催者の特定商取引法に基づく表記を確認する"
                 >

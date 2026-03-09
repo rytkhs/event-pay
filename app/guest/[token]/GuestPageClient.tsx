@@ -236,6 +236,7 @@ export function GuestPageClient({
           <div className="flex justify-center gap-4">
             <Link
               href={`/tokushoho/${attendance.event.created_by}`}
+              prefetch={false}
               className="hover:text-gray-600 underline"
             >
               特定商取引法に基づく表記
