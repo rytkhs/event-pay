@@ -62,6 +62,7 @@ export function DashboardRecentEventItem({ event }: { event: RecentEvent }) {
 
   return (
     <Link
+      prefetch={false}
       href={`/events/${event.id}`}
       className={cn(
         "group relative flex flex-col sm:flex-row sm:items-center",

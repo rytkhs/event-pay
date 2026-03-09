@@ -93,6 +93,7 @@ export const EventCard = memo(function EventCard({ event }: EventCardProps) {
   return (
     <Link
       href={`/events/${event.id}`}
+      prefetch={false}
       className={cn(
         "group relative flex flex-col sm:flex-row sm:items-center",
         "py-4 px-4 sm:px-6",

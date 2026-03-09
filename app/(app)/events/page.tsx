@@ -132,7 +132,7 @@ export default async function EventsPage(props: EventsPageProps) {
             className="shadow-md transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 font-semibold whitespace-nowrap"
             data-testid="create-event-button"
           >
-            <Link href="/events/create" className="inline-flex items-center gap-2">
+            <Link href="/events/create" prefetch={false} className="inline-flex items-center gap-2">
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">新しいイベントを作成</span>
               <span className="sm:hidden">作成</span>

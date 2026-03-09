@@ -43,7 +43,7 @@ export async function RecentEventsList({
             size="sm"
             className="text-xs sm:text-sm text-muted-foreground hover:text-primary gap-1 pr-0 font-medium"
           >
-            <Link href="/events">
+            <Link href="/events" prefetch={false}>
               すべて表示 <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </Link>
           </Button>
@@ -70,7 +70,9 @@ export async function RecentEventsList({
               新しいイベントを作成して集金を開始しましょう
             </p>
             <Button asChild size="sm" className="mt-4">
-              <Link href="/events/create">はじめてのイベントを作成</Link>
+              <Link href="/events/create" prefetch={false}>
+                はじめてのイベントを作成
+              </Link>
             </Button>
           </div>
         ) : (
