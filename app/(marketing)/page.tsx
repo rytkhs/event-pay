@@ -19,7 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description:
       "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?サークル・コミュニティ運営の集金負担を劇的に減らします。",
     alternates: {
-      canonical: "https://minnano-shukin.com",
+      canonical: process.env.NEXT_PUBLIC_APP_URL,
     },
   };
 }

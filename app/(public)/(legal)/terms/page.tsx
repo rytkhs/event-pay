@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description:
       "みんなの集金の利用規約です。本サービスのご利用にあたって同意いただく事項を定めています。",
     alternates: {
-      canonical: "https://minnano-shukin.com/terms",
+      canonical: `${process.env.NEXT_PUBLIC_APP_URL}/terms`,
     },
   };
 }

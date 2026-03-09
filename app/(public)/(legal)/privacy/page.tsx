@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description:
       "みんなの集金のプライバシーポリシーです。個人情報の取り扱いについて説明しています。",
     alternates: {
-      canonical: "https://minnano-shukin.com/privacy",
+      canonical: `${process.env.NEXT_PUBLIC_APP_URL}/privacy`,
     },
   };
 }

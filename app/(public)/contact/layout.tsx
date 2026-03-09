@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description:
     "みんなの集金のお問い合わせフォームです。ご質問やご不明な点がございましたら、お気軽にお問い合わせください。",
   alternates: {
-    canonical: "https://minnano-shukin.com/contact",
+    canonical: `${process.env.NEXT_PUBLIC_APP_URL}/contact`,
   },
 };
 

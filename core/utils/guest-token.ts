@@ -84,6 +84,6 @@ export function generateGuestToken(): string {
  * @returns ゲストURL (/guest/{guestToken})
  */
 export function buildGuestUrl(guestToken: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
   return `${baseUrl}/guest/${guestToken}`;
 }
