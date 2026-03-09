@@ -123,7 +123,14 @@ describe("ParticipantsTableV2", () => {
     eventId: "event-1",
     eventFee: 1000,
     allParticipants: buildParticipantsArray(),
-    searchParams: {},
+    query: {
+      tab: "participants" as const,
+      search: "",
+      attendance: "all" as const,
+      smart: true,
+      page: 1,
+      limit: 150,
+    },
     onParamsChange: jest.fn(),
     updateCashStatusAction: mockUpdateCashStatus,
     bulkUpdateCashStatusAction: mockBulkUpdateCashStatus,
@@ -169,6 +176,7 @@ describe("ParticipantsTableV2", () => {
       await user.click(nicknameHeader);
 
       expect(onParamsChange).toHaveBeenCalledWith({
+        smart: false,
         sort: "nickname",
         order: "asc",
       });
@@ -184,9 +192,47 @@ describe("ParticipantsTableV2", () => {
       await user.click(statusHeader);
 
       expect(onParamsChange).toHaveBeenCalledWith({
+        smart: false,
         sort: "status",
         order: "asc",
       });
+    });
+
+    it("manual sort が実際の表示順に反映される", () => {
+      const participants = [
+        {
+          ...buildParticipantsArray(2)[1],
+          nickname: "Bさん",
+          attendance_id: "att-b",
+          payment_id: "pay-b",
+        },
+        {
+          ...buildParticipantsArray(2)[0],
+          nickname: "Aさん",
+          attendance_id: "att-a",
+          payment_id: "pay-a",
+        },
+      ];
+
+      render(
+        <ParticipantsTableV2
+          {...defaultProps}
+          allParticipants={participants}
+          query={{
+            ...defaultProps.query,
+            smart: false,
+            sort: "nickname",
+            order: "asc",
+          }}
+        />
+      );
+
+      const nicknames = screen
+        .getAllByText(/さん/)
+        .map((element) => element.textContent)
+        .filter(Boolean);
+
+      expect(nicknames.slice(0, 2)).toEqual(["Aさん", "Bさん"]);
     });
   });
 
@@ -241,7 +287,7 @@ describe("ParticipantsTableV2", () => {
         <ParticipantsTableV2
           {...defaultProps}
           allParticipants={manyParticipants}
-          searchParams={{ limit: "50" }}
+          query={{ ...defaultProps.query, limit: 50 }}
         />
       );
 
@@ -261,7 +307,7 @@ describe("ParticipantsTableV2", () => {
           {...defaultProps}
           allParticipants={manyParticipants}
           onParamsChange={onParamsChange}
-          searchParams={{ limit: "50" }}
+          query={{ ...defaultProps.query, limit: 50 }}
         />
       );
 
@@ -275,7 +321,7 @@ describe("ParticipantsTableV2", () => {
       const nextButton = paginationButtons[0];
       await user.click(nextButton);
 
-      expect(onParamsChange).toHaveBeenCalledWith({ page: "2" });
+      expect(onParamsChange).toHaveBeenCalledWith({ page: 2 });
     });
   });
 

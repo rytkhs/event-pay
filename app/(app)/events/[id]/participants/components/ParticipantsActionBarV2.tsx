@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Plus, Download, Search, X, ListTodo, MoreVertical } from "lucide-react";
 
@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
+import type { EventManagementQuery, EventManagementQueryPatch } from "../../query-params";
 import { adminAddAttendanceAction, exportParticipantsCsvAction } from "../actions";
 
 import { SmartSortToggle } from "./SmartSortToggle";
@@ -37,8 +38,8 @@ import { SmartSortToggle } from "./SmartSortToggle";
 interface ParticipantsActionBarV2Props {
   eventId: string;
   eventDetail: Event;
-  searchParams: { [key: string]: string | string[] | undefined };
-  onFiltersChange: (params: Record<string, string | undefined>) => void;
+  query: EventManagementQuery;
+  onFiltersChange: (patch: EventManagementQueryPatch) => void;
   filterTrigger: ReactNode;
   isSelectionMode?: boolean;
   onToggleSelectionMode?: () => void;
@@ -47,7 +48,7 @@ interface ParticipantsActionBarV2Props {
 export function ParticipantsActionBarV2({
   eventId,
   eventDetail,
-  searchParams,
+  query,
   onFiltersChange,
   filterTrigger,
   isSelectionMode = false,
@@ -66,14 +67,16 @@ export function ParticipantsActionBarV2({
   }>(null);
 
   // インライン検索
-  const [searchQuery, setSearchQuery] = useState(
-    typeof searchParams.search === "string" ? searchParams.search : ""
-  );
+  const [searchQuery, setSearchQuery] = useState(query.search);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   // イベントが有料かどうかを判定
   const isPayingEvent = eventDetail.fee > 0;
+
+  useEffect(() => {
+    setSearchQuery(query.search);
+  }, [query.search]);
 
   const handleOpenAdd = () => {
     setAddNickname("");
@@ -204,25 +207,27 @@ export function ParticipantsActionBarV2({
     }
   };
 
-  const smartActive = searchParams.smart !== "0";
+  const smartActive = query.smart;
 
   const handleToggleSmartSort = (checked: boolean) => {
     if (checked) {
-      // ON (Default)
-      onFiltersChange({ smart: undefined, page: "1" });
+      onFiltersChange({
+        smart: true,
+        sort: undefined,
+        order: undefined,
+      });
     } else {
-      // OFF
-      onFiltersChange({ smart: "0", page: "1" });
+      onFiltersChange({ smart: false });
     }
   };
 
   const handleSearch = () => {
-    onFiltersChange({ search: searchQuery || undefined, page: "1" });
+    onFiltersChange({ search: searchQuery });
   };
 
   const handleClearSearch = () => {
     setSearchQuery("");
-    onFiltersChange({ search: undefined, page: "1" });
+    onFiltersChange({ search: "" });
   };
 
   return (

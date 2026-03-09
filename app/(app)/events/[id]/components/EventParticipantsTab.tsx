@@ -12,13 +12,18 @@ import {
 import { ParticipantsActionBarV2 } from "../participants/components/ParticipantsActionBarV2";
 import { ParticipantsFilterSheet } from "../participants/components/ParticipantsFilterSheet";
 import { ParticipantsStatusTabs } from "../participants/components/ParticipantsStatusTabs";
+import type {
+  EventManagementQuery,
+  EventManagementQueryPatch,
+  ParticipantAttendanceFilter,
+} from "../query-params";
 
 interface EventParticipantsTabProps {
   eventId: string;
   eventDetail: Event;
   participantsData: GetParticipantsResponse | null;
-  searchParams: { [key: string]: string | string[] | undefined };
-  onUpdateFilters: (newParams: Record<string, string | undefined>) => void;
+  query: EventManagementQuery;
+  onUpdateFilters: (patch: EventManagementQueryPatch) => void;
   updateCashStatusAction: ParticipantsTableV2Props["updateCashStatusAction"];
   bulkUpdateCashStatusAction: ParticipantsTableV2Props["bulkUpdateCashStatusAction"];
 }
@@ -27,7 +32,7 @@ export function EventParticipantsTab({
   eventId,
   eventDetail,
   participantsData,
-  searchParams,
+  query,
   onUpdateFilters,
   updateCashStatusAction,
   bulkUpdateCashStatusAction,
@@ -50,14 +55,9 @@ export function EventParticipantsTab({
     };
   }, [allParticipants]);
 
-  // 現在のステータスフィルター
-  const activeStatus =
-    typeof searchParams.attendance === "string" ? searchParams.attendance : "all";
-
   const handleStatusChange = (status: string) => {
     onUpdateFilters({
-      attendance: status === "all" ? undefined : status,
-      page: "1",
+      attendance: (status === "all" ? "all" : status) as ParticipantAttendanceFilter,
     });
   };
 
@@ -68,13 +68,13 @@ export function EventParticipantsTab({
         <ParticipantsActionBarV2
           eventId={eventId}
           eventDetail={eventDetail}
-          searchParams={searchParams}
+          query={query}
           onFiltersChange={onUpdateFilters}
           isSelectionMode={isSelectionMode}
           onToggleSelectionMode={() => setIsSelectionMode((prev) => !prev)}
           filterTrigger={
             <ParticipantsFilterSheet
-              searchParams={searchParams}
+              query={query}
               onFiltersChange={onUpdateFilters}
               isFreeEvent={isFreeEvent}
             />
@@ -84,7 +84,7 @@ export function EventParticipantsTab({
         {/* ステータスタブ（リスト直上） */}
         <ParticipantsStatusTabs
           counts={statusCounts}
-          activeStatus={activeStatus}
+          activeStatus={query.attendance}
           onStatusChange={handleStatusChange}
         />
 
@@ -94,7 +94,7 @@ export function EventParticipantsTab({
             eventId={eventId}
             eventFee={eventDetail.fee}
             allParticipants={allParticipants}
-            searchParams={searchParams}
+            query={query}
             onParamsChange={onUpdateFilters}
             updateCashStatusAction={updateCashStatusAction}
             bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}
