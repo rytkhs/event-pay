@@ -28,12 +28,12 @@ const notoSansJp = Noto_Sans_JP({
   variable: "--font-noto-sans-jp",
 });
 
-const getBaseUrl = () => {
-  return process.env.NEXT_PUBLIC_APP_URL || "https://minnano-shukin.com";
+const getAppUrl = () => {
+  return process.env.NEXT_PUBLIC_APP_URL;
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL(getBaseUrl()),
+  metadataBase: new URL(getAppUrl()),
   title: {
     default: "みんなの集金",
     template: "%s | みんなの集金",
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
       "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?",
     type: "website",
     locale: "ja_JP",
-    url: getBaseUrl(),
+    url: `${getAppUrl()}/`,
     siteName: "みんなの集金",
     images: [
       {
@@ -72,7 +72,6 @@ export const metadata: Metadata = {
       { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
       { url: "/favicon.ico", sizes: "48x48" },
     ],
-    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
     other: [{ rel: "mask-icon", url: "/safari-pinned-tab.svg", color: "#24a6b5" }],
   },
 };

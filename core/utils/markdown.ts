@@ -46,7 +46,7 @@ async function renderMarkdownFromString(content: string) {
 
 export async function renderMarkdownFromPublic(pathFromPublicRoot: string) {
   // Build absolute URL for same-origin fetch in server context
-  const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const base = process.env.NEXT_PUBLIC_APP_URL;
   const url = new URL(pathFromPublicRoot, base);
   const res = await fetch(url.toString(), { next: { revalidate: 60 * 60 * 24 } });
   if (!res.ok) {

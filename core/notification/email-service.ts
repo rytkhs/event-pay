@@ -12,7 +12,6 @@ import { logger } from "@core/logging/app-logger";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { maskEmail } from "@core/utils/mask";
 
-import { resolveEmailConfig } from "./email-config";
 import { classifyEmailProviderError } from "./email-error-policy";
 import { computeRetryDelayMs, DEFAULT_MAX_ATTEMPTS, shouldRetry } from "./email-retry-policy";
 import { buildAdminAlertTemplate } from "./templates";
@@ -83,10 +82,9 @@ export class EmailNotificationService implements IEmailNotificationService {
 
     this.resend = new Resend(apiKey);
 
-    const config = resolveEmailConfig();
-    this.fromEmail = config.fromEmail;
-    this.fromName = config.fromName;
-    this.adminEmail = config.adminEmail;
+    this.fromEmail = process.env.FROM_EMAIL;
+    this.fromName = process.env.FROM_NAME;
+    this.adminEmail = process.env.ADMIN_EMAIL;
   }
 
   /**

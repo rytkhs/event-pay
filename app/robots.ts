@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   const isDemo = process.env.NEXT_PUBLIC_IS_DEMO === "true";
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://minnano-shukin.com";
 
   if (isDemo) {
     return {
@@ -20,6 +20,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/dashboard", "/events/", "/payments/", "/payouts/", "/api/", "/auth/"],
     },
-    sitemap: `${baseUrl}/sitemap.xml`,
+    sitemap: `${appUrl}/sitemap.xml`,
   };
 }

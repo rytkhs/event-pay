@@ -41,7 +41,7 @@ function EmptyEventList({ isFiltered = false }: { isFiltered?: boolean }) {
         最初のイベントを作成して、参加者の管理を始めましょう
       </p>
       <Button asChild size="lg">
-        <Link href="/events/create" className="inline-flex items-center gap-2">
+        <Link href="/events/create" prefetch={false} className="inline-flex items-center gap-2">
           <PlusIcon className="h-4 w-4" />
           新しいイベントを作成
         </Link>

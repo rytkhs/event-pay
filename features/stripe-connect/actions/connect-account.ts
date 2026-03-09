@@ -384,7 +384,7 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
     userId = user.id;
 
     // 2. 必要情報の準備（ベースURL → refresh/return URL）
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
     const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}`;
     const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}`;
 
@@ -461,7 +461,7 @@ export async function startOnboardingAction(): Promise<void> {
     userId = user.id;
 
     // 2. 必要情報の準備（ベースURL → refresh/return URL）
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
     const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}`;
     const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}`;
 

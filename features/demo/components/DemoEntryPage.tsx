@@ -18,7 +18,7 @@ export function DemoEntryPage({ startDemoSession }: DemoEntryPageProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const initialized = useRef(false);
-  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || "https://minnano-shukin.com";
+  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL;
 
   useEffect(() => {
     if (initialized.current) return;

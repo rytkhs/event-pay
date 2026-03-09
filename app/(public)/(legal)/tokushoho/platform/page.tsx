@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "特定商取引法に基づく表記",
     description: "みんなの集金の特定商取引法に基づく表記です。",
     alternates: {
-      canonical: "https://minnano-shukin.com/tokushoho/platform",
+      canonical: `${process.env.NEXT_PUBLIC_APP_URL}/tokushoho/platform`,
     },
   };
 }

@@ -65,7 +65,7 @@ export async function generateGuestUrlAction(input: unknown): Promise<
       return fail("RESOURCE_CONFLICT", { userMessage: "ゲストトークンが未発行です" });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
     const guestUrl = `${baseUrl}/guest/${guestToken}`;
 
     const eventRel = attendanceRow.event;
