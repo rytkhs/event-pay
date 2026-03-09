@@ -36,11 +36,11 @@ export interface GA4Config {
  * ```
  */
 export function getGA4Config(): GA4Config {
-  const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "";
+  const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
   const apiSecret = process.env.GA_API_SECRET;
 
-  // テスト環境では無効化、Measurement IDが設定されている場合のみ有効
-  const enabled = !!measurementId && process.env.NODE_ENV !== "test";
+  // 本番環境のみ有効、Measurement IDが設定されている場合のみ有効
+  const enabled = !!measurementId && process.env.NODE_ENV === "production";
 
   // 開発環境ではデバッグモードを有効化
   const debug = process.env.NODE_ENV === "development";

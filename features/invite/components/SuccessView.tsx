@@ -20,9 +20,7 @@ interface SuccessViewProps {
 export const SuccessView: React.FC<SuccessViewProps> = ({ data, onRegisterAnother }) => {
   const { toast } = useToast();
   const [isResetting, setIsResetting] = useState(false);
-  const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL ??
-    (typeof window !== "undefined" ? window.location.origin : "");
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
   const derivedGuestUrl = `${baseUrl}/guest/${data.guestToken}`;
 
   const copyToClipboard = () => {

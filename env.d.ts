@@ -68,7 +68,7 @@ declare namespace NodeJS {
     // App URLs / Origins
     // ===========================
     /** アプリのベースURL（例: https://eventpay.app） */
-    NEXT_PUBLIC_APP_URL?: string;
+    NEXT_PUBLIC_APP_URL: string;
     /** 追加許可オリジン（カンマ区切り） */
     ALLOWED_ORIGINS?: string;
 
@@ -76,17 +76,17 @@ declare namespace NodeJS {
     // Google Analytics 4 Configuration（オプショナル）
     // ===========================
     /** GA4 Measurement ID（G-で始まる識別子、例: G-XXXXXXXXXX） */
-    NEXT_PUBLIC_GA_MEASUREMENT_ID?: string;
+    NEXT_PUBLIC_GA_MEASUREMENT_ID: string;
     /** GA4 Measurement Protocol API Secret（サーバー側イベント送信用） */
-    GA_API_SECRET?: string;
+    GA_API_SECRET: string;
 
     // ===========================
     // App Mode / Flag Configuration
     // ===========================
     /** デモモード有効化フラグ */
-    NEXT_PUBLIC_IS_DEMO?: string;
+    NEXT_PUBLIC_IS_DEMO: string;
     /** 本番環境の公開URL */
-    NEXT_PUBLIC_PRODUCTION_URL?: string;
+    NEXT_PUBLIC_PRODUCTION_URL: string;
 
     // ===========================
     // Maintenance Configuration
@@ -101,8 +101,10 @@ declare namespace NodeJS {
     // ===========================
     /** 送信元メールアドレス（必須） */
     FROM_EMAIL: string;
+    /** 送信元名前（必須） */
+    FROM_NAME: string;
     /** 管理者メールアドレス */
-    ADMIN_EMAIL?: string;
+    ADMIN_EMAIL: string;
 
     // ===========================
     // Security Secrets
@@ -110,21 +112,21 @@ declare namespace NodeJS {
     /** レート制限/HMAC用シークレット（必須） */
     RL_HMAC_SECRET: string;
     /** Cronジョブ認証用シークレット */
-    CRON_SECRET?: string;
+    CRON_SECRET: string;
 
     // ===========================
     // QStash Configuration (Job Queue)
     // ===========================
-    QSTASH_URL?: string;
+    QSTASH_URL: string;
     QSTASH_TOKEN?: string;
-    QSTASH_CURRENT_SIGNING_KEY?: string;
-    QSTASH_NEXT_SIGNING_KEY?: string;
+    QSTASH_CURRENT_SIGNING_KEY: string;
+    QSTASH_NEXT_SIGNING_KEY: string;
 
     // ===========================
     // LINE Login Configuration
     // ===========================
-    NEXT_PUBLIC_LINE_CHANNEL_ID?: string;
-    LINE_CHANNEL_SECRET?: string;
+    NEXT_PUBLIC_LINE_CHANNEL_ID: string;
+    LINE_CHANNEL_SECRET: string;
 
     // ===========================
     // Other Integrations

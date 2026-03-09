@@ -2,7 +2,7 @@ import { FlaskConical } from "lucide-react";
 
 export function DemoBanner() {
   const isDemo = process.env.NEXT_PUBLIC_IS_DEMO === "true";
-  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || "https://minnano-shukin.com";
+  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL;
 
   if (!isDemo) return null;
 

@@ -1,9 +1,6 @@
 import type { WithContext, Organization, WebSite, SoftwareApplication } from "schema-dts";
 
 function getAppUrl(): string {
-  if (!process.env.NEXT_PUBLIC_APP_URL) {
-    throw new Error("NEXT_PUBLIC_APP_URL is not defined");
-  }
   return process.env.NEXT_PUBLIC_APP_URL;
 }
 
