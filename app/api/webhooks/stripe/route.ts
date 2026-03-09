@@ -29,7 +29,9 @@ export const dynamic = "force-dynamic";
 // QStashクライアント初期化
 const getQstashClient = () => {
   const token = process.env.QSTASH_TOKEN;
-
+  if (!token) {
+    throw new Error("QSTASH_TOKEN environment variable is required");
+  }
   return new Client({ token });
 };
 
