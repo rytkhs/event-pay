@@ -128,6 +128,7 @@ function LoginForm() {
                   <div className="flex items-center justify-end text-xs sm:text-sm">
                     <Link
                       href="/reset-password"
+                      prefetch={false}
                       className="text-primary hover:text-primary/80 underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
                     >
                       パスワードを忘れた方
