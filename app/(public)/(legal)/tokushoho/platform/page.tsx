@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { buildOpenGraphMetadata, getPublicUrl } from "@core/seo/metadata";
 import { renderMarkdownFromFile } from "@core/utils/markdown";
 
 export const dynamic = "force-static";
@@ -9,8 +10,13 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "特定商取引法に基づく表記",
     description: "みんなの集金の特定商取引法に基づく表記です。",
     alternates: {
-      canonical: `${process.env.NEXT_PUBLIC_APP_URL}/tokushoho/platform`,
+      canonical: getPublicUrl("/tokushoho/platform"),
     },
+    openGraph: buildOpenGraphMetadata({
+      title: "特定商取引法に基づく表記 | みんなの集金",
+      description: "みんなの集金の特定商取引法に基づく表記です。",
+      path: "/tokushoho/platform",
+    }),
   };
 }
 

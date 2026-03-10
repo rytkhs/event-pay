@@ -1,17 +1,15 @@
 import type { WithContext, Organization, WebSite, SoftwareApplication } from "schema-dts";
 
-function getAppUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL;
-}
+import { getAppUrl } from "@core/seo/metadata";
 
 export function generateOrganizationSchema(): WithContext<Organization> {
   const appUrl = getAppUrl();
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "@id": `${appUrl}/#organization`,
+    "@id": `${appUrl}#organization`,
     name: "みんなの集金",
-    url: `${appUrl}/`,
+    url: appUrl,
     logo: `${appUrl}/icon-512.png`,
     contactPoint: {
       "@type": "ContactPoint",
@@ -28,16 +26,16 @@ export function generateWebSiteSchema(): WithContext<WebSite> {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "@id": `${appUrl}/#website`,
+    "@id": `${appUrl}#website`,
     name: "みんなの集金",
     alternateName: "minnano-shukin",
-    url: `${appUrl}/`,
+    url: appUrl,
     description:
       "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?サークル・コミュニティ運営の集金負担を劇的に減らします。",
     inLanguage: "ja",
     publisher: {
       "@type": "Organization",
-      "@id": `${appUrl}/#organization`,
+      "@id": `${appUrl}#organization`,
     },
   };
 }
@@ -53,10 +51,10 @@ export function generateSoftwareApplicationSchema(): WithContext<SoftwareApplica
       "「みんなの集金」は、イベントの出欠確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理・集金アプリです。アプリ不要・登録不要で、参加者はニックネームとメールアドレスだけで10秒で参加表明が可能。オンライン集金も現金集金も一つのリストで一元管理できるハイブリッド集金を実現。小銭の管理、未払い対応、名簿と現金の照合など、幹事の集金業務の負担を劇的に軽減します。飲み会・サークル・同窓会など、あらゆるイベントシーンで活躍。初期費用・月額料金0円、現金集金なら完全無料でご利用いただけます。",
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
-    url: `${appUrl}/`,
+    url: appUrl,
     author: {
       "@type": "Organization",
-      "@id": `${appUrl}/#organization`,
+      "@id": `${appUrl}#organization`,
     },
     offers: {
       "@type": "Offer",
