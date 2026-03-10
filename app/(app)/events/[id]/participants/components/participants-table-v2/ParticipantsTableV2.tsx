@@ -66,8 +66,33 @@ type BulkUpdateCashStatusAction = (
   input: BulkUpdateCashStatusInput
 ) => Promise<ActionResult<BulkUpdateResult>>;
 
+const MOBILE_BREAKPOINT = 768;
+const VIEW_MODE_STORAGE_KEYS = {
+  mobile: "event-participants-view-mode-mobile",
+  desktop: "event-participants-view-mode-desktop",
+} as const;
+
 function isViewMode(value: string): value is "table" | "cards" {
   return value === "table" || value === "cards";
+}
+
+function getDeviceType(width: number): keyof typeof VIEW_MODE_STORAGE_KEYS {
+  return width < MOBILE_BREAKPOINT ? "mobile" : "desktop";
+}
+
+function getDefaultViewMode(deviceType: keyof typeof VIEW_MODE_STORAGE_KEYS): "table" | "cards" {
+  return deviceType === "mobile" ? "cards" : "table";
+}
+
+function getInitialViewMode(): "table" | "cards" {
+  const deviceType = getDeviceType(window.innerWidth);
+  const saved = window.localStorage.getItem(VIEW_MODE_STORAGE_KEYS[deviceType]);
+
+  if (saved && isViewMode(saved)) {
+    return saved;
+  }
+
+  return getDefaultViewMode(deviceType);
 }
 
 function compareString(a: string, b: string, order: ParticipantSortOrder): number {
@@ -157,23 +182,15 @@ export function ParticipantsTableV2({
   const isFreeEvent = eventFee === 0;
   const router = useRouter();
 
-  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  const [viewMode, setViewMode] = useState<"table" | "cards" | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[]>([]);
 
-  // localStorage によるビュー永続化 + モバイル時は強制cards
+  // 端末別に初回デフォルトを決めつつ、保存済みの選択を復元する
   useEffect(() => {
-    const saved = localStorage.getItem("event-participants-view-mode") as "table" | "cards" | null;
-    const check = () => {
-      const mobile = window.innerWidth < 768;
-      if (mobile) setViewMode("cards");
-      else if (saved) setViewMode(saved);
-    };
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    setViewMode(getInitialViewMode());
   }, []);
 
   // 選択モードがOFFになったら選択状態をクリア
@@ -188,7 +205,8 @@ export function ParticipantsTableV2({
     setIsTransitioning(true);
     setTimeout(() => {
       setViewMode(newMode);
-      localStorage.setItem("event-participants-view-mode", newMode);
+      const deviceType = getDeviceType(window.innerWidth);
+      localStorage.setItem(VIEW_MODE_STORAGE_KEYS[deviceType], newMode);
       setTimeout(() => setIsTransitioning(false), 200);
     }, 100);
   };
@@ -560,60 +578,68 @@ export function ParticipantsTableV2({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold">参加者一覧 ({totalCount}件)</CardTitle>
-          <ToggleGroup
-            type="single"
-            value={viewMode}
-            onValueChange={(v) => {
-              if (isViewMode(v)) {
-                handleViewModeChange(v);
-              }
-            }}
-            className="border rounded-md"
-            aria-label="表示形式を選択"
-          >
-            <ToggleGroupItem value="table" aria-label="テーブル表示">
-              <TableIcon className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="cards" aria-label="カード表示">
-              <LayoutGridIcon className="h-4 w-4" />
-            </ToggleGroupItem>
-          </ToggleGroup>
+          {viewMode ? (
+            <ToggleGroup
+              type="single"
+              value={viewMode}
+              onValueChange={(v) => {
+                if (isViewMode(v)) {
+                  handleViewModeChange(v);
+                }
+              }}
+              className="border rounded-md"
+              aria-label="表示形式を選択"
+            >
+              <ToggleGroupItem value="table" aria-label="テーブル表示">
+                <TableIcon className="h-4 w-4" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="cards" aria-label="カード表示">
+                <LayoutGridIcon className="h-4 w-4" />
+              </ToggleGroupItem>
+            </ToggleGroup>
+          ) : (
+            <div className="h-9 w-20 rounded-md border bg-muted/20" aria-hidden="true" />
+          )}
         </div>
       </CardHeader>
       <CardContent className="px-3">
-        <div
-          className={`transition-opacity duration-200 ${isTransitioning ? "opacity-50" : "opacity-100"}`}
-        >
-          {viewMode === "table" ? (
-            <DataTable
-              columns={columns}
-              data={paginatedParticipants}
-              pageIndex={page - 1}
-              pageSize={limit}
-              pageCount={totalPages}
-              sorting={sorting}
-              onSortingChange={handleSortingChange}
-              getRowClassName={getRowClassName}
-            />
-          ) : (
-            <CardsView
-              participants={paginatedParticipants}
-              eventFee={eventFee}
-              isUpdating={isUpdating}
-              onReceive={handleReceive}
-              onCancel={handleCancel}
-              bulkSelection={
-                !isFreeEvent && isSelectionMode
-                  ? {
-                      selectedPaymentIds: validSelectedPaymentIds,
-                      onSelect: handleSelectPayment,
-                      isDisabled: isBulkUpdating || isUpdating,
-                    }
-                  : undefined
-              }
-            />
-          )}
-        </div>
+        {viewMode ? (
+          <div
+            className={`transition-opacity duration-200 ${isTransitioning ? "opacity-50" : "opacity-100"}`}
+          >
+            {viewMode === "table" ? (
+              <DataTable
+                columns={columns}
+                data={paginatedParticipants}
+                pageIndex={page - 1}
+                pageSize={limit}
+                pageCount={totalPages}
+                sorting={sorting}
+                onSortingChange={handleSortingChange}
+                getRowClassName={getRowClassName}
+              />
+            ) : (
+              <CardsView
+                participants={paginatedParticipants}
+                eventFee={eventFee}
+                isUpdating={isUpdating}
+                onReceive={handleReceive}
+                onCancel={handleCancel}
+                bulkSelection={
+                  !isFreeEvent && isSelectionMode
+                    ? {
+                        selectedPaymentIds: validSelectedPaymentIds,
+                        onSelect: handleSelectPayment,
+                        isDisabled: isBulkUpdating || isUpdating,
+                      }
+                    : undefined
+                }
+              />
+            )}
+          </div>
+        ) : (
+          <div className="h-40 rounded-md border bg-muted/10" aria-hidden="true" />
+        )}
 
         {(totalPages > 1 || totalCount > 150) && (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-4 py-3 sm:px-6 border-t">

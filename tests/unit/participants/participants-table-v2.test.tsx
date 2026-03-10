@@ -53,6 +53,14 @@ Object.defineProperty(window, "localStorage", {
   value: mockLocalStorage,
 });
 
+function setViewportWidth(width: number) {
+  Object.defineProperty(window, "innerWidth", {
+    configurable: true,
+    writable: true,
+    value: width,
+  });
+}
+
 // ResizeObserver をモック
 global.ResizeObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
@@ -137,6 +145,7 @@ describe("ParticipantsTableV2", () => {
   };
 
   beforeEach(() => {
+    setViewportWidth(1280);
     mockLocalStorage.getItem.mockReturnValue(null);
     jest.clearAllMocks();
     mockRefresh.mockClear();
@@ -326,8 +335,59 @@ describe("ParticipantsTableV2", () => {
   });
 
   describe("ビュー切替", () => {
+    it("desktop 初回表示はテーブルビューになる", async () => {
+      setViewportWidth(1280);
+
+      render(<ParticipantsTableV2 {...defaultProps} />);
+
+      await waitFor(() => {
+        const tableButton = screen.getByLabelText("テーブル表示");
+        expect(tableButton).toHaveAttribute("data-state", "on");
+      });
+    });
+
+    it("mobile 初回表示はカードビューになる", async () => {
+      setViewportWidth(375);
+
+      render(<ParticipantsTableV2 {...defaultProps} />);
+
+      await waitFor(() => {
+        const cardsButton = screen.getByLabelText("カード表示");
+        expect(cardsButton).toHaveAttribute("data-state", "on");
+      });
+    });
+
+    it("desktop 保存値があれば desktop で復元する", async () => {
+      setViewportWidth(1280);
+      mockLocalStorage.getItem.mockImplementation((key: string) =>
+        key === "event-participants-view-mode-desktop" ? "cards" : null
+      );
+
+      render(<ParticipantsTableV2 {...defaultProps} />);
+
+      await waitFor(() => {
+        const cardsButton = screen.getByLabelText("カード表示");
+        expect(cardsButton).toHaveAttribute("data-state", "on");
+      });
+    });
+
+    it("mobile では desktop 保存値を引き継がず mobile デフォルトを使う", async () => {
+      setViewportWidth(375);
+      mockLocalStorage.getItem.mockImplementation((key: string) =>
+        key === "event-participants-view-mode-desktop" ? "table" : null
+      );
+
+      render(<ParticipantsTableV2 {...defaultProps} />);
+
+      await waitFor(() => {
+        const cardsButton = screen.getByLabelText("カード表示");
+        expect(cardsButton).toHaveAttribute("data-state", "on");
+      });
+    });
+
     it("カードビューに切り替えられる", async () => {
       const user = userEvent.setup();
+      setViewportWidth(1280);
 
       render(<ParticipantsTableV2 {...defaultProps} />);
 
@@ -337,8 +397,25 @@ describe("ParticipantsTableV2", () => {
       // setTimeoutによる非同期処理を待つ
       await waitFor(() => {
         expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
-          "event-participants-view-mode",
+          "event-participants-view-mode-desktop",
           "cards"
+        );
+      });
+    });
+
+    it("mobile でテーブルビューに切り替えると mobile 用キーに保存する", async () => {
+      const user = userEvent.setup();
+      setViewportWidth(375);
+
+      render(<ParticipantsTableV2 {...defaultProps} />);
+
+      const tableViewButton = await screen.findByLabelText("テーブル表示");
+      await user.click(tableViewButton);
+
+      await waitFor(() => {
+        expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
+          "event-participants-view-mode-mobile",
+          "table"
         );
       });
     });
