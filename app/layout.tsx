@@ -15,6 +15,7 @@ import {
   generateWebSiteSchema,
   generateSoftwareApplicationSchema,
 } from "@core/seo/jsonld-schemas";
+import { buildOpenGraphMetadata, getAppUrl, siteDescription } from "@core/seo/metadata";
 
 import { GlobalErrorListener } from "@components/errors/GlobalErrorListener";
 import { JsonLd } from "@components/seo/JsonLd";
@@ -28,40 +29,18 @@ const notoSansJp = Noto_Sans_JP({
   variable: "--font-noto-sans-jp",
 });
 
-const getAppUrl = () => {
-  return process.env.NEXT_PUBLIC_APP_URL;
-};
-
 export const metadata: Metadata = {
   metadataBase: new URL(getAppUrl()),
   title: {
     default: "みんなの集金",
     template: "%s | みんなの集金",
   },
-  description:
-    "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?",
-  openGraph: {
-    title: "みんなの集金 - 集金ストレスをゼロに。",
-    description:
-      "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?",
-    type: "website",
-    locale: "ja_JP",
-    url: `${getAppUrl()}/`,
-    siteName: "みんなの集金",
-    images: [
-      {
-        url: "/og/homepage.png",
-        width: 1200,
-        height: 630,
-        alt: "みんなの集金 - 集金ストレスをゼロに。",
-      },
-    ],
-  },
+  description: siteDescription,
+  openGraph: buildOpenGraphMetadata(),
   twitter: {
     card: "summary_large_image",
     title: "みんなの集金 - 集金ストレスをゼロに。",
-    description:
-      "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?",
+    description: siteDescription,
     images: ["/og/homepage.png"],
     site: "@minnano_shukin",
     creator: "@minnano_shukin",

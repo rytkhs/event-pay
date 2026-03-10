@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { buildOpenGraphMetadata, getPublicUrl } from "@core/seo/metadata";
 import { renderMarkdownFromFile } from "@core/utils/markdown";
 
 export const dynamic = "force-static";
@@ -10,8 +11,14 @@ export async function generateMetadata(): Promise<Metadata> {
     description:
       "みんなの集金のプライバシーポリシーです。個人情報の取り扱いについて説明しています。",
     alternates: {
-      canonical: `${process.env.NEXT_PUBLIC_APP_URL}/privacy`,
+      canonical: getPublicUrl("/privacy"),
     },
+    openGraph: buildOpenGraphMetadata({
+      title: "プライバシーポリシー | みんなの集金",
+      description:
+        "みんなの集金のプライバシーポリシーです。個人情報の取り扱いについて説明しています。",
+      path: "/privacy",
+    }),
   };
 }
 
