@@ -6,7 +6,6 @@ import {
   generateInviteTokenAction as generateInviteTokenActionImpl,
   getEventDetailAction as getEventDetailActionImpl,
   getEventParticipantsAction as getEventParticipantsActionImpl,
-  getEventPaymentsAction as getEventPaymentsActionImpl,
   getEventStatsAction as getEventStatsActionImpl,
 } from "@features/events/server";
 
@@ -23,11 +22,6 @@ export async function getEventDetailAction(eventId: string) {
 export async function getEventParticipantsAction(params: GetEventParticipantsParams) {
   ensureFeaturesRegistered();
   return getEventParticipantsActionImpl(params);
-}
-
-export async function getEventPaymentsAction(eventId: string) {
-  ensureFeaturesRegistered();
-  return getEventPaymentsActionImpl(eventId);
 }
 
 export async function getEventStatsAction(eventId: string) {
