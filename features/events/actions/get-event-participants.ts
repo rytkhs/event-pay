@@ -112,14 +112,14 @@ export async function getEventParticipantsAction(
         status: attendance.status,
         attendance_created_at: attendance.created_at,
         attendance_updated_at: attendance.updated_at,
-        payment_id: latestPayment?.id || null,
-        payment_method: latestPayment?.method || null,
-        payment_status: latestPayment?.status || null,
-        amount: latestPayment?.amount || null,
-        paid_at: latestPayment?.paid_at || null,
-        payment_version: latestPayment?.version || null,
-        payment_created_at: latestPayment?.created_at || null,
-        payment_updated_at: latestPayment?.updated_at || null,
+        payment_id: latestPayment?.id ?? null,
+        payment_method: latestPayment?.method ?? null,
+        payment_status: latestPayment?.status ?? null,
+        amount: latestPayment?.amount ?? null,
+        paid_at: latestPayment?.paid_at ?? null,
+        payment_version: latestPayment?.version ?? null,
+        payment_created_at: latestPayment?.created_at ?? null,
+        payment_updated_at: latestPayment?.updated_at ?? null,
       };
     });
 

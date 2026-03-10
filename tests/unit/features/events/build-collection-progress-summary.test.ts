@@ -126,4 +126,25 @@ describe("buildCollectionProgressSummary", () => {
       reviewCount: 0,
     });
   });
+
+  it("amount が 0 の参加者でも eventFee にフォールバックしない", () => {
+    const summary = buildCollectionProgressSummary(
+      [
+        participant({
+          payment_status: "paid",
+          payment_method: "stripe",
+          amount: 0,
+        }),
+      ],
+      1200
+    );
+
+    expect(summary).toMatchObject({
+      targetAmount: 0,
+      collectedAmount: 0,
+      outstandingAmount: 0,
+      targetCount: 1,
+      collectedCount: 1,
+    });
+  });
 });
