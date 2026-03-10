@@ -58,6 +58,11 @@ export function buildCollectionProgressSummary(
           summary.outstandingCount += 1;
           summary.exceptionCount += 1;
           return;
+        default: {
+          // Exhaustiveness check
+          const _: never = paymentStatus;
+          return;
+        }
       }
     }
 
