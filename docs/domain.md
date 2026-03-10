@@ -124,8 +124,11 @@
 - 概要タブの `入金状況` は、会計上の売上ではなく主催者向けの運用KPIとする
 - 対象は `attending` のうち `waived` を除いた参加者
 - 入金済みは `paid` / `received`
+- `pending` / `failed` / payment未作成（例: 無料→有料変更直後で `payment_status = null`）は未収として扱う
 - `waived` は入金ではなく免除として別集計する
-- `refunded` / `canceled`、および出欠と支払い状態が不整合なものは要確認として扱う
+- `要確認` は、主催者が参加状態と金銭処理の扱いを追加判断する必要がある状態だけを指す
+- 例: `attending` の `refunded` / `canceled`、または `not_attending` / `maybe` なのに `paid` / `received` / `waived` / `refunded` が残っている状態
+- アプリ不整合の検知はこのKPIの責務ではなく、状態遷移の境界や監視で扱う
 
 ### 5.5 StripeConnectAccount（stripe_connect_accounts）
 - 責務: 主催者のStripe Connectアカウント状態を管理し、決済可否判断に使う

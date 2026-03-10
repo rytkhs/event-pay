@@ -32,7 +32,7 @@ export function KpiCardsGrid({
   const collectedAmount = collectionSummary?.collectedAmount ?? 0;
   const outstandingCount = collectionSummary?.outstandingCount ?? 0;
   const exemptCount = collectionSummary?.exemptCount ?? 0;
-  const exceptionCount = collectionSummary?.exceptionCount ?? 0;
+  const reviewCount = collectionSummary?.reviewCount ?? 0;
   const collectionProgress =
     targetAmount > 0 ? Math.round((collectedAmount / targetAmount) * 100) : 0;
 
@@ -196,7 +196,7 @@ export function KpiCardsGrid({
                 <div className="flex flex-wrap gap-2 pt-1 text-[11px] text-slate-600">
                   <span>未収 {outstandingCount}人</span>
                   <span>免除 {exemptCount}人</span>
-                  {exceptionCount > 0 && <span>要確認 {exceptionCount}件</span>}
+                  {reviewCount > 0 && <span>要確認 {reviewCount}件</span>}
                 </div>
               </div>
 

@@ -34,7 +34,7 @@ describe("KpiCardsGrid", () => {
           collectedCount: 7,
           outstandingCount: 2,
           exemptCount: 1,
-          exceptionCount: 1,
+          reviewCount: 1,
         }}
         isFreeEvent={false}
       />
@@ -63,7 +63,7 @@ describe("KpiCardsGrid", () => {
           collectedCount: 0,
           outstandingCount: 0,
           exemptCount: 3,
-          exceptionCount: 0,
+          reviewCount: 0,
         }}
         isFreeEvent={false}
       />

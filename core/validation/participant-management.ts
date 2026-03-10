@@ -115,7 +115,7 @@ export const CollectionProgressSummarySchema = z.object({
   collectedCount: z.number().int().min(0),
   outstandingCount: z.number().int().min(0),
   exemptCount: z.number().int().min(0),
-  exceptionCount: z.number().int().min(0),
+  reviewCount: z.number().int().min(0),
 });
 
 export type CollectionProgressSummary = z.infer<typeof CollectionProgressSummarySchema>;

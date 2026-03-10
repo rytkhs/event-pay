@@ -20,7 +20,7 @@ export function buildCollectionProgressSummary(
     collectedCount: 0,
     outstandingCount: 0,
     exemptCount: 0,
-    exceptionCount: 0,
+    reviewCount: 0,
   };
 
   participants.forEach((participant) => {
@@ -49,14 +49,15 @@ export function buildCollectionProgressSummary(
           return;
         case "refunded":
         case "canceled":
-          summary.exceptionCount += 1;
+          // 主催者が参加状態や返金後の扱いを追加判断する必要がある。
+          summary.reviewCount += 1;
           return;
         case null:
+          // 無料イベントから有料イベントへ切り替えた直後など、未収の正常状態として扱う。
           summary.targetAmount += amount;
           summary.outstandingAmount += amount;
           summary.targetCount += 1;
           summary.outstandingCount += 1;
-          summary.exceptionCount += 1;
           return;
         default: {
           // Exhaustiveness check
@@ -72,7 +73,8 @@ export function buildCollectionProgressSummary(
       paymentStatus === "waived" ||
       paymentStatus === "refunded"
     ) {
-      summary.exceptionCount += 1;
+      // 出欠と金銭処理の関係を主催者が見直す必要がある状態だけを集計する。
+      summary.reviewCount += 1;
     }
   });
 

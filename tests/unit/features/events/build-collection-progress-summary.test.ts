@@ -43,7 +43,7 @@ describe("buildCollectionProgressSummary", () => {
       collectedCount: 2,
       outstandingCount: 2,
       exemptCount: 0,
-      exceptionCount: 0,
+      reviewCount: 0,
     });
   });
 
@@ -62,7 +62,7 @@ describe("buildCollectionProgressSummary", () => {
       collectedCount: 0,
       outstandingCount: 0,
       exemptCount: 1,
-      exceptionCount: 0,
+      reviewCount: 0,
     });
   });
 
@@ -84,7 +84,7 @@ describe("buildCollectionProgressSummary", () => {
       collectedCount: 0,
       outstandingCount: 0,
       exemptCount: 0,
-      exceptionCount: 2,
+      reviewCount: 2,
     });
   });
 
@@ -98,11 +98,11 @@ describe("buildCollectionProgressSummary", () => {
       1000
     );
 
-    expect(summary.exceptionCount).toBe(3);
+    expect(summary.reviewCount).toBe(3);
     expect(summary.targetCount).toBe(0);
   });
 
-  it("payment_status が null の attending を未収かつ要確認に入れる", () => {
+  it("payment_status が null の attending を未収として集計し、要確認には入れない", () => {
     const summary = buildCollectionProgressSummary(
       [
         participant({
@@ -123,7 +123,7 @@ describe("buildCollectionProgressSummary", () => {
       outstandingAmount: 1200,
       targetCount: 1,
       outstandingCount: 1,
-      exceptionCount: 1,
+      reviewCount: 0,
     });
   });
 });
