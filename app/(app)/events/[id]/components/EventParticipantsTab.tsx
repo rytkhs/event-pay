@@ -57,7 +57,7 @@ export function EventParticipantsTab({
 
   const handleStatusChange = (status: string) => {
     onUpdateFilters({
-      attendance: (status === "all" ? "all" : status) as ParticipantAttendanceFilter,
+      attendance: status as ParticipantAttendanceFilter,
     });
   };
 

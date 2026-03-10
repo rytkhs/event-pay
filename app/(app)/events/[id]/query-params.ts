@@ -1,4 +1,7 @@
-import type { SimplePaymentStatus } from "@core/utils/payment-status-mapper";
+import {
+  SIMPLE_PAYMENT_STATUS_VALUES,
+  type SimplePaymentStatus,
+} from "@core/utils/payment-status-mapper";
 
 export const EVENT_MANAGEMENT_TABS = ["overview", "participants"] as const;
 export type EventManagementTab = (typeof EVENT_MANAGEMENT_TABS)[number];
@@ -49,8 +52,6 @@ export interface EventManagementQueryPatch {
   limit?: number;
 }
 
-const SIMPLE_PAYMENT_STATUSES = ["unpaid", "paid", "refunded", "waived", "canceled"] as const;
-
 function getSingleValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -73,7 +74,7 @@ function isPaymentMethodFilter(value: string | undefined): value is PaymentMetho
 }
 
 function isSimplePaymentStatus(value: string | undefined): value is SimplePaymentStatus {
-  return SIMPLE_PAYMENT_STATUSES.includes(value as SimplePaymentStatus);
+  return SIMPLE_PAYMENT_STATUS_VALUES.includes(value as SimplePaymentStatus);
 }
 
 function isParticipantSortField(value: string | undefined): value is ParticipantSortField {
@@ -195,7 +196,7 @@ export function buildEventManagementSearchParams(
   }
 
   if (shouldResetPage(patch) && !("page" in patch)) {
-    params.set("page", "1");
+    params.delete("page");
   }
 
   if ("page" in patch) {

@@ -9,12 +9,15 @@ import type { PaymentStatus } from "@core/types/statuses";
 /**
  * UI 表示用の簡略化された決済ステータス
  */
-export type SimplePaymentStatus =
-  | "unpaid" // pending / failed - 未決済（支払待ち + 失敗）
-  | "paid" // paid / received - 決済完了（方法問わず）
-  | "refunded" // refunded - 返金済み
-  | "waived" // waived - 免除（無料参加など主催者判断）
-  | "canceled"; // canceled - キャンセル済（申込みトランザクションの取り消し）
+export const SIMPLE_PAYMENT_STATUS_VALUES = [
+  "unpaid", // pending / failed - 未決済（支払待ち + 失敗）
+  "paid", // paid / received - 決済完了（方法問わず）
+  "refunded", // refunded - 返金済み
+  "waived", // waived - 免除（無料参加など主催者判断）
+  "canceled", // canceled - キャンセル済（申込みトランザクションの取り消し）
+] as const;
+
+export type SimplePaymentStatus = (typeof SIMPLE_PAYMENT_STATUS_VALUES)[number];
 
 /**
  * バックエンドの PaymentStatus を UI 用の SimplePaymentStatus にマッピング

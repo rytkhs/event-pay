@@ -67,7 +67,7 @@ describe("event-management query params", () => {
 
     expect(params.get("tab")).toBe("participants");
     expect(params.get("search")).toBe("bob");
-    expect(params.get("page")).toBe("1");
+    expect(params.get("page")).toBeNull();
     expect(params.get("smart")).toBeNull();
     expect(params.get("sort")).toBeNull();
     expect(params.get("order")).toBeNull();
