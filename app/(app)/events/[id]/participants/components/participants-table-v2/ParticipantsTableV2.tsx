@@ -24,6 +24,13 @@ import {
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
+import type {
+  EventManagementQuery,
+  EventManagementQueryPatch,
+  ParticipantSortField,
+  ParticipantSortOrder,
+} from "../../../query-params";
+
 import { BulkActionBar } from "./BulkActionBar";
 import { CardsView } from "./CardsView";
 import { DataTable } from "./DataTable";
@@ -63,12 +70,72 @@ function isViewMode(value: string): value is "table" | "cards" {
   return value === "table" || value === "cards";
 }
 
+function compareString(a: string, b: string, order: ParticipantSortOrder): number {
+  return order === "asc" ? a.localeCompare(b, "ja") : b.localeCompare(a, "ja");
+}
+
+function compareNumber(a: number, b: number, order: ParticipantSortOrder): number {
+  return order === "asc" ? a - b : b - a;
+}
+
+function getStatusOrder(status: ParticipantView["status"]): number {
+  switch (status) {
+    case "attending":
+      return 0;
+    case "maybe":
+      return 1;
+    case "not_attending":
+      return 2;
+    default:
+      return 99;
+  }
+}
+
+function toTimestamp(value: string): number {
+  return new Date(value).getTime();
+}
+
+function applyManualSort(
+  participants: ParticipantView[],
+  sort: ParticipantSortField | undefined,
+  order: ParticipantSortOrder | undefined
+): ParticipantView[] {
+  if (!sort || !order) {
+    return participants;
+  }
+
+  const sorted = [...participants];
+  sorted.sort((a, b) => {
+    switch (sort) {
+      case "nickname":
+        return compareString(a.nickname, b.nickname, order);
+      case "status":
+        return compareNumber(getStatusOrder(a.status), getStatusOrder(b.status), order);
+      case "updated_at":
+        return compareNumber(
+          toTimestamp(a.attendance_updated_at),
+          toTimestamp(b.attendance_updated_at),
+          order
+        );
+      case "created_at":
+      default:
+        return compareNumber(
+          toTimestamp(a.attendance_created_at),
+          toTimestamp(b.attendance_created_at),
+          order
+        );
+    }
+  });
+
+  return sorted;
+}
+
 export interface ParticipantsTableV2Props {
   eventId: string;
   eventFee: number;
   allParticipants: ParticipantView[];
-  searchParams: { [key: string]: string | string[] | undefined };
-  onParamsChange: (params: Record<string, string | undefined>) => void;
+  query: EventManagementQuery;
+  onParamsChange: (patch: EventManagementQueryPatch) => void;
   updateCashStatusAction: UpdateCashStatusAction;
   bulkUpdateCashStatusAction: BulkUpdateCashStatusAction;
   isSelectionMode?: boolean;
@@ -79,7 +146,7 @@ export function ParticipantsTableV2({
   eventId: _eventId,
   eventFee,
   allParticipants,
-  searchParams,
+  query,
   onParamsChange,
   updateCashStatusAction,
   bulkUpdateCashStatusAction,
@@ -141,7 +208,7 @@ export function ParticipantsTableV2({
     let result = localParticipants;
 
     // 検索フィルタ（ニックネーム/メール部分一致）
-    const search = typeof searchParams.search === "string" ? searchParams.search.toLowerCase() : "";
+    const search = query.search.toLowerCase();
     if (search) {
       result = result.filter(
         (p) => p.nickname.toLowerCase().includes(search) || p.email.toLowerCase().includes(search)
@@ -149,21 +216,19 @@ export function ParticipantsTableV2({
     }
 
     // 出席ステータスフィルタ
-    const attendance = typeof searchParams.attendance === "string" ? searchParams.attendance : null;
+    const attendance = query.attendance;
     if (attendance && attendance !== "all") {
       result = result.filter((p) => p.status === attendance);
     }
 
     // 決済方法フィルタ
-    const paymentMethod =
-      typeof searchParams.payment_method === "string" ? searchParams.payment_method : null;
+    const paymentMethod = query.paymentMethod;
     if (paymentMethod) {
       result = result.filter((p) => p.payment_method === paymentMethod);
     }
 
     // 決済ステータスフィルタ (SimplePaymentStatus)
-    const paymentStatus =
-      typeof searchParams.payment_status === "string" ? searchParams.payment_status : null;
+    const paymentStatus = query.paymentStatus;
     if (paymentStatus) {
       result = result.filter((p) => {
         const simple = toSimplePaymentStatus(p.payment_status);
@@ -172,21 +237,20 @@ export function ParticipantsTableV2({
     }
 
     return result;
-  }, [localParticipants, searchParams]);
+  }, [localParticipants, query]);
 
-  // =======================================================
-  // スマートソート（全フィルタ済みデータに対して）
-  // =======================================================
-  const smartActive = searchParams.smart !== "0";
   const sortedParticipants = useMemo(() => {
-    return conditionalSmartSort(filteredParticipants, isFreeEvent, smartActive);
-  }, [filteredParticipants, isFreeEvent, smartActive]);
+    if (query.smart) {
+      return conditionalSmartSort(filteredParticipants, isFreeEvent, true);
+    }
+    return applyManualSort(filteredParticipants, query.sort, query.order);
+  }, [filteredParticipants, isFreeEvent, query.smart, query.sort, query.order]);
 
   // =======================================================
   // クライアントサイドページネーション
   // =======================================================
-  const page = typeof searchParams.page === "string" ? parseInt(searchParams.page, 10) : 1;
-  const limit = typeof searchParams.limit === "string" ? parseInt(searchParams.limit, 10) : 150;
+  const page = query.page;
+  const limit = query.limit;
 
   const paginatedParticipants = useMemo(() => {
     const start = (page - 1) * limit;
@@ -223,12 +287,11 @@ export function ParticipantsTableV2({
   // ソート状態
   // =======================================================
   const initialSorting: SortingState = useMemo(() => {
-    const sort = typeof searchParams.sort === "string" ? searchParams.sort : undefined;
-    const order =
-      searchParams.order === "asc" ? "asc" : searchParams.order === "desc" ? "desc" : undefined;
+    const sort = query.sort;
+    const order = query.order;
     if (sort && order) return [{ id: sort, desc: order === "desc" }];
     return [];
-  }, [searchParams.sort, searchParams.order]);
+  }, [query.sort, query.order]);
 
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
 
@@ -457,11 +520,11 @@ export function ParticipantsTableV2({
 
   // pagination/sorting handlers -> URLパラメータ更新
   const handlePageChange = (newPageIndex: number) => {
-    onParamsChange({ page: String(newPageIndex + 1) });
+    onParamsChange({ page: newPageIndex + 1 });
   };
 
   const handlePageSizeChange = (newLimitStr: string) => {
-    onParamsChange({ limit: newLimitStr, page: "1" });
+    onParamsChange({ limit: Number.parseInt(newLimitStr, 10), page: 1 });
   };
 
   const handleSortingChange = (
@@ -470,11 +533,15 @@ export function ParticipantsTableV2({
     const next = typeof updaterOrValue === "function" ? updaterOrValue(sorting) : updaterOrValue;
     setSorting(next);
     if (!next.length) {
-      onParamsChange({ sort: undefined, order: undefined });
+      onParamsChange({ smart: false, sort: undefined, order: undefined });
       return;
     }
     const s = next[0];
-    onParamsChange({ sort: s.id, order: s.desc ? "desc" : "asc" });
+    onParamsChange({
+      smart: false,
+      sort: s.id as ParticipantSortField,
+      order: s.desc ? "desc" : "asc",
+    });
   };
 
   // 行スタイリング関数

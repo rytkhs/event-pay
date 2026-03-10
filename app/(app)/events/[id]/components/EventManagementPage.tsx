@@ -13,6 +13,11 @@ import type {
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 
 import type { ParticipantsTableV2Props } from "../participants/components/participants-table-v2/ParticipantsTableV2";
+import {
+  type EventManagementQueryPatch,
+  buildEventManagementSearchParams,
+  parseEventManagementQuery,
+} from "../query-params";
 
 import { EventDetailHeader } from "./EventDetailHeader";
 import { EventOverviewTab } from "./EventOverviewTab";
@@ -40,7 +45,8 @@ export function EventManagementPage({
   bulkUpdateCashStatusAction,
 }: EventManagementPageProps) {
   const router = useRouter();
-  const currentTab = typeof searchParams.tab === "string" ? searchParams.tab : "overview";
+  const query = parseEventManagementQuery(searchParams);
+  const currentTab = query.tab;
   const [activeTab, setActiveTab] = useState(currentTab);
 
   // ステートをURLパラメータと同期
@@ -49,36 +55,22 @@ export function EventManagementPage({
   }, [currentTab]);
 
   const handleTabChange = (value: string) => {
+    if (value !== "overview" && value !== "participants") {
+      return;
+    }
+
     setActiveTab(value);
-
-    // URL更新（タブ切り替え時）
-    const params = new URLSearchParams(window.location.search);
-    params.set("tab", value);
-
-    // ここではタブ切り替えだけを行う
+    const params = buildEventManagementSearchParams(window.location.search, {
+      tab: value,
+    });
     router.push(`/events/${eventId}?${params.toString()}`);
   };
 
-  const handleParticipantsFilterUpdate = (newParams: Record<string, string | undefined>) => {
-    const params = new URLSearchParams(window.location.search);
-
-    // タブを確実にセット
-    params.set("tab", "participants");
-
-    // 新しいパラメータを適用
-    Object.entries(newParams).forEach(([key, value]) => {
-      if (value) {
-        params.set(key, value);
-      } else {
-        params.delete(key);
-      }
+  const handleParticipantsFilterUpdate = (patch: EventManagementQueryPatch) => {
+    const params = buildEventManagementSearchParams(window.location.search, {
+      ...patch,
+      tab: "participants",
     });
-
-    // ページを1にリセット（フィルター変更が明示的なので）
-    if (Object.keys(newParams).some((key) => key !== "page")) {
-      params.set("page", "1");
-    }
-
     router.push(`/events/${eventId}?${params.toString()}`);
   };
 
@@ -108,7 +100,7 @@ export function EventManagementPage({
               eventId={eventId}
               eventDetail={eventDetail}
               participantsData={participantsData}
-              searchParams={searchParams}
+              query={query}
               onUpdateFilters={handleParticipantsFilterUpdate}
               updateCashStatusAction={updateCashStatusAction}
               bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}

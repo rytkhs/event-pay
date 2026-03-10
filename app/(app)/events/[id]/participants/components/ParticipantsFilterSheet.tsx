@@ -29,50 +29,43 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
+import type {
+  EventManagementQuery,
+  EventManagementQueryPatch,
+  ParticipantSortField,
+  ParticipantSortOrder,
+} from "../../query-params";
+
 interface ParticipantsFilterSheetProps {
-  searchParams: { [key: string]: string | string[] | undefined };
-  onFiltersChange: (params: Record<string, string | undefined>) => void;
+  query: EventManagementQuery;
+  onFiltersChange: (patch: EventManagementQueryPatch) => void;
   isFreeEvent: boolean;
 }
 
 export function ParticipantsFilterSheet({
-  searchParams,
+  query,
   onFiltersChange,
   isFreeEvent,
 }: ParticipantsFilterSheetProps) {
   const [open, setOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(
-    typeof searchParams.search === "string" ? searchParams.search : ""
-  );
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState(
-    typeof searchParams.payment_method === "string" ? searchParams.payment_method : "all"
-  );
+  const [searchQuery, setSearchQuery] = useState(query.search);
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<
+    EventManagementQuery["paymentMethod"] | "all"
+  >(query.paymentMethod ?? "all");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<SimplePaymentStatus | "all">(
-    typeof searchParams.payment_status === "string" &&
-      ["unpaid", "paid", "refunded", "waived"].includes(searchParams.payment_status)
-      ? (searchParams.payment_status as SimplePaymentStatus)
-      : "all"
+    query.paymentStatus ?? "all"
   );
-  const [sortField, setSortField] = useState(
-    typeof searchParams.sort === "string" ? searchParams.sort : "created_at"
-  );
-  const [sortOrder, setSortOrder] = useState(searchParams.order === "asc" ? "asc" : "desc");
+  const [sortField, setSortField] = useState<ParticipantSortField>(query.sort ?? "created_at");
+  const [sortOrder, setSortOrder] = useState<ParticipantSortOrder>(query.order ?? "desc");
 
   // 検索パラメータが変更されたときに内部状態を同期
   useEffect(() => {
-    setSearchQuery(typeof searchParams.search === "string" ? searchParams.search : "");
-    setPaymentMethodFilter(
-      typeof searchParams.payment_method === "string" ? searchParams.payment_method : "all"
-    );
-    setPaymentStatusFilter(
-      typeof searchParams.payment_status === "string" &&
-        ["unpaid", "paid", "refunded", "waived"].includes(searchParams.payment_status)
-        ? (searchParams.payment_status as SimplePaymentStatus)
-        : "all"
-    );
-    setSortField(typeof searchParams.sort === "string" ? searchParams.sort : "created_at");
-    setSortOrder(searchParams.order === "asc" ? "asc" : "desc");
-  }, [searchParams]);
+    setSearchQuery(query.search);
+    setPaymentMethodFilter(query.paymentMethod ?? "all");
+    setPaymentStatusFilter(query.paymentStatus ?? "all");
+    setSortField(query.sort ?? "created_at");
+    setSortOrder(query.order ?? "desc");
+  }, [query]);
 
   // アクティブなフィルターの数を計算
   const activeFiltersCount = [
@@ -83,12 +76,12 @@ export function ParticipantsFilterSheet({
 
   const handleApplyFilters = () => {
     onFiltersChange({
-      search: searchQuery || undefined,
-      payment_method: paymentMethodFilter === "all" ? undefined : paymentMethodFilter,
-      payment_status: paymentStatusFilter === "all" ? undefined : paymentStatusFilter,
+      search: searchQuery,
+      paymentMethod: paymentMethodFilter === "all" ? undefined : paymentMethodFilter,
+      paymentStatus: paymentStatusFilter === "all" ? undefined : paymentStatusFilter,
+      smart: false,
       sort: sortField,
       order: sortOrder,
-      page: "1",
     });
     setOpen(false);
   };
@@ -101,12 +94,12 @@ export function ParticipantsFilterSheet({
     setSortOrder("desc");
 
     onFiltersChange({
-      search: undefined,
-      payment_method: undefined,
-      payment_status: undefined,
-      sort: "created_at",
-      order: "desc",
-      page: "1",
+      search: "",
+      paymentMethod: undefined,
+      paymentStatus: undefined,
+      smart: true,
+      sort: undefined,
+      order: undefined,
     });
     setOpen(false);
   };
@@ -156,7 +149,12 @@ export function ParticipantsFilterSheet({
           {!isFreeEvent && (
             <div className="space-y-2">
               <Label>決済方法</Label>
-              <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+              <Select
+                value={paymentMethodFilter}
+                onValueChange={(value) =>
+                  setPaymentMethodFilter(value as EventManagementQuery["paymentMethod"] | "all")
+                }
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="決済方法" />
                 </SelectTrigger>
@@ -195,7 +193,10 @@ export function ParticipantsFilterSheet({
           <div className="space-y-2">
             <Label>並び順</Label>
             <div className="grid grid-cols-2 gap-2">
-              <Select value={sortField} onValueChange={setSortField}>
+              <Select
+                value={sortField}
+                onValueChange={(value) => setSortField(value as ParticipantSortField)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="項目" />
                 </SelectTrigger>
@@ -207,7 +208,10 @@ export function ParticipantsFilterSheet({
                 </SelectContent>
               </Select>
 
-              <Select value={sortOrder} onValueChange={setSortOrder}>
+              <Select
+                value={sortOrder}
+                onValueChange={(value) => setSortOrder(value as ParticipantSortOrder)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="順序" />
                 </SelectTrigger>
@@ -217,6 +221,9 @@ export function ParticipantsFilterSheet({
                 </SelectContent>
               </Select>
             </div>
+            <p className="text-xs text-muted-foreground">
+              手動の並び替えを適用するとオートソートはOFFになります。
+            </p>
           </div>
         </div>
 
