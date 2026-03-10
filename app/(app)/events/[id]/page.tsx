@@ -9,16 +9,13 @@ import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { createCachedActions } from "@core/utils/cache-helpers";
 import { handleServerError } from "@core/utils/error-handler.server";
 import type {
+  CollectionProgressSummary,
   GetParticipantsResponse,
-  GetEventPaymentsResponse,
 } from "@core/validation/participant-management";
 
-import {
-  getEventDetailAction,
-  getEventParticipantsAction,
-  getEventPaymentsAction,
-  getEventStatsAction,
-} from "./actions";
+import { buildCollectionProgressSummary } from "@features/events/server";
+
+import { getEventDetailAction, getEventParticipantsAction, getEventStatsAction } from "./actions";
 import { EventManagementPage } from "./components/EventManagementPage";
 import { bulkUpdateCashStatusAction, updateCashStatusAction } from "./participants/actions";
 
@@ -31,7 +28,6 @@ interface EventDetailPageProps {
 // キャッシュ処理を統一（軽量化）
 const cachedActions = createCachedActions({
   getEventDetail: getEventDetailAction,
-  getEventPayments: getEventPaymentsAction,
   getEventStats: getEventStatsAction,
   getEventParticipants: getEventParticipantsAction,
 });
@@ -81,22 +77,18 @@ export default async function EventDetailPage(props: {
     const _tab = typeof searchParams.tab === "string" ? searchParams.tab : "overview";
 
     // 必要なデータを並列取得
-    // OverviewタブでもPaymentsとStatsは必要
     // 参加者データは常に全件取得（クライアントサイドでフィルタ・ソート・ページネーション）
 
     const promises: [
-      Promise<ActionResult<GetEventPaymentsResponse>>,
       Promise<ActionResult<{ attending_count: number; maybe_count: number }>>,
       Promise<ActionResult<GetParticipantsResponse>>,
     ] = [
-      cachedActions.getEventPayments(params.id),
       cachedActions.getEventStats(params.id),
       // 常に全件取得（タブに関係なく）
       cachedActions.getEventParticipants({ eventId: params.id }),
     ];
 
-    const [paymentsRes, statsRes, participantsRes]: [
-      ActionResult<GetEventPaymentsResponse>,
+    const [statsRes, participantsRes]: [
       ActionResult<{ attending_count: number; maybe_count: number }>,
       ActionResult<GetParticipantsResponse>,
     ] = await Promise.all(promises);
@@ -106,21 +98,20 @@ export default async function EventDetailPage(props: {
       stats = statsRes.data ?? null;
     }
 
-    let paymentsData: GetEventPaymentsResponse | null = null;
-    if (paymentsRes.success) {
-      paymentsData = paymentsRes.data ?? null;
-    }
-
     let participantsData: GetParticipantsResponse | null = null;
     if (participantsRes.success) {
       participantsData = participantsRes.data ?? null;
     }
 
+    const collectionSummary: CollectionProgressSummary | null = participantsData
+      ? buildCollectionProgressSummary(participantsData.participants, eventDetail.fee)
+      : null;
+
     return (
       <EventManagementPage
         eventId={params.id}
         eventDetail={eventDetail}
-        paymentsData={paymentsData}
+        collectionSummary={collectionSummary}
         overviewStats={stats}
         participantsData={participantsData}
         searchParams={searchParams}

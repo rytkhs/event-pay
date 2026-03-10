@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 import type { Event } from "@core/types/event";
 import type {
-  GetEventPaymentsResponse,
+  CollectionProgressSummary,
   GetParticipantsResponse,
 } from "@core/validation/participant-management";
 
@@ -26,7 +26,7 @@ import { EventParticipantsTab } from "./EventParticipantsTab";
 interface EventManagementPageProps {
   eventId: string;
   eventDetail: Event;
-  paymentsData: GetEventPaymentsResponse | null;
+  collectionSummary: CollectionProgressSummary | null;
   overviewStats: { attending_count: number; maybe_count: number } | null;
   participantsData: GetParticipantsResponse | null;
   searchParams: { [key: string]: string | string[] | undefined };
@@ -37,7 +37,7 @@ interface EventManagementPageProps {
 export function EventManagementPage({
   eventId,
   eventDetail,
-  paymentsData,
+  collectionSummary,
   overviewStats,
   participantsData,
   searchParams,
@@ -88,7 +88,7 @@ export function EventManagementPage({
           <EventOverviewTab
             eventId={eventId}
             eventDetail={eventDetail}
-            paymentsData={paymentsData}
+            collectionSummary={collectionSummary}
             stats={overviewStats}
           />
         </TabsContent>

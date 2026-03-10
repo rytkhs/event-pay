@@ -1,7 +1,7 @@
 "use client";
 
 import type { Event } from "@core/types/event";
-import type { GetEventPaymentsResponse } from "@core/validation/participant-management";
+import type { CollectionProgressSummary } from "@core/validation/participant-management";
 
 import { EventInfo } from "./overview/EventInfo";
 import { InviteLinkCard } from "./overview/InviteLinkCard";
@@ -10,21 +10,19 @@ import { KpiCardsGrid } from "./overview/KpiCardsGrid";
 interface EventOverviewTabProps {
   eventId: string;
   eventDetail: Event;
-  paymentsData: GetEventPaymentsResponse | null;
+  collectionSummary: CollectionProgressSummary | null;
   stats: { attending_count: number; maybe_count: number } | null;
 }
 
 export function EventOverviewTab({
   eventId,
   eventDetail,
-  paymentsData,
+  collectionSummary,
   stats,
 }: EventOverviewTabProps) {
   // 統計計算
   const attendingCount = stats?.attending_count ?? 0;
   const maybeCount = stats?.maybe_count ?? 0;
-  const totalRevenue = paymentsData?.summary?.paidAmount ?? 0;
-  const expectedRevenue = eventDetail.fee * attendingCount;
   const isFreeEvent = eventDetail.fee === 0;
 
   // 基本設定
@@ -43,8 +41,7 @@ export function EventOverviewTab({
         attendingCount={attendingCount}
         capacity={capacity}
         maybeCount={maybeCount}
-        totalRevenue={totalRevenue}
-        expectedRevenue={expectedRevenue}
+        collectionSummary={collectionSummary}
         isFreeEvent={isFreeEvent}
       />
 

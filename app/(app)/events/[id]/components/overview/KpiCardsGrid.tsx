@@ -3,6 +3,8 @@
 import { Users, TrendingUp, Clock, HelpCircle } from "lucide-react";
 import { Pie, PieChart, Label } from "recharts";
 
+import type { CollectionProgressSummary } from "@core/validation/participant-management";
+
 import { cn } from "@/components/ui/_lib/cn";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
@@ -12,8 +14,7 @@ interface KpiCardsGridProps {
   attendingCount: number;
   capacity: number | null;
   maybeCount: number;
-  totalRevenue: number;
-  expectedRevenue: number;
+  collectionSummary: CollectionProgressSummary | null;
   isFreeEvent: boolean;
 }
 
@@ -21,15 +22,19 @@ export function KpiCardsGrid({
   attendingCount,
   capacity,
   maybeCount,
-  totalRevenue,
-  expectedRevenue,
+  collectionSummary,
   isFreeEvent,
 }: KpiCardsGridProps) {
   // 参加率と集金進捗率の計算
   const attendanceRate =
     capacity && capacity > 0 ? Math.round((attendingCount / capacity) * 100) : null;
+  const targetAmount = collectionSummary?.targetAmount ?? 0;
+  const collectedAmount = collectionSummary?.collectedAmount ?? 0;
+  const outstandingCount = collectionSummary?.outstandingCount ?? 0;
+  const exemptCount = collectionSummary?.exemptCount ?? 0;
+  const exceptionCount = collectionSummary?.exceptionCount ?? 0;
   const collectionProgress =
-    expectedRevenue > 0 ? Math.round((totalRevenue / expectedRevenue) * 100) : 0;
+    targetAmount > 0 ? Math.round((collectedAmount / targetAmount) * 100) : 0;
 
   // 定員に近い場合の警告色
   const isNearCapacity = attendanceRate !== null && attendanceRate >= 90;
@@ -48,11 +53,11 @@ export function KpiCardsGrid({
 
   const collectionChartConfig = {
     collected: {
-      label: "集金済み",
+      label: "入金済み",
       color: "hsl(var(--success))",
     },
     remaining: {
-      label: "未集金",
+      label: "未収",
       color: "hsl(var(--muted))",
     },
   } satisfies ChartConfig;
@@ -165,7 +170,7 @@ export function KpiCardsGrid({
               <div className="p-1.5 bg-green-100 rounded-lg">
                 <TrendingUp className="h-4 w-4 text-green-600" />
               </div>
-              <span className="text-xs font-medium text-green-700">集金進捗</span>
+              <span className="text-xs font-medium text-green-700">入金状況</span>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button type="button" className="cursor-help">
@@ -173,7 +178,7 @@ export function KpiCardsGrid({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>参加確定者の支払い状況</p>
+                  <p>現在の参加確定者のうち、集金対象者に対する入金進捗</p>
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -182,63 +187,78 @@ export function KpiCardsGrid({
               <div className="space-y-0.5 min-w-0">
                 <div className="flex items-baseline gap-1">
                   <span className="text-xl font-bold text-green-900 truncate">
-                    ¥{totalRevenue.toLocaleString()}
+                    ¥{collectedAmount.toLocaleString()}
                   </span>
                 </div>
                 <div className="text-xs text-green-600 truncate">
-                  / ¥{expectedRevenue.toLocaleString()}
+                  {targetAmount > 0 ? `/ ¥${targetAmount.toLocaleString()}` : "集金対象なし"}
+                </div>
+                <div className="flex flex-wrap gap-2 pt-1 text-[11px] text-slate-600">
+                  <span>未収 {outstandingCount}人</span>
+                  <span>免除 {exemptCount}人</span>
+                  {exceptionCount > 0 && <span>要確認 {exceptionCount}件</span>}
                 </div>
               </div>
 
-              <div className="h-16 w-16 shrink-0">
-                <ChartContainer
-                  config={collectionChartConfig}
-                  className="aspect-square h-full w-full"
-                >
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { name: "collected", value: totalRevenue, fill: "var(--color-collected)" },
-                        {
-                          name: "remaining",
-                          value: Math.max(0, expectedRevenue - totalRevenue),
-                          fill: "var(--color-remaining)",
-                        },
-                      ]}
-                      dataKey="value"
-                      innerRadius={20}
-                      outerRadius={30}
-                      strokeWidth={0}
-                      paddingAngle={2}
-                      startAngle={90}
-                      endAngle={-270}
-                    >
-                      <Label
-                        content={({ viewBox }) => {
-                          if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                            return (
-                              <text
-                                x={viewBox.cx}
-                                y={viewBox.cy}
-                                textAnchor="middle"
-                                dominantBaseline="middle"
-                              >
-                                <tspan
+              {targetAmount > 0 ? (
+                <div className="h-16 w-16 shrink-0">
+                  <ChartContainer
+                    config={collectionChartConfig}
+                    className="aspect-square h-full w-full"
+                  >
+                    <PieChart>
+                      <Pie
+                        data={[
+                          {
+                            name: "collected",
+                            value: collectedAmount,
+                            fill: "var(--color-collected)",
+                          },
+                          {
+                            name: "remaining",
+                            value: Math.max(0, targetAmount - collectedAmount),
+                            fill: "var(--color-remaining)",
+                          },
+                        ]}
+                        dataKey="value"
+                        innerRadius={20}
+                        outerRadius={30}
+                        strokeWidth={0}
+                        paddingAngle={2}
+                        startAngle={90}
+                        endAngle={-270}
+                      >
+                        <Label
+                          content={({ viewBox }) => {
+                            if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                              return (
+                                <text
                                   x={viewBox.cx}
                                   y={viewBox.cy}
-                                  className="fill-green-700 text-[10px] font-bold tabular-nums"
+                                  textAnchor="middle"
+                                  dominantBaseline="middle"
                                 >
-                                  {collectionProgress}%
-                                </tspan>
-                              </text>
-                            );
-                          }
-                        }}
-                      />
-                    </Pie>
-                  </PieChart>
-                </ChartContainer>
-              </div>
+                                  <tspan
+                                    x={viewBox.cx}
+                                    y={viewBox.cy}
+                                    className="fill-green-700 text-[10px] font-bold tabular-nums"
+                                  >
+                                    {collectionProgress}%
+                                  </tspan>
+                                </text>
+                              );
+                            }
+                          }}
+                        />
+                      </Pie>
+                    </PieChart>
+                  </ChartContainer>
+                </div>
+              ) : (
+                <div className="shrink-0 rounded-full bg-white/70 px-3 py-2 text-[11px] font-medium text-slate-600">
+                  集金対象なし
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

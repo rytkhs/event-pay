@@ -106,8 +106,22 @@ export const GetParticipantsResponseSchema = z.object({
 
 export type GetParticipantsResponse = z.infer<typeof GetParticipantsResponseSchema>;
 
+export const CollectionProgressSummarySchema = z.object({
+  targetAmount: z.number().int().min(0),
+  collectedAmount: z.number().int().min(0),
+  outstandingAmount: z.number().int().min(0),
+  exemptAmount: z.number().int().min(0),
+  targetCount: z.number().int().min(0),
+  collectedCount: z.number().int().min(0),
+  outstandingCount: z.number().int().min(0),
+  exemptCount: z.number().int().min(0),
+  exceptionCount: z.number().int().min(0),
+});
+
+export type CollectionProgressSummary = z.infer<typeof CollectionProgressSummarySchema>;
+
 // ====================================================================
-// 決済集計関連スキーマ（MANAGE-002対応）
+// 決済集計関連スキーマ
 // ====================================================================
 
 // 決済方法別集計（内部専用）

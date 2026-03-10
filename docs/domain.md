@@ -120,6 +120,13 @@
 - 注意
   - Settlementは「支払いや送金の実行」ではなく、「集計レポート」であることを明示する
 
+### 5.4.1 Overview KPI: 入金状況
+- 概要タブの `入金状況` は、会計上の売上ではなく主催者向けの運用KPIとする
+- 対象は `attending` のうち `waived` を除いた参加者
+- 入金済みは `paid` / `received`
+- `waived` は入金ではなく免除として別集計する
+- `refunded` / `canceled`、および出欠と支払い状態が不整合なものは要確認として扱う
+
 ### 5.5 StripeConnectAccount（stripe_connect_accounts）
 - 責務: 主催者のStripe Connectアカウント状態を管理し、決済可否判断に使う
 - 主な属性: stripe_account_id, status, charges_enabled, payouts_enabled
