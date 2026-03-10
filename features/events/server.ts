@@ -15,7 +15,7 @@ export {
 export type { DashboardStats, RecentEvent } from "./actions/get-dashboard-stats";
 export { getEventDetailAction } from "./actions/get-event-detail";
 export { getEventParticipantsAction } from "./actions/get-event-participants";
-export { getEventPaymentsAction } from "./actions/get-event-payments";
 export { getEventsAction } from "./actions/get-events";
 export { getEventStatsAction } from "./actions/get-event-stats";
 export { updateEventAction } from "./actions/update-event";
+export { buildCollectionProgressSummary } from "./services/build-collection-progress-summary";

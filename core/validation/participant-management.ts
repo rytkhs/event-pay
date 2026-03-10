@@ -106,69 +106,19 @@ export const GetParticipantsResponseSchema = z.object({
 
 export type GetParticipantsResponse = z.infer<typeof GetParticipantsResponseSchema>;
 
-// ====================================================================
-// 決済集計関連スキーマ（MANAGE-002対応）
-// ====================================================================
-
-// 決済方法別集計（内部専用）
-const PaymentMethodSummarySchema = z.object({
-  method: z.enum(["stripe", "cash"]),
-  count: z.number().int().min(0),
-  totalAmount: z.number().int().min(0),
+export const CollectionProgressSummarySchema = z.object({
+  targetAmount: z.number().int().min(0),
+  collectedAmount: z.number().int().min(0),
+  outstandingAmount: z.number().int().min(0),
+  exemptAmount: z.number().int().min(0),
+  targetCount: z.number().int().min(0),
+  collectedCount: z.number().int().min(0),
+  outstandingCount: z.number().int().min(0),
+  exemptCount: z.number().int().min(0),
+  reviewCount: z.number().int().min(0),
 });
 
-export type PaymentMethodSummary = z.infer<typeof PaymentMethodSummarySchema>;
-
-// 決済ステータス別集計（内部専用）
-const PaymentStatusSummarySchema = z.object({
-  status: PaymentStatusSchema,
-  count: z.number().int().min(0),
-  totalAmount: z.number().int().min(0),
-});
-
-export type PaymentStatusSummary = z.infer<typeof PaymentStatusSummarySchema>;
-
-// 決済集計データ全体（内部専用）
-const PaymentSummarySchema = z.object({
-  // 基本集計
-  totalPayments: z.number().int().min(0),
-  totalAmount: z.number().int().min(0),
-
-  // 方法別集計
-  byMethod: z.array(PaymentMethodSummarySchema),
-
-  // ステータス別集計
-  byStatus: z.array(PaymentStatusSummarySchema),
-
-  // 未決済ハイライト（pending, failed, refunded）
-  unpaidCount: z.number().int().min(0),
-  unpaidAmount: z.number().int().min(0),
-
-  // 決済済み（paid, received）
-  paidCount: z.number().int().min(0),
-  paidAmount: z.number().int().min(0),
-});
-
-export type PaymentSummary = z.infer<typeof PaymentSummarySchema>;
-
-// 決済一覧＋集計レスポンス
-export const GetEventPaymentsResponseSchema = z.object({
-  payments: z.array(
-    z.object({
-      id: z.string(),
-      method: z.enum(["stripe", "cash"]),
-      amount: z.number().int(),
-      status: PaymentStatusSchema,
-      attendance_id: z.string(),
-      paid_at: z.string().nullable(),
-      created_at: z.string(),
-      updated_at: z.string(),
-    })
-  ),
-  summary: PaymentSummarySchema,
-});
-
-export type GetEventPaymentsResponse = z.infer<typeof GetEventPaymentsResponseSchema>;
+export type CollectionProgressSummary = z.infer<typeof CollectionProgressSummarySchema>;
 
 // ====================================================================
 // 管理者による参加者追加関連スキーマ（admin-add-attendance.ts）
