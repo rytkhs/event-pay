@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { useRouter } from "next/navigation";
+
 import type { Event } from "@core/types/event";
 import type { GetParticipantsResponse } from "@core/validation/participant-management";
 
@@ -14,16 +16,15 @@ import { ParticipantsFilterSheet } from "../participants/components/Participants
 import { ParticipantsStatusTabs } from "../participants/components/ParticipantsStatusTabs";
 import type {
   EventManagementQuery,
-  EventManagementQueryPatch,
   ParticipantAttendanceFilter,
 } from "../query-params";
+import { type EventManagementQueryPatch, buildEventManagementSearchParams } from "../query-params";
 
 interface EventParticipantsTabProps {
   eventId: string;
   eventDetail: Event;
   participantsData: GetParticipantsResponse | null;
   query: EventManagementQuery;
-  onUpdateFilters: (patch: EventManagementQueryPatch) => void;
   updateCashStatusAction: ParticipantsTableV2Props["updateCashStatusAction"];
   bulkUpdateCashStatusAction: ParticipantsTableV2Props["bulkUpdateCashStatusAction"];
 }
@@ -33,10 +34,10 @@ export function EventParticipantsTab({
   eventDetail,
   participantsData,
   query,
-  onUpdateFilters,
   updateCashStatusAction,
   bulkUpdateCashStatusAction,
 }: EventParticipantsTabProps) {
+  const router = useRouter();
   const isFreeEvent = eventDetail.fee === 0;
 
   // 選択モード（一括操作用）の状態管理
@@ -55,8 +56,18 @@ export function EventParticipantsTab({
     };
   }, [allParticipants]);
 
+  const handleFiltersUpdate = (patch: EventManagementQueryPatch) => {
+    const params = buildEventManagementSearchParams(window.location.search, {
+      ...patch,
+      tab: "participants",
+    });
+    const search = params.toString();
+
+    router.replace(`/events/${eventId}${search ? `?${search}` : ""}`, { scroll: false });
+  };
+
   const handleStatusChange = (status: string) => {
-    onUpdateFilters({
+    handleFiltersUpdate({
       attendance: status as ParticipantAttendanceFilter,
     });
   };
@@ -69,13 +80,13 @@ export function EventParticipantsTab({
           eventId={eventId}
           eventDetail={eventDetail}
           query={query}
-          onFiltersChange={onUpdateFilters}
+          onFiltersChange={handleFiltersUpdate}
           isSelectionMode={isSelectionMode}
           onToggleSelectionMode={() => setIsSelectionMode((prev) => !prev)}
           filterTrigger={
             <ParticipantsFilterSheet
               query={query}
-              onFiltersChange={onUpdateFilters}
+              onFiltersChange={handleFiltersUpdate}
               isFreeEvent={isFreeEvent}
             />
           }
@@ -95,7 +106,7 @@ export function EventParticipantsTab({
             eventFee={eventDetail.fee}
             allParticipants={allParticipants}
             query={query}
-            onParamsChange={onUpdateFilters}
+            onParamsChange={handleFiltersUpdate}
             updateCashStatusAction={updateCashStatusAction}
             bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}
             isSelectionMode={isSelectionMode}

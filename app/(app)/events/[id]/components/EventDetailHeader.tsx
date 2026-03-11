@@ -1,6 +1,4 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { ArrowLeft, Calendar, Edit, MapPin } from "lucide-react";
 
@@ -11,31 +9,29 @@ import { formatUtcToJstByType } from "@core/utils/timezone";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+import type { EventManagementTab } from "../query-params";
 
 interface EventDetailHeaderProps {
   eventDetail: Event;
-  activeTab: string;
+  activeTab: EventManagementTab;
+  overviewHref: string;
+  participantsHref: string;
   tabLabels: {
     overview: string;
     participants: string;
   };
 }
 
-export function EventDetailHeader({ eventDetail, activeTab, tabLabels }: EventDetailHeaderProps) {
-  const router = useRouter();
-
-  const handleBackToEvents = () => {
-    router.push("/events");
-  };
-
+export function EventDetailHeader({
+  eventDetail,
+  activeTab,
+  overviewHref,
+  participantsHref,
+  tabLabels,
+}: EventDetailHeaderProps) {
   // 編集可能かどうかの判定
   const canEdit = eventDetail.status !== "past" && eventDetail.status !== "canceled";
-
-  const handleEditEvent = () => {
-    if (!canEdit) return;
-    router.push(`/events/${eventDetail.id}/edit`);
-  };
 
   const getStatusBadge = (status: string) => {
     const statusText = EVENT_STATUS_LABELS[status as keyof typeof EVENT_STATUS_LABELS] || status;
@@ -74,20 +70,23 @@ export function EventDetailHeader({ eventDetail, activeTab, tabLabels }: EventDe
     }
   };
 
+  const getTabLinkClassName = (isActive: boolean) =>
+    `rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+      isActive
+        ? "border-primary/15 bg-primary/10 text-primary shadow-none"
+        : "border-transparent text-muted-foreground hover:text-foreground"
+    }`;
+
   return (
     <div className="sticky top-12 z-10 border-b border-border/60 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
       <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6">
         <div className="py-3 sm:py-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="flex items-start gap-3 sm:gap-4">
-              <Button
-                onClick={handleBackToEvents}
-                variant="ghost"
-                size="sm"
-                className="mt-0.5 h-10 w-10 shrink-0 rounded-full p-0"
-                aria-label="イベント一覧に戻る"
-              >
-                <ArrowLeft className="h-4 w-4" />
+              <Button asChild variant="ghost" size="sm" className="mt-0.5 h-10 w-10 shrink-0 rounded-full p-0">
+                <Link href="/events" aria-label="イベント一覧に戻る">
+                  <ArrowLeft className="h-4 w-4" />
+                </Link>
               </Button>
 
               <div className="min-w-0 flex-1 space-y-2">
@@ -118,42 +117,51 @@ export function EventDetailHeader({ eventDetail, activeTab, tabLabels }: EventDe
             </div>
 
             <div className="flex items-center gap-2 self-end md:self-start">
-              <Button
-                onClick={handleEditEvent}
-                variant="outline"
-                size="sm"
-                disabled={!canEdit}
-                aria-label={canEdit ? "イベント設定を編集" : "イベント設定は編集できません"}
-                className={`h-10 px-3 transition-all duration-200 ${
-                  canEdit
-                    ? "border-orange-200 bg-orange-50/60 text-orange-700 hover:bg-orange-100 hover:border-orange-300 hover:text-orange-800"
-                    : "opacity-50 cursor-not-allowed"
-                }`}
-              >
-                <Edit className={`h-4 w-4 ${canEdit ? "text-orange-600" : "text-gray-400"}`} />
-                <span className="font-medium">編集</span>
-              </Button>
+              {canEdit ? (
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  aria-label="イベント設定を編集"
+                  className="h-10 px-3 transition-all duration-200 border-orange-200 bg-orange-50/60 text-orange-700 hover:bg-orange-100 hover:border-orange-300 hover:text-orange-800"
+                >
+                  <Link href={`/events/${eventDetail.id}/edit`}>
+                    <Edit className="h-4 w-4 text-orange-600" />
+                    <span className="font-medium">編集</span>
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={true}
+                  aria-label="イベント設定は編集できません"
+                  className="h-10 px-3 transition-all duration-200 opacity-50 cursor-not-allowed"
+                >
+                  <Edit className="h-4 w-4 text-gray-400" />
+                  <span className="font-medium">編集</span>
+                </Button>
+              )}
             </div>
           </div>
 
           <div className="mt-4 border-t border-border/60 pt-3">
-            <TabsList
-              className="h-auto w-full justify-start gap-1 rounded-none bg-transparent p-0"
-              aria-label="イベント管理タブ"
-            >
-              <TabsTrigger
-                value="overview"
-                className="rounded-full border border-transparent px-4 py-2 text-sm font-medium text-muted-foreground data-[state=active]:border-primary/15 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none hover:text-foreground"
+            <nav aria-label="イベント管理タブ" className="flex flex-wrap items-center gap-1">
+              <Link
+                href={overviewHref}
+                aria-current={activeTab === "overview" ? "page" : undefined}
+                className={getTabLinkClassName(activeTab === "overview")}
               >
                 {tabLabels.overview}
-              </TabsTrigger>
-              <TabsTrigger
-                value="participants"
-                className="rounded-full border border-transparent px-4 py-2 text-sm font-medium text-muted-foreground data-[state=active]:border-primary/15 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none hover:text-foreground"
+              </Link>
+              <Link
+                href={participantsHref}
+                aria-current={activeTab === "participants" ? "page" : undefined}
+                className={getTabLinkClassName(activeTab === "participants")}
               >
                 {tabLabels.participants}
-              </TabsTrigger>
-            </TabsList>
+              </Link>
+            </nav>
             <p className="mt-2 text-xs text-muted-foreground">
               {activeTab === "overview"
                 ? "イベント概要と集金状況を確認できます。"

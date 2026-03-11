@@ -1,23 +1,11 @@
-"use client";
-
-import { useEffect, useState } from "react";
-
-import { useRouter } from "next/navigation";
-
 import type { Event } from "@core/types/event";
 import type {
   CollectionProgressSummary,
   GetParticipantsResponse,
 } from "@core/validation/participant-management";
 
-import { Tabs, TabsContent } from "@/components/ui/tabs";
-
 import type { ParticipantsTableV2Props } from "../participants/components/participants-table-v2/ParticipantsTableV2";
-import {
-  type EventManagementQueryPatch,
-  buildEventManagementSearchParams,
-  parseEventManagementQuery,
-} from "../query-params";
+import type { EventManagementQuery } from "../query-params";
 
 import { EventDetailHeader } from "./EventDetailHeader";
 import { EventOverviewTab } from "./EventOverviewTab";
@@ -31,10 +19,12 @@ const EVENT_MANAGEMENT_TAB_LABELS = {
 interface EventManagementPageProps {
   eventId: string;
   eventDetail: Event;
+  query: EventManagementQuery;
   collectionSummary: CollectionProgressSummary | null;
   overviewStats: { attending_count: number; maybe_count: number } | null;
   participantsData: GetParticipantsResponse | null;
-  searchParams: { [key: string]: string | string[] | undefined };
+  overviewHref: string;
+  participantsHref: string;
   updateCashStatusAction: ParticipantsTableV2Props["updateCashStatusAction"];
   bulkUpdateCashStatusAction: ParticipantsTableV2Props["bulkUpdateCashStatusAction"];
 }
@@ -42,89 +32,51 @@ interface EventManagementPageProps {
 export function EventManagementPage({
   eventId,
   eventDetail,
+  query,
   collectionSummary,
   overviewStats,
   participantsData,
-  searchParams,
+  overviewHref,
+  participantsHref,
   updateCashStatusAction,
   bulkUpdateCashStatusAction,
 }: EventManagementPageProps) {
-  const router = useRouter();
-  const query = parseEventManagementQuery(searchParams);
-  const currentTab = query.tab;
-  const [activeTab, setActiveTab] = useState(currentTab);
-
-  // ステートをURLパラメータと同期
-  useEffect(() => {
-    setActiveTab(currentTab);
-  }, [currentTab]);
-
-  const replaceSearchParams = (patch: EventManagementQueryPatch) => {
-    const params = buildEventManagementSearchParams(window.location.search, patch);
-    const search = params.toString();
-    router.replace(`/events/${eventId}${search ? `?${search}` : ""}`, { scroll: false });
-  };
-
-  const handleTabChange = (value: string) => {
-    if (value !== "overview" && value !== "participants") {
-      return;
-    }
-
-    setActiveTab(value);
-    replaceSearchParams({
-      tab: value,
-    });
-  };
-
-  const handleParticipantsFilterUpdate = (patch: EventManagementQueryPatch) => {
-    replaceSearchParams({
-      ...patch,
-      tab: "participants",
-    });
-  };
-
   return (
-    <Tabs value={activeTab} onValueChange={handleTabChange} className="min-h-screen w-full">
+    <div className="min-h-screen w-full">
       <EventDetailHeader
         eventDetail={eventDetail}
-        activeTab={activeTab}
+        activeTab={query.tab}
+        overviewHref={overviewHref}
+        participantsHref={participantsHref}
         tabLabels={EVENT_MANAGEMENT_TAB_LABELS}
       />
 
-      {/* 概要タブコンテンツ */}
-      <TabsContent
-        value="overview"
-        className="mt-0 focus-visible:outline-none"
-        aria-label={EVENT_MANAGEMENT_TAB_LABELS.overview}
-      >
+      {query.tab === "overview" ? (
         <EventOverviewTab
           eventId={eventId}
           eventDetail={eventDetail}
           collectionSummary={collectionSummary}
           stats={overviewStats}
         />
-      </TabsContent>
-
-      {/* 参加者管理タブコンテンツ */}
-      <TabsContent
-        value="participants"
-        className="mt-0 focus-visible:outline-none"
-        aria-label={EVENT_MANAGEMENT_TAB_LABELS.participants}
-      >
-        {participantsData ? (
+      ) : participantsData ? (
+        <section aria-label={EVENT_MANAGEMENT_TAB_LABELS.participants}>
           <EventParticipantsTab
             eventId={eventId}
             eventDetail={eventDetail}
             participantsData={participantsData}
             query={query}
-            onUpdateFilters={handleParticipantsFilterUpdate}
             updateCashStatusAction={updateCashStatusAction}
             bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}
           />
-        ) : (
-          <div className="p-8 text-center text-muted-foreground">読み込み中...</div>
-        )}
-      </TabsContent>
-    </Tabs>
+        </section>
+      ) : (
+        <section
+          aria-label={EVENT_MANAGEMENT_TAB_LABELS.participants}
+          className="p-8 text-center text-muted-foreground"
+        >
+          読み込み中...
+        </section>
+      )}
+    </div>
   );
 }

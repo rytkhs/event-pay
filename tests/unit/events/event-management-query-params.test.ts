@@ -1,4 +1,5 @@
 import {
+  buildEventManagementHref,
   buildEventManagementSearchParams,
   parseEventManagementQuery,
 } from "@/app/(app)/events/[id]/query-params";
@@ -71,5 +72,31 @@ describe("event-management query params", () => {
     expect(params.get("smart")).toBeNull();
     expect(params.get("sort")).toBeNull();
     expect(params.get("order")).toBeNull();
+  });
+
+  it("builds tab hrefs while preserving participant filters", () => {
+    expect(
+      buildEventManagementHref(
+        "/events/event-1",
+        {
+          tab: "participants",
+          search: "alice",
+          attendance: "attending",
+          smart: "0",
+        },
+        { tab: "overview" }
+      )
+    ).toBe("/events/event-1?search=alice&attendance=attending&smart=0");
+
+    expect(
+      buildEventManagementHref(
+        "/events/event-1",
+        {
+          search: "alice",
+          attendance: "attending",
+        },
+        { tab: "participants" }
+      )
+    ).toBe("/events/event-1?search=alice&attendance=attending&tab=participants");
   });
 });
