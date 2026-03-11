@@ -17,8 +17,9 @@ import { ParticipantsStatusTabs } from "../participants/components/ParticipantsS
 import type {
   EventManagementQuery,
   ParticipantAttendanceFilter,
+  EventManagementQueryPatch,
 } from "../query-params";
-import { type EventManagementQueryPatch, buildEventManagementSearchParams } from "../query-params";
+import { buildEventManagementSearchParams } from "../query-params";
 
 interface EventParticipantsTabProps {
   eventId: string;

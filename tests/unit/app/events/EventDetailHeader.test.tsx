@@ -5,8 +5,9 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
-import { EventDetailHeader } from "@/app/(app)/events/[id]/components/EventDetailHeader";
 import type { Event } from "@core/types/event";
+
+import { EventDetailHeader } from "@/app/(app)/events/[id]/components/EventDetailHeader";
 
 const baseEvent: Event = {
   id: "event-1",
@@ -30,41 +31,22 @@ const baseEvent: Event = {
 };
 
 describe("EventDetailHeader", () => {
-  it("active tab に応じたリンクと説明文を表示する", () => {
-    render(
-      <EventDetailHeader
-        eventDetail={baseEvent}
-        activeTab="participants"
-        overviewHref="/events/event-1"
-        participantsHref="/events/event-1?tab=participants&search=alice"
-        tabLabels={{
-          overview: "概要",
-          participants: "参加者管理",
-        }}
-      />
-    );
+  it("イベント情報と編集リンクを表示する", () => {
+    render(<EventDetailHeader eventDetail={baseEvent} />);
 
-    expect(screen.getByRole("link", { name: "概要" })).toHaveAttribute("href", "/events/event-1");
-    expect(screen.getByRole("link", { name: "参加者管理" })).toHaveAttribute(
+    expect(screen.getByRole("heading", { name: "春合宿" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "イベント一覧に戻る" })).toHaveAttribute(
       "href",
-      "/events/event-1?tab=participants&search=alice"
+      "/events"
     );
-    expect(screen.getByText("参加者の検索、絞り込み、入金管理ができます。")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "イベント設定を編集" })).toHaveAttribute(
+      "href",
+      "/events/event-1/edit"
+    );
   });
 
   it("編集不可イベントでは編集リンクを出さず disabled button を表示する", () => {
-    render(
-      <EventDetailHeader
-        eventDetail={{ ...baseEvent, status: "past" }}
-        activeTab="overview"
-        overviewHref="/events/event-1"
-        participantsHref="/events/event-1?tab=participants"
-        tabLabels={{
-          overview: "概要",
-          participants: "参加者管理",
-        }}
-      />
-    );
+    render(<EventDetailHeader eventDetail={{ ...baseEvent, status: "past" }} />);
 
     expect(screen.queryByRole("link", { name: "イベント設定を編集" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "イベント設定は編集できません" })).toBeDisabled();

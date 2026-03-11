@@ -153,25 +153,6 @@ function setOptionalString(
   params.set(key, value);
 }
 
-function buildRawSearchParamsString(searchParams: RawSearchParams): string {
-  const params = new URLSearchParams();
-
-  for (const [key, value] of Object.entries(searchParams)) {
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        params.append(key, item);
-      }
-      continue;
-    }
-
-    if (value !== undefined) {
-      params.set(key, value);
-    }
-  }
-
-  return params.toString();
-}
-
 export function buildEventManagementSearchParams(
   currentSearch: string,
   patch: EventManagementQueryPatch
@@ -237,18 +218,4 @@ export function buildEventManagementSearchParams(
   }
 
   return params;
-}
-
-export function buildEventManagementHref(
-  pathname: string,
-  searchParams: RawSearchParams,
-  patch: EventManagementQueryPatch
-): string {
-  const nextSearchParams = buildEventManagementSearchParams(
-    buildRawSearchParamsString(searchParams),
-    patch
-  );
-  const search = nextSearchParams.toString();
-
-  return `${pathname}${search ? `?${search}` : ""}`;
 }

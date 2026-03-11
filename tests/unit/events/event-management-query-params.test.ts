@@ -1,5 +1,4 @@
 import {
-  buildEventManagementHref,
   buildEventManagementSearchParams,
   parseEventManagementQuery,
 } from "@/app/(app)/events/[id]/query-params";

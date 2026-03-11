@@ -18,11 +18,7 @@ import { buildCollectionProgressSummary } from "@features/events/server";
 import { getEventDetailAction, getEventParticipantsAction, getEventStatsAction } from "./actions";
 import { EventManagementPage } from "./components/EventManagementPage";
 import { bulkUpdateCashStatusAction, updateCashStatusAction } from "./participants/actions";
-import {
-  buildEventManagementHref,
-  parseEventManagementQuery,
-  type RawSearchParams,
-} from "./query-params";
+import { parseEventManagementQuery, type RawSearchParams } from "./query-params";
 
 interface EventDetailPageProps {
   params: Promise<{
@@ -110,7 +106,6 @@ export default async function EventDetailPage(props: {
     const collectionSummary: CollectionProgressSummary | null = participantsData
       ? buildCollectionProgressSummary(participantsData.participants, eventDetail.fee)
       : null;
-    const pagePath = `/events/${params.id}`;
 
     return (
       <EventManagementPage
@@ -120,10 +115,6 @@ export default async function EventDetailPage(props: {
         collectionSummary={collectionSummary}
         overviewStats={stats}
         participantsData={participantsData}
-        overviewHref={buildEventManagementHref(pagePath, searchParams, { tab: "overview" })}
-        participantsHref={buildEventManagementHref(pagePath, searchParams, {
-          tab: "participants",
-        })}
         updateCashStatusAction={updateCashStatusAction}
         bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}
       />
