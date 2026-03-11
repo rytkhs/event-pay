@@ -251,7 +251,9 @@ export function ParticipantsActionBarV2({
                   />
                   {searchQuery && (
                     <button
+                      type="button"
                       onClick={handleClearSearch}
+                      aria-label="検索条件をクリア"
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full"
                     >
                       <X className="h-3 w-3 text-gray-400" />
@@ -263,6 +265,7 @@ export function ParticipantsActionBarV2({
                   size="sm"
                   onClick={() => setIsMobileSearchOpen(false)}
                   className="shrink-0 h-9 w-9 p-0"
+                  aria-label="検索入力を閉じる"
                 >
                   <X className="h-5 w-5 text-gray-500" />
                 </Button>
@@ -290,7 +293,9 @@ export function ParticipantsActionBarV2({
                     />
                     {searchQuery && (
                       <button
+                        type="button"
                         onClick={handleClearSearch}
+                        aria-label="検索条件をクリア"
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded"
                       >
                         <X className="h-3 w-3 text-gray-400" />
@@ -306,6 +311,7 @@ export function ParticipantsActionBarV2({
                     size="sm"
                     onClick={() => setIsMobileSearchOpen(true)}
                     className="h-9 w-9 p-0"
+                    aria-label="検索を開く"
                   >
                     <Search className="h-5 w-5 text-gray-600" />
                   </Button>
@@ -331,7 +337,9 @@ export function ParticipantsActionBarV2({
                     isSelectionMode &&
                       "bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
                   )}
-                  title={isSelectionMode ? "選択モード終了" : "選択モード (一括操作)"}
+                  aria-label={
+                    isSelectionMode ? "一括操作の選択モードを終了" : "一括操作の選択モードを開始"
+                  }
                 >
                   <ListTodo className="h-5 w-5" />
                 </Button>
@@ -347,7 +355,12 @@ export function ParticipantsActionBarV2({
               <div className="md:hidden">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 w-9 p-0"
+                      aria-label="その他の参加者操作を開く"
+                    >
                       <MoreVertical className="h-5 w-5 text-gray-600" />
                     </Button>
                   </DropdownMenuTrigger>

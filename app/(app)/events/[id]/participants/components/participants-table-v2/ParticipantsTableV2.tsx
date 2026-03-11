@@ -300,6 +300,7 @@ export function ParticipantsTableV2({
     const validIds = new Set(bulkOperableParticipants.map((p) => p.payment_id).filter(Boolean));
     return selectedPaymentIds.filter((id) => validIds.has(id));
   }, [selectedPaymentIds, bulkOperableParticipants]);
+  const hasBulkActionBar = !isFreeEvent && validSelectedPaymentIds.length > 0;
 
   // =======================================================
   // ソート状態
@@ -602,7 +603,7 @@ export function ParticipantsTableV2({
           )}
         </div>
       </CardHeader>
-      <CardContent className="px-3">
+      <CardContent className={`px-3 ${hasBulkActionBar ? "pb-32 sm:pb-28" : ""}`}>
         {viewMode ? (
           <div
             className={`transition-opacity duration-200 ${isTransitioning ? "opacity-50" : "opacity-100"}`}

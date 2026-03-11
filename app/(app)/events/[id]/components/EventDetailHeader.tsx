@@ -11,15 +11,18 @@ import { formatUtcToJstByType } from "@core/utils/timezone";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface EventDetailHeaderProps {
   eventDetail: Event;
   activeTab: string;
-  onTabChange: (value: string) => void;
+  tabLabels: {
+    overview: string;
+    participants: string;
+  };
 }
 
-export function EventDetailHeader({ eventDetail, activeTab, onTabChange }: EventDetailHeaderProps) {
+export function EventDetailHeader({ eventDetail, activeTab, tabLabels }: EventDetailHeaderProps) {
   const router = useRouter();
 
   const handleBackToEvents = () => {
@@ -72,80 +75,91 @@ export function EventDetailHeader({ eventDetail, activeTab, onTabChange }: Event
   };
 
   return (
-    <div className="bg-white border-b border-border/50 sticky top-12 z-10">
-      <div className="max-w-7xl mx-auto">
-        <div className="py-2">
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={handleBackToEvents}
-              variant="ghost"
-              size="sm"
-              className="flex-shrink-0 p-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+    <div className="sticky top-12 z-10 border-b border-border/60 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
+      <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6">
+        <div className="py-3 sm:py-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <Button
+                onClick={handleBackToEvents}
+                variant="ghost"
+                size="sm"
+                className="mt-0.5 h-10 w-10 shrink-0 rounded-full p-0"
+                aria-label="イベント一覧に戻る"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
 
-            <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-bold text-foreground truncate">
-                {sanitizeForEventPay(eventDetail.title)}
-              </h1>
-              <div className="flex flex-wrap items-center gap-2 mt-1">
-                {getStatusBadge(eventDetail.status)}
-
-                <div className="items-center gap-3 text-xs text-muted-foreground hidden sm:flex">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    <span>{formatUtcToJstByType(eventDetail.date, "standard")}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    <span className="truncate max-w-[150px]">
-                      {sanitizeForEventPay(eventDetail.location)}
-                    </span>
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {getStatusBadge(eventDetail.status)}
+                  <span className="text-xs font-medium text-muted-foreground">イベント管理</span>
+                </div>
+                <div className="space-y-1.5">
+                  <h1 className="text-lg font-bold leading-tight text-foreground sm:text-xl">
+                    {sanitizeForEventPay(eventDetail.title)}
+                  </h1>
+                  <div className="flex flex-col gap-1.5 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 shrink-0" />
+                      <span>{formatUtcToJstByType(eventDetail.date, "standard")}</span>
+                    </div>
+                    {eventDetail.location && (
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">
+                          {sanitizeForEventPay(eventDetail.location)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* 編集ボタン */}
+            <div className="flex items-center gap-2 self-end md:self-start">
               <Button
                 onClick={handleEditEvent}
                 variant="outline"
                 size="sm"
                 disabled={!canEdit}
-                className={`flex-shrink-0 h-9 px-3 transition-all duration-200 ${
+                aria-label={canEdit ? "イベント設定を編集" : "イベント設定は編集できません"}
+                className={`h-10 px-3 transition-all duration-200 ${
                   canEdit
-                    ? "border-orange-200 bg-orange-50/50 text-orange-700 hover:bg-orange-100 hover:border-orange-300 hover:text-orange-800"
+                    ? "border-orange-200 bg-orange-50/60 text-orange-700 hover:bg-orange-100 hover:border-orange-300 hover:text-orange-800"
                     : "opacity-50 cursor-not-allowed"
                 }`}
-                title={canEdit ? "イベント設定を編集" : "編集不可"}
               >
                 <Edit className={`h-4 w-4 ${canEdit ? "text-orange-600" : "text-gray-400"}`} />
-                <span className="ml-1.5 hidden sm:inline font-medium">編集</span>
+                <span className="font-medium">編集</span>
               </Button>
             </div>
           </div>
-        </div>
 
-        {/* タブナビゲーション */}
-        <div className="mt-2">
-          <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-            <TabsList className="bg-transparent p-0 h-auto space-x-6 border-b-0 w-full justify-start rounded-none">
+          <div className="mt-4 border-t border-border/60 pt-3">
+            <TabsList
+              className="h-auto w-full justify-start gap-1 rounded-none bg-transparent p-0"
+              aria-label="イベント管理タブ"
+            >
               <TabsTrigger
                 value="overview"
-                className="rounded-none border-b-2 border-transparent px-2 pb-3 pt-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none hover:text-foreground transition-colors bg-transparent"
+                className="rounded-full border border-transparent px-4 py-2 text-sm font-medium text-muted-foreground data-[state=active]:border-primary/15 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none hover:text-foreground"
               >
-                概要
+                {tabLabels.overview}
               </TabsTrigger>
               <TabsTrigger
                 value="participants"
-                className="rounded-none border-b-2 border-transparent px-2 pb-3 pt-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none hover:text-foreground transition-colors bg-transparent"
+                className="rounded-full border border-transparent px-4 py-2 text-sm font-medium text-muted-foreground data-[state=active]:border-primary/15 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none hover:text-foreground"
               >
-                参加者管理
+                {tabLabels.participants}
               </TabsTrigger>
             </TabsList>
-          </Tabs>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {activeTab === "overview"
+                ? "イベント概要と集金状況を確認できます。"
+                : "参加者の検索、絞り込み、入金管理ができます。"}
+            </p>
+          </div>
         </div>
       </div>
     </div>

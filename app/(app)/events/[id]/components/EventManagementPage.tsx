@@ -23,6 +23,11 @@ import { EventDetailHeader } from "./EventDetailHeader";
 import { EventOverviewTab } from "./EventOverviewTab";
 import { EventParticipantsTab } from "./EventParticipantsTab";
 
+const EVENT_MANAGEMENT_TAB_LABELS = {
+  overview: "概要",
+  participants: "参加者管理",
+} as const;
+
 interface EventManagementPageProps {
   eventId: string;
   eventDetail: Event;
@@ -54,62 +59,72 @@ export function EventManagementPage({
     setActiveTab(currentTab);
   }, [currentTab]);
 
+  const replaceSearchParams = (patch: EventManagementQueryPatch) => {
+    const params = buildEventManagementSearchParams(window.location.search, patch);
+    const search = params.toString();
+    router.replace(`/events/${eventId}${search ? `?${search}` : ""}`, { scroll: false });
+  };
+
   const handleTabChange = (value: string) => {
     if (value !== "overview" && value !== "participants") {
       return;
     }
 
     setActiveTab(value);
-    const params = buildEventManagementSearchParams(window.location.search, {
+    replaceSearchParams({
       tab: value,
     });
-    router.push(`/events/${eventId}?${params.toString()}`);
   };
 
   const handleParticipantsFilterUpdate = (patch: EventManagementQueryPatch) => {
-    const params = buildEventManagementSearchParams(window.location.search, {
+    replaceSearchParams({
       ...patch,
       tab: "participants",
     });
-    router.push(`/events/${eventId}?${params.toString()}`);
   };
 
   return (
-    <div className="min-h-screen">
+    <Tabs value={activeTab} onValueChange={handleTabChange} className="min-h-screen w-full">
       <EventDetailHeader
         eventDetail={eventDetail}
         activeTab={activeTab}
-        onTabChange={handleTabChange}
+        tabLabels={EVENT_MANAGEMENT_TAB_LABELS}
       />
 
-      <Tabs value={activeTab} className="w-full">
-        {/* 概要タブコンテンツ */}
-        <TabsContent value="overview" className="mt-0 focus-visible:outline-none">
-          <EventOverviewTab
+      {/* 概要タブコンテンツ */}
+      <TabsContent
+        value="overview"
+        className="mt-0 focus-visible:outline-none"
+        aria-label={EVENT_MANAGEMENT_TAB_LABELS.overview}
+      >
+        <EventOverviewTab
+          eventId={eventId}
+          eventDetail={eventDetail}
+          collectionSummary={collectionSummary}
+          stats={overviewStats}
+        />
+      </TabsContent>
+
+      {/* 参加者管理タブコンテンツ */}
+      <TabsContent
+        value="participants"
+        className="mt-0 focus-visible:outline-none"
+        aria-label={EVENT_MANAGEMENT_TAB_LABELS.participants}
+      >
+        {participantsData ? (
+          <EventParticipantsTab
             eventId={eventId}
             eventDetail={eventDetail}
-            collectionSummary={collectionSummary}
-            stats={overviewStats}
+            participantsData={participantsData}
+            query={query}
+            onUpdateFilters={handleParticipantsFilterUpdate}
+            updateCashStatusAction={updateCashStatusAction}
+            bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}
           />
-        </TabsContent>
-
-        {/* 参加者管理タブコンテンツ */}
-        <TabsContent value="participants" className="mt-0 focus-visible:outline-none">
-          {participantsData ? (
-            <EventParticipantsTab
-              eventId={eventId}
-              eventDetail={eventDetail}
-              participantsData={participantsData}
-              query={query}
-              onUpdateFilters={handleParticipantsFilterUpdate}
-              updateCashStatusAction={updateCashStatusAction}
-              bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}
-            />
-          ) : (
-            <div className="p-8 text-center text-muted-foreground">読み込み中...</div>
-          )}
-        </TabsContent>
-      </Tabs>
-    </div>
+        ) : (
+          <div className="p-8 text-center text-muted-foreground">読み込み中...</div>
+        )}
+      </TabsContent>
+    </Tabs>
   );
 }
