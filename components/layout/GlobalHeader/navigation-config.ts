@@ -42,7 +42,7 @@ export const navigationConfig: NavigationConfig = {
       exactMatch: false,
     },
     {
-      label: "イベント",
+      label: "イベント一覧",
       href: "/events",
       icon: createElement(Calendar),
       exactMatch: false,

@@ -54,11 +54,10 @@ export function EventManagementTabsShell({
 
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange} className="min-h-screen w-full">
-      <div className="sticky top-12 z-10 border-b border-border/60 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
+      <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6">{headerContent}</div>
+      <div className="sticky top-12 z-20 border-b border-border/60 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
         <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6">
-          {headerContent}
-
-          <div className="mt-4 border-t border-border/60 py-2">
+          <div className="py-2">
             <TabsList
               className="h-auto w-full justify-start gap-1 rounded-none bg-transparent p-0"
               aria-label="イベント管理タブ"

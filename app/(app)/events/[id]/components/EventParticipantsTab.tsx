@@ -74,31 +74,34 @@ export function EventParticipantsTab({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-2 py-4">
-      <div className="space-y-4">
-        {/* アクションバー + フィルターSheet */}
-        <ParticipantsActionBarV2
-          eventId={eventId}
-          eventDetail={eventDetail}
-          query={query}
-          onFiltersChange={handleFiltersUpdate}
-          isSelectionMode={isSelectionMode}
-          onToggleSelectionMode={() => setIsSelectionMode((prev) => !prev)}
-          filterTrigger={
-            <ParticipantsFilterSheet
-              query={query}
-              onFiltersChange={handleFiltersUpdate}
-              isFreeEvent={isFreeEvent}
-            />
-          }
-        />
+    <div className="max-w-7xl mx-auto px-2 py-2">
+      <div className="flex flex-col gap-3">
+        {/* スティッキーヘッダーグループ: アクションバー + ステータスタブ */}
+        <div className="sticky top-[100px] z-10 -mx-2 px-2 pb-3 pt-1 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/40 flex flex-col gap-3">
+          {/* アクションバー + フィルターSheet */}
+          <ParticipantsActionBarV2
+            eventId={eventId}
+            eventDetail={eventDetail}
+            query={query}
+            onFiltersChange={handleFiltersUpdate}
+            isSelectionMode={isSelectionMode}
+            onToggleSelectionMode={() => setIsSelectionMode((prev) => !prev)}
+            filterTrigger={
+              <ParticipantsFilterSheet
+                query={query}
+                onFiltersChange={handleFiltersUpdate}
+                isFreeEvent={isFreeEvent}
+              />
+            }
+          />
 
-        {/* ステータスタブ（リスト直上） */}
-        <ParticipantsStatusTabs
-          counts={statusCounts}
-          activeStatus={query.attendance}
-          onStatusChange={handleStatusChange}
-        />
+          {/* ステータスタブ（リスト直上） */}
+          <ParticipantsStatusTabs
+            counts={statusCounts}
+            activeStatus={query.attendance}
+            onStatusChange={handleStatusChange}
+          />
+        </div>
 
         {/* 参加者テーブル */}
         <div className="-mx-4 sm:mx-0">

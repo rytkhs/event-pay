@@ -1,124 +1,137 @@
 import Link from "next/link";
 
-import { ArrowLeft, Calendar, Edit, MapPin } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Pencil } from "lucide-react";
 
 import { EVENT_STATUS_LABELS } from "@core/constants/status-labels";
 import type { Event } from "@core/types/event";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 interface EventDetailHeaderProps {
   eventDetail: Event;
 }
 
+const STATUS_CONFIG = {
+  upcoming: {
+    label: "開催予定",
+    barColor: "bg-primary",
+    textColor: "text-primary",
+    dotColor: "bg-primary",
+  },
+  ongoing: {
+    label: "開催中",
+    barColor: "bg-success",
+    textColor: "text-success",
+    dotColor: "bg-success",
+  },
+  past: {
+    label: "終了",
+    barColor: "bg-secondary",
+    textColor: "text-secondary",
+    dotColor: "bg-secondary",
+  },
+  canceled: {
+    label: "キャンセル",
+    barColor: "bg-destructive",
+    textColor: "text-destructive",
+    dotColor: "bg-destructive",
+  },
+} as const;
+
 export function EventDetailHeader({ eventDetail }: EventDetailHeaderProps) {
-  // 編集可能かどうかの判定
   const canEdit = eventDetail.status !== "past" && eventDetail.status !== "canceled";
 
-  const getStatusBadge = (status: string) => {
-    const statusText = EVENT_STATUS_LABELS[status as keyof typeof EVENT_STATUS_LABELS] || status;
-
-    switch (status) {
-      case "upcoming":
-        return (
-          <Badge variant="default" className="text-xs">
-            {statusText}
-          </Badge>
-        );
-      case "ongoing":
-        return (
-          <Badge variant="default" className="text-xs bg-green-100 text-green-800">
-            {statusText}
-          </Badge>
-        );
-      case "past":
-        return (
-          <Badge variant="secondary" className="text-xs">
-            {statusText}
-          </Badge>
-        );
-      case "canceled":
-        return (
-          <Badge variant="destructive" className="text-xs">
-            {statusText}
-          </Badge>
-        );
-      default:
-        return (
-          <Badge variant="outline" className="text-xs">
-            {statusText}
-          </Badge>
-        );
-    }
+  const statusKey = eventDetail.status as keyof typeof STATUS_CONFIG;
+  const statusCfg = STATUS_CONFIG[statusKey] ?? {
+    label: EVENT_STATUS_LABELS[statusKey] ?? eventDetail.status,
+    barColor: "bg-muted-foreground/30",
+    textColor: "text-muted-foreground",
+    dotColor: "bg-muted-foreground/30",
   };
 
   return (
-    <div className="py-3 sm:py-4">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="flex items-start gap-3 sm:gap-4">
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="mt-0.5 h-10 w-10 shrink-0 rounded-full p-0"
-          >
-            <Link href="/events" aria-label="イベント一覧に戻る">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
+    <div className="py-2 sm:py-4">
+      {/* 戻るボタン（設定画面のようなスタイル） */}
+      <div className="mb-2 sm:mb-4">
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="-ml-2 h-auto py-1 text-muted-foreground hover:text-foreground"
+        >
+          <Link href="/events" className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            <span className="font-medium">イベント一覧に戻る</span>
+          </Link>
+        </Button>
+      </div>
 
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              {getStatusBadge(eventDetail.status)}
-              <span className="text-xs font-medium text-muted-foreground">イベント管理</span>
+      <div className="flex items-start gap-3 sm:gap-4">
+        {/* ステータスバー + コンテンツ */}
+        <div className="flex min-w-0 flex-1 items-stretch gap-3">
+          {/* 左縦ライン（ステータスカラー） */}
+          <div
+            className={`w-0.5 shrink-0 self-stretch rounded-full ${statusCfg.barColor}`}
+            aria-hidden="true"
+          />
+
+          {/* メインコンテンツ */}
+          <div className="min-w-0 flex-1">
+            {/* ステータス表示 */}
+            <div className={`mb-1 flex items-center gap-1.5 ${statusCfg.textColor}`}>
+              <span
+                className={`inline-block h-1.5 w-1.5 rounded-full ${statusCfg.dotColor}`}
+                aria-hidden="true"
+              />
+              <span className="text-[10px] font-bold tracking-wider">{statusCfg.label}</span>
             </div>
-            <div className="space-y-1.5">
-              <h1 className="text-lg font-bold leading-tight text-foreground sm:text-xl">
-                {sanitizeForEventPay(eventDetail.title)}
-              </h1>
-              <div className="flex flex-col gap-1.5 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-2">
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 shrink-0" />
-                  <span>{formatUtcToJstByType(eventDetail.date, "standard")}</span>
-                </div>
-                {eventDetail.location && (
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{sanitizeForEventPay(eventDetail.location)}</span>
-                  </div>
-                )}
-              </div>
+
+            {/* タイトル */}
+            <h1 className="truncate text-base font-bold leading-snug text-foreground sm:text-lg">
+              {sanitizeForEventPay(eventDetail.title)}
+            </h1>
+
+            {/* メタ情報 */}
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3 w-3 shrink-0" />
+                {formatUtcToJstByType(eventDetail.date, "standard")}
+              </span>
+              {eventDetail.location && (
+                <span className="flex min-w-0 items-center gap-1">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{sanitizeForEventPay(eventDetail.location)}</span>
+                </span>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-end md:self-start">
+        {/* 編集ボタン */}
+        <div className="shrink-0 self-center">
           {canEdit ? (
             <Button
               asChild
               variant="outline"
               size="sm"
               aria-label="イベント設定を編集"
-              className="h-10 px-3 transition-all duration-200 border-orange-200 bg-orange-50/60 text-orange-700 hover:bg-orange-100 hover:border-orange-300 hover:text-orange-800"
+              className="h-8 w-8 rounded-full p-0 transition-all duration-200 border-orange-200 bg-orange-50/60 text-orange-700 hover:bg-orange-100 hover:border-orange-300 hover:text-orange-800"
             >
               <Link href={`/events/${eventDetail.id}/edit`}>
-                <Edit className="h-4 w-4 text-orange-600" />
-                <span className="font-medium">編集</span>
+                <Pencil className="h-3.5 w-3.5" />
               </Link>
             </Button>
           ) : (
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              disabled={true}
+              disabled
               aria-label="イベント設定は編集できません"
-              className="h-10 px-3 transition-all duration-200 opacity-50 cursor-not-allowed"
+              className="h-8 w-8 cursor-not-allowed rounded-full p-0 opacity-35"
             >
-              <Edit className="h-4 w-4 text-gray-400" />
-              <span className="font-medium">編集</span>
+              <Pencil className="h-3.5 w-3.5" />
             </Button>
           )}
         </div>
