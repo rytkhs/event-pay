@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-import { Filter, X, Search, SlidersHorizontal } from "lucide-react";
+import { Filter, X, SlidersHorizontal } from "lucide-react";
 
 import { type SimplePaymentStatus } from "@core/utils/payment-status-mapper";
 
@@ -10,7 +10,6 @@ import { SIMPLE_PAYMENT_STATUS_LABELS } from "@features/events";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -48,7 +47,6 @@ export function ParticipantsFilterSheet({
   isFreeEvent,
 }: ParticipantsFilterSheetProps) {
   const [open, setOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(query.search);
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<
     EventManagementQuery["paymentMethod"] | "all"
   >(query.paymentMethod ?? "all");
@@ -60,7 +58,6 @@ export function ParticipantsFilterSheet({
 
   // 検索パラメータが変更されたときに内部状態を同期
   useEffect(() => {
-    setSearchQuery(query.search);
     setPaymentMethodFilter(query.paymentMethod ?? "all");
     setPaymentStatusFilter(query.paymentStatus ?? "all");
     setSortField(query.sort ?? "created_at");
@@ -69,14 +66,12 @@ export function ParticipantsFilterSheet({
 
   // アクティブなフィルターの数を計算
   const activeFiltersCount = [
-    searchQuery,
     !isFreeEvent && paymentMethodFilter !== "all" ? paymentMethodFilter : null,
     !isFreeEvent && paymentStatusFilter !== "all" ? paymentStatusFilter : null,
   ].filter(Boolean).length;
 
   const handleApplyFilters = () => {
     onFiltersChange({
-      search: searchQuery,
       paymentMethod: paymentMethodFilter === "all" ? undefined : paymentMethodFilter,
       paymentStatus: paymentStatusFilter === "all" ? undefined : paymentStatusFilter,
       smart: false,
@@ -87,7 +82,6 @@ export function ParticipantsFilterSheet({
   };
 
   const handleClearAllFilters = () => {
-    setSearchQuery("");
     setPaymentMethodFilter("all");
     setPaymentStatusFilter("all");
     setSortField("created_at");
@@ -130,21 +124,6 @@ export function ParticipantsFilterSheet({
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
-          {/* 検索 */}
-          <div className="space-y-2">
-            <Label htmlFor="filter-search">ニックネーム検索</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="filter-search"
-                placeholder="ニックネームで検索..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-
           {/* 決済方法フィルター（有料イベントのみ） */}
           {!isFreeEvent && (
             <div className="space-y-2">
