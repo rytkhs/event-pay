@@ -18,7 +18,7 @@ const createExpressAccountSchema = z.object({
   userId: z.string().uuid("有効なユーザーIDを指定してください"),
   email: z.string().email("有効なメールアドレスを指定してください"),
   country: z.string().length(2, "国コードは2文字で指定してください").optional().default("JP"),
-  businessType: z.enum(["individual", "company"]).optional().default("individual"),
+  businessType: z.enum(["individual", "company"]).optional(),
   businessProfile: z
     .object({
       url: z.string().url().optional(),

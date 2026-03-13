@@ -160,6 +160,36 @@ describe("Stripe Connect actions", () => {
       await startOnboardingAction();
       expect(redirect).toHaveBeenCalledWith(expect.stringContaining("https://connect.stripe.com"));
     });
+
+    it("connect account新規作成時にbusinessTypeをデフォルト送信しない", async () => {
+      const { __mockStripeConnectService } = jest.requireMock(
+        "@features/stripe-connect/services/factories"
+      );
+      __mockStripeConnectService.getConnectAccountByUser
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          stripe_account_id: "acct_test",
+          user_id: defaultUserId,
+          status: "unverified",
+          charges_enabled: false,
+          payouts_enabled: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+      const { startOnboardingAction } = require("@features/stripe-connect/server");
+      await startOnboardingAction();
+
+      expect(__mockStripeConnectService.createExpressAccount).toHaveBeenCalledWith({
+        userId: defaultUserId,
+        email: "u@example.com",
+        country: "JP",
+        businessProfile: {
+          productDescription:
+            "イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。",
+        },
+      });
+    });
   });
 
   describe("getStripeBalanceAction", () => {
