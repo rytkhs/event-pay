@@ -88,7 +88,6 @@ export function ParticipantsFilterSheet({
     setSortOrder("desc");
 
     onFiltersChange({
-      search: "",
       paymentMethod: undefined,
       paymentStatus: undefined,
       smart: true,
