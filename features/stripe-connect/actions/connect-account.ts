@@ -345,7 +345,7 @@ Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
     }
 
     // 設定ページにリダイレクト用のURLを返す
-    return ok({ redirectUrl: "/settings/payments?connect=success" });
+    return ok({ redirectUrl: "/settings/payments" });
   } catch (error) {
     handleServerError(error, {
       category: "stripe_connect",
