@@ -92,7 +92,7 @@ export default function OnboardingGuidePage() {
               <h2 className="text-xl font-bold">「ビジネスの詳細」について</h2>
             </div>
 
-            <Card className="border-primary/10 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            <Card className="border-primary/10 overflow-hidden shadow-sm">
               <CardHeader className="bg-muted/30 pb-4">
                 <CardTitle className="text-lg">業種の選択</CardTitle>
                 <CardDescription>
@@ -105,10 +105,7 @@ export default function OnboardingGuidePage() {
                 {/* モバイル: カード形式 */}
                 <div className="md:hidden divide-y divide-border">
                   {tableData.map((row, index) => (
-                    <div
-                      key={index}
-                      className="p-4 space-y-3 bg-card hover:bg-muted/40 transition-colors"
-                    >
+                    <div key={index} className="p-4 space-y-3 bg-card">
                       <div className="flex justify-between items-start gap-2">
                         <div className="font-bold text-sm whitespace-pre-line">{row.community}</div>
                       </div>
@@ -129,7 +126,7 @@ export default function OnboardingGuidePage() {
                 <div className="hidden md:block">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-muted/50 hover:bg-muted/50">
+                      <TableRow className="bg-muted/50">
                         <TableHead className="w-[30%]">コミュニティの種類</TableHead>
                         <TableHead className="w-[35%]">Stripe業種カテゴリ</TableHead>
                         <TableHead className="w-[35%]">備考</TableHead>
@@ -162,7 +159,7 @@ export default function OnboardingGuidePage() {
             </Card>
 
             <div className="grid gap-6 mt-6">
-              <Card className="border-primary/10 hover:shadow-md transition-shadow">
+              <Card className="border-primary/10">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-primary" />
@@ -187,7 +184,7 @@ export default function OnboardingGuidePage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-primary/10 hover:shadow-md transition-shadow">
+              <Card className="border-primary/10">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-secondary" />

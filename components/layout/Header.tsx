@@ -40,6 +40,7 @@ export function Header() {
       create: "新規作成",
       participants: "参加者管理",
       edit: "編集",
+      guide: "ガイド",
     };
 
     if (commonLabels[segment]) return commonLabels[segment];
