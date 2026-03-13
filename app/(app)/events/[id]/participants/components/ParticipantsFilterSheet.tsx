@@ -41,6 +41,28 @@ interface ParticipantsFilterSheetProps {
   isFreeEvent: boolean;
 }
 
+const DEFAULT_SORT_FIELD: ParticipantSortField = "created_at";
+const DEFAULT_SORT_ORDER: ParticipantSortOrder = "desc";
+
+function getDraftState(query: EventManagementQuery) {
+  return {
+    paymentMethod: query.paymentMethod ?? "all",
+    paymentStatus: query.paymentStatus ?? "all",
+    sortField: query.sort ?? DEFAULT_SORT_FIELD,
+    sortOrder: query.order ?? DEFAULT_SORT_ORDER,
+  } as const;
+}
+
+function getActiveFiltersCount(query: EventManagementQuery, isFreeEvent: boolean): number {
+  let count = 0;
+
+  if (!isFreeEvent && query.paymentMethod) count += 1;
+  if (!isFreeEvent && query.paymentStatus) count += 1;
+  if (query.sort && query.order) count += 1;
+
+  return count;
+}
+
 export function ParticipantsFilterSheet({
   query,
   onFiltersChange,
@@ -53,30 +75,55 @@ export function ParticipantsFilterSheet({
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<SimplePaymentStatus | "all">(
     query.paymentStatus ?? "all"
   );
-  const [sortField, setSortField] = useState<ParticipantSortField>(query.sort ?? "created_at");
-  const [sortOrder, setSortOrder] = useState<ParticipantSortOrder>(query.order ?? "desc");
+  const [sortField, setSortField] = useState<ParticipantSortField>(
+    query.sort ?? DEFAULT_SORT_FIELD
+  );
+  const [sortOrder, setSortOrder] = useState<ParticipantSortOrder>(
+    query.order ?? DEFAULT_SORT_ORDER
+  );
+
+  const syncDraftFromQuery = (nextQuery: EventManagementQuery) => {
+    const draft = getDraftState(nextQuery);
+    setPaymentMethodFilter(draft.paymentMethod);
+    setPaymentStatusFilter(draft.paymentStatus);
+    setSortField(draft.sortField);
+    setSortOrder(draft.sortOrder);
+  };
 
   // 検索パラメータが変更されたときに内部状態を同期
   useEffect(() => {
-    setPaymentMethodFilter(query.paymentMethod ?? "all");
-    setPaymentStatusFilter(query.paymentStatus ?? "all");
-    setSortField(query.sort ?? "created_at");
-    setSortOrder(query.order ?? "desc");
+    syncDraftFromQuery(query);
   }, [query]);
 
-  // アクティブなフィルターの数を計算
-  const activeFiltersCount = [
-    !isFreeEvent && paymentMethodFilter !== "all" ? paymentMethodFilter : null,
-    !isFreeEvent && paymentStatusFilter !== "all" ? paymentStatusFilter : null,
-  ].filter(Boolean).length;
+  const activeFiltersCount = getActiveFiltersCount(query, isFreeEvent);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      syncDraftFromQuery(query);
+    }
+    setOpen(nextOpen);
+  };
 
   const handleApplyFilters = () => {
+    const nextPaymentMethod = paymentMethodFilter === "all" ? undefined : paymentMethodFilter;
+    const nextPaymentStatus = paymentStatusFilter === "all" ? undefined : paymentStatusFilter;
+    const currentSortField = query.sort ?? DEFAULT_SORT_FIELD;
+    const currentSortOrder = query.order ?? DEFAULT_SORT_ORDER;
+    const hasSortChanged = sortField !== currentSortField || sortOrder !== currentSortOrder;
+    const hasFiltersChanged =
+      nextPaymentMethod !== query.paymentMethod || nextPaymentStatus !== query.paymentStatus;
+
+    if (!hasSortChanged && !hasFiltersChanged) {
+      setOpen(false);
+      return;
+    }
+
     onFiltersChange({
-      paymentMethod: paymentMethodFilter === "all" ? undefined : paymentMethodFilter,
-      paymentStatus: paymentStatusFilter === "all" ? undefined : paymentStatusFilter,
-      smart: false,
-      sort: sortField,
-      order: sortOrder,
+      paymentMethod: nextPaymentMethod,
+      paymentStatus: nextPaymentStatus,
+      smart: hasSortChanged ? false : query.smart,
+      sort: hasSortChanged ? sortField : query.sort,
+      order: hasSortChanged ? sortOrder : query.order,
     });
     setOpen(false);
   };
@@ -84,8 +131,8 @@ export function ParticipantsFilterSheet({
   const handleClearAllFilters = () => {
     setPaymentMethodFilter("all");
     setPaymentStatusFilter("all");
-    setSortField("created_at");
-    setSortOrder("desc");
+    setSortField(DEFAULT_SORT_FIELD);
+    setSortOrder(DEFAULT_SORT_ORDER);
 
     onFiltersChange({
       paymentMethod: undefined,
@@ -98,7 +145,7 @@ export function ParticipantsFilterSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
         <Button variant="outline" className="relative gap-2">
           <SlidersHorizontal className="h-4 w-4" />
