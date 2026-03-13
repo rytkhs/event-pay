@@ -5,12 +5,6 @@ import { usePathname } from "next/navigation";
 
 import { User, CreditCard, Shield, ArrowLeft } from "lucide-react";
 
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -116,25 +110,6 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
 
   return (
     <div className="container mx-auto py-4 px-4 max-w-4xl">
-      {/* パンくずナビゲーション */}
-      <div className="mb-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <Link
-                href="/settings"
-                className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
-              >
-                設定
-              </Link>
-            </BreadcrumbItem>
-            <BreadcrumbItem>
-              <BreadcrumbPage className="font-medium">{currentPage?.title}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
-
       {/* ページタイトル */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">

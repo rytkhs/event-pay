@@ -34,6 +34,9 @@ export function Header() {
       dashboard: "ダッシュボード",
       events: "イベント一覧",
       settings: "設定",
+      profile: "プロフィール設定",
+      payments: "支払い設定",
+      security: "パスワード設定",
       create: "新規作成",
       participants: "参加者管理",
       edit: "編集",
@@ -62,14 +65,14 @@ export function Header() {
 
               return (
                 <React.Fragment key={path}>
-                  <BreadcrumbItem className="hidden md:block">
+                  <BreadcrumbItem>
                     {isLast ? (
                       <BreadcrumbPage>{label}</BreadcrumbPage>
                     ) : (
                       <BreadcrumbLink href={path}>{label}</BreadcrumbLink>
                     )}
                   </BreadcrumbItem>
-                  {!isLast && <BreadcrumbSeparator className="hidden md:block" />}
+                  {!isLast && <BreadcrumbSeparator />}
                 </React.Fragment>
               );
             })}

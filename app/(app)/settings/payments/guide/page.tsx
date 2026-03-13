@@ -3,12 +3,9 @@
  * 静的コンテンツとして提供
  */
 
-import Link from "next/link";
-
-import { ArrowLeft, BookOpen, Building2, Briefcase } from "lucide-react";
+import { BookOpen, Building2, Briefcase } from "lucide-react";
 import type { Metadata } from "next";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -59,16 +56,10 @@ export default function OnboardingGuidePage() {
   ];
 
   return (
-    <div className="container mx-auto py-4 sm:py-8 px-4 max-w-4xl">
+    <div className="container mx-auto py-2 sm:py-4 px-4 max-w-4xl">
       <div className="space-y-6 sm:space-y-8">
         {/* ヘッダー */}
         <div className="space-y-2">
-          <Link href="/settings/payments">
-            <Button variant="ghost" size="sm" className="mb-4">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              売上受取設定に戻る
-            </Button>
-          </Link>
           <div className="flex items-center gap-2 sm:gap-3">
             <BookOpen className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
             <div>
@@ -211,18 +202,11 @@ export default function OnboardingGuidePage() {
               <Building2 className="h-5 w-5" />
               事業形態について
             </CardTitle>
-            <CardDescription>
-              あなたの活動の形態に最も近いものを選択します。
-              <br />
-              この項目はあらかじめ「個人事業主」が選択されていますが、法人や非営利組織の場合は「事業形態」の項目から変更することができます。
-            </CardDescription>
+            <CardDescription>あなたの活動の形態に最も近いものを選択します。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-3">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm font-semibold text-blue-900 mb-2">
-                  ほとんどの場合、個人事業主 を選択すればスムーズに登録を進めることができます。
-                </p>
                 <p className="text-sm text-blue-800">
                   サークル活動や単発のイベント開催など、法人格を持たないほとんどの場合は
                   <strong>個人事業主</strong>を選択してください。
