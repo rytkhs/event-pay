@@ -1,151 +1,139 @@
-"use client";
+import Link from "next/link";
 
-import { useRouter } from "next/navigation";
-
-import { ArrowLeft, Calendar, Edit, MapPin } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Pencil } from "lucide-react";
 
 import { EVENT_STATUS_LABELS } from "@core/constants/status-labels";
 import type { Event } from "@core/types/event";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface EventDetailHeaderProps {
   eventDetail: Event;
-  activeTab: string;
-  onTabChange: (value: string) => void;
 }
 
-export function EventDetailHeader({ eventDetail, activeTab, onTabChange }: EventDetailHeaderProps) {
-  const router = useRouter();
+const STATUS_CONFIG = {
+  upcoming: {
+    label: EVENT_STATUS_LABELS.upcoming,
+    barColor: "bg-primary",
+    textColor: "text-primary",
+    dotColor: "bg-primary",
+  },
+  ongoing: {
+    label: EVENT_STATUS_LABELS.ongoing,
+    barColor: "bg-success",
+    textColor: "text-success",
+    dotColor: "bg-success",
+  },
+  past: {
+    label: EVENT_STATUS_LABELS.past,
+    barColor: "bg-secondary",
+    textColor: "text-secondary",
+    dotColor: "bg-secondary",
+  },
+  canceled: {
+    label: EVENT_STATUS_LABELS.canceled,
+    barColor: "bg-destructive",
+    textColor: "text-destructive",
+    dotColor: "bg-destructive",
+  },
+} as const;
 
-  const handleBackToEvents = () => {
-    router.push("/events");
-  };
-
-  // 編集可能かどうかの判定
+export function EventDetailHeader({ eventDetail }: EventDetailHeaderProps) {
   const canEdit = eventDetail.status !== "past" && eventDetail.status !== "canceled";
 
-  const handleEditEvent = () => {
-    if (!canEdit) return;
-    router.push(`/events/${eventDetail.id}/edit`);
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusText = EVENT_STATUS_LABELS[status as keyof typeof EVENT_STATUS_LABELS] || status;
-
-    switch (status) {
-      case "upcoming":
-        return (
-          <Badge variant="default" className="text-xs">
-            {statusText}
-          </Badge>
-        );
-      case "ongoing":
-        return (
-          <Badge variant="default" className="text-xs bg-green-100 text-green-800">
-            {statusText}
-          </Badge>
-        );
-      case "past":
-        return (
-          <Badge variant="secondary" className="text-xs">
-            {statusText}
-          </Badge>
-        );
-      case "canceled":
-        return (
-          <Badge variant="destructive" className="text-xs">
-            {statusText}
-          </Badge>
-        );
-      default:
-        return (
-          <Badge variant="outline" className="text-xs">
-            {statusText}
-          </Badge>
-        );
-    }
+  const statusKey = eventDetail.status as keyof typeof STATUS_CONFIG;
+  const statusCfg = STATUS_CONFIG[statusKey] ?? {
+    label: EVENT_STATUS_LABELS[statusKey] ?? eventDetail.status,
+    barColor: "bg-muted-foreground/30",
+    textColor: "text-muted-foreground",
+    dotColor: "bg-muted-foreground/30",
   };
 
   return (
-    <div className="bg-white border-b border-border/50 sticky top-12 z-10">
-      <div className="max-w-7xl mx-auto">
-        <div className="py-2">
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={handleBackToEvents}
-              variant="ghost"
-              size="sm"
-              className="flex-shrink-0 p-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+    <div className="py-2 sm:py-4">
+      {/* 戻るボタン（設定画面のようなスタイル） */}
+      <div className="mb-2 sm:mb-4">
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="-ml-2 h-auto py-1 text-muted-foreground hover:text-foreground"
+        >
+          <Link href="/events" className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            <span className="font-medium">イベント一覧に戻る</span>
+          </Link>
+        </Button>
+      </div>
 
-            <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-bold text-foreground truncate">
-                {sanitizeForEventPay(eventDetail.title)}
-              </h1>
-              <div className="flex flex-wrap items-center gap-2 mt-1">
-                {getStatusBadge(eventDetail.status)}
+      <div className="flex items-start gap-3 sm:gap-4">
+        {/* ステータスバー + コンテンツ */}
+        <div className="flex min-w-0 flex-1 items-stretch gap-3">
+          {/* 左縦ライン（ステータスカラー） */}
+          <div
+            className={`w-0.5 shrink-0 self-stretch rounded-full ${statusCfg.barColor}`}
+            aria-hidden="true"
+          />
 
-                <div className="items-center gap-3 text-xs text-muted-foreground hidden sm:flex">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    <span>{formatUtcToJstByType(eventDetail.date, "standard")}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    <span className="truncate max-w-[150px]">
-                      {sanitizeForEventPay(eventDetail.location)}
-                    </span>
-                  </div>
-                </div>
-              </div>
+          {/* メインコンテンツ */}
+          <div className="min-w-0 flex-1">
+            {/* ステータス表示 */}
+            <div className={`mb-1 flex items-center gap-1.5 ${statusCfg.textColor}`}>
+              <span
+                className={`inline-block h-1.5 w-1.5 rounded-full ${statusCfg.dotColor}`}
+                aria-hidden="true"
+              />
+              <span className="text-[10px] font-bold tracking-wider">{statusCfg.label}</span>
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* 編集ボタン */}
-              <Button
-                onClick={handleEditEvent}
-                variant="outline"
-                size="sm"
-                disabled={!canEdit}
-                className={`flex-shrink-0 h-9 px-3 transition-all duration-200 ${
-                  canEdit
-                    ? "border-orange-200 bg-orange-50/50 text-orange-700 hover:bg-orange-100 hover:border-orange-300 hover:text-orange-800"
-                    : "opacity-50 cursor-not-allowed"
-                }`}
-                title={canEdit ? "イベント設定を編集" : "編集不可"}
-              >
-                <Edit className={`h-4 w-4 ${canEdit ? "text-orange-600" : "text-gray-400"}`} />
-                <span className="ml-1.5 hidden sm:inline font-medium">編集</span>
-              </Button>
+            {/* タイトル */}
+            <h1 className="truncate text-base font-bold leading-snug text-foreground sm:text-lg">
+              {sanitizeForEventPay(eventDetail.title)}
+            </h1>
+
+            {/* メタ情報 */}
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3 w-3 shrink-0" />
+                {formatUtcToJstByType(eventDetail.date, "standard")}
+              </span>
+              {eventDetail.location && (
+                <span className="flex min-w-0 items-center gap-1">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{sanitizeForEventPay(eventDetail.location)}</span>
+                </span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* タブナビゲーション */}
-        <div className="mt-2">
-          <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-            <TabsList className="bg-transparent p-0 h-auto space-x-6 border-b-0 w-full justify-start rounded-none">
-              <TabsTrigger
-                value="overview"
-                className="rounded-none border-b-2 border-transparent px-2 pb-3 pt-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none hover:text-foreground transition-colors bg-transparent"
-              >
-                概要
-              </TabsTrigger>
-              <TabsTrigger
-                value="participants"
-                className="rounded-none border-b-2 border-transparent px-2 pb-3 pt-2 font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none hover:text-foreground transition-colors bg-transparent"
-              >
-                参加者管理
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+        {/* 編集ボタン */}
+        <div className="shrink-0 self-center">
+          {canEdit ? (
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              aria-label="イベント設定を編集"
+              className="h-8 w-8 rounded-full p-0 transition-all duration-200 border-orange-200 bg-orange-50/60 text-orange-700 hover:bg-orange-100 hover:border-orange-300 hover:text-orange-800"
+            >
+              <Link href={`/events/${eventDetail.id}/edit`}>
+                <Pencil className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled
+              aria-label="イベント設定は編集できません"
+              className="h-8 w-8 cursor-not-allowed rounded-full p-0 opacity-35"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
     </div>

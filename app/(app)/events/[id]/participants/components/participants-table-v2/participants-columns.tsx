@@ -179,6 +179,7 @@ export function buildParticipantsColumns(opts: {
                   variant="outline"
                   onClick={() => hasPaymentId(p) && onReceive(p.payment_id)}
                   disabled={!!isUpdating}
+                  aria-label={`${p.nickname}の現金決済を受領済みにする`}
                   className="border-green-200 bg-green-50/50 text-green-700 hover:bg-green-100 hover:border-green-300 hover:text-green-800 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md transition-all duration-200"
                   title="受領済みにする"
                 >
@@ -194,6 +195,7 @@ export function buildParticipantsColumns(opts: {
                     variant="outline"
                     onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
                     disabled={!!isUpdating}
+                    aria-label={`${p.nickname}の受領を取り消す`}
                     className="border-gray-200 bg-gray-50/50 text-gray-700 hover:bg-gray-100 hover:border-gray-300 hover:text-gray-900 min-h-[36px] min-w-[36px] px-2 sm:px-3 shadow-sm hover:shadow-md transition-all duration-200"
                     title="受領を取り消し"
                   >

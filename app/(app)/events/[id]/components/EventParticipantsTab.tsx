@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { useRouter } from "next/navigation";
+
 import type { Event } from "@core/types/event";
 import type { GetParticipantsResponse } from "@core/validation/participant-management";
 
@@ -14,16 +16,16 @@ import { ParticipantsFilterSheet } from "../participants/components/Participants
 import { ParticipantsStatusTabs } from "../participants/components/ParticipantsStatusTabs";
 import type {
   EventManagementQuery,
-  EventManagementQueryPatch,
   ParticipantAttendanceFilter,
+  EventManagementQueryPatch,
 } from "../query-params";
+import { buildEventManagementSearchParams } from "../query-params";
 
 interface EventParticipantsTabProps {
   eventId: string;
   eventDetail: Event;
   participantsData: GetParticipantsResponse | null;
   query: EventManagementQuery;
-  onUpdateFilters: (patch: EventManagementQueryPatch) => void;
   updateCashStatusAction: ParticipantsTableV2Props["updateCashStatusAction"];
   bulkUpdateCashStatusAction: ParticipantsTableV2Props["bulkUpdateCashStatusAction"];
 }
@@ -33,10 +35,10 @@ export function EventParticipantsTab({
   eventDetail,
   participantsData,
   query,
-  onUpdateFilters,
   updateCashStatusAction,
   bulkUpdateCashStatusAction,
 }: EventParticipantsTabProps) {
+  const router = useRouter();
   const isFreeEvent = eventDetail.fee === 0;
 
   // 選択モード（一括操作用）の状態管理
@@ -55,38 +57,51 @@ export function EventParticipantsTab({
     };
   }, [allParticipants]);
 
+  const handleFiltersUpdate = (patch: EventManagementQueryPatch) => {
+    const params = buildEventManagementSearchParams(window.location.search, {
+      ...patch,
+      tab: "participants",
+    });
+    const search = params.toString();
+
+    router.replace(`/events/${eventId}${search ? `?${search}` : ""}`, { scroll: false });
+  };
+
   const handleStatusChange = (status: string) => {
-    onUpdateFilters({
+    handleFiltersUpdate({
       attendance: status as ParticipantAttendanceFilter,
     });
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-2 py-4">
-      <div className="space-y-4">
-        {/* アクションバー + フィルターSheet */}
-        <ParticipantsActionBarV2
-          eventId={eventId}
-          eventDetail={eventDetail}
-          query={query}
-          onFiltersChange={onUpdateFilters}
-          isSelectionMode={isSelectionMode}
-          onToggleSelectionMode={() => setIsSelectionMode((prev) => !prev)}
-          filterTrigger={
-            <ParticipantsFilterSheet
-              query={query}
-              onFiltersChange={onUpdateFilters}
-              isFreeEvent={isFreeEvent}
-            />
-          }
-        />
+    <div className="max-w-7xl mx-auto px-2 py-2">
+      <div className="flex flex-col gap-3">
+        {/* スティッキーヘッダーグループ: アクションバー + ステータスタブ */}
+        <div className="sticky top-[100px] z-10 -mx-2 px-2 pb-3 pt-1 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/40 flex flex-col gap-3">
+          {/* アクションバー + フィルターSheet */}
+          <ParticipantsActionBarV2
+            eventId={eventId}
+            eventDetail={eventDetail}
+            query={query}
+            onFiltersChange={handleFiltersUpdate}
+            isSelectionMode={isSelectionMode}
+            onToggleSelectionMode={() => setIsSelectionMode((prev) => !prev)}
+            filterTrigger={
+              <ParticipantsFilterSheet
+                query={query}
+                onFiltersChange={handleFiltersUpdate}
+                isFreeEvent={isFreeEvent}
+              />
+            }
+          />
 
-        {/* ステータスタブ（リスト直上） */}
-        <ParticipantsStatusTabs
-          counts={statusCounts}
-          activeStatus={query.attendance}
-          onStatusChange={handleStatusChange}
-        />
+          {/* ステータスタブ（リスト直上） */}
+          <ParticipantsStatusTabs
+            counts={statusCounts}
+            activeStatus={query.attendance}
+            onStatusChange={handleStatusChange}
+          />
+        </div>
 
         {/* 参加者テーブル */}
         <div className="-mx-4 sm:mx-0">
@@ -95,7 +110,7 @@ export function EventParticipantsTab({
             eventFee={eventDetail.fee}
             allParticipants={allParticipants}
             query={query}
-            onParamsChange={onUpdateFilters}
+            onParamsChange={handleFiltersUpdate}
             updateCashStatusAction={updateCashStatusAction}
             bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}
             isSelectionMode={isSelectionMode}

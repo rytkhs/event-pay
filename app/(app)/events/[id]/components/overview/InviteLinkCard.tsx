@@ -192,7 +192,12 @@ export function InviteLinkCard({ eventId, initialInviteToken }: InviteLinkCardPr
             <div className="flex items-center gap-1">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-muted-foreground"
+                    aria-label="招待リンクの追加操作を開く"
+                  >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
@@ -230,6 +235,7 @@ export function InviteLinkCard({ eventId, initialInviteToken }: InviteLinkCardPr
               className="flex-1 flex items-center justify-between gap-2 pl-3 pr-2 py-2 bg-white rounded-xl border border-blue-100 hover:border-blue-200 hover:bg-white transition-all group overflow-hidden shadow-sm"
               onClick={handleCopy}
               onKeyDown={handleUrlKeyDown}
+              aria-label="招待リンクをコピー"
             >
               <code className="flex-1 text-[11px] text-muted-foreground truncate font-mono text-left">
                 {inviteUrl}
@@ -254,7 +260,7 @@ export function InviteLinkCard({ eventId, initialInviteToken }: InviteLinkCardPr
               variant="outline"
               size="icon"
               className="shrink-0 h-10 w-10 bg-white border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white hover:border-blue-600 rounded-xl shadow-sm transition-all"
-              title="リンクを共有"
+              aria-label="招待リンクを共有"
             >
               <Share2 className="h-5 w-5" />
             </Button>

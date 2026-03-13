@@ -22,7 +22,7 @@ export type ParticipantSortOrder = (typeof PARTICIPANT_SORT_ORDERS)[number];
 
 export const PARTICIPANT_LIMIT_OPTIONS = [50, 100, 150, 200] as const;
 
-type RawSearchParams = { [key: string]: string | string[] | undefined };
+export type RawSearchParams = { [key: string]: string | string[] | undefined };
 
 type PaymentMethodFilter = "stripe" | "cash";
 
