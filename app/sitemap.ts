@@ -29,7 +29,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${appUrl}/tokushoho/platform`,
-      lastModified: "2025-11-21",
+      lastModified: "2026-03-14",
       changeFrequency: "yearly",
       priority: 0.2,
     },
