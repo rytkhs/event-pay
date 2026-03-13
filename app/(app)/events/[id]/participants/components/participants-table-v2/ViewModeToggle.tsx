@@ -1,0 +1,79 @@
+"use client";
+
+import * as React from "react";
+
+import { LayoutGrid, Table } from "lucide-react";
+
+import { cn } from "@/components/ui/_lib/cn";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+interface ViewModeToggleProps {
+  value: "table" | "cards";
+  onChange: (value: "table" | "cards") => void;
+}
+
+export function ViewModeToggle({ value, onChange }: ViewModeToggleProps) {
+  return (
+    <TooltipProvider delayDuration={400}>
+      <div
+        className="inline-flex items-center p-1 bg-muted/40 rounded-xl border border-border/40 shadow-inner"
+        role="group"
+        aria-label="表示形式を選択"
+      >
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => onChange("table")}
+              className={cn(
+                "group relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-300 rounded-lg outline-none overflow-hidden",
+                value === "table"
+                  ? "bg-white text-primary shadow-md ring-1 ring-black/5"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/40"
+              )}
+              aria-pressed={value === "table"}
+            >
+              <Table
+                className={cn(
+                  "h-4 w-4 transition-transform duration-300",
+                  value === "table" ? "scale-110" : "group-hover:scale-105"
+                )}
+              />
+              <span className="hidden sm:inline font-semibold">テーブル</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            テーブル形式で表示
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => onChange("cards")}
+              className={cn(
+                "group relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-300 rounded-lg outline-none overflow-hidden",
+                value === "cards"
+                  ? "bg-white text-primary shadow-md ring-1 ring-black/5"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/40"
+              )}
+              aria-pressed={value === "cards"}
+            >
+              <LayoutGrid
+                className={cn(
+                  "h-4 w-4 transition-transform duration-300",
+                  value === "cards" ? "scale-110" : "group-hover:scale-105"
+                )}
+              />
+              <span className="hidden sm:inline font-semibold">カード</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            カード形式で表示
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    </TooltipProvider>
+  );
+}

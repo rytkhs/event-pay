@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useMemo, useState, startTransition } fro
 import { useRouter } from "next/navigation";
 
 import { SortingState, Row } from "@tanstack/react-table";
-import { ChevronLeft, ChevronRight, LayoutGridIcon, TableIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
@@ -22,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 import type {
   EventManagementQuery,
@@ -35,6 +34,7 @@ import { BulkActionBar } from "./BulkActionBar";
 import { CardsView } from "./CardsView";
 import { DataTable } from "./DataTable";
 import { buildParticipantsColumns } from "./participants-columns";
+import { ViewModeToggle } from "./ViewModeToggle";
 
 type UpdateCashStatusInput = {
   paymentId: string;
@@ -580,24 +580,7 @@ export function ParticipantsTableV2({
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold">参加者一覧 ({totalCount}件)</CardTitle>
           {viewMode ? (
-            <ToggleGroup
-              type="single"
-              value={viewMode}
-              onValueChange={(v) => {
-                if (isViewMode(v)) {
-                  handleViewModeChange(v);
-                }
-              }}
-              className="border rounded-md"
-              aria-label="表示形式を選択"
-            >
-              <ToggleGroupItem value="table" aria-label="テーブル表示">
-                <TableIcon className="h-4 w-4" />
-              </ToggleGroupItem>
-              <ToggleGroupItem value="cards" aria-label="カード表示">
-                <LayoutGridIcon className="h-4 w-4" />
-              </ToggleGroupItem>
-            </ToggleGroup>
+            <ViewModeToggle value={viewMode} onChange={handleViewModeChange} />
           ) : (
             <div className="h-9 w-20 rounded-md border bg-muted/20" aria-hidden="true" />
           )}
