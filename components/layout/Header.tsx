@@ -35,7 +35,7 @@ export function Header() {
       events: "イベント一覧",
       settings: "設定",
       profile: "プロフィール設定",
-      payments: "支払い設定",
+      payments: "決済設定",
       security: "パスワード設定",
       create: "新規作成",
       participants: "参加者管理",

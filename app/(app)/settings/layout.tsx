@@ -20,7 +20,7 @@ const settingsPages = [
     description: "基本情報とアカウント設定",
   },
   {
-    title: "支払い設定",
+    title: "決済設定",
     href: "/settings/payments",
     icon: CreditCard,
     description: "Stripe設定 と決済管理",

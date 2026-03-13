@@ -56,14 +56,14 @@ export default function OnboardingGuidePage() {
   ];
 
   return (
-    <div className="container mx-auto py-2 sm:py-4 px-4 max-w-4xl">
+    <div className="container mx-auto py-2 sm:py-4">
       <div className="space-y-6 sm:space-y-8">
         {/* ヘッダー */}
         <div className="space-y-2">
           <div className="flex items-center gap-2 sm:gap-3">
             <BookOpen className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
             <div>
-              <h1 className="text-xl sm:text-3xl font-bold">設定に迷ったら</h1>
+              <h1 className="text-lg sm:text-xl font-bold">設定に迷ったら</h1>
               <p className="text-sm sm:text-base text-muted-foreground mt-1">
                 Stripeアカウント作成時に入力する項目と設定の参考です。設定時に迷ったら参考にしてください。
               </p>

@@ -23,7 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
-  title: "支払い設定",
+  title: "決済設定",
   description: "Stripeで売上の受け取り方法を設定します",
 };
 
