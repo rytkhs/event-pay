@@ -15,25 +15,25 @@ interface EventDetailHeaderProps {
 
 const STATUS_CONFIG = {
   upcoming: {
-    label: "開催予定",
+    label: EVENT_STATUS_LABELS.upcoming,
     barColor: "bg-primary",
     textColor: "text-primary",
     dotColor: "bg-primary",
   },
   ongoing: {
-    label: "開催中",
+    label: EVENT_STATUS_LABELS.ongoing,
     barColor: "bg-success",
     textColor: "text-success",
     dotColor: "bg-success",
   },
   past: {
-    label: "終了",
+    label: EVENT_STATUS_LABELS.past,
     barColor: "bg-secondary",
     textColor: "text-secondary",
     dotColor: "bg-secondary",
   },
   canceled: {
-    label: "キャンセル",
+    label: EVENT_STATUS_LABELS.canceled,
     barColor: "bg-destructive",
     textColor: "text-destructive",
     dotColor: "bg-destructive",

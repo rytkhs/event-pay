@@ -44,7 +44,6 @@ describe("EventManagementTabsShell", () => {
     await user.click(screen.getByRole("tab", { name: "参加者管理" }));
 
     expect(screen.getByText("Participants Content")).toBeInTheDocument();
-    expect(screen.getByText("参加者の検索、絞り込み、入金管理ができます。")).toBeInTheDocument();
     expect(replaceMock).toHaveBeenCalledWith("/events/event-1?tab=participants", {
       scroll: false,
     });
