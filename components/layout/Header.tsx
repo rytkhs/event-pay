@@ -32,7 +32,7 @@ export function Header() {
     // 2. 一般的なパスのフォールバック
     const commonLabels: Record<string, string> = {
       dashboard: "ダッシュボード",
-      events: "イベント",
+      events: "イベント一覧",
       settings: "設定",
       create: "新規作成",
       participants: "参加者管理",

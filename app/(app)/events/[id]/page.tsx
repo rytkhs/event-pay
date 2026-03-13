@@ -18,6 +18,7 @@ import { buildCollectionProgressSummary } from "@features/events/server";
 import { getEventDetailAction, getEventParticipantsAction, getEventStatsAction } from "./actions";
 import { EventManagementPage } from "./components/EventManagementPage";
 import { bulkUpdateCashStatusAction, updateCashStatusAction } from "./participants/actions";
+import { parseEventManagementQuery, type RawSearchParams } from "./query-params";
 
 interface EventDetailPageProps {
   params: Promise<{
@@ -34,7 +35,7 @@ const cachedActions = createCachedActions({
 
 export default async function EventDetailPage(props: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams: Promise<RawSearchParams>;
 }) {
   const searchParams = await props.searchParams;
   const params = await props.params;
@@ -73,8 +74,7 @@ export default async function EventDetailPage(props: {
       redirect(`/events/${params.id}/forbidden`);
     }
 
-    // 検索パラメータの処理（タブのみ）
-    const _tab = typeof searchParams.tab === "string" ? searchParams.tab : "overview";
+    const query = parseEventManagementQuery(searchParams);
 
     // 必要なデータを並列取得
     // 参加者データは常に全件取得（クライアントサイドでフィルタ・ソート・ページネーション）
@@ -111,10 +111,10 @@ export default async function EventDetailPage(props: {
       <EventManagementPage
         eventId={params.id}
         eventDetail={eventDetail}
+        query={query}
         collectionSummary={collectionSummary}
         overviewStats={stats}
         participantsData={participantsData}
-        searchParams={searchParams}
         updateCashStatusAction={updateCashStatusAction}
         bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}
       />

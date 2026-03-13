@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-import { Filter, X, Search, SlidersHorizontal } from "lucide-react";
+import { Filter, X, SlidersHorizontal } from "lucide-react";
 
 import { type SimplePaymentStatus } from "@core/utils/payment-status-mapper";
 
@@ -10,7 +10,6 @@ import { SIMPLE_PAYMENT_STATUS_LABELS } from "@features/events";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -42,59 +41,100 @@ interface ParticipantsFilterSheetProps {
   isFreeEvent: boolean;
 }
 
+const DEFAULT_SORT_FIELD: ParticipantSortField = "created_at";
+const DEFAULT_SORT_ORDER: ParticipantSortOrder = "desc";
+
+function getDraftState(query: EventManagementQuery) {
+  return {
+    paymentMethod: query.paymentMethod ?? "all",
+    paymentStatus: query.paymentStatus ?? "all",
+    sortField: query.sort ?? DEFAULT_SORT_FIELD,
+    sortOrder: query.order ?? DEFAULT_SORT_ORDER,
+  } as const;
+}
+
+function getActiveFiltersCount(query: EventManagementQuery, isFreeEvent: boolean): number {
+  let count = 0;
+
+  if (!isFreeEvent && query.paymentMethod) count += 1;
+  if (!isFreeEvent && query.paymentStatus) count += 1;
+  if (query.sort && query.order) count += 1;
+
+  return count;
+}
+
 export function ParticipantsFilterSheet({
   query,
   onFiltersChange,
   isFreeEvent,
 }: ParticipantsFilterSheetProps) {
   const [open, setOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(query.search);
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<
     EventManagementQuery["paymentMethod"] | "all"
   >(query.paymentMethod ?? "all");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<SimplePaymentStatus | "all">(
     query.paymentStatus ?? "all"
   );
-  const [sortField, setSortField] = useState<ParticipantSortField>(query.sort ?? "created_at");
-  const [sortOrder, setSortOrder] = useState<ParticipantSortOrder>(query.order ?? "desc");
+  const [sortField, setSortField] = useState<ParticipantSortField>(
+    query.sort ?? DEFAULT_SORT_FIELD
+  );
+  const [sortOrder, setSortOrder] = useState<ParticipantSortOrder>(
+    query.order ?? DEFAULT_SORT_ORDER
+  );
+
+  const syncDraftFromQuery = (nextQuery: EventManagementQuery) => {
+    const draft = getDraftState(nextQuery);
+    setPaymentMethodFilter(draft.paymentMethod);
+    setPaymentStatusFilter(draft.paymentStatus);
+    setSortField(draft.sortField);
+    setSortOrder(draft.sortOrder);
+  };
 
   // 検索パラメータが変更されたときに内部状態を同期
   useEffect(() => {
-    setSearchQuery(query.search);
-    setPaymentMethodFilter(query.paymentMethod ?? "all");
-    setPaymentStatusFilter(query.paymentStatus ?? "all");
-    setSortField(query.sort ?? "created_at");
-    setSortOrder(query.order ?? "desc");
+    syncDraftFromQuery(query);
   }, [query]);
 
-  // アクティブなフィルターの数を計算
-  const activeFiltersCount = [
-    searchQuery,
-    !isFreeEvent && paymentMethodFilter !== "all" ? paymentMethodFilter : null,
-    !isFreeEvent && paymentStatusFilter !== "all" ? paymentStatusFilter : null,
-  ].filter(Boolean).length;
+  const activeFiltersCount = getActiveFiltersCount(query, isFreeEvent);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      syncDraftFromQuery(query);
+    }
+    setOpen(nextOpen);
+  };
 
   const handleApplyFilters = () => {
+    const nextPaymentMethod = paymentMethodFilter === "all" ? undefined : paymentMethodFilter;
+    const nextPaymentStatus = paymentStatusFilter === "all" ? undefined : paymentStatusFilter;
+    const currentSortField = query.sort ?? DEFAULT_SORT_FIELD;
+    const currentSortOrder = query.order ?? DEFAULT_SORT_ORDER;
+    const hasSortChanged = sortField !== currentSortField || sortOrder !== currentSortOrder;
+    const hasFiltersChanged =
+      nextPaymentMethod !== query.paymentMethod || nextPaymentStatus !== query.paymentStatus;
+
+    if (!hasSortChanged && !hasFiltersChanged) {
+      setOpen(false);
+      return;
+    }
+
     onFiltersChange({
-      search: searchQuery,
-      paymentMethod: paymentMethodFilter === "all" ? undefined : paymentMethodFilter,
-      paymentStatus: paymentStatusFilter === "all" ? undefined : paymentStatusFilter,
-      smart: false,
-      sort: sortField,
-      order: sortOrder,
+      paymentMethod: nextPaymentMethod,
+      paymentStatus: nextPaymentStatus,
+      smart: hasSortChanged ? false : query.smart,
+      sort: hasSortChanged ? sortField : query.sort,
+      order: hasSortChanged ? sortOrder : query.order,
     });
     setOpen(false);
   };
 
   const handleClearAllFilters = () => {
-    setSearchQuery("");
     setPaymentMethodFilter("all");
     setPaymentStatusFilter("all");
-    setSortField("created_at");
-    setSortOrder("desc");
+    setSortField(DEFAULT_SORT_FIELD);
+    setSortOrder(DEFAULT_SORT_ORDER);
 
     onFiltersChange({
-      search: "",
       paymentMethod: undefined,
       paymentStatus: undefined,
       smart: true,
@@ -105,7 +145,7 @@ export function ParticipantsFilterSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
         <Button variant="outline" className="relative gap-2">
           <SlidersHorizontal className="h-4 w-4" />
@@ -130,21 +170,6 @@ export function ParticipantsFilterSheet({
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
-          {/* 検索 */}
-          <div className="space-y-2">
-            <Label htmlFor="filter-search">ニックネーム検索</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="filter-search"
-                placeholder="ニックネームで検索..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-
           {/* 決済方法フィルター（有料イベントのみ） */}
           {!isFreeEvent && (
             <div className="space-y-2">

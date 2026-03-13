@@ -34,8 +34,10 @@ export function BulkActionBar({
         "transform transition-transform duration-300 ease-out",
         "animate-in slide-in-from-bottom-4"
       )}
+      role="region"
+      aria-label="一括操作バー"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+      <div className="max-w-7xl mx-auto px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           {/* 左側: 選択状況 */}
           <div className="flex items-center gap-3">

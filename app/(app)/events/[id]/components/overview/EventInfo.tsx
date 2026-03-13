@@ -1,5 +1,3 @@
-"use client";
-
 import {
   Calendar,
   MapPin,
@@ -8,7 +6,6 @@ import {
   CreditCard,
   Info,
   Users,
-  Tag,
   LucideIcon,
 } from "lucide-react";
 
@@ -64,11 +61,6 @@ export function EventInfo({ event }: EventInfoProps) {
     <Card className="border-0 shadow-sm">
       <CardContent className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
-          {/* 0. イベント名 */}
-          <InfoItem icon={Tag} label="イベント名" className="md:col-span-2">
-            <span className="font-bold text-base text-foreground">{event.title}</span>
-          </InfoItem>
-
           {/* 1. 開催日時 */}
           <InfoItem icon={Calendar} label="開催日時">
             <span className="font-medium">{formatUtcToJstByType(event.date, "japanese")}</span>

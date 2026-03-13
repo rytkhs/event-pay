@@ -1,5 +1,3 @@
-"use client";
-
 import type { Event } from "@core/types/event";
 import type { CollectionProgressSummary } from "@core/validation/participant-management";
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { useId } from "react";
+
 import { Sparkles } from "lucide-react";
 
 import { cn } from "@/components/ui/_lib/cn";
@@ -20,6 +22,8 @@ export function SmartSortToggle({
   className,
   showLabel = true,
 }: SmartSortToggleProps) {
+  const switchId = useId();
+
   const content = (
     <div
       className={cn(
@@ -31,14 +35,14 @@ export function SmartSortToggle({
       )}
     >
       <Switch
-        id="smart-sort-toggle"
+        id={switchId}
         checked={isActive}
         onCheckedChange={onToggle}
         className={cn(isActive && "data-[state=checked]:bg-indigo-600")}
         aria-label="オートソート切り替え"
       />
       <Label
-        htmlFor="smart-sort-toggle"
+        htmlFor={switchId}
         className={cn(
           "flex items-center gap-1.5 cursor-pointer select-none text-sm transition-colors",
           isActive ? "text-indigo-700 font-medium" : "text-muted-foreground"

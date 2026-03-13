@@ -44,11 +44,7 @@ const statusConfig = [
 
 export function ParticipantsStatusTabs({ counts, activeStatus, onStatusChange }: StatusTabsProps) {
   return (
-    <div
-      className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible scrollbar-hide"
-      role="tablist"
-      aria-label="参加状況でフィルター"
-    >
+    <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible scrollbar-hide">
       {statusConfig.map((status) => {
         const isActive = activeStatus === status.value;
         const count = counts[status.value as keyof typeof counts];
@@ -57,11 +53,12 @@ export function ParticipantsStatusTabs({ counts, activeStatus, onStatusChange }:
         return (
           <button
             key={status.value}
-            role="tab"
-            aria-selected={isActive}
+            type="button"
+            aria-pressed={isActive}
+            aria-label={`${status.label}で絞り込み`}
             onClick={() => onStatusChange(status.value)}
             className={cn(
-              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium",
+              "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium",
               "border transition-all duration-200 flex-shrink-0 whitespace-nowrap",
               "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary",
               "hover:shadow-sm",
