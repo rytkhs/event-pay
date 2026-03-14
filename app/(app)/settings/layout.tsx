@@ -106,22 +106,22 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
   }
 
   // 個別設定ページ
-  const currentPage = settingsPages.find((page) => pathname.startsWith(page.href));
+  const currentPage = settingsPages.find((page) => pathname === page.href);
 
   return (
-    <div className="container mx-auto py-4 px-4 max-w-4xl">
+    <div className="container mx-auto py-4 px-2 max-w-4xl">
       {/* ページタイトル */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          {currentPage && (
+      {currentPage && (
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-2">
             <div className="p-2 rounded-lg bg-primary/10">
               <currentPage.icon className="h-5 w-5 text-primary" />
             </div>
-          )}
-          <h1 className="text-xl sm:text-2xl font-bold">{currentPage?.title}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">{currentPage.title}</h1>
+          </div>
+          <p className="text-muted-foreground text-sm">{currentPage.description}</p>
         </div>
-        <p className="text-muted-foreground text-sm">{currentPage?.description}</p>
-      </div>
+      )}
 
       {/* コンテンツエリア */}
       <div>{children}</div>

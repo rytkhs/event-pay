@@ -61,19 +61,14 @@ export default function OnboardingGuidePage() {
 
   return (
     <div className="relative min-h-screen bg-transparent">
-      {/* 背景の装飾的な要素 */}
-      <div className="absolute top-0 right-0 -z-10 h-[500px] w-[500px] rounded-full bg-primary/5 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 -z-10 h-[400px] w-[400px] rounded-full bg-secondary/5 blur-[100px] pointer-events-none" />
-
-      <div className="container mx-auto py-4 sm:py-8 space-y-8 max-w-5xl">
+      <div className="container mx-auto py-2 sm:py-4 space-y-8 max-w-5xl">
         {/* ヘッダーセクション */}
-
-        <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6 relative z-10">
-          <div className="p-3 bg-primary/20 rounded-xl shadow-inner">
-            <BookOpen className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+        <div className="flex flex-row items-start gap-4 sm:gap-6 relative z-10">
+          <div className="p-2 bg-primary/20 rounded-xl shadow-inner">
+            <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
               設定に迷ったら
             </h1>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
