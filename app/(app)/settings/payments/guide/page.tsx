@@ -31,7 +31,6 @@ export default function OnboardingGuidePage() {
       community: "大学・社会人サークル、\n勉強会、技術コミュニティ",
       category: "会員制組織 > 市民、友愛または社会団体",
       note: "会費や参加費が中心の運営であり、社会的な任意団体としての実態に最も近い。",
-      recommended: true,
     },
     {
       community: "PTA、自治会、NPO等\n（会費中心）",
@@ -232,7 +231,7 @@ export default function OnboardingGuidePage() {
                   <CardTitle className="text-lg">法人や非営利組織の場合</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <div className="text-sm text-muted-foreground leading-relaxed">
                     一般社団法人、NPO法人、株式会社などの法人格をお持ちの場合は、
                     <Badge variant="outline" className="mx-1">
                       法人
@@ -242,7 +241,7 @@ export default function OnboardingGuidePage() {
                       非営利組織
                     </Badge>
                     を選択し、画面の案内に沿って登録を進めてください。
-                  </p>
+                  </div>
                 </CardContent>
               </Card>
             </div>
