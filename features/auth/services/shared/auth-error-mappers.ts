@@ -33,9 +33,10 @@ export function mapLoginAuthErrorResult(params: {
 
   const remaining =
     ACCOUNT_LOCKOUT_CONFIG.maxFailedAttempts - params.lockoutResult.failedAttempts;
+  const lockoutDuration = ACCOUNT_LOCKOUT_CONFIG.lockoutDurationMs / 1000 / 60;
 
   if (remaining <= 3 && remaining > 0) {
-    errorMessage += ` (残り${remaining}回の試行でアカウントが30分間ロックされます)`;
+    errorMessage += ` (残り${remaining}回の試行でアカウントが${lockoutDuration}分間ロックされます)`;
   }
 
   return errResult(
