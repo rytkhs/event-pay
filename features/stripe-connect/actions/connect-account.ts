@@ -15,11 +15,11 @@ import { handleServerError } from "@core/utils/error-handler.server";
 import { isNextRedirectError } from "@core/utils/next";
 
 import { CONNECT_REFRESH_PATH, CONNECT_RETURN_PATH } from "../constants/routes";
+import { buildConnectAccountStatusPayloadFromCachedAccount } from "../services/cached-account-status";
 import {
   createUserStripeConnectServiceForServerAction,
   createUserStripeConnectServiceForServerComponent,
 } from "../services/factories";
-import { buildConnectAccountStatusPayloadFromCachedAccount } from "../services/cached-account-status";
 import { type ConnectAccountStatusPayload, StripeConnectError } from "../types";
 
 /**

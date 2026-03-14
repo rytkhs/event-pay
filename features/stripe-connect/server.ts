@@ -38,3 +38,4 @@ export { ConnectWebhookHandler } from "./services/webhook/connect-webhook-handle
 export type { ConnectWebhookResult } from "./services/webhook/connect-webhook.types";
 export type { StatusChangeLog } from "./types/audit-log";
 export type { DetailedAccountStatus } from "./types";
+export { buildConnectAccountStatusPayloadFromCachedAccount } from "./services/cached-account-status";

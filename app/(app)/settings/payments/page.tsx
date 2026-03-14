@@ -8,11 +8,11 @@ import { requireCurrentUserForServerComponent } from "@core/auth/auth-utils";
 
 import { AccountStatus, CONNECT_REFRESH_PATH, OnboardingForm } from "@features/stripe-connect";
 import {
+  buildConnectAccountStatusPayloadFromCachedAccount,
   checkExpressDashboardAccessAction,
   createUserStripeConnectServiceForServerComponent,
   getConnectAccountStatusAction,
 } from "@features/stripe-connect/server";
-import { buildConnectAccountStatusPayloadFromCachedAccount } from "@features/stripe-connect/services/cached-account-status";
 
 import {
   createExpressDashboardLoginLinkAction,
