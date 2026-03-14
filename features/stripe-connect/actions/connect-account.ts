@@ -345,7 +345,7 @@ Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
     }
 
     // 設定ページにリダイレクト用のURLを返す
-    return ok({ redirectUrl: "/settings/payments?connect=success" });
+    return ok({ redirectUrl: "/settings/payments" });
   } catch (error) {
     handleServerError(error, {
       category: "stripe_connect",
@@ -398,7 +398,6 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
         userId: user.id,
         email: user.email || `${user.id}@example.com`,
         country: "JP",
-        businessType: "individual",
         businessProfile: {
           productDescription:
             "イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。",
@@ -475,7 +474,6 @@ export async function startOnboardingAction(): Promise<void> {
         userId: user.id,
         email: user.email || `${user.id}@example.com`,
         country: "JP",
-        businessType: "individual",
         businessProfile: {
           productDescription:
             "イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。",

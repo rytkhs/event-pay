@@ -5,12 +5,6 @@ import { usePathname } from "next/navigation";
 
 import { User, CreditCard, Shield, ArrowLeft } from "lucide-react";
 
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -26,7 +20,7 @@ const settingsPages = [
     description: "基本情報とアカウント設定",
   },
   {
-    title: "支払い設定",
+    title: "決済設定",
     href: "/settings/payments",
     icon: CreditCard,
     description: "Stripe設定 と決済管理",
@@ -112,41 +106,22 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
   }
 
   // 個別設定ページ
-  const currentPage = settingsPages.find((page) => pathname.startsWith(page.href));
+  const currentPage = settingsPages.find((page) => pathname === page.href);
 
   return (
-    <div className="container mx-auto py-4 px-4 max-w-4xl">
-      {/* パンくずナビゲーション */}
-      <div className="mb-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <Link
-                href="/settings"
-                className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
-              >
-                設定
-              </Link>
-            </BreadcrumbItem>
-            <BreadcrumbItem>
-              <BreadcrumbPage className="font-medium">{currentPage?.title}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
-
+    <div className="container mx-auto py-4 px-2 max-w-4xl">
       {/* ページタイトル */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          {currentPage && (
+      {currentPage && (
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-2">
             <div className="p-2 rounded-lg bg-primary/10">
               <currentPage.icon className="h-5 w-5 text-primary" />
             </div>
-          )}
-          <h1 className="text-xl sm:text-2xl font-bold">{currentPage?.title}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">{currentPage.title}</h1>
+          </div>
+          <p className="text-muted-foreground text-sm">{currentPage.description}</p>
         </div>
-        <p className="text-muted-foreground text-sm">{currentPage?.description}</p>
-      </div>
+      )}
 
       {/* コンテンツエリア */}
       <div>{children}</div>

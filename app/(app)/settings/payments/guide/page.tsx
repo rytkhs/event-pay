@@ -5,10 +5,11 @@
 
 import Link from "next/link";
 
-import { ArrowLeft, BookOpen, Building2, Briefcase } from "lucide-react";
+import { BookOpen, Building2, Briefcase, ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 
-import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -59,192 +60,199 @@ export default function OnboardingGuidePage() {
   ];
 
   return (
-    <div className="container mx-auto py-4 sm:py-8 px-4 max-w-4xl">
-      <div className="space-y-6 sm:space-y-8">
-        {/* ヘッダー */}
-        <div className="space-y-2">
-          <Link href="/settings/payments">
-            <Button variant="ghost" size="sm" className="mb-4">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              売上受取設定に戻る
-            </Button>
-          </Link>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <BookOpen className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
-            <div>
-              <h1 className="text-xl sm:text-3xl font-bold">設定に迷ったら</h1>
-              <p className="text-sm sm:text-base text-muted-foreground mt-1">
-                Stripeアカウント作成時に入力する項目と設定の参考です。設定時に迷ったら参考にしてください。
-              </p>
-            </div>
+    <div className="relative min-h-screen bg-transparent">
+      <div className="container mx-auto py-2 sm:py-4 space-y-8 max-w-5xl">
+        {/* ヘッダーセクション */}
+        <div className="flex flex-row items-start gap-4 sm:gap-6 relative z-10">
+          <div className="p-2 bg-primary/20 rounded-xl shadow-inner">
+            <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+              設定に迷ったら
+            </h1>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
+              Stripeアカウント作成時に入力する項目と設定の参考です。
+              スムーズなオンボーディングのために、以下のガイドを参考にしてください。
+            </p>
           </div>
         </div>
 
-        {/* セクション1: ビジネスの詳細 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5" />
-              「ビジネスの詳細」について
-            </CardTitle>
-            <CardDescription>
-              あなたのコミュニティやイベントの活動内容について入力します。
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-3">
-              <h3 className="font-semibold text-lg">業種の選択</h3>
-              <p className="text-sm text-muted-foreground">
-                業種の選択が必要な場合、コミュニティの主な活動内容に合わせて、最も近いものを選択してください。以下の表を参考にできます。
-                多くの場合、「<strong>会員制組織</strong>」カテゴリが該当します。
-              </p>
+        <div className="grid gap-8">
+          {/* セクション1: ビジネスの詳細 */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Briefcase className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-bold">「ビジネスの詳細」について</h2>
+            </div>
 
-              {/* モバイル: カード形式 */}
-              <div className="md:hidden space-y-4">
-                {tableData.map((row, index) => (
-                  <div key={index} className="border rounded-lg p-4 space-y-3 bg-card">
-                    <div>
-                      <div className="text-xs font-semibold text-muted-foreground mb-1">
-                        コミュニティの種類
+            <Card className="border-primary/10 overflow-hidden shadow-sm">
+              <CardHeader className="bg-muted/30 pb-4">
+                <CardTitle className="text-lg">業種の選択</CardTitle>
+                <CardDescription>
+                  コミュニティの主な活動内容に合わせて、最も近いものを選択してください。
+                  多くの場合、「<span className="font-semibold text-foreground">会員制組織</span>
+                  」カテゴリが該当します。
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0 sm:p-6">
+                {/* モバイル: カード形式 */}
+                <div className="md:hidden divide-y divide-border">
+                  {tableData.map((row, index) => (
+                    <div key={index} className="p-4 space-y-3 bg-card">
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="font-bold text-sm whitespace-pre-line">{row.community}</div>
                       </div>
-                      <div className="font-medium whitespace-pre-line">{row.community}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-muted-foreground mb-1">
-                        Stripe業種カテゴリ
+                      <div className="space-y-1">
+                        <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                          Stripe業種カテゴリ
+                        </div>
+                        <div className="text-sm font-semibold text-primary">{row.category}</div>
                       </div>
-                      <div className="whitespace-pre-line">
-                        <strong>{row.category}</strong>
+                      <div className="text-xs text-muted-foreground leading-relaxed">
+                        {row.note}
                       </div>
                     </div>
-                    <div>
-                      <div className="text-xs font-semibold text-muted-foreground mb-1">備考</div>
-                      <div className="text-sm text-muted-foreground">{row.note}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
 
-              {/* デスクトップ: テーブル形式 */}
-              <div className="hidden md:block overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="min-w-[200px]">コミュニティの種類</TableHead>
-                      <TableHead className="min-w-[250px]">Stripe業種カテゴリ</TableHead>
-                      <TableHead>備考</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {tableData.map((row, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-medium whitespace-pre-line">
-                          {row.community}
-                        </TableCell>
-                        <TableCell>
-                          <strong>{row.category}</strong>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{row.note}</TableCell>
+                {/* デスクトップ: テーブル形式 */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="w-[30%]">コミュニティの種類</TableHead>
+                        <TableHead className="w-[35%]">Stripe業種カテゴリ</TableHead>
+                        <TableHead className="w-[35%]">備考</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {tableData.map((row, index) => (
+                        <TableRow key={index} className="group transition-colors">
+                          <TableCell className="font-medium align-top py-4">
+                            <div className="flex items-start gap-2">
+                              <span className="whitespace-pre-line leading-relaxed">
+                                {row.community}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="align-top py-4">
+                            <code className="text-sm font-semibold text-primary bg-primary/5 px-2 py-1 rounded">
+                              {row.category}
+                            </code>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground leading-relaxed align-top py-4">
+                            {row.note}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-6 mt-6">
+              <Card className="border-primary/10">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-primary" />
+                    ウェブサイト
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm text-muted-foreground">
+                  <div className="space-y-2">
+                    <p className="font-semibold text-foreground">ウェブサイトをお持ちの場合</p>
+                    <p>団体の公式サイトや活動内容を紹介するページのURLを入力してください。</p>
+                    <div className="bg-muted p-2 rounded flex items-center gap-2 group cursor-default">
+                      <code className="text-xs truncate">https://example.com</code>
+                    </div>
+                  </div>
+                  <div className="pt-2 space-y-2 border-t border-border/50">
+                    <p className="font-semibold text-foreground">お持ちでない場合</p>
+                    <p>SNSアカウント（X, Instagram, Facebook等）のURLで問題ありません。</p>
+                    <div className="bg-muted p-2 rounded flex items-center gap-2 group cursor-default">
+                      <code className="text-xs truncate">https://x.com/your_account</code>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-primary/10">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-secondary" />
+                    商品の詳細
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-muted-foreground">
+                  <p>どのようなイベントの参加費を受け取るのかを説明する項目です。</p>
+                  <p className="p-3 bg-secondary/5 border border-secondary/20 rounded-lg italic leading-relaxed">
+                    「イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。」
+                  </p>
+                  <p className="text-xs">
+                    ※あらかじめ入力されていますが、ご自身の活動内容に合わせて自由に編集・追記して問題ありません。
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+
+          {/* セクション2: 事業形態 */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Building2 className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-bold">事業形態について</h2>
             </div>
 
-            <div className="space-y-3">
-              <h3 className="font-semibold text-lg">ウェブサイト</h3>
-              <p className="text-sm text-muted-foreground">
-                ウェブサイトの入力が必要な場合は、活動がわかるページのURLを入力します。
-              </p>
+            <div className="grid gap-6">
+              <Alert
+                variant="info"
+                className="bg-blue-50/50 border-blue-200 shadow-sm overflow-hidden relative"
+              >
+                <AlertDescription className="text-blue-800 space-y-2">
+                  <p>
+                    サークル活動や単発のイベント開催など、法人格を持たないほとんどの場合は
+                    <strong>「個人事業主」</strong>を選択してください。
+                  </p>
+                  <p className="text-sm opacity-80 decoration-blue-300 underline-offset-4 decoration-dashed underline">
+                    営利目的でないイベントの場合も「個人事業主」として担当者個人の名義で登録を進めることができます。
+                  </p>
+                </AlertDescription>
+              </Alert>
 
-              <ul className="space-y-3 sm:space-y-4 pl-5 text-sm text-muted-foreground list-disc">
-                <li className="space-y-1">
-                  <div>
-                    <span className="font-medium text-foreground">ウェブサイトをお持ちの場合</span>
+              <Card className="border-primary/10">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">法人や非営利組織の場合</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm text-muted-foreground leading-relaxed">
+                    一般社団法人、NPO法人、株式会社などの法人格をお持ちの場合は、
+                    <Badge variant="outline" className="mx-1">
+                      法人
+                    </Badge>{" "}
+                    または
+                    <Badge variant="outline" className="mx-1">
+                      非営利組織
+                    </Badge>
+                    を選択し、画面の案内に沿って登録を進めてください。
                   </div>
-                  <div>団体の公式サイトや活動内容を紹介するページのURLを入力してください。</div>
-                  <div>
-                    例：
-                    <code className="text-xs bg-muted px-1 py-0.5 rounded ml-1 break-all">
-                      https://example.com
-                    </code>
-                  </div>
-                </li>
-                <li className="space-y-1">
-                  <div>
-                    <span className="font-medium text-foreground">
-                      ウェブサイトをお持ちでない場合
-                    </span>
-                  </div>
-                  <div>
-                    <strong className="text-foreground">
-                      SNSアカウントのURLで問題ありません。
-                    </strong>
-                  </div>
-                  <div>X、Instagram、Facebookなどの公開アカウントのURLを入力してください。</div>
-                  <div>
-                    例：
-                    <code className="text-xs bg-muted px-1 py-0.5 rounded ml-1 break-all">
-                      https://x.com/your_account_id
-                    </code>
-                  </div>
-                </li>
-              </ul>
+                </CardContent>
+              </Card>
             </div>
+          </section>
 
-            <div className="space-y-3">
-              <h3 className="font-semibold text-lg">商品の詳細</h3>
-              <p className="text-sm text-muted-foreground">
-                どのようなイベントの参加費を受け取るのかを説明する項目です。
-                <br />
-                あらかじめ入力されていますが、ご自身の活動内容に合わせて自由に編集・追記して問題ありません。
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* セクション2: 事業形態 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              事業形態について
-            </CardTitle>
-            <CardDescription>
-              あなたの活動の形態に最も近いものを選択します。
-              <br />
-              この項目はあらかじめ「個人事業主」が選択されていますが、法人や非営利組織の場合は「事業形態」の項目から変更することができます。
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm font-semibold text-blue-900 mb-2">
-                  ほとんどの場合、個人事業主 を選択すればスムーズに登録を進めることができます。
-                </p>
-                <p className="text-sm text-blue-800">
-                  サークル活動や単発のイベント開催など、法人格を持たないほとんどの場合は
-                  <strong>個人事業主</strong>を選択してください。
-                  <br />
-                  担当者個人の名義で登録を進めることができます。
-                </p>
-                <p className="text-sm text-blue-800 mt-2">
-                  営利目的でないイベントの場合も「個人事業主」で問題ありません。
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="font-semibold">法人や非営利組織の場合</h3>
-              <p className="text-sm text-muted-foreground">
-                一般社団法人、NPO法人、株式会社などの法人格をお持ちの場合は、「<strong>法人</strong>
-                」または「<strong>非営利組織</strong>
-                」を選択し、画面の案内に沿って法人情報や代表者情報を入力してください。
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+          {/* 戻るボタン */}
+          <div className="flex justify-center pt-8 border-t border-border/40">
+            <Link
+              href="/settings/payments"
+              className="group flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+              決済設定に戻る
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

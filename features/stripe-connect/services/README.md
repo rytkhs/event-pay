@@ -46,8 +46,7 @@ try {
   const result = await stripeConnectService.createExpressAccount({
     userId: "user-uuid",
     email: "user@example.com",
-    country: "JP",
-    businessType: "individual"
+    country: "JP"
   });
 
   console.log("Account created:", result.accountId);
