@@ -57,7 +57,6 @@ async function PaymentSettingsContent() {
           refreshUrl={refreshUrl}
           status={await (async () => {
             const r = await getConnectAccountStatusAction();
-            const expressAccess = await checkExpressDashboardAccessAction();
 
             if (!r.success) {
               const cachedStatus =
@@ -67,6 +66,8 @@ async function PaymentSettingsContent() {
                 expressDashboardAvailable: false,
               };
             }
+
+            const expressAccess = await checkExpressDashboardAccessAction();
 
             return {
               hasAccount: true,
