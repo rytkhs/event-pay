@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { setupSupabaseClientMocks } from "../../setup/common-mocks";
-import { setTestUserById } from "../../setup/supabase-auth-mock";
+import { setTestUserById, supabaseAuthMock } from "../../setup/supabase-auth-mock";
 const originalEnv = process.env;
 const defaultUserId = "550e8400-e29b-41d4-a716-446655440000";
 
@@ -147,6 +147,24 @@ describe("Stripe Connect actions", () => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
+    const { StatusSyncService } = jest.requireMock(
+      "@features/stripe-connect/services/status-sync-service"
+    );
+    (StatusSyncService as jest.Mock).mockImplementation(() => ({
+      syncAccountStatus: jest.fn().mockResolvedValue({
+        id: "acct_test",
+        requirements: {
+          currently_due: [],
+          eventually_due: [],
+          past_due: [],
+          pending_verification: [],
+        },
+        capabilities: {
+          card_payments: "inactive",
+          transfers: "inactive",
+        },
+      }),
+    }));
     (redirect as unknown as jest.Mock).mockClear();
   });
 
@@ -241,6 +259,53 @@ describe("Stripe Connect actions", () => {
         expect(result.data.dbStatus).toBe("unverified");
       }
     });
+
+    it("should fall back to cached account status when sync fails", async () => {
+      const { __mockStripeConnectService } = jest.requireMock(
+        "@features/stripe-connect/services/factories"
+      );
+      const { StatusSyncService } = jest.requireMock(
+        "@features/stripe-connect/services/status-sync-service"
+      );
+
+      __mockStripeConnectService.getConnectAccountByUser
+        .mockResolvedValueOnce({
+          stripe_account_id: "acct_test",
+          user_id: defaultUserId,
+          status: "verified",
+          charges_enabled: true,
+          payouts_enabled: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .mockResolvedValueOnce({
+          stripe_account_id: "acct_test",
+          user_id: defaultUserId,
+          status: "verified",
+          charges_enabled: true,
+          payouts_enabled: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+      (StatusSyncService as jest.Mock).mockImplementation(() => ({
+        syncAccountStatus: jest.fn().mockRejectedValue(new Error("sync failed")),
+      }));
+
+      const { getConnectAccountStatusAction } = require("@features/stripe-connect/server");
+      const result = await getConnectAccountStatusAction();
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.hasAccount).toBe(true);
+        expect(result.data.dbStatus).toBe("verified");
+        expect(result.data.uiStatus).toBe("ready");
+        expect(result.data.chargesEnabled).toBe(true);
+        expect(result.data.payoutsEnabled).toBe(true);
+        expect(result.data.requirements).toBeUndefined();
+        expect(result.data.capabilities).toBeUndefined();
+      }
+    });
   });
 
   describe("checkExpressDashboardAccessAction", () => {
@@ -253,6 +318,59 @@ describe("Stripe Connect actions", () => {
         expect(result.data.hasAccount).toBe(true);
         expect(result.data.accountId).toBe("acct_test");
       }
+    });
+  });
+
+  describe("createExpressDashboardLoginLinkAction", () => {
+    it("redirects to login with payments return path when auth lookup fails", async () => {
+      supabaseAuthMock.setError(true);
+
+      const { createExpressDashboardLoginLinkAction } = require("@features/stripe-connect/server");
+      await createExpressDashboardLoginLinkAction();
+
+      expect(redirect).toHaveBeenCalledWith("/login?redirectTo=/settings/payments");
+    });
+
+    it("redirects to login with payments return path when user is missing", async () => {
+      supabaseAuthMock.setUser(null);
+
+      const { createExpressDashboardLoginLinkAction } = require("@features/stripe-connect/server");
+      await createExpressDashboardLoginLinkAction();
+
+      expect(redirect).toHaveBeenCalledWith("/login?redirectTo=/settings/payments");
+    });
+
+    it("redirects back to payments when connect account is missing", async () => {
+      const { __mockStripeConnectService } = jest.requireMock(
+        "@features/stripe-connect/services/factories"
+      );
+      __mockStripeConnectService.getConnectAccountByUser.mockResolvedValueOnce(null);
+
+      const { createExpressDashboardLoginLinkAction } = require("@features/stripe-connect/server");
+      await createExpressDashboardLoginLinkAction();
+
+      expect(redirect).toHaveBeenCalledWith("/settings/payments");
+    });
+
+    it("redirects to payments error page when login link generation fails", async () => {
+      const { __mockStripeConnectService } = jest.requireMock(
+        "@features/stripe-connect/services/factories"
+      );
+      __mockStripeConnectService.createLoginLink.mockRejectedValueOnce(new Error("boom"));
+
+      const { createExpressDashboardLoginLinkAction } = require("@features/stripe-connect/server");
+      await createExpressDashboardLoginLinkAction();
+
+      expect(redirect).toHaveBeenCalledWith(
+        "/settings/payments/error?message=Stripe%E3%83%80%E3%83%83%E3%82%B7%E3%83%A5%E3%83%9C%E3%83%BC%E3%83%89%E3%81%B8%E3%81%AE%E3%82%A2%E3%82%AF%E3%82%BB%E3%82%B9%E3%81%AB%E5%A4%B1%E6%95%97%E3%81%97%E3%81%BE%E3%81%97%E3%81%9F"
+      );
+    });
+
+    it("redirects to Stripe when login link is created", async () => {
+      const { createExpressDashboardLoginLinkAction } = require("@features/stripe-connect/server");
+      await createExpressDashboardLoginLinkAction();
+
+      expect(redirect).toHaveBeenCalledWith("https://connect.stripe.com/express/acct_test/login");
     });
   });
 });

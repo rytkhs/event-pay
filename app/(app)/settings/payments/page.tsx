@@ -8,6 +8,7 @@ import { requireCurrentUserForServerComponent } from "@core/auth/auth-utils";
 
 import { AccountStatus, CONNECT_REFRESH_PATH, OnboardingForm } from "@features/stripe-connect";
 import {
+  buildConnectAccountStatusPayloadFromCachedAccount,
   checkExpressDashboardAccessAction,
   createUserStripeConnectServiceForServerComponent,
   getConnectAccountStatusAction,
@@ -56,17 +57,17 @@ async function PaymentSettingsContent() {
           refreshUrl={refreshUrl}
           status={await (async () => {
             const r = await getConnectAccountStatusAction();
-            const expressAccess = await checkExpressDashboardAccessAction();
 
             if (!r.success) {
+              const cachedStatus =
+                buildConnectAccountStatusPayloadFromCachedAccount(existingAccount);
               return {
-                hasAccount: false,
-                uiStatus: "no_account" as const,
-                chargesEnabled: false,
-                payoutsEnabled: false,
+                ...cachedStatus,
                 expressDashboardAvailable: false,
               };
             }
+
+            const expressAccess = await checkExpressDashboardAccessAction();
 
             return {
               hasAccount: true,
