@@ -2168,6 +2168,42 @@ COMMENT ON COLUMN "public"."attendances"."guest_token" IS 'ゲストアクセス
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."communities" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "created_by" "uuid" NOT NULL,
+    "name" character varying(255) NOT NULL,
+    "slug" character varying(255) NOT NULL,
+    "description" "text",
+    "current_payout_profile_id" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "is_deleted" boolean DEFAULT false NOT NULL,
+    "deleted_at" timestamp with time zone,
+    CONSTRAINT "communities_soft_delete_consistency" CHECK (("is_deleted" = ("deleted_at" IS NOT NULL)))
+);
+
+ALTER TABLE ONLY "public"."communities" FORCE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."communities" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."communities" IS 'コミュニティ情報';
+
+
+
+COMMENT ON COLUMN "public"."communities"."created_by" IS 'コミュニティ作成者ユーザーID';
+
+
+
+COMMENT ON COLUMN "public"."communities"."slug" IS '公開URL用slug。推測困難なランダム値を保存する';
+
+
+
+COMMENT ON COLUMN "public"."communities"."current_payout_profile_id" IS 'コミュニティの現在のデフォルト受取先。未設定時はNULL';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."contacts" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "name" "text" NOT NULL,
@@ -2202,6 +2238,8 @@ CREATE TABLE IF NOT EXISTS "public"."events" (
     "grace_period_days" smallint DEFAULT 0 NOT NULL,
     "canceled_at" timestamp with time zone,
     "canceled_by" "uuid",
+    "community_id" "uuid",
+    "payout_profile_id" "uuid",
     CONSTRAINT "events_capacity_check" CHECK ((("capacity" IS NULL) OR ("capacity" > 0))),
     CONSTRAINT "events_date_after_creation" CHECK (("date" > "created_at")),
     CONSTRAINT "events_fee_check" CHECK ((("fee" = 0) OR (("fee" >= 100) AND ("fee" <= 1000000)))),
@@ -2224,6 +2262,14 @@ COMMENT ON TABLE "public"."events" IS 'イベント情報';
 
 
 COMMENT ON COLUMN "public"."events"."created_by" IS 'Event creator user ID. Automatically set to auth.uid() if not provided during insert.';
+
+
+
+COMMENT ON COLUMN "public"."events"."community_id" IS 'イベントが所属するコミュニティID';
+
+
+
+COMMENT ON COLUMN "public"."events"."payout_profile_id" IS 'イベント作成時点の受取先スナップショット';
 
 
 
@@ -2353,6 +2399,7 @@ CREATE TABLE IF NOT EXISTS "public"."payments" (
     "version" integer DEFAULT 1 NOT NULL,
     "checkout_idempotency_key" "text",
     "checkout_key_revision" integer DEFAULT 0 NOT NULL,
+    "payout_profile_id" "uuid",
     CONSTRAINT "chk_payments_application_fee_amount_non_negative" CHECK (("application_fee_amount" >= 0)),
     CONSTRAINT "chk_payments_application_fee_refunded_amount_non_negative" CHECK (("application_fee_refunded_amount" >= 0)),
     CONSTRAINT "chk_payments_refunded_amount_non_negative" CHECK (("refunded_amount" >= 0)),
@@ -2440,7 +2487,41 @@ COMMENT ON COLUMN "public"."payments"."version" IS 'Optimistic lock version to p
 
 
 
+COMMENT ON COLUMN "public"."payments"."payout_profile_id" IS '決済時点の受取先スナップショット';
+
+
+
 COMMENT ON CONSTRAINT "payments_stripe_intent_required" ON "public"."payments" IS 'Ensures stripe_payment_intent_id is present for stripe payments except pending and canceled statuses. Canceled is a terminal state for unpaid transactions.';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."payout_profiles" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "owner_user_id" "uuid" NOT NULL,
+    "stripe_account_id" character varying(255) NOT NULL,
+    "status" "public"."stripe_account_status_enum" DEFAULT 'unverified'::"public"."stripe_account_status_enum" NOT NULL,
+    "charges_enabled" boolean DEFAULT false NOT NULL,
+    "payouts_enabled" boolean DEFAULT false NOT NULL,
+    "representative_community_id" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+ALTER TABLE ONLY "public"."payout_profiles" FORCE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."payout_profiles" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."payout_profiles" IS '受取先プロファイル。既存stripe_connect_accountsの移行先';
+
+
+
+COMMENT ON COLUMN "public"."payout_profiles"."owner_user_id" IS 'MVPでの受取先オーナーユーザーID。1ユーザー1受取先';
+
+
+
+COMMENT ON COLUMN "public"."payout_profiles"."representative_community_id" IS 'Stripe審査用URLの代表コミュニティ';
 
 
 
@@ -2513,6 +2594,9 @@ CREATE TABLE IF NOT EXISTS "public"."settlements" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "total_disputed_amount" integer DEFAULT 0 NOT NULL,
     "dispute_count" integer DEFAULT 0 NOT NULL,
+    "community_id" "uuid",
+    "payout_profile_id" "uuid",
+    "initiated_by" "uuid",
     CONSTRAINT "settlements_amounts_non_negative" CHECK ((("total_stripe_sales" >= 0) AND ("total_stripe_fee" >= 0) AND ("platform_fee" >= 0) AND ("net_payout_amount" >= 0))),
     CONSTRAINT "settlements_calculation_reasonable" CHECK ((("net_payout_amount" <= "total_stripe_sales") AND ("net_payout_amount" >= 0)))
 );
@@ -2544,6 +2628,18 @@ COMMENT ON COLUMN "public"."settlements"."transfer_group" IS 'イベント単位
 
 
 COMMENT ON COLUMN "public"."settlements"."generated_at" IS 'レポート生成日時';
+
+
+
+COMMENT ON COLUMN "public"."settlements"."community_id" IS '清算対象イベントが属するコミュニティID';
+
+
+
+COMMENT ON COLUMN "public"."settlements"."payout_profile_id" IS '清算時点の受取先スナップショット';
+
+
+
+COMMENT ON COLUMN "public"."settlements"."initiated_by" IS '清算処理を実行したユーザーID';
 
 
 
@@ -2788,6 +2884,16 @@ ALTER TABLE ONLY "public"."attendances"
 
 
 
+ALTER TABLE ONLY "public"."communities"
+    ADD CONSTRAINT "communities_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."communities"
+    ADD CONSTRAINT "communities_slug_key" UNIQUE ("slug");
+
+
+
 ALTER TABLE ONLY "public"."contacts"
     ADD CONSTRAINT "contacts_pkey" PRIMARY KEY ("id");
 
@@ -2835,6 +2941,21 @@ ALTER TABLE ONLY "public"."payments"
 
 ALTER TABLE ONLY "public"."payments"
     ADD CONSTRAINT "payments_stripe_payment_intent_id_key" UNIQUE ("stripe_payment_intent_id");
+
+
+
+ALTER TABLE ONLY "public"."payout_profiles"
+    ADD CONSTRAINT "payout_profiles_owner_user_id_key" UNIQUE ("owner_user_id");
+
+
+
+ALTER TABLE ONLY "public"."payout_profiles"
+    ADD CONSTRAINT "payout_profiles_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."payout_profiles"
+    ADD CONSTRAINT "payout_profiles_stripe_account_id_key" UNIQUE ("stripe_account_id");
 
 
 
@@ -2893,11 +3014,23 @@ CREATE INDEX "idx_attendances_event_status" ON "public"."attendances" USING "btr
 
 
 
+CREATE INDEX "idx_communities_created_by" ON "public"."communities" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "idx_communities_current_payout_profile_id" ON "public"."communities" USING "btree" ("current_payout_profile_id");
+
+
+
 CREATE INDEX "idx_contacts_created_at" ON "public"."contacts" USING "btree" ("created_at" DESC);
 
 
 
 CREATE INDEX "idx_events_canceled_at" ON "public"."events" USING "btree" ("canceled_at");
+
+
+
+CREATE INDEX "idx_events_community_id" ON "public"."events" USING "btree" ("community_id");
 
 
 
@@ -2918,6 +3051,10 @@ CREATE INDEX "idx_events_deadlines" ON "public"."events" USING "btree" ("registr
 
 
 CREATE INDEX "idx_events_invite_token" ON "public"."events" USING "btree" ("invite_token") WHERE ("invite_token" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_events_payout_profile_id" ON "public"."events" USING "btree" ("payout_profile_id");
 
 
 
@@ -2985,6 +3122,10 @@ CREATE INDEX "idx_payments_method_status_paid" ON "public"."payments" USING "btr
 
 
 
+CREATE INDEX "idx_payments_payout_profile_id" ON "public"."payments" USING "btree" ("payout_profile_id");
+
+
+
 CREATE INDEX "idx_payments_refunded_amount" ON "public"."payments" USING "btree" ("refunded_amount") WHERE ("refunded_amount" > 0);
 
 
@@ -3021,6 +3162,18 @@ CREATE INDEX "idx_payments_webhook_event" ON "public"."payments" USING "btree" (
 
 
 
+CREATE INDEX "idx_payout_profiles_owner_user_id" ON "public"."payout_profiles" USING "btree" ("owner_user_id");
+
+
+
+CREATE INDEX "idx_payout_profiles_representative_community_id" ON "public"."payout_profiles" USING "btree" ("representative_community_id");
+
+
+
+CREATE INDEX "idx_settlements_community_id" ON "public"."settlements" USING "btree" ("community_id");
+
+
+
 CREATE INDEX "idx_settlements_event_created" ON "public"."settlements" USING "btree" ("event_id", "created_at");
 
 
@@ -3034,6 +3187,14 @@ CREATE INDEX "idx_settlements_event_id" ON "public"."settlements" USING "btree" 
 
 
 CREATE INDEX "idx_settlements_generated_date_jst" ON "public"."settlements" USING "btree" (((("generated_at" AT TIME ZONE 'Asia/Tokyo'::"text"))::"date"));
+
+
+
+CREATE INDEX "idx_settlements_initiated_by" ON "public"."settlements" USING "btree" ("initiated_by");
+
+
+
+CREATE INDEX "idx_settlements_payout_profile_id" ON "public"."settlements" USING "btree" ("payout_profile_id");
 
 
 
@@ -3169,11 +3330,19 @@ CREATE OR REPLACE TRIGGER "update_attendances_updated_at" BEFORE UPDATE ON "publ
 
 
 
+CREATE OR REPLACE TRIGGER "update_communities_updated_at" BEFORE UPDATE ON "public"."communities" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
 CREATE OR REPLACE TRIGGER "update_events_updated_at" BEFORE UPDATE ON "public"."events" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 
 CREATE OR REPLACE TRIGGER "update_payments_updated_at" BEFORE UPDATE ON "public"."payments" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_payout_profiles_updated_at" BEFORE UPDATE ON "public"."payout_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 
@@ -3194,6 +3363,16 @@ ALTER TABLE ONLY "public"."attendances"
 
 
 
+ALTER TABLE ONLY "public"."communities"
+    ADD CONSTRAINT "communities_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."communities"
+    ADD CONSTRAINT "communities_current_payout_profile_id_fkey" FOREIGN KEY ("current_payout_profile_id") REFERENCES "public"."payout_profiles"("id");
+
+
+
 ALTER TABLE ONLY "public"."events"
     ADD CONSTRAINT "events_canceled_by_fkey" FOREIGN KEY ("canceled_by") REFERENCES "public"."users"("id") ON DELETE SET NULL;
 
@@ -3204,7 +3383,17 @@ COMMENT ON CONSTRAINT "events_canceled_by_fkey" ON "public"."events" IS 'Sets ca
 
 
 ALTER TABLE ONLY "public"."events"
+    ADD CONSTRAINT "events_community_id_fkey" FOREIGN KEY ("community_id") REFERENCES "public"."communities"("id");
+
+
+
+ALTER TABLE ONLY "public"."events"
     ADD CONSTRAINT "events_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."events"
+    ADD CONSTRAINT "events_payout_profile_id_fkey" FOREIGN KEY ("payout_profile_id") REFERENCES "public"."payout_profiles"("id");
 
 
 
@@ -3223,8 +3412,38 @@ ALTER TABLE ONLY "public"."payments"
 
 
 
+ALTER TABLE ONLY "public"."payments"
+    ADD CONSTRAINT "payments_payout_profile_id_fkey" FOREIGN KEY ("payout_profile_id") REFERENCES "public"."payout_profiles"("id");
+
+
+
+ALTER TABLE ONLY "public"."payout_profiles"
+    ADD CONSTRAINT "payout_profiles_owner_user_id_fkey" FOREIGN KEY ("owner_user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."payout_profiles"
+    ADD CONSTRAINT "payout_profiles_representative_community_id_fkey" FOREIGN KEY ("representative_community_id") REFERENCES "public"."communities"("id");
+
+
+
+ALTER TABLE ONLY "public"."settlements"
+    ADD CONSTRAINT "settlements_community_id_fkey" FOREIGN KEY ("community_id") REFERENCES "public"."communities"("id");
+
+
+
 ALTER TABLE ONLY "public"."settlements"
     ADD CONSTRAINT "settlements_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."settlements"
+    ADD CONSTRAINT "settlements_initiated_by_fkey" FOREIGN KEY ("initiated_by") REFERENCES "public"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."settlements"
+    ADD CONSTRAINT "settlements_payout_profile_id_fkey" FOREIGN KEY ("payout_profile_id") REFERENCES "public"."payout_profiles"("id");
 
 
 
@@ -3308,6 +3527,9 @@ CREATE POLICY "Users can view own profile" ON "public"."users" FOR SELECT TO "au
 
 
 ALTER TABLE "public"."attendances" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."communities" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."contacts" ENABLE ROW LEVEL SECURITY;
@@ -3394,6 +3616,9 @@ ALTER TABLE "public"."payment_disputes" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."payments" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."payout_profiles" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."settlements" ENABLE ROW LEVEL SECURITY;
@@ -3841,6 +4066,12 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."attendances" TO "app_define
 
 
 
+GRANT ALL ON TABLE "public"."communities" TO "anon";
+GRANT ALL ON TABLE "public"."communities" TO "authenticated";
+GRANT ALL ON TABLE "public"."communities" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."contacts" TO "anon";
 GRANT ALL ON TABLE "public"."contacts" TO "authenticated";
 GRANT ALL ON TABLE "public"."contacts" TO "service_role";
@@ -3878,6 +4109,12 @@ GRANT ALL ON TABLE "public"."payments" TO "anon";
 GRANT ALL ON TABLE "public"."payments" TO "service_role";
 GRANT SELECT,INSERT,UPDATE ON TABLE "public"."payments" TO "app_definer";
 GRANT SELECT ON TABLE "public"."payments" TO "authenticated";
+
+
+
+GRANT ALL ON TABLE "public"."payout_profiles" TO "anon";
+GRANT ALL ON TABLE "public"."payout_profiles" TO "authenticated";
+GRANT ALL ON TABLE "public"."payout_profiles" TO "service_role";
 
 
 
