@@ -13,6 +13,7 @@ import {
   createUserStripeConnectServiceForServerAction,
   createUserStripeConnectServiceForServerComponent,
 } from "../services/factories";
+import { StripeConnectError } from "../types";
 import type { ExpressDashboardAccessPayload } from "../types";
 
 /**
@@ -36,7 +37,7 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
         action: "create_express_dashboard_login_link_auth_failed",
         userId,
       });
-      redirect("/settings/payments?error=auth_failed");
+      redirect("/login?redirectTo=/settings/payments");
       return;
     }
 
@@ -47,7 +48,7 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
         actor_type: "anonymous",
         outcome: "failure",
       });
-      redirect("/login?redirectTo=/dashboard");
+      redirect("/login?redirectTo=/settings/payments");
       return;
     }
 
@@ -65,7 +66,7 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
         user_id: user.id,
         outcome: "failure",
       });
-      redirect("/settings/payments?message=account_required");
+      redirect("/settings/payments");
       return;
     }
 
@@ -95,8 +96,12 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
       userId,
     });
 
-    // 失敗時は接続設定ページへ誘導
-    redirect("/settings/payments?message=express_dashboard_failed");
+    const errorMessage = encodeURIComponent(
+      error instanceof StripeConnectError
+        ? error.message
+        : "Stripeダッシュボードへのアクセスに失敗しました"
+    );
+    redirect(`/settings/payments/error?message=${errorMessage}`);
   }
 }
 

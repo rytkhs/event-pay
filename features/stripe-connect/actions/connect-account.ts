@@ -19,6 +19,7 @@ import {
   createUserStripeConnectServiceForServerAction,
   createUserStripeConnectServiceForServerComponent,
 } from "../services/factories";
+import { buildConnectAccountStatusPayloadFromCachedAccount } from "../services/cached-account-status";
 import { type ConnectAccountStatusPayload, StripeConnectError } from "../types";
 
 /**
@@ -105,10 +106,12 @@ export async function getConnectAccountStatusAction(): Promise<
         outcome: "failure",
       });
 
-      // フォールバック: Stripeから直接取得
-      const { getStripe } = await import("@core/stripe/client");
-      const stripe = getStripe();
-      stripeAccount = await stripe.accounts.retrieve(account.stripe_account_id);
+      const updatedAccount = await stripeConnectService.getConnectAccountByUser(user.id);
+      if (!updatedAccount) {
+        throw new Error("アカウント情報の取得に失敗しました");
+      }
+
+      return ok(buildConnectAccountStatusPayloadFromCachedAccount(updatedAccount));
     }
 
     // 5. 最新のアカウント情報を取得（同期後）

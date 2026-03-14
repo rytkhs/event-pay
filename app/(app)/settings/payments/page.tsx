@@ -12,6 +12,7 @@ import {
   createUserStripeConnectServiceForServerComponent,
   getConnectAccountStatusAction,
 } from "@features/stripe-connect/server";
+import { buildConnectAccountStatusPayloadFromCachedAccount } from "@features/stripe-connect/services/cached-account-status";
 
 import {
   createExpressDashboardLoginLinkAction,
@@ -59,11 +60,10 @@ async function PaymentSettingsContent() {
             const expressAccess = await checkExpressDashboardAccessAction();
 
             if (!r.success) {
+              const cachedStatus =
+                buildConnectAccountStatusPayloadFromCachedAccount(existingAccount);
               return {
-                hasAccount: false,
-                uiStatus: "no_account" as const,
-                chargesEnabled: false,
-                payoutsEnabled: false,
+                ...cachedStatus,
                 expressDashboardAvailable: false,
               };
             }
