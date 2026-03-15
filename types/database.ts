@@ -601,17 +601,14 @@ export type Database = {
       };
       settlements: {
         Row: {
-          community_id: string | null;
           created_at: string;
           dispute_count: number;
           event_id: string;
           generated_at: string | null;
           id: string;
-          initiated_by: string | null;
           last_error: string | null;
           net_payout_amount: number;
           notes: string | null;
-          payout_profile_id: string | null;
           platform_fee: number;
           processed_at: string | null;
           retry_count: number;
@@ -626,17 +623,14 @@ export type Database = {
           webhook_processed_at: string | null;
         };
         Insert: {
-          community_id?: string | null;
           created_at?: string;
           dispute_count?: number;
           event_id: string;
           generated_at?: string | null;
           id?: string;
-          initiated_by?: string | null;
           last_error?: string | null;
           net_payout_amount?: number;
           notes?: string | null;
-          payout_profile_id?: string | null;
           platform_fee?: number;
           processed_at?: string | null;
           retry_count?: number;
@@ -651,17 +645,14 @@ export type Database = {
           webhook_processed_at?: string | null;
         };
         Update: {
-          community_id?: string | null;
           created_at?: string;
           dispute_count?: number;
           event_id?: string;
           generated_at?: string | null;
           id?: string;
-          initiated_by?: string | null;
           last_error?: string | null;
           net_payout_amount?: number;
           notes?: string | null;
-          payout_profile_id?: string | null;
           platform_fee?: number;
           processed_at?: string | null;
           retry_count?: number;
@@ -677,38 +668,10 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "settlements_community_id_fkey";
-            columns: ["community_id"];
-            isOneToOne: false;
-            referencedRelation: "communities";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "settlements_event_id_fkey";
             columns: ["event_id"];
             isOneToOne: false;
             referencedRelation: "events";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "settlements_initiated_by_fkey";
-            columns: ["initiated_by"];
-            isOneToOne: false;
-            referencedRelation: "public_profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "settlements_initiated_by_fkey";
-            columns: ["initiated_by"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "settlements_payout_profile_id_fkey";
-            columns: ["payout_profile_id"];
-            isOneToOne: false;
-            referencedRelation: "payout_profiles";
             referencedColumns: ["id"];
           },
           {
