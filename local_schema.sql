@@ -2594,9 +2594,6 @@ CREATE TABLE IF NOT EXISTS "public"."settlements" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "total_disputed_amount" integer DEFAULT 0 NOT NULL,
     "dispute_count" integer DEFAULT 0 NOT NULL,
-    "community_id" "uuid",
-    "payout_profile_id" "uuid",
-    "initiated_by" "uuid",
     CONSTRAINT "settlements_amounts_non_negative" CHECK ((("total_stripe_sales" >= 0) AND ("total_stripe_fee" >= 0) AND ("platform_fee" >= 0) AND ("net_payout_amount" >= 0))),
     CONSTRAINT "settlements_calculation_reasonable" CHECK ((("net_payout_amount" <= "total_stripe_sales") AND ("net_payout_amount" >= 0)))
 );
@@ -2628,18 +2625,6 @@ COMMENT ON COLUMN "public"."settlements"."transfer_group" IS 'イベント単位
 
 
 COMMENT ON COLUMN "public"."settlements"."generated_at" IS 'レポート生成日時';
-
-
-
-COMMENT ON COLUMN "public"."settlements"."community_id" IS '清算対象イベントが属するコミュニティID';
-
-
-
-COMMENT ON COLUMN "public"."settlements"."payout_profile_id" IS '清算時点の受取先スナップショット';
-
-
-
-COMMENT ON COLUMN "public"."settlements"."initiated_by" IS '清算処理を実行したユーザーID';
 
 
 
@@ -3170,10 +3155,6 @@ CREATE INDEX "idx_payout_profiles_representative_community_id" ON "public"."payo
 
 
 
-CREATE INDEX "idx_settlements_community_id" ON "public"."settlements" USING "btree" ("community_id");
-
-
-
 CREATE INDEX "idx_settlements_event_created" ON "public"."settlements" USING "btree" ("event_id", "created_at");
 
 
@@ -3187,14 +3168,6 @@ CREATE INDEX "idx_settlements_event_id" ON "public"."settlements" USING "btree" 
 
 
 CREATE INDEX "idx_settlements_generated_date_jst" ON "public"."settlements" USING "btree" (((("generated_at" AT TIME ZONE 'Asia/Tokyo'::"text"))::"date"));
-
-
-
-CREATE INDEX "idx_settlements_initiated_by" ON "public"."settlements" USING "btree" ("initiated_by");
-
-
-
-CREATE INDEX "idx_settlements_payout_profile_id" ON "public"."settlements" USING "btree" ("payout_profile_id");
 
 
 
@@ -3428,22 +3401,7 @@ ALTER TABLE ONLY "public"."payout_profiles"
 
 
 ALTER TABLE ONLY "public"."settlements"
-    ADD CONSTRAINT "settlements_community_id_fkey" FOREIGN KEY ("community_id") REFERENCES "public"."communities"("id");
-
-
-
-ALTER TABLE ONLY "public"."settlements"
     ADD CONSTRAINT "settlements_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."settlements"
-    ADD CONSTRAINT "settlements_initiated_by_fkey" FOREIGN KEY ("initiated_by") REFERENCES "public"."users"("id");
-
-
-
-ALTER TABLE ONLY "public"."settlements"
-    ADD CONSTRAINT "settlements_payout_profile_id_fkey" FOREIGN KEY ("payout_profile_id") REFERENCES "public"."payout_profiles"("id");
 
 
 

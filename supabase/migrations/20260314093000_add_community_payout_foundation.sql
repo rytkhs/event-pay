@@ -89,25 +89,3 @@ ALTER TABLE ONLY "public"."payments"
 CREATE INDEX "idx_payments_payout_profile_id" ON "public"."payments" USING "btree" ("payout_profile_id");
 
 COMMENT ON COLUMN "public"."payments"."payout_profile_id" IS '決済時点の受取先スナップショット';
-
-ALTER TABLE "public"."settlements"
-    ADD COLUMN "community_id" "uuid",
-    ADD COLUMN "payout_profile_id" "uuid",
-    ADD COLUMN "initiated_by" "uuid";
-
-ALTER TABLE ONLY "public"."settlements"
-    ADD CONSTRAINT "settlements_community_id_fkey" FOREIGN KEY ("community_id") REFERENCES "public"."communities"("id");
-
-ALTER TABLE ONLY "public"."settlements"
-    ADD CONSTRAINT "settlements_payout_profile_id_fkey" FOREIGN KEY ("payout_profile_id") REFERENCES "public"."payout_profiles"("id");
-
-ALTER TABLE ONLY "public"."settlements"
-    ADD CONSTRAINT "settlements_initiated_by_fkey" FOREIGN KEY ("initiated_by") REFERENCES "public"."users"("id");
-
-CREATE INDEX "idx_settlements_community_id" ON "public"."settlements" USING "btree" ("community_id");
-CREATE INDEX "idx_settlements_payout_profile_id" ON "public"."settlements" USING "btree" ("payout_profile_id");
-CREATE INDEX "idx_settlements_initiated_by" ON "public"."settlements" USING "btree" ("initiated_by");
-
-COMMENT ON COLUMN "public"."settlements"."community_id" IS '清算対象イベントが属するコミュニティID';
-COMMENT ON COLUMN "public"."settlements"."payout_profile_id" IS '清算時点の受取先スナップショット';
-COMMENT ON COLUMN "public"."settlements"."initiated_by" IS '清算処理を実行したユーザーID';

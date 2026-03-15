@@ -8,11 +8,6 @@ FROM (
 
     SELECT sca.user_id AS owner_user_id
     FROM public.stripe_connect_accounts sca
-
-    UNION
-
-    SELECT s.user_id AS owner_user_id
-    FROM public.settlements s
 ) owners;
 
 INSERT INTO public.communities (
