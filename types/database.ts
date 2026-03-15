@@ -169,7 +169,7 @@ export type Database = {
           canceled_at: string | null;
           canceled_by: string | null;
           capacity: number | null;
-          community_id: string | null;
+          community_id: string;
           created_at: string;
           created_by: string;
           date: string;
@@ -191,7 +191,7 @@ export type Database = {
           canceled_at?: string | null;
           canceled_by?: string | null;
           capacity?: number | null;
-          community_id?: string | null;
+          community_id: string;
           created_at?: string;
           created_by?: string;
           date: string;
@@ -213,7 +213,7 @@ export type Database = {
           canceled_at?: string | null;
           canceled_by?: string | null;
           capacity?: number | null;
-          community_id?: string | null;
+          community_id?: string;
           created_at?: string;
           created_by?: string;
           date?: string;
