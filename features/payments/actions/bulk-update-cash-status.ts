@@ -117,15 +117,7 @@ export async function bulkUpdateCashStatusAction(
         method,
         status,
         version,
-        attendance_id,
-        attendances!inner (
-          id,
-          event_id,
-          events!inner (
-            id,
-            created_by
-          )
-        )
+        attendance_id
       `
       )
       .in("id", paymentIds);
@@ -138,16 +130,7 @@ export async function bulkUpdateCashStatusAction(
       return fail("NOT_FOUND", { userMessage: "決済レコードが見つかりません。" });
     }
 
-    // 権限チェック：すべての決済が同じユーザーのイベントに属していることを確認
-    const unauthorizedPayments = paymentsWithEvent.filter((payment) => {
-      const attendance = Array.isArray(payment.attendances)
-        ? payment.attendances[0]
-        : payment.attendances;
-      const event = Array.isArray(attendance.events) ? attendance.events[0] : attendance.events;
-      return event.created_by !== user.id;
-    });
-
-    if (unauthorizedPayments.length > 0) {
+    if (paymentsWithEvent.length !== paymentIds.length) {
       return fail("FORBIDDEN", { userMessage: "この操作を実行する権限がありません。" });
     }
 
@@ -174,6 +157,7 @@ export async function bulkUpdateCashStatusAction(
     // 基本的なバリデーション（RPC関数内でも再実行される）
     const validator = new PaymentValidator(supabase);
     for (const payment of cashPayments) {
+      await validator.validateAttendanceAccess(payment.attendance_id, user.id);
       await validator.validateUpdatePaymentStatusParams({
         paymentId: payment.id,
         status,

@@ -72,7 +72,6 @@ export async function getEventDetailAction(eventId: string): Promise<ActionResul
       `
       )
       .eq("id", validation.data as string)
-      .eq("created_by", user.id)
       .maybeSingle<EventDetailQueryRow>();
 
     if (error) {

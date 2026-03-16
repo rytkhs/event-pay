@@ -171,11 +171,15 @@ export class PaymentValidator implements IPaymentValidator {
 
   async validateAttendanceAccess(attendanceId: string, userId: string): Promise<void> {
     try {
+      if (!userId) {
+        throw new PaymentError(PaymentErrorType.UNAUTHORIZED, "認証が必要です");
+      }
+
       const baseQuery = this.supabase
         .from("attendances")
-        .select("id, event_id, events!inner(id, created_by)")
+        .select("id, event_id")
         .eq("id", attendanceId)
-        .limit(2);
+        .maybeSingle();
 
       const { data, error } = await baseQuery;
       if (error) {
@@ -185,32 +189,11 @@ export class PaymentValidator implements IPaymentValidator {
           error
         );
       }
-      if (!data || (Array.isArray(data) && data.length === 0)) {
+      if (!data) {
         throw new PaymentError(
           PaymentErrorType.ATTENDANCE_NOT_FOUND,
           "指定された参加記録が見つかりません"
         );
-      }
-      if (Array.isArray(data) && data.length > 1) {
-        throw new PaymentError(
-          PaymentErrorType.DATABASE_ERROR,
-          "参加記録の整合性エラー: 複数件のレコードが見つかりました"
-        );
-      }
-      if (userId) {
-        type EventLite = { id: string; created_by: string };
-        type AttendanceQueryResult = {
-          id: string;
-          event_id: string;
-          events: EventLite | EventLite[];
-        };
-
-        const record = (Array.isArray(data) ? data[0] : data) as AttendanceQueryResult;
-        const events = Array.isArray(record.events) ? record.events : [record.events];
-        const createdBy = events[0]?.created_by;
-        if (!createdBy || createdBy !== userId) {
-          throw new PaymentError(PaymentErrorType.FORBIDDEN, "この操作を実行する権限がありません");
-        }
       }
     } catch (error) {
       if (error instanceof PaymentError) throw error;

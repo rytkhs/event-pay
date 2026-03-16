@@ -20,6 +20,8 @@ import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 import { updateEventSchema, type UpdateEventFormData } from "@core/validation/event";
 import { validateEventId } from "@core/validation/event-id";
 
+import { getEventPayoutProfileReadiness } from "../services/payout-profile-readiness";
+
 type UpdateEventResult = ActionResult<EventRow>;
 
 // UpdateEventInputを使用（Zodスキーマから自動生成）
@@ -54,7 +56,6 @@ export async function updateEventAction(
       .from("events")
       .select("*, attendances(*)")
       .eq("id", eventId)
-      .eq("created_by", user.id)
       .single();
 
     // RLSフィルターにより、存在しないイベントまたは権限のないイベントは取得不可
@@ -215,20 +216,21 @@ export async function updateEventAction(
       const addingStripe = hasStripe && !hadStripe && effectiveFee > 0;
 
       if (addingStripe) {
-        const { data: connectAccount, error: connectError } = await supabase
-          .from("stripe_connect_accounts")
-          .select("status, payouts_enabled")
-          .eq("user_id", user.id)
-          .maybeSingle();
+        const payoutReadiness = await getEventPayoutProfileReadiness(
+          supabase,
+          existingEvent.payout_profile_id
+        );
 
-        const isReady =
-          connectAccount?.status === "verified" && connectAccount?.payouts_enabled === true;
-
-        if (connectError || !isReady) {
+        if (!payoutReadiness.isReady) {
           return fail("VALIDATION_ERROR", {
-            userMessage: "オンライン決済を追加するにはStripe Connectの設定完了が必要です",
+            userMessage:
+              payoutReadiness.userMessage ||
+              "オンライン決済を追加するには受取先プロファイルの設定完了が必要です",
             fieldErrors: {
-              payment_methods: ["Stripe Connectの設定を完了してください（本人確認と入金有効化）"],
+              payment_methods: [
+                payoutReadiness.userMessage ||
+                  "受取先プロファイルの設定を完了してください（本人確認と入金有効化）",
+              ],
             },
           });
         }

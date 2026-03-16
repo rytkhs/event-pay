@@ -10,14 +10,14 @@ import type { Payment, PaymentMethod, PaymentStatus } from "../types";
  */
 export async function getPaymentsByEvent(
   eventId: string,
-  userId: string,
+  _userId: string,
   supabase: AppSupabaseClient<"public">
 ): Promise<Payment[]> {
   try {
-    // まずイベントの存在と主催者権限を確認
+    // まずイベントが owner として可視かどうかを確認する
     const { data: event, error: eventError } = await supabase
       .from("events")
-      .select("id, created_by")
+      .select("id")
       .eq("id", eventId)
       .maybeSingle();
 
@@ -31,10 +31,6 @@ export async function getPaymentsByEvent(
 
     if (!event) {
       throw new PaymentError(PaymentErrorType.EVENT_NOT_FOUND, "イベントが見つかりません");
-    }
-
-    if (event.created_by !== userId) {
-      throw new PaymentError(PaymentErrorType.FORBIDDEN, "この操作を実行する権限がありません。");
     }
 
     // 決済情報を取得

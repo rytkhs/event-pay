@@ -19,3 +19,4 @@ export { getEventsAction } from "./actions/get-events";
 export { getEventStatsAction } from "./actions/get-event-stats";
 export { updateEventAction } from "./actions/update-event";
 export { buildCollectionProgressSummary } from "./services/build-collection-progress-summary";
+export { getEventPayoutProfileReadiness } from "./services/payout-profile-readiness";
