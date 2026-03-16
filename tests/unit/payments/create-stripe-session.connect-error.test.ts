@@ -1,7 +1,7 @@
 import { setupRateLimitMocks } from "@tests/setup/common-mocks";
 import { expectActionFailure } from "@tests/helpers/assert-result";
 
-import { createGuestStripeSessionAction } from "@/app/guest/[token]/actions";
+import { createGuestStripeSessionAction } from "@features/guest/actions/create-stripe-session";
 
 // モック: ゲストトークン検証は常に有効な参加データを返す
 jest.mock("@core/utils/guest-token", () => ({
@@ -29,6 +29,10 @@ jest.mock("@core/utils/guest-token", () => ({
         payment_deadline: "2099-01-01T00:00:00.000Z",
         status: "upcoming",
         created_by: "user_1",
+        payment_methods: ["stripe"],
+        allow_payment_after_deadline: false,
+        grace_period_days: 0,
+        canceled_at: null,
       },
       payment: null,
     },
@@ -61,44 +65,44 @@ let connectAccountResponse: { data: any; error: any } = { data: null, error: nul
 let latestPaymentResponse: { data: any; error: any } = { data: null, error: null };
 
 // モック: ゲストクライアントのrpcメソッド
+const mockCreateStripeSession = jest.fn().mockResolvedValue({
+  sessionUrl: "https://checkout.stripe.com/test",
+  sessionId: "cs_test_123",
+});
+
+function createRpcResponse(result: { data: any; error: any }) {
+  return {
+    returns: jest.fn().mockReturnValue({
+      single: jest.fn().mockResolvedValue(result),
+    }),
+  };
+}
+
 function createMockGuestClient() {
   return {
     rpc: jest.fn((functionName: string) => {
       if (functionName === "rpc_public_get_connect_account") {
-        return {
-          single: jest.fn().mockResolvedValue(connectAccountResponse),
-        };
+        return createRpcResponse(connectAccountResponse);
       }
       if (functionName === "rpc_guest_get_latest_payment") {
-        return {
-          single: jest.fn().mockResolvedValue(latestPaymentResponse),
-        };
+        return createRpcResponse(latestPaymentResponse);
       }
-      return {
-        single: jest.fn().mockResolvedValue({ data: null, error: null }),
-      };
+      return createRpcResponse({ data: null, error: null });
     }),
   } as any;
 }
 
-// モック: SecureSupabaseClientFactory
+// モック: Guest client factory
 jest.mock("@core/security/secure-client-factory.impl", () => ({
   __esModule: true,
-  SecureSupabaseClientFactory: {
-    create: jest.fn(() => ({
-      createGuestClient: jest.fn(() => createMockGuestClient()),
-    })),
-  },
+  createGuestClient: jest.fn(() => createMockGuestClient()),
 }));
 
-// モック: PaymentService
-jest.mock("@core/services", () => ({
+// モック: Payment port
+jest.mock("@core/ports/payments", () => ({
   __esModule: true,
-  getPaymentService: jest.fn(() => ({
-    createStripeSession: jest.fn().mockResolvedValue({
-      sessionUrl: "https://checkout.stripe.com/test",
-      sessionId: "cs_test_123",
-    }),
+  getPaymentPort: jest.fn(() => ({
+    createStripeSession: mockCreateStripeSession,
   })),
 }));
 
@@ -118,6 +122,7 @@ describe("createGuestStripeSessionAction - Connectアカウント未設定/無�
     // 既定は「未設定」
     connectAccountResponse = { data: null, error: null };
     latestPaymentResponse = { data: null, error: null };
+    mockCreateStripeSession.mockClear();
   });
 
   it("Connectアカウント未設定時はCONNECT_ACCOUNT_NOT_FOUNDエラーを返す", async () => {

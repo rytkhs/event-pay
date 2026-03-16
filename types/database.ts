@@ -1103,7 +1103,7 @@ export type Database = {
         Returns: boolean;
       };
       rpc_public_get_connect_account: {
-        Args: { p_creator_id: string; p_event_id: string };
+        Args: { p_event_id: string };
         Returns: {
           payouts_enabled: boolean;
           stripe_account_id: string;
