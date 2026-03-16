@@ -4,7 +4,7 @@
 
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
-import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 
 import { setupRLSTest, type RLSTestSetup } from "./rls-test-setup";
 

@@ -27,6 +27,8 @@ describe("RLS Authorization for attendances/payments", () => {
   let setup: MultiUserTestSetup;
   let owner: TestUser;
   let other: TestUser;
+  let ownerCommunityId: string;
+  let ownerPayoutProfileId: string;
 
   const eventId = crypto.randomUUID();
   const attendanceId = crypto.randomUUID();
@@ -38,6 +40,14 @@ describe("RLS Authorization for attendances/payments", () => {
       testName: `rls-auth-test-${Date.now()}`,
       userCount: 2,
       withConnect: [true, false], // 最初のユーザーはConnect設定済み、2番目は未設定
+      accessedTables: [
+        "public.users",
+        "public.communities",
+        "public.payout_profiles",
+        "public.events",
+        "public.attendances",
+        "public.payments",
+      ],
     });
     owner = setup.users[0];
     other = setup.users[1];
@@ -45,6 +55,45 @@ describe("RLS Authorization for attendances/payments", () => {
     // 管理クライアントで初期データ投入（RLSバイパス）
     // setup.adminClientを使用
     const adminClient = setup.adminClient;
+    const ownerCommunity = await adminClient
+      .from("communities")
+      .insert({
+        created_by: owner.id,
+        name: "RLSテストコミュニティ",
+        slug: `rls-auth-community-${Date.now()}`,
+        description: "RLS認可テスト用",
+      })
+      .select("id")
+      .single();
+    if (ownerCommunity.error || !ownerCommunity.data) {
+      throw new Error(`Community insert failed: ${ownerCommunity.error?.message}`);
+    }
+    ownerCommunityId = ownerCommunity.data.id;
+
+    const ownerPayoutProfile = await adminClient
+      .from("payout_profiles")
+      .insert({
+        owner_user_id: owner.id,
+        stripe_account_id: `acct_rls_auth_${Date.now()}`,
+        status: "verified",
+        charges_enabled: true,
+        payouts_enabled: true,
+        representative_community_id: ownerCommunityId,
+      })
+      .select("id")
+      .single();
+    if (ownerPayoutProfile.error || !ownerPayoutProfile.data) {
+      throw new Error(`Payout profile insert failed: ${ownerPayoutProfile.error?.message}`);
+    }
+    ownerPayoutProfileId = ownerPayoutProfile.data.id;
+
+    const { error: communityUpdateError } = await adminClient
+      .from("communities")
+      .update({ current_payout_profile_id: ownerPayoutProfileId })
+      .eq("id", ownerCommunityId);
+    if (communityUpdateError) {
+      throw new Error(`Community update failed: ${communityUpdateError.message}`);
+    }
 
     const now = new Date().toISOString();
     const registrationDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -55,6 +104,8 @@ describe("RLS Authorization for attendances/payments", () => {
     const { error: evErr } = await adminClient.from("events").insert({
       id: eventId,
       created_by: owner.id,
+      community_id: ownerCommunityId,
+      payout_profile_id: ownerPayoutProfileId,
       title: "RLSテストイベント",
       description: "RLS検証用",
       location: "オンライン",
@@ -87,6 +138,7 @@ describe("RLS Authorization for attendances/payments", () => {
       id: paymentId,
       attendance_id: attendanceId,
       method: "stripe",
+      payout_profile_id: ownerPayoutProfileId,
       amount: 1000,
       status: "pending",
       created_at: now,

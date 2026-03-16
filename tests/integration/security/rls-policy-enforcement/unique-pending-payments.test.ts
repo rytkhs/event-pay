@@ -40,6 +40,8 @@ describe("Unique Pending Payments", () => {
         fee: 500,
         capacity: 10,
         created_by: setup.testUserId,
+        community_id: setup.testCommunityId,
+        payout_profile_id: setup.testPayoutProfileId,
         invite_token: "inv_pending_unique_123456789012",
         payment_methods: ["cash"],
         registration_deadline: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
