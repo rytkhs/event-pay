@@ -59,7 +59,11 @@ export const updateCashStatusActionInputSchema = z.object({
 });
 
 export const bulkUpdateCashStatusActionInputSchema = z.object({
-  paymentIds: z.array(z.string().uuid()).min(1).max(50), // 最大50件まで
+  paymentIds: z
+    .array(z.string().uuid())
+    .min(1)
+    .max(50) // 最大50件まで
+    .transform((ids) => Array.from(new Set(ids))),
   status: CashUpdateStatusSchema,
   notes: z.string().max(1000).optional(),
 });
