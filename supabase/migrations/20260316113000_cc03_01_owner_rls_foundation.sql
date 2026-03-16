@@ -237,6 +237,21 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.enforce_event_mvp_invariants()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'pg_catalog', 'public', 'pg_temp'
+AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' AND NEW.created_by IS DISTINCT FROM OLD.created_by THEN
+    RAISE EXCEPTION 'events.created_by is immutable';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.can_access_event(p_event_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -520,7 +535,10 @@ CREATE POLICY "Creators can insert own events"
 ON public.events
 FOR INSERT
 TO authenticated
-WITH CHECK (public.is_community_owner(community_id));
+WITH CHECK (
+  public.is_community_owner(community_id)
+  AND (SELECT auth.uid()) = created_by
+);
 
 DROP POLICY IF EXISTS "Creators can update own events" ON public.events;
 CREATE POLICY "Creators can update own events"
@@ -631,6 +649,12 @@ BEFORE INSERT OR UPDATE ON public.payout_profiles
 FOR EACH ROW
 EXECUTE FUNCTION public.enforce_payout_profile_mvp_invariants();
 
+DROP TRIGGER IF EXISTS trg_enforce_event_mvp_invariants ON public.events;
+CREATE TRIGGER trg_enforce_event_mvp_invariants
+BEFORE UPDATE ON public.events
+FOR EACH ROW
+EXECUTE FUNCTION public.enforce_event_mvp_invariants();
+
 GRANT EXECUTE ON FUNCTION public.is_community_owner(uuid) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.is_payout_profile_owner(uuid) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.is_event_community_owner(uuid) TO anon, authenticated, service_role;
@@ -644,6 +668,7 @@ ALTER FUNCTION public.is_attendance_community_owner(uuid) OWNER TO app_definer;
 ALTER FUNCTION public.is_payment_community_owner(uuid) OWNER TO app_definer;
 ALTER FUNCTION public.enforce_community_mvp_invariants() OWNER TO app_definer;
 ALTER FUNCTION public.enforce_payout_profile_mvp_invariants() OWNER TO app_definer;
+ALTER FUNCTION public.enforce_event_mvp_invariants() OWNER TO app_definer;
 ALTER FUNCTION public.can_access_event(uuid) OWNER TO app_definer;
 ALTER FUNCTION public.can_manage_invite_links(uuid) OWNER TO app_definer;
 ALTER FUNCTION public.admin_add_attendance_with_capacity_check(
