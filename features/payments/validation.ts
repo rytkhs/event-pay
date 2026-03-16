@@ -89,13 +89,10 @@ export class PaymentValidator implements IPaymentValidator {
     this.supabase = supabaseClient;
   }
 
-  async validateCreateStripeSessionParams(
-    params: CreateStripeSessionParams,
-    userId: string
-  ): Promise<void> {
+  async validateCreateStripeSessionParams(params: CreateStripeSessionParams): Promise<void> {
     try {
       createStripeSessionParamsSchema.parse(params);
-      await this.validateAttendanceAccess(params.attendanceId, userId);
+      await this.validateAttendanceAccess(params.attendanceId);
       await this.validatePaymentAmount(params.amount);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -114,13 +111,10 @@ export class PaymentValidator implements IPaymentValidator {
     }
   }
 
-  async validateCreateCashPaymentParams(
-    params: CreateCashPaymentParams,
-    userId: string
-  ): Promise<void> {
+  async validateCreateCashPaymentParams(params: CreateCashPaymentParams): Promise<void> {
     try {
       createCashPaymentParamsSchema.parse(params);
-      await this.validateAttendanceAccess(params.attendanceId, userId);
+      await this.validateAttendanceAccess(params.attendanceId);
       await this.validatePaymentAmount(params.amount);
       await this.validateNoDuplicatePayment(params.attendanceId);
     } catch (error) {
@@ -169,12 +163,8 @@ export class PaymentValidator implements IPaymentValidator {
     }
   }
 
-  async validateAttendanceAccess(attendanceId: string, userId: string): Promise<void> {
+  async validateAttendanceAccess(attendanceId: string): Promise<void> {
     try {
-      if (!userId) {
-        throw new PaymentError(PaymentErrorType.UNAUTHORIZED, "認証が必要です");
-      }
-
       const baseQuery = this.supabase
         .from("attendances")
         .select("id, event_id")

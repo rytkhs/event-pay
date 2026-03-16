@@ -157,7 +157,7 @@ export async function bulkUpdateCashStatusAction(
     // 基本的なバリデーション（RPC関数内でも再実行される）
     const validator = new PaymentValidator(supabase);
     for (const payment of cashPayments) {
-      await validator.validateAttendanceAccess(payment.attendance_id, user.id);
+      await validator.validateAttendanceAccess(payment.attendance_id);
       await validator.validateUpdatePaymentStatusParams({
         paymentId: payment.id,
         status,

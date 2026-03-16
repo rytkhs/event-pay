@@ -95,7 +95,7 @@ export async function updateCashStatusAction(
     }
 
     // 基本的な権限チェック（RPC関数内でも再チェックされる）
-    await new PaymentValidator(supabase).validateAttendanceAccess(payment.attendance_id, user.id);
+    await new PaymentValidator(supabase).validateAttendanceAccess(payment.attendance_id);
 
     // 現金決済のみ
     if (payment.method !== "cash") {
