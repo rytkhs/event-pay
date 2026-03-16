@@ -45,16 +45,16 @@ COMMENT ON COLUMN "public"."payout_profiles"."owner_user_id" IS 'MVPでの受取
 COMMENT ON COLUMN "public"."payout_profiles"."representative_community_id" IS 'Stripe審査用URLの代表コミュニティ';
 
 ALTER TABLE ONLY "public"."communities"
-    ADD CONSTRAINT "communities_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id");
+    ADD CONSTRAINT "communities_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."payout_profiles"
     ADD CONSTRAINT "payout_profiles_owner_user_id_fkey" FOREIGN KEY ("owner_user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."payout_profiles"
-    ADD CONSTRAINT "payout_profiles_representative_community_id_fkey" FOREIGN KEY ("representative_community_id") REFERENCES "public"."communities"("id");
+    ADD CONSTRAINT "payout_profiles_representative_community_id_fkey" FOREIGN KEY ("representative_community_id") REFERENCES "public"."communities"("id") ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."communities"
-    ADD CONSTRAINT "communities_current_payout_profile_id_fkey" FOREIGN KEY ("current_payout_profile_id") REFERENCES "public"."payout_profiles"("id");
+    ADD CONSTRAINT "communities_current_payout_profile_id_fkey" FOREIGN KEY ("current_payout_profile_id") REFERENCES "public"."payout_profiles"("id") ON DELETE SET NULL;
 
 CREATE INDEX "idx_communities_created_by" ON "public"."communities" USING "btree" ("created_by");
 CREATE INDEX "idx_communities_current_payout_profile_id" ON "public"."communities" USING "btree" ("current_payout_profile_id");

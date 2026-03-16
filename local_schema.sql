@@ -3338,12 +3338,12 @@ ALTER TABLE ONLY "public"."attendances"
 
 
 ALTER TABLE ONLY "public"."communities"
-    ADD CONSTRAINT "communities_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id");
+    ADD CONSTRAINT "communities_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE CASCADE;
 
 
 
 ALTER TABLE ONLY "public"."communities"
-    ADD CONSTRAINT "communities_current_payout_profile_id_fkey" FOREIGN KEY ("current_payout_profile_id") REFERENCES "public"."payout_profiles"("id");
+    ADD CONSTRAINT "communities_current_payout_profile_id_fkey" FOREIGN KEY ("current_payout_profile_id") REFERENCES "public"."payout_profiles"("id") ON DELETE SET NULL;
 
 
 
@@ -3397,7 +3397,7 @@ ALTER TABLE ONLY "public"."payout_profiles"
 
 
 ALTER TABLE ONLY "public"."payout_profiles"
-    ADD CONSTRAINT "payout_profiles_representative_community_id_fkey" FOREIGN KEY ("representative_community_id") REFERENCES "public"."communities"("id");
+    ADD CONSTRAINT "payout_profiles_representative_community_id_fkey" FOREIGN KEY ("representative_community_id") REFERENCES "public"."communities"("id") ON DELETE SET NULL;
 
 
 
