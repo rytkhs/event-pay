@@ -9,9 +9,11 @@
 
 import { jest } from "@jest/globals";
 
-import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
-
+import { createCommunityOwnedEventFixture } from "@tests/helpers/community-owner-fixtures";
+import {
+  getAuthenticatedTestClient,
+  setupAuthenticatedTestClient,
+} from "@tests/setup/authenticated-client-mock";
 import { setupNextCacheMocks, setupNextHeadersMocks } from "@tests/setup/common-mocks";
 import {
   createMultiUserTestSetup,
@@ -20,7 +22,6 @@ import {
 } from "@tests/setup/common-test-setup";
 
 import { getFutureDateTimeLocal } from "@/tests/helpers/test-datetime";
-import { createTestEvent, createTestEventWithParticipants } from "@/tests/helpers/test-event";
 import { buildFormData } from "@/tests/helpers/test-form-data";
 import { createPaidStripePayment, createTestAttendance } from "@/tests/helpers/test-payment-data";
 import { type TestUser } from "@/tests/helpers/test-user";
@@ -44,22 +45,15 @@ function setupAllowedHeaders() {
 // テスト内で createClient をモックする（DB操作はadmin clientを委譲し、auth.getUserのみテストユーザーを返す）
 async function mockSupabaseCreateClient(user: TestUser) {
   jest.resetModules();
-  const adminClient = await createAuditedAdminClient(
-    AdminReason.TEST_DATA_SETUP,
-    "event-edit integration",
-    {
-      operationType: "SELECT",
-      accessedTables: ["public.events", "public.attendances", "public.payments"],
-    }
-  );
+  await setupAuthenticatedTestClient(user.email, user.password, user.id);
+  const authenticatedClient = getAuthenticatedTestClient();
+
+  if (!authenticatedClient) {
+    throw new Error("Authenticated test client is not initialized");
+  }
 
   jest.doMock("@core/supabase/factory", () => ({
-    createServerActionSupabaseClient: () => ({
-      auth: {
-        getUser: async () => ({ data: { user: { id: user.id, email: user.email } }, error: null }),
-      },
-      from: (table: string) => adminClient.from(table),
-    }),
+    createServerActionSupabaseClient: () => authenticatedClient,
   }));
 }
 
@@ -90,14 +84,47 @@ describe("イベント編集 統合テスト", () => {
       // テスト実行（必要に応じて）
     } finally {
       // 必ずクリーンアップを実行
-      await cleanupHelper.cleanup();
-      await setup.cleanup();
+      if (cleanupHelper) {
+        await cleanupHelper.cleanup();
+      }
+      if (setup) {
+        await setup.cleanup();
+      }
     }
   });
 
+  async function createTrackedEvent(
+    userId: string,
+    options: Parameters<typeof createCommunityOwnedEventFixture>[1] = {}
+  ) {
+    const fixture = await createCommunityOwnedEventFixture(userId, options);
+    cleanupHelper.trackEvent(fixture.event.id);
+    cleanupHelper.trackCommunity(fixture.communityId);
+    if (fixture.payoutProfileId) {
+      cleanupHelper.trackPayoutProfile(fixture.payoutProfileId);
+    }
+    return fixture;
+  }
+
+  async function createTrackedEventWithParticipants(
+    userId: string,
+    options: Parameters<typeof createCommunityOwnedEventFixture>[1] = {},
+    participantCount: number = 1
+  ) {
+    const fixture = await createTrackedEvent(userId, options);
+
+    for (let i = 0; i < participantCount; i++) {
+      const attendance = await createTestAttendance(fixture.event.id, {
+        email: `event-edit-${Date.now()}-${i}@example.com`,
+      });
+      cleanupHelper.trackAttendance(attendance.id);
+    }
+
+    return fixture;
+  }
+
   test("正常系: タイトル/場所/説明を更新できる", async () => {
-    const ev = await createTestEvent(getUserA().id, { fee: 0, payment_methods: [] });
-    cleanupHelper.trackEvent(ev.id);
+    const fixture = await createTrackedEvent(getUserA().id, { fee: 0, payment_methods: [] });
 
     await mockSupabaseCreateClient(getUserA());
     const { updateEventAction } = await import("@/features/events/actions/update-event");
@@ -108,7 +135,7 @@ describe("イベント編集 統合テスト", () => {
       description: "編集後説明",
     });
 
-    const res = await updateEventAction(ev.id, fd);
+    const res = await updateEventAction(fixture.event.id, fd);
     expect(res.success).toBe(true);
     if (res.success) {
       expect(res.data.title).toBe("編集後タイトル");
@@ -118,7 +145,7 @@ describe("イベント編集 統合テスト", () => {
   });
 
   test("正常系: 空欄送信で location/description/capacity/payment_deadline をクリア", async () => {
-    const ev = await createTestEvent(getUserA().id, {
+    const fixture = await createTrackedEvent(getUserA().id, {
       fee: 1000,
       payment_methods: ["cash"],
       location: "元会場",
@@ -126,7 +153,6 @@ describe("イベント編集 統合テスト", () => {
       capacity: 100,
       payment_deadline: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
     });
-    cleanupHelper.trackEvent(ev.id);
 
     await mockSupabaseCreateClient(getUserA());
     const { updateEventAction } = await import("@/features/events/actions/update-event");
@@ -138,7 +164,7 @@ describe("イベント編集 統合テスト", () => {
       payment_deadline: "",
     });
 
-    const res = await updateEventAction(ev.id, fd);
+    const res = await updateEventAction(fixture.event.id, fd);
     expect(res.success).toBe(true);
     if (res.success) {
       expect(res.data.location).toBeNull();
@@ -150,12 +176,11 @@ describe("イベント編集 統合テスト", () => {
 
   test("正常系: registration_deadline を空欄送信は無視される（必須フィールドのため）", async () => {
     const originalDeadline = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-    const ev = await createTestEvent(getUserA().id, {
+    const fixture = await createTrackedEvent(getUserA().id, {
       fee: 0,
       payment_methods: [],
       registration_deadline: originalDeadline, // 1時間後
     });
-    cleanupHelper.trackEvent(ev.id);
 
     await mockSupabaseCreateClient(getUserA());
     const { updateEventAction } = await import("@/features/events/actions/update-event");
@@ -165,7 +190,7 @@ describe("イベント編集 統合テスト", () => {
       registration_deadline: "",
     });
 
-    const res = await updateEventAction(ev.id, fd);
+    const res = await updateEventAction(fixture.event.id, fd);
     if (!res.success) {
       console.log("Error response for registration_deadline test:", res);
     }
@@ -181,18 +206,17 @@ describe("イベント編集 統合テスト", () => {
   });
 
   test("正常系: fee=0 に更新すると payment_methods は [] になる", async () => {
-    const ev = await createTestEvent(getUserA().id, {
+    const fixture = await createTrackedEvent(getUserA().id, {
       fee: 1000,
       payment_methods: ["stripe"],
       payment_deadline: new Date(Date.now() + 90 * 60 * 1000).toISOString(),
     });
-    cleanupHelper.trackEvent(ev.id);
 
     await mockSupabaseCreateClient(getUserA());
     const { updateEventAction } = await import("@/features/events/actions/update-event");
 
     const fd = buildFormData({ fee: "0" });
-    const res = await updateEventAction(ev.id, fd);
+    const res = await updateEventAction(fixture.event.id, fd);
 
     expect(res.success).toBe(true);
     if (res.success) {
@@ -203,42 +227,48 @@ describe("イベント編集 統合テスト", () => {
 
   test("制約: 決済済み参加者がいると fee/payment_methods はロックされる", async () => {
     // 有料イベント + 参加者 + paid決済
-    const ev = await createTestEvent(getUserA().id, {
+    const fixture = await createTrackedEvent(getUserA().id, {
       fee: 1000,
       payment_methods: ["stripe"],
       payment_deadline: new Date(Date.now() + 90 * 60 * 1000).toISOString(),
     });
-    cleanupHelper.trackEvent(ev.id);
-    const at = await createTestAttendance(ev.id);
-    await createPaidStripePayment(at.id, { amount: ev.fee });
+    const at = await createTestAttendance(fixture.event.id);
+    cleanupHelper.trackAttendance(at.id);
+    const payment = await createPaidStripePayment(at.id, {
+      amount: fixture.event.fee,
+      payoutProfileId: fixture.event.payout_profile_id || undefined,
+    });
+    cleanupHelper.trackPayment(payment.id);
 
     await mockSupabaseCreateClient(getUserA());
     const { updateEventAction } = await import("@/features/events/actions/update-event");
 
     // 参加費の変更は不可
-    const resFee = await updateEventAction(ev.id, buildFormData({ fee: "2000" }));
+    const resFee = await updateEventAction(fixture.event.id, buildFormData({ fee: "2000" }));
     expect(resFee.success).toBe(false);
     if (!resFee.success) expect(resFee.error.code).toBe("RESOURCE_CONFLICT");
 
     // 決済方法の変更も不可
-    const resPm = await updateEventAction(ev.id, buildFormData({ payment_methods: ["cash"] }));
+    const resPm = await updateEventAction(
+      fixture.event.id,
+      buildFormData({ payment_methods: ["cash"] })
+    );
     expect(resPm.success).toBe(false);
     if (!resPm.success) expect(resPm.error.code).toBe("RESOURCE_CONFLICT");
   });
 
   test("制約: Stripe選択時はpayment_deadline必須（更新時も作成時と同様）", async () => {
-    const ev = await createTestEvent(getUserA().id, {
+    const fixture = await createTrackedEvent(getUserA().id, {
       fee: 1000,
       payment_methods: ["cash"], // 初期は現金のみ
     });
-    cleanupHelper.trackEvent(ev.id);
 
     await mockSupabaseCreateClient(getUserA());
     const { updateEventAction } = await import("@/features/events/actions/update-event");
 
     // Stripeを追加するがpayment_deadlineを指定しない（エラーになるべき）
     const res = await updateEventAction(
-      ev.id,
+      fixture.event.id,
       buildFormData({
         payment_methods: ["stripe", "cash"],
         // payment_deadline は未指定
@@ -254,21 +284,45 @@ describe("イベント編集 統合テスト", () => {
     }
   });
 
-  test("制約: 定員は現在の参加者数未満にできない", async () => {
-    const ev = await createTestEventWithParticipants(getUserA().id, { fee: 0 }, 2);
-    cleanupHelper.trackEvent(ev.id);
+  test("制約: payout_profile_id が無いイベントでは Stripe 追加を fail-close する", async () => {
+    const fixture = await createTrackedEvent(getUserA().id, {
+      fee: 1000,
+      payment_methods: ["cash"],
+      withPayoutProfile: true,
+      attachPayoutProfileToEvent: false,
+    });
 
     await mockSupabaseCreateClient(getUserA());
     const { updateEventAction } = await import("@/features/events/actions/update-event");
 
-    const res = await updateEventAction(ev.id, buildFormData({ capacity: "1" }));
+    const res = await updateEventAction(
+      fixture.event.id,
+      buildFormData({
+        payment_methods: ["stripe", "cash"],
+        payment_deadline: getFutureDateTimeLocal(24),
+      })
+    );
+
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(res.error.code).toBe("VALIDATION_ERROR");
+      expect(res.error.userMessage).toMatch(/受取先プロファイル|オンライン決済を有効化できません/);
+    }
+  });
+
+  test("制約: 定員は現在の参加者数未満にできない", async () => {
+    const fixture = await createTrackedEventWithParticipants(getUserA().id, { fee: 0 }, 2);
+
+    await mockSupabaseCreateClient(getUserA());
+    const { updateEventAction } = await import("@/features/events/actions/update-event");
+
+    const res = await updateEventAction(fixture.event.id, buildFormData({ capacity: "1" }));
     expect(res.success).toBe(false);
     if (!res.success) expect(res.error.code).toBe("RESOURCE_CONFLICT");
   });
 
   test("制約: 締切相関/上限のバリデーション（reg>date, pay<reg, pay>date+30d, grace超過）", async () => {
-    const ev = await createTestEvent(getUserA().id, { fee: 0, payment_methods: [] });
-    cleanupHelper.trackEvent(ev.id);
+    const fixture = await createTrackedEvent(getUserA().id, { fee: 0, payment_methods: [] });
 
     await mockSupabaseCreateClient(getUserA());
     const { updateEventAction } = await import("@/features/events/actions/update-event");
@@ -278,7 +332,7 @@ describe("イベント編集 統合テスト", () => {
 
     // reg > date（エラー）
     let res = await updateEventAction(
-      ev.id,
+      fixture.event.id,
       buildFormData({ date: newDate, registration_deadline: getFutureDateTimeLocal(72) })
     );
     expect(res.success).toBe(false);
@@ -286,7 +340,7 @@ describe("イベント編集 統合テスト", () => {
 
     // pay < reg（エラー）
     res = await updateEventAction(
-      ev.id,
+      fixture.event.id,
       buildFormData({
         date: newDate,
         registration_deadline: getFutureDateTimeLocal(24),
@@ -299,7 +353,7 @@ describe("イベント編集 統合テスト", () => {
     // pay > date + 30d（エラー）
     const over30d = getFutureDateTimeLocal(60 * 24); // 約60日後相当（十分に超過）
     res = await updateEventAction(
-      ev.id,
+      fixture.event.id,
       buildFormData({ date: newDate, payment_deadline: over30d })
     );
     expect(res.success).toBe(false);
@@ -309,7 +363,7 @@ describe("イベント編集 統合テスト", () => {
     const regOk = getFutureDateTimeLocal(24);
     const payOk = getFutureDateTimeLocal(48); // date(48h後)の直前だが、graceで超過させる
     res = await updateEventAction(
-      ev.id,
+      fixture.event.id,
       buildFormData({
         date: newDate,
         registration_deadline: regOk,
@@ -323,14 +377,13 @@ describe("イベント編集 統合テスト", () => {
   });
 
   test("制約: registration_deadline と payment_deadline の相関バリデーション", async () => {
-    const ev = await createTestEvent(getUserA().id, {
+    const fixture = await createTrackedEvent(getUserA().id, {
       fee: 1000,
       payment_methods: ["stripe"],
       registration_deadline: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1時間後
       payment_deadline: new Date(Date.now() + 120 * 60 * 1000).toISOString(), // 2時間後
       date: new Date(Date.now() + 180 * 60 * 1000).toISOString(), // 3時間後（締切より後）
     });
-    cleanupHelper.trackEvent(ev.id);
 
     await mockSupabaseCreateClient(getUserA());
     const { updateEventAction } = await import("@/features/events/actions/update-event");
@@ -340,7 +393,7 @@ describe("イベント編集 統合テスト", () => {
     const payTime = getFutureDateTimeLocal(60); // 1時間後（regより前）
 
     const res = await updateEventAction(
-      ev.id,
+      fixture.event.id,
       buildFormData({
         registration_deadline: regTime,
         payment_deadline: payTime, // reg < pay の制約に違反
@@ -357,8 +410,7 @@ describe("イベント編集 統合テスト", () => {
   });
 
   test("挙動: 未認証だと UNAUTHORIZED", async () => {
-    const ev = await createTestEvent(getUserA().id);
-    cleanupHelper.trackEvent(ev.id);
+    const fixture = await createTrackedEvent(getUserA().id);
 
     // 認証なしのモック
     jest.resetModules();
@@ -370,18 +422,17 @@ describe("イベント編集 統合テスト", () => {
     }));
 
     const { updateEventAction } = await import("@/features/events/actions/update-event");
-    const res = await updateEventAction(ev.id, buildFormData({ title: "x" }));
+    const res = await updateEventAction(fixture.event.id, buildFormData({ title: "x" }));
     expect(res.success).toBe(false);
     if (!res.success) expect(res.error.code).toBe("UNAUTHORIZED");
   });
 
   test("挙動: 作成者以外は FORBIDDEN", async () => {
-    const ev = await createTestEvent(getUserA().id);
-    cleanupHelper.trackEvent(ev.id);
+    const fixture = await createTrackedEvent(getUserA().id);
 
     await mockSupabaseCreateClient(getUserB());
     const { updateEventAction } = await import("@/features/events/actions/update-event");
-    const res = await updateEventAction(ev.id, buildFormData({ title: "他人が更新" }));
+    const res = await updateEventAction(fixture.event.id, buildFormData({ title: "他人が更新" }));
     expect(res.success).toBe(false);
     if (!res.success) expect(res.error.code).toBe("FORBIDDEN");
   });
@@ -403,16 +454,18 @@ describe("イベント編集 統合テスト", () => {
     const { updateEventAction } = await import("@/features/events/actions/update-event");
 
     // テスト用イベントを作成
-    const testEvent = await createTestEvent(getUserA().id, {
+    const fixture = await createTrackedEvent(getUserA().id, {
       title: "空文字列テスト用イベント",
       fee: 1000,
       payment_methods: ["cash"],
       date: getFutureDateTimeLocal(72), // 締切(60h)より後の日付を設定
       registration_deadline: getFutureDateTimeLocal(60),
     });
-    cleanupHelper.trackEvent(testEvent.id);
 
-    const res = await updateEventAction(testEvent.id, buildFormData({ registration_deadline: "" }));
+    const res = await updateEventAction(
+      fixture.event.id,
+      buildFormData({ registration_deadline: "" })
+    );
     // 空文字列はZodスキーマレベルでバリデーションエラーになるため、変更なしとして処理される
     expect(res.success).toBe(true);
     if (res.success) {

@@ -164,6 +164,7 @@ export async function createPaidTestEvent(
     capacity?: number | null;
     title?: string;
     paymentMethods?: Database["public"]["Enums"]["payment_method_enum"][];
+    communityId?: string;
   } = {}
 ): Promise<TestPaymentEvent> {
   const {
@@ -207,6 +208,7 @@ export async function createPaidTestEvent(
     canceled_at: null,
     invite_token: inviteToken,
     created_by: createdBy,
+    community_id: options.communityId || "00000000-0000-0000-0000-000000000000", // Default dummy or required
   };
 
   const { data: createdEvent, error } = await adminClient
@@ -318,6 +320,7 @@ export async function createPendingTestPayment(
     method?: Database["public"]["Enums"]["payment_method_enum"];
     stripeAccountId?: string;
     applicationFeeAmount?: number;
+    payoutProfileId?: string;
   } = {}
 ): Promise<TestPaymentData> {
   const {
@@ -348,6 +351,7 @@ export async function createPendingTestPayment(
     method,
     application_fee_amount: applicationFeeAmount,
     stripe_account_id: stripeAccountId,
+    payout_profile_id: options.payoutProfileId,
     tax_included: false,
   };
 
@@ -592,6 +596,7 @@ export async function createPaidStripePayment(
     stripeAccountId?: string;
     stripeBalanceTransactionFee?: number;
     paymentIntentId?: string;
+    payoutProfileId?: string;
   } = {}
 ): Promise<TestPaymentData> {
   const {
@@ -629,6 +634,7 @@ export async function createPaidStripePayment(
     ...(stripeBalanceTransactionFee != null
       ? { stripe_balance_transaction_fee: stripeBalanceTransactionFee }
       : {}),
+    payout_profile_id: options.payoutProfileId,
     tax_included: false,
   } as PaymentInsert;
 
@@ -752,6 +758,7 @@ export async function createTestPaymentWithStatus(
     status: Database["public"]["Enums"]["payment_status_enum"];
     method: Database["public"]["Enums"]["payment_method_enum"];
     stripePaymentIntentId?: string;
+    payoutProfileId?: string;
   }
 ): Promise<TestPaymentData> {
   const {
@@ -788,6 +795,7 @@ export async function createTestPaymentWithStatus(
     method,
     paid_at: paidAt,
     stripe_payment_intent_id: stripePaymentIntentId,
+    payout_profile_id: options.payoutProfileId,
     tax_included: false,
   };
 
@@ -828,6 +836,7 @@ export async function createRefundedStripePayment(
     stripeAccountId?: string;
     stripeBalanceTransactionFee?: number;
     paymentIntentId?: string;
+    payoutProfileId?: string;
   } = {}
 ): Promise<TestPaymentData> {
   const {
@@ -854,6 +863,7 @@ export async function createRefundedStripePayment(
     ...(stripeBalanceTransactionFee != null
       ? { stripe_balance_transaction_fee: stripeBalanceTransactionFee }
       : {}),
+    payout_profile_id: options.payoutProfileId,
     tax_included: false,
   };
 
@@ -1005,6 +1015,7 @@ export async function createPaymentForDashboardStats(
       method: method,
       paid_at: paidAt,
       stripe_payment_intent_id: stripePaymentIntentId,
+      payout_profile_id: (adminClient as any)._test_payout_profile_id, // Hack for simple helper if needed, but better to be explicit
     })
     .select()
     .single();

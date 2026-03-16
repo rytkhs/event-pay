@@ -63,12 +63,11 @@ export async function verifyEventAccess(
     throw new Error("Authentication required");
   }
 
-  // イベントが自分のものかどうか確認
+  // RLS で community owner に見えるイベントかどうかだけを確認する
   const { data: eventDetail, error: eventError } = await supabase
     .from("events")
-    .select("id, created_by")
+    .select("id")
     .eq("id", validatedEventId)
-    .eq("created_by", user.id)
     .single();
 
   if (eventError || !eventDetail) {

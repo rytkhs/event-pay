@@ -4,14 +4,8 @@ import { updateCashStatusAction } from "@features/payments/server";
 
 import { setupRateLimitMocks } from "../../setup/common-mocks";
 
-// 環境依存のSecureSupabaseClientFactory, レート制限, Validator をモック
-jest.mock("@core/security/secure-client-factory.impl", () => {
-  const adminClient = {
-    rpc: jest.fn<() => Promise<{ data: { ok: boolean }; error: null }>>().mockResolvedValue({
-      data: { ok: true },
-      error: null,
-    }),
-  };
+// 環境依存の Supabase factory, レート制限, Validator をモック
+jest.mock("@core/supabase/factory", () => {
   const authClient = {
     auth: {
       getUser: jest
@@ -30,10 +24,6 @@ jest.mock("@core/security/secure-client-factory.impl", () => {
               method: string;
               status: string;
               attendance_id: string;
-              attendances: Array<{
-                id: string;
-                events: Array<{ id: string; created_by: string }>;
-              }>;
             };
             error: null;
           }>
@@ -45,7 +35,6 @@ jest.mock("@core/security/secure-client-factory.impl", () => {
             method: "cash",
             status: "pending",
             attendance_id: "att-1",
-            attendances: [{ id: "att-1", events: [{ id: "evt-1", created_by: "user-1" }] }],
           },
           error: null,
         }),
@@ -56,20 +45,11 @@ jest.mock("@core/security/secure-client-factory.impl", () => {
       error: null,
     }),
   };
-  const factory = {
-    createAuthenticatedClient: jest
-      .fn<() => Promise<typeof authClient>>()
-      .mockResolvedValue(authClient),
-    createAuditedAdminClient: jest
-      .fn<() => Promise<typeof adminClient>>()
-      .mockResolvedValue(adminClient),
-  };
 
   return {
-    getSecureClientFactory: () => factory,
-    SecureSupabaseClientFactory: {
-      create: () => factory,
-    },
+    createServerActionSupabaseClient: jest
+      .fn<() => Promise<typeof authClient>>()
+      .mockResolvedValue(authClient),
   };
 });
 

@@ -46,11 +46,7 @@ export async function deleteEventAction(eventId: string): Promise<ActionResult<v
     }
 
     // イベント削除（RLSで自分のイベントのみ削除可能）
-    const { error } = await supabase
-      .from("events")
-      .delete()
-      .eq("id", validatedEventId)
-      .eq("created_by", user.id);
+    const { error } = await supabase.from("events").delete().eq("id", validatedEventId);
 
     if (error) {
       if (hasPostgrestCode(error, "23503")) {

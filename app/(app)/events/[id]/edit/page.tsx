@@ -14,7 +14,7 @@ import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { validateEventId } from "@core/validation/event-id";
 
 import { SinglePageEventEditForm } from "@features/events";
-import { getDetailedAccountStatusAction } from "@features/stripe-connect/server";
+import { getEventPayoutProfileReadiness } from "@features/events/server";
 
 import { updateEventAction } from "./actions";
 import { EventDangerZone } from "./components/EventDangerZone";
@@ -42,6 +42,7 @@ type EventEditQueryRow = Pick<
   | "created_at"
   | "updated_at"
   | "created_by"
+  | "payout_profile_id"
   | "invite_token"
   | "canceled_at"
 > & {
@@ -51,7 +52,7 @@ type EventEditQueryRow = Pick<
 export default async function EventEditPage(props: EventEditPageProps) {
   const params = await props.params;
   const supabase = await createServerComponentSupabaseClient();
-  const user = await requireCurrentUserForServerComponent();
+  await requireCurrentUserForServerComponent();
 
   // IDバリデーション（形式不正のみ404）
   const validation = validateEventId(params.id);
@@ -79,6 +80,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
       created_at,
       updated_at,
       created_by,
+      payout_profile_id,
       invite_token,
       canceled_at,
       attendances(id, status)
@@ -93,11 +95,6 @@ export default async function EventEditPage(props: EventEditPageProps) {
     redirect(`/events/${params.id}/forbidden`);
   }
   const event = eventData;
-
-  // 編集権限チェック
-  if (event.created_by !== user.id) {
-    redirect(`/events/${params.id}/forbidden`);
-  }
 
   const attendeeCount = calculateAttendeeCount(event.attendances);
 
@@ -121,19 +118,8 @@ export default async function EventEditPage(props: EventEditPageProps) {
     redirect(`/events/${params.id}/forbidden?reason=${computedStatus}`);
   }
 
-  // Stripe Connectの詳細状態を取得し、オンライン決済可否を決定
-  const detailedStatus = await getDetailedAccountStatusAction();
-
-  /**
-   * オンライン決済可否の判定ロジック（編集時）
-   *
-   * getDetailedAccountStatusAction の仕様:
-   * - アカウント未作成/認証不備がある場合: status オブジェクトを返す（CTA表示用）
-   * - 全て正常で決済可能な場合: status を undefined で返す（CTA非表示）
-   *
-   * したがって、status === undefined が「ready」状態を意味する
-   */
-  const canUseOnlinePayments = detailedStatus.success && !detailedStatus.data?.status;
+  const payoutReadiness = await getEventPayoutProfileReadiness(supabase, event.payout_profile_id);
+  const canUseOnlinePayments = payoutReadiness.isReady;
 
   return (
     <div className="min-h-screen bg-muted/30 py-8">
