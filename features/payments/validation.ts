@@ -59,7 +59,11 @@ export const updateCashStatusActionInputSchema = z.object({
 });
 
 export const bulkUpdateCashStatusActionInputSchema = z.object({
-  paymentIds: z.array(z.string().uuid()).min(1).max(50), // 最大50件まで
+  paymentIds: z
+    .array(z.string().uuid())
+    .min(1)
+    .max(50) // 最大50件まで
+    .transform((ids) => Array.from(new Set(ids))),
   status: CashUpdateStatusSchema,
   notes: z.string().max(1000).optional(),
 });
@@ -89,13 +93,10 @@ export class PaymentValidator implements IPaymentValidator {
     this.supabase = supabaseClient;
   }
 
-  async validateCreateStripeSessionParams(
-    params: CreateStripeSessionParams,
-    userId: string
-  ): Promise<void> {
+  async validateCreateStripeSessionParams(params: CreateStripeSessionParams): Promise<void> {
     try {
       createStripeSessionParamsSchema.parse(params);
-      await this.validateAttendanceAccess(params.attendanceId, userId);
+      await this.validateAttendanceAccess(params.attendanceId);
       await this.validatePaymentAmount(params.amount);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -114,13 +115,10 @@ export class PaymentValidator implements IPaymentValidator {
     }
   }
 
-  async validateCreateCashPaymentParams(
-    params: CreateCashPaymentParams,
-    userId: string
-  ): Promise<void> {
+  async validateCreateCashPaymentParams(params: CreateCashPaymentParams): Promise<void> {
     try {
       createCashPaymentParamsSchema.parse(params);
-      await this.validateAttendanceAccess(params.attendanceId, userId);
+      await this.validateAttendanceAccess(params.attendanceId);
       await this.validatePaymentAmount(params.amount);
       await this.validateNoDuplicatePayment(params.attendanceId);
     } catch (error) {
@@ -169,13 +167,13 @@ export class PaymentValidator implements IPaymentValidator {
     }
   }
 
-  async validateAttendanceAccess(attendanceId: string, userId: string): Promise<void> {
+  async validateAttendanceAccess(attendanceId: string): Promise<void> {
     try {
       const baseQuery = this.supabase
         .from("attendances")
-        .select("id, event_id, events!inner(id, created_by)")
+        .select("id, event_id")
         .eq("id", attendanceId)
-        .limit(2);
+        .maybeSingle();
 
       const { data, error } = await baseQuery;
       if (error) {
@@ -185,32 +183,11 @@ export class PaymentValidator implements IPaymentValidator {
           error
         );
       }
-      if (!data || (Array.isArray(data) && data.length === 0)) {
+      if (!data) {
         throw new PaymentError(
           PaymentErrorType.ATTENDANCE_NOT_FOUND,
           "指定された参加記録が見つかりません"
         );
-      }
-      if (Array.isArray(data) && data.length > 1) {
-        throw new PaymentError(
-          PaymentErrorType.DATABASE_ERROR,
-          "参加記録の整合性エラー: 複数件のレコードが見つかりました"
-        );
-      }
-      if (userId) {
-        type EventLite = { id: string; created_by: string };
-        type AttendanceQueryResult = {
-          id: string;
-          event_id: string;
-          events: EventLite | EventLite[];
-        };
-
-        const record = (Array.isArray(data) ? data[0] : data) as AttendanceQueryResult;
-        const events = Array.isArray(record.events) ? record.events : [record.events];
-        const createdBy = events[0]?.created_by;
-        if (!createdBy || createdBy !== userId) {
-          throw new PaymentError(PaymentErrorType.FORBIDDEN, "この操作を実行する権限がありません");
-        }
       }
     } catch (error) {
       if (error instanceof PaymentError) throw error;

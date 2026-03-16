@@ -1,4 +1,4 @@
-import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
+import { verifyEventAccess } from "@core/auth/event-authorization";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { generateInviteToken } from "@core/utils/invite-token";
@@ -19,25 +19,18 @@ export async function generateInviteTokenAction(
   try {
     const validatedEventId = generateInviteTokenEventIdSchema.parse(eventId);
 
-    const user = await getCurrentUserForServerAction();
-    if (!user) {
-      return fail("UNAUTHORIZED", { userMessage: "Authentication required" });
-    }
+    await verifyEventAccess(validatedEventId);
 
     const client = await createServerActionSupabaseClient();
 
     const { data: event, error: eventError } = await client
       .from("events")
-      .select("id, created_by")
+      .select("id")
       .eq("id", validatedEventId)
       .single();
 
     if (eventError || !event) {
       return fail("NOT_FOUND", { userMessage: "Event not found" });
-    }
-
-    if (event.created_by !== user.id) {
-      return fail("FORBIDDEN", { userMessage: "Permission denied" });
     }
 
     if (!options.forceRegenerate) {

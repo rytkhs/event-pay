@@ -84,14 +84,7 @@ export async function updateCashStatusAction(
         version,
         method,
         status,
-        attendance_id,
-        attendances!inner (
-          id,
-          events!inner (
-            id,
-            created_by
-          )
-        )
+        attendance_id
       `
       )
       .eq("id", paymentId)
@@ -102,17 +95,7 @@ export async function updateCashStatusAction(
     }
 
     // 基本的な権限チェック（RPC関数内でも再チェックされる）
-    await new PaymentValidator(supabase).validateAttendanceAccess(payment.attendance_id, user.id);
-
-    // 権限チェック：主催者のみ
-    const attendance = Array.isArray(payment.attendances)
-      ? payment.attendances[0]
-      : payment.attendances;
-    const event = Array.isArray(attendance.events) ? attendance.events[0] : attendance.events;
-
-    if (event.created_by !== user.id) {
-      return fail("FORBIDDEN", { userMessage: "この操作を実行する権限がありません。" });
-    }
+    await new PaymentValidator(supabase).validateAttendanceAccess(payment.attendance_id);
 
     // 現金決済のみ
     if (payment.method !== "cash") {

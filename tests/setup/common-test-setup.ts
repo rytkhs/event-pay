@@ -63,6 +63,8 @@ export interface TestDataCleanupHelper {
   trackEvent: (eventId: string) => void;
   trackAttendance: (attendanceId: string) => void;
   trackPayment: (paymentId: string) => void;
+  trackCommunity: (communityId: string) => void;
+  trackPayoutProfile: (payoutProfileId: string) => void;
   cleanup: () => Promise<void>;
   reset: () => void;
 }
@@ -271,9 +273,8 @@ export async function createCommonTestSetup(
       );
 
   // 認証済みクライアントをセットアップ（RLSが正しく適用されるようにする）
-  const { setupAuthenticatedTestClient, clearAuthenticatedTestClient } = await import(
-    "./authenticated-client-mock"
-  );
+  const { setupAuthenticatedTestClient, clearAuthenticatedTestClient } =
+    await import("./authenticated-client-mock");
   await setupAuthenticatedTestClient(email, password, testUser.id);
 
   // Supabaseクライアント取得（オプションでスキップ可能）
@@ -722,6 +723,8 @@ export function createTestDataCleanupHelper(adminClient: any): TestDataCleanupHe
   const eventIds: string[] = [];
   const attendanceIds: string[] = [];
   const paymentIds: string[] = [];
+  const communityIds: string[] = [];
+  const payoutProfileIds: string[] = [];
 
   return {
     trackEvent: (eventId: string) => {
@@ -732,6 +735,12 @@ export function createTestDataCleanupHelper(adminClient: any): TestDataCleanupHe
     },
     trackPayment: (paymentId: string) => {
       paymentIds.push(paymentId);
+    },
+    trackCommunity: (communityId: string) => {
+      communityIds.push(communityId);
+    },
+    trackPayoutProfile: (payoutProfileId: string) => {
+      payoutProfileIds.push(payoutProfileId);
     },
     cleanup: async () => {
       // 外部キー制約を考慮した削除順序: payments → attendances → events
@@ -758,11 +767,51 @@ export function createTestDataCleanupHelper(adminClient: any): TestDataCleanupHe
       } catch (error) {
         console.warn("Failed to cleanup events:", error);
       }
+
+      try {
+        if (communityIds.length > 0) {
+          await adminClient
+            .from("communities")
+            .update({ current_payout_profile_id: null })
+            .in("id", communityIds);
+        }
+      } catch (error) {
+        console.warn("Failed to detach community payout profiles:", error);
+      }
+
+      try {
+        if (payoutProfileIds.length > 0) {
+          await adminClient
+            .from("payout_profiles")
+            .update({ representative_community_id: null })
+            .in("id", payoutProfileIds);
+        }
+      } catch (error) {
+        console.warn("Failed to detach payout profile communities:", error);
+      }
+
+      try {
+        if (payoutProfileIds.length > 0) {
+          await adminClient.from("payout_profiles").delete().in("id", payoutProfileIds);
+        }
+      } catch (error) {
+        console.warn("Failed to cleanup payout profiles:", error);
+      }
+
+      try {
+        if (communityIds.length > 0) {
+          await adminClient.from("communities").delete().in("id", communityIds);
+        }
+      } catch (error) {
+        console.warn("Failed to cleanup communities:", error);
+      }
     },
     reset: () => {
       eventIds.length = 0;
       attendanceIds.length = 0;
       paymentIds.length = 0;
+      communityIds.length = 0;
+      payoutProfileIds.length = 0;
     },
   };
 }

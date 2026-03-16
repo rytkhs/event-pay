@@ -39,7 +39,6 @@ export async function cancelEventAction(
       .from("events")
       .update({ canceled_at: new Date().toISOString(), canceled_by: user.id, invite_token: null })
       .eq("id", eventId)
-      .eq("created_by", user.id)
       .select("id");
 
     if (updateError) {
