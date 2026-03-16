@@ -11,11 +11,14 @@ import { createMultiUserTestSetup, type MultiUserTestSetup } from "@tests/setup/
 
 export interface RLSTestSetup {
   testEventId: string;
+  testCommunityId: string;
+  testPayoutProfileId: string;
   testAttendanceId: string;
   testGuestToken: string;
   testInviteToken: string;
   testUserId: string;
   anotherEventId: string;
+  anotherCommunityId: string;
   anotherGuestToken: string;
   cleanup: () => Promise<void>;
 }
@@ -28,9 +31,12 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
     withConnect: false, // Stripe Connectアカウントは後で手動設定
     accessedTables: [
       "public.users",
+      "public.communities",
+      "public.payout_profiles",
       "public.events",
       "public.attendances",
       "public.payments",
+      "public.payment_disputes",
       "public.stripe_connect_accounts",
     ],
   });
@@ -41,6 +47,68 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
 
   const testUserId = testOrganizer.id;
   const anotherUserId = anotherOrganizer.id;
+
+  const { data: testCommunity, error: testCommunityError } = await setupClient
+    .from("communities")
+    .insert({
+      created_by: testUserId,
+      name: "Test Community",
+      slug: `test-community-${Date.now()}`,
+      description: "RLS owner test community",
+    })
+    .select("id")
+    .single();
+
+  if (testCommunityError || !testCommunity) {
+    console.error("Failed to create test community:", testCommunityError);
+    throw new Error("Failed to create test community: " + JSON.stringify(testCommunityError));
+  }
+
+  const { data: testPayoutProfile, error: testPayoutProfileError } = await setupClient
+    .from("payout_profiles")
+    .insert({
+      owner_user_id: testUserId,
+      stripe_account_id: "acct_test_123",
+      status: "verified",
+      payouts_enabled: true,
+      charges_enabled: true,
+      representative_community_id: testCommunity.id,
+    })
+    .select("id")
+    .single();
+
+  if (testPayoutProfileError || !testPayoutProfile) {
+    console.error("Failed to create test payout profile:", testPayoutProfileError);
+    throw new Error("Failed to create payout profile: " + JSON.stringify(testPayoutProfileError));
+  }
+
+  const { error: testCommunityUpdateError } = await setupClient
+    .from("communities")
+    .update({
+      current_payout_profile_id: testPayoutProfile.id,
+    })
+    .eq("id", testCommunity.id);
+
+  if (testCommunityUpdateError) {
+    console.error("Failed to update test community payout profile:", testCommunityUpdateError);
+    throw new Error("Failed to update test community: " + JSON.stringify(testCommunityUpdateError));
+  }
+
+  const { data: anotherCommunity, error: anotherCommunityError } = await setupClient
+    .from("communities")
+    .insert({
+      created_by: anotherUserId,
+      name: "Another Community",
+      slug: `another-community-${Date.now()}`,
+      description: "RLS isolation community",
+    })
+    .select("id")
+    .single();
+
+  if (anotherCommunityError || !anotherCommunity) {
+    console.error("Failed to create another community:", anotherCommunityError);
+    throw new Error("Failed to create another community: " + JSON.stringify(anotherCommunityError));
+  }
 
   // テストイベント1の作成
   const { data: testEvent, error: testEventError } = await setupClient
@@ -53,6 +121,8 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
       fee: 1000,
       capacity: 10,
       created_by: testUserId,
+      community_id: testCommunity.id,
+      payout_profile_id: testPayoutProfile.id,
       invite_token: "inv_test_rls_token_12345678901234567",
       payment_methods: ["stripe", "cash"],
       registration_deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
@@ -79,6 +149,7 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
       fee: 500,
       capacity: 5,
       created_by: anotherUserId,
+      community_id: anotherCommunity.id,
       invite_token: "inv_another_token_123456789012345678",
       payment_methods: ["cash"],
       registration_deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
@@ -140,7 +211,11 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
   // adminClientを使って全データを削除してから、共通セットアップのcleanupを実行
   const cleanup = async () => {
     try {
-      // 外部キー制約を考慮した削除順序: payments → attendances → events → stripe_connect_accounts
+      // 外部キー制約を考慮した削除順序
+      await setupClient
+        .from("payment_disputes")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
       await setupClient.from("payments").delete().neq("id", "00000000-0000-0000-0000-000000000000");
       await setupClient
         .from("attendances")
@@ -151,6 +226,14 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
         .from("stripe_connect_accounts")
         .delete()
         .neq("user_id", "00000000-0000-0000-0000-000000000000");
+      await setupClient
+        .from("payout_profiles")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      await setupClient
+        .from("communities")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
     } catch (error) {
       console.warn("Failed to cleanup test data:", error);
     }
@@ -161,11 +244,14 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
 
   return {
     testEventId,
+    testCommunityId: testCommunity.id,
+    testPayoutProfileId: testPayoutProfile.id,
     testAttendanceId,
     testGuestToken,
     testInviteToken,
     testUserId,
     anotherEventId,
+    anotherCommunityId: anotherCommunity.id,
     anotherGuestToken,
     cleanup,
   };

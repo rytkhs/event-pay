@@ -181,8 +181,10 @@ SupabaseはブラウザからDBへ直接アクセスし得るため、exposed sc
 | テーブル | 主催者(authenticated) | ゲスト(anon) | service_role |
 |---|---|---|---|
 | users | 自分のみ参照/更新 | 原則なし | 全操作 |
-| events | 自イベント参照/更新 | 招待トークン等で限定参照 | 全操作 |
-| attendances | 自イベント参照/更新 | 自分の guest_token 分のみ参照/更新 | 全操作 |
+| communities | owner の自コミュニティのみ参照/更新 | なし | 全操作 |
+| payout_profiles | owner の自分の行のみ参照 | なし | 全操作 |
+| events | `event -> community owner` 基準で自イベント参照/更新 | 招待トークン等で限定参照 | 全操作 |
+| attendances | `event -> community owner` 基準で自イベント参照/更新 | 自分の guest_token 分のみ参照 | 全操作 |
 | payments | 自イベント参照 | 自分の guest_token 分のみ参照 | 全操作（Webhook等） |
 | settlements | 原則RPC経由 | なし | 全操作 |
 | system_logs | なし | なし | 全操作 |

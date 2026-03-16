@@ -38,6 +38,8 @@ describe("Capacity and Concurrency", () => {
         fee: 0,
         capacity: 1,
         created_by: setup.testUserId,
+        community_id: setup.testCommunityId,
+        payout_profile_id: setup.testPayoutProfileId,
         invite_token: "inv_capacity_race_123456789012",
         payment_methods: ["cash"],
         registration_deadline: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),

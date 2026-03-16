@@ -1026,6 +1026,23 @@ export type Database = {
         }[];
       };
       hash_guest_token: { Args: { token: string }; Returns: string };
+      is_attendance_community_owner: {
+        Args: { p_attendance_id: string };
+        Returns: boolean;
+      };
+      is_community_owner: { Args: { p_community_id: string }; Returns: boolean };
+      is_event_community_owner: {
+        Args: { p_event_id: string };
+        Returns: boolean;
+      };
+      is_payment_community_owner: {
+        Args: { p_payment_id: string };
+        Returns: boolean;
+      };
+      is_payout_profile_owner: {
+        Args: { p_payout_profile_id: string };
+        Returns: boolean;
+      };
       register_attendance_with_payment: {
         Args: {
           p_email: string;
