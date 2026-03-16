@@ -37,7 +37,6 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
       "public.attendances",
       "public.payments",
       "public.payment_disputes",
-      "public.stripe_connect_accounts",
     ],
   });
 
@@ -199,13 +198,6 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
   }
   const anotherGuestToken = anotherAttendance.guest_token as string;
 
-  // Stripe Connectアカウントの設定
-  await setupClient.from("stripe_connect_accounts").insert({
-    user_id: testUserId,
-    stripe_account_id: "acct_test_123",
-    payouts_enabled: true,
-  });
-
   // クリーンアップ関数
   // RLSテストでは全データをクリーンアップする必要があるため、
   // adminClientを使って全データを削除してから、共通セットアップのcleanupを実行
@@ -222,10 +214,6 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
         .delete()
         .neq("id", "00000000-0000-0000-0000-000000000000");
       await setupClient.from("events").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await setupClient
-        .from("stripe_connect_accounts")
-        .delete()
-        .neq("user_id", "00000000-0000-0000-0000-000000000000");
       await setupClient
         .from("payout_profiles")
         .delete()

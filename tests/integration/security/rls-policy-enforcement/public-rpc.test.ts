@@ -136,7 +136,6 @@ describe("Public Connect Account RPC", () => {
     const guest = createGuestClient(setup.testGuestToken);
     const { data, error } = await (guest as any).rpc("rpc_public_get_connect_account", {
       p_event_id: setup.testEventId,
-      p_creator_id: setup.testUserId,
     });
 
     expect(error).toBeNull();
@@ -148,16 +147,64 @@ describe("Public Connect Account RPC", () => {
     }
   });
 
-  test("mismatched creator_id returns empty", async () => {
-    const guest = createGuestClient(setup.testGuestToken);
+  test("event に payout_profile_id が無い場合は空になる", async () => {
+    const factory = getSecureClientFactory();
+    const admin = await factory.createAuditedAdminClient(
+      AdminReason.TEST_DATA_SETUP,
+      "setup event without payout profile for public connect rpc"
+    );
+
+    const invite = `inv_${Math.random().toString(36).slice(2, 18)}`;
+    const guestToken = `gst_${"c".repeat(32)}`;
+    const date = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+    const { data: event } = await admin
+      .from("events")
+      .insert({
+        title: "No Payout Event",
+        date,
+        location: "X",
+        fee: 1000,
+        capacity: 10,
+        created_by: setup.testUserId,
+        community_id: setup.testCommunityId,
+        payout_profile_id: null,
+        payment_methods: ["stripe"],
+        registration_deadline: date,
+        payment_deadline: date,
+        invite_token: invite,
+      })
+      .select("id")
+      .single();
+
+    if (!event?.id) throw new Error("failed to create event without payout profile");
+
+    await admin.from("attendances").insert({
+      event_id: event.id,
+      nickname: "No Payout Guest",
+      email: "nopayout@example.com",
+      status: "attending",
+      guest_token: guestToken,
+    });
+
+    const guest = createGuestClient(guestToken);
     const { data, error } = await (guest as any).rpc("rpc_public_get_connect_account", {
-      p_event_id: setup.testEventId,
-      p_creator_id: "11111111-1111-1111-1111-111111111111",
+      p_event_id: event.id,
     });
 
     expect(error).toBeNull();
     const row = Array.isArray(data) ? data[0] : data;
     expect(row).toBeUndefined();
+  });
+
+  test("別イベントのゲストは他イベントの payout 情報を取得できない", async () => {
+    const guest = createGuestClient(setup.anotherGuestToken);
+    const { data, error } = await (guest as any).rpc("rpc_public_get_connect_account", {
+      p_event_id: setup.testEventId,
+    });
+
+    expect(data).toBeNull();
+    expect(error).not.toBeNull();
   });
 });
 

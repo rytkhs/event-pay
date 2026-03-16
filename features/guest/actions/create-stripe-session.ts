@@ -163,7 +163,6 @@ export async function createGuestStripeSessionAction(
   const { data: connectAccount, error: connectError } = await guestClient
     .rpc("rpc_public_get_connect_account", {
       p_event_id: event.id,
-      p_creator_id: event.created_by,
     })
     .returns<ConnectAccountRpcRow[]>()
     .single();

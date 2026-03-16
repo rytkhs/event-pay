@@ -1676,27 +1676,30 @@ $$;
 ALTER FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text", "p_invite_token" "text") OWNER TO "app_definer";
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") RETURNS TABLE("stripe_account_id" character varying, "payouts_enabled" boolean)
+CREATE OR REPLACE FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") RETURNS TABLE("stripe_account_id" character varying, "payouts_enabled" boolean)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
-    IF NOT public.can_access_event(p_event_id) THEN
-        RAISE EXCEPTION 'not allowed';
-    END IF;
+  IF NOT public.can_access_event(p_event_id) THEN
+    RAISE EXCEPTION 'not allowed';
+  END IF;
 
-    RETURN QUERY
-    SELECT s.stripe_account_id, s.payouts_enabled
-    FROM public.stripe_connect_accounts s
-    JOIN public.events e ON e.created_by = s.user_id
-    WHERE e.id = p_event_id
-      AND e.created_by = p_creator_id
-    LIMIT 1;
+  RETURN QUERY
+  SELECT pp.stripe_account_id, pp.payouts_enabled
+    FROM public.events e
+    JOIN public.payout_profiles pp ON pp.id = e.payout_profile_id
+   WHERE e.id = p_event_id
+   LIMIT 1;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") OWNER TO "app_definer";
+ALTER FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") OWNER TO "app_definer";
+
+
+COMMENT ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") IS '公開/ゲスト決済前段向けに、対象イベントの payout_profile から最小の Connect 情報を取得する';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") RETURNS TABLE("id" "uuid", "created_by" "uuid", "organizer_name" character varying, "title" character varying, "date" timestamp with time zone, "location" character varying, "description" "text", "fee" integer, "capacity" integer, "payment_methods" "public"."payment_method_enum"[], "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "invite_token" character varying, "canceled_at" timestamp with time zone, "attendances_count" integer)
@@ -4150,9 +4153,9 @@ GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "
 
 
 
-GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") TO "anon";
 
 
 
