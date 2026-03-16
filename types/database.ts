@@ -69,6 +69,67 @@ export type Database = {
           },
         ];
       };
+      communities: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          current_payout_profile_id: string | null;
+          deleted_at: string | null;
+          description: string | null;
+          id: string;
+          is_deleted: boolean;
+          name: string;
+          slug: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by: string;
+          current_payout_profile_id?: string | null;
+          deleted_at?: string | null;
+          description?: string | null;
+          id?: string;
+          is_deleted?: boolean;
+          name: string;
+          slug: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          current_payout_profile_id?: string | null;
+          deleted_at?: string | null;
+          description?: string | null;
+          id?: string;
+          is_deleted?: boolean;
+          name?: string;
+          slug?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "communities_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "public_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "communities_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "communities_current_payout_profile_id_fkey";
+            columns: ["current_payout_profile_id"];
+            isOneToOne: false;
+            referencedRelation: "payout_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       contacts: {
         Row: {
           created_at: string;
@@ -108,6 +169,7 @@ export type Database = {
           canceled_at: string | null;
           canceled_by: string | null;
           capacity: number | null;
+          community_id: string;
           created_at: string;
           created_by: string;
           date: string;
@@ -119,6 +181,7 @@ export type Database = {
           location: string | null;
           payment_deadline: string | null;
           payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
+          payout_profile_id: string | null;
           registration_deadline: string;
           title: string;
           updated_at: string;
@@ -128,6 +191,7 @@ export type Database = {
           canceled_at?: string | null;
           canceled_by?: string | null;
           capacity?: number | null;
+          community_id: string;
           created_at?: string;
           created_by?: string;
           date: string;
@@ -139,6 +203,7 @@ export type Database = {
           location?: string | null;
           payment_deadline?: string | null;
           payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
+          payout_profile_id?: string | null;
           registration_deadline: string;
           title: string;
           updated_at?: string;
@@ -148,6 +213,7 @@ export type Database = {
           canceled_at?: string | null;
           canceled_by?: string | null;
           capacity?: number | null;
+          community_id?: string;
           created_at?: string;
           created_by?: string;
           date?: string;
@@ -159,6 +225,7 @@ export type Database = {
           location?: string | null;
           payment_deadline?: string | null;
           payment_methods?: Database["public"]["Enums"]["payment_method_enum"][];
+          payout_profile_id?: string | null;
           registration_deadline?: string;
           title?: string;
           updated_at?: string;
@@ -179,6 +246,13 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "events_community_id_fkey";
+            columns: ["community_id"];
+            isOneToOne: false;
+            referencedRelation: "communities";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "events_created_by_fkey";
             columns: ["created_by"];
             isOneToOne: false;
@@ -190,6 +264,13 @@ export type Database = {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "events_payout_profile_id_fkey";
+            columns: ["payout_profile_id"];
+            isOneToOne: false;
+            referencedRelation: "payout_profiles";
             referencedColumns: ["id"];
           },
         ];
@@ -349,6 +430,7 @@ export type Database = {
           id: string;
           method: Database["public"]["Enums"]["payment_method_enum"];
           paid_at: string | null;
+          payout_profile_id: string | null;
           refunded_amount: number;
           status: Database["public"]["Enums"]["payment_status_enum"];
           stripe_account_id: string | null;
@@ -385,6 +467,7 @@ export type Database = {
           id?: string;
           method: Database["public"]["Enums"]["payment_method_enum"];
           paid_at?: string | null;
+          payout_profile_id?: string | null;
           refunded_amount?: number;
           status?: Database["public"]["Enums"]["payment_status_enum"];
           stripe_account_id?: string | null;
@@ -421,6 +504,7 @@ export type Database = {
           id?: string;
           method?: Database["public"]["Enums"]["payment_method_enum"];
           paid_at?: string | null;
+          payout_profile_id?: string | null;
           refunded_amount?: number;
           status?: Database["public"]["Enums"]["payment_status_enum"];
           stripe_account_id?: string | null;
@@ -446,6 +530,71 @@ export type Database = {
             columns: ["attendance_id"];
             isOneToOne: false;
             referencedRelation: "attendances";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payments_payout_profile_id_fkey";
+            columns: ["payout_profile_id"];
+            isOneToOne: false;
+            referencedRelation: "payout_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      payout_profiles: {
+        Row: {
+          charges_enabled: boolean;
+          created_at: string;
+          id: string;
+          owner_user_id: string;
+          payouts_enabled: boolean;
+          representative_community_id: string | null;
+          status: Database["public"]["Enums"]["stripe_account_status_enum"];
+          stripe_account_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          charges_enabled?: boolean;
+          created_at?: string;
+          id?: string;
+          owner_user_id: string;
+          payouts_enabled?: boolean;
+          representative_community_id?: string | null;
+          status?: Database["public"]["Enums"]["stripe_account_status_enum"];
+          stripe_account_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          charges_enabled?: boolean;
+          created_at?: string;
+          id?: string;
+          owner_user_id?: string;
+          payouts_enabled?: boolean;
+          representative_community_id?: string | null;
+          status?: Database["public"]["Enums"]["stripe_account_status_enum"];
+          stripe_account_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payout_profiles_owner_user_id_fkey";
+            columns: ["owner_user_id"];
+            isOneToOne: true;
+            referencedRelation: "public_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payout_profiles_owner_user_id_fkey";
+            columns: ["owner_user_id"];
+            isOneToOne: true;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payout_profiles_representative_community_id_fkey";
+            columns: ["representative_community_id"];
+            isOneToOne: false;
+            referencedRelation: "communities";
             referencedColumns: ["id"];
           },
         ];
