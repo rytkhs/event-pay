@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 
 import { LogOut, ChevronsUpDown, CreditCard, Loader2 } from "lucide-react";
 
+import type { AppWorkspaceShellData } from "@core/community/app-workspace";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -41,12 +42,14 @@ type AppSidebarProps = {
     name?: string | null;
     email?: string | null;
   } | null;
+  workspace: AppWorkspaceShellData;
   logoutAction: () => Promise<ActionResult>;
   createExpressDashboardLoginLinkAction: () => Promise<void>;
 } & React.ComponentProps<typeof Sidebar>;
 
 export function AppSidebar({
   user,
+  workspace,
   logoutAction,
   createExpressDashboardLoginLinkAction,
   ...props
@@ -107,6 +110,9 @@ export function AppSidebar({
                 <Image src="/icon.svg" width={24} height={24} alt="Minshu" className="size-6" />
                 <div className="flex flex-col gap-0.5 leading-none">
                   <span className="font-semibold">みんなの集金</span>
+                  <span className="max-w-40 truncate text-xs text-muted-foreground">
+                    {workspace.currentCommunity?.name ?? "コミュニティ未作成"}
+                  </span>
                 </div>
               </Link>
             </SidebarMenuButton>
