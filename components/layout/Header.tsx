@@ -4,6 +4,8 @@ import React from "react";
 
 import { usePathname } from "next/navigation";
 
+import type { AppWorkspaceShellData } from "@core/community/app-workspace";
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -17,7 +19,11 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 
 import { navigationConfig } from "./GlobalHeader/navigation-config";
 
-export function Header() {
+type HeaderProps = {
+  workspace: AppWorkspaceShellData;
+};
+
+export function Header({ workspace }: HeaderProps) {
   const pathname = usePathname();
 
   // URLパスからブレッドクラム用のセグメントを生成
@@ -79,6 +85,12 @@ export function Header() {
             })}
           </BreadcrumbList>
         </Breadcrumb>
+      </div>
+      <div className="ml-auto flex min-w-0 items-center gap-2">
+        <span className="hidden text-xs text-muted-foreground sm:inline">現在のコミュニティ</span>
+        <div className="max-w-40 truncate rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground sm:max-w-56">
+          {workspace.currentCommunity?.name ?? "コミュニティ未作成"}
+        </div>
       </div>
     </header>
   );

@@ -598,6 +598,23 @@ $$;
 ALTER FUNCTION "public"."enforce_community_mvp_invariants"() OWNER TO "app_definer";
 
 
+CREATE OR REPLACE FUNCTION "public"."enforce_event_mvp_invariants"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' AND NEW.created_by IS DISTINCT FROM OLD.created_by THEN
+    RAISE EXCEPTION 'events.created_by is immutable';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."enforce_event_mvp_invariants"() OWNER TO "app_definer";
+
+
 CREATE OR REPLACE FUNCTION "public"."enforce_payout_profile_mvp_invariants"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
@@ -800,7 +817,7 @@ $$;
 ALTER FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") OWNER TO "app_definer";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_dashboard_stats"() RETURNS TABLE("upcoming_events_count" integer, "total_upcoming_participants" integer, "unpaid_fees_total" bigint)
+CREATE OR REPLACE FUNCTION "public"."get_dashboard_stats"("p_community_id" "uuid") RETURNS TABLE("upcoming_events_count" integer, "total_upcoming_participants" integer, "unpaid_fees_total" bigint)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
@@ -809,8 +826,7 @@ DECLARE
 BEGIN
   v_user_id := auth.uid();
 
-  -- 未ログイン時はゼロを返す
-  IF v_user_id IS NULL THEN
+  IF v_user_id IS NULL OR p_community_id IS NULL OR NOT public.is_community_owner(p_community_id) THEN
     RETURN QUERY SELECT 0, 0, 0::bigint;
     RETURN;
   END IF;
@@ -822,26 +838,28 @@ BEGIN
     COALESCE(SUM(
       CASE
         WHEN a.id IS NOT NULL AND e.fee > 0 AND NOT EXISTS (
-          SELECT 1 FROM payments p
+          SELECT 1 FROM public.payments p
           WHERE p.attendance_id = a.id
-          AND p.status IN ('paid', 'received')
+            AND p.status IN ('paid', 'received')
         ) THEN e.fee
         ELSE 0
       END
     ), 0)::bigint
-  FROM events e
-  LEFT JOIN attendances a ON e.id = a.event_id AND a.status = 'attending'
-  WHERE e.created_by = v_user_id
+  FROM public.events e
+  LEFT JOIN public.attendances a
+    ON e.id = a.event_id
+   AND a.status = 'attending'
+  WHERE e.community_id = p_community_id
     AND e.date > now()
     AND e.canceled_at IS NULL;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."get_dashboard_stats"() OWNER TO "postgres";
+ALTER FUNCTION "public"."get_dashboard_stats"("p_community_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."get_dashboard_stats"() IS 'ユーザーのダッシュボード統計を取得する関数';
+COMMENT ON FUNCTION "public"."get_dashboard_stats"("p_community_id" "uuid") IS '現在選択中コミュニティのダッシュボード統計を取得する関数';
 
 
 
@@ -909,34 +927,45 @@ COMMENT ON FUNCTION "public"."get_min_payout_amount"() IS '最小送金金額（
 
 
 
-CREATE OR REPLACE FUNCTION "public"."get_recent_events"() RETURNS TABLE("id" "uuid", "title" "text", "date" timestamp with time zone, "fee" integer, "capacity" integer, "canceled_at" timestamp with time zone, "location" "text", "attendances_count" bigint)
-    LANGUAGE "sql" STABLE SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."get_recent_events"("p_community_id" "uuid") RETURNS TABLE("id" "uuid", "title" "text", "date" timestamp with time zone, "fee" integer, "capacity" integer, "canceled_at" timestamp with time zone, "location" "text", "attendances_count" bigint)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
+DECLARE
+  v_user_id uuid;
+BEGIN
+  v_user_id := auth.uid();
+
+  IF v_user_id IS NULL OR p_community_id IS NULL OR NOT public.is_community_owner(p_community_id) THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
   SELECT
     e.id,
-    e.title,
+    e.title::text,
     e.date,
     e.fee,
     e.capacity,
     e.canceled_at,
-    e.location,
+    e.location::text,
     COUNT(a.id)::bigint AS attendances_count
-  FROM events e
-  LEFT JOIN attendances a
+  FROM public.events e
+  LEFT JOIN public.attendances a
     ON e.id = a.event_id
    AND a.status = 'attending'
-  WHERE e.created_by = auth.uid()
+  WHERE e.community_id = p_community_id
   GROUP BY e.id
   ORDER BY e.date DESC, e.id DESC
   LIMIT 5;
+END;
 $$;
 
 
-ALTER FUNCTION "public"."get_recent_events"() OWNER TO "postgres";
+ALTER FUNCTION "public"."get_recent_events"("p_community_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."get_recent_events"() IS 'ユーザーの最近のイベント一覧を参加予定人数付きで取得する関数';
+COMMENT ON FUNCTION "public"."get_recent_events"("p_community_id" "uuid") IS '現在選択中コミュニティの最近のイベント一覧を参加予定人数付きで取得する関数';
 
 
 
@@ -3457,6 +3486,10 @@ CREATE OR REPLACE TRIGGER "trg_enforce_community_mvp_invariants" BEFORE INSERT O
 
 
 
+CREATE OR REPLACE TRIGGER "trg_enforce_event_mvp_invariants" BEFORE UPDATE ON "public"."events" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_event_mvp_invariants"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_enforce_payout_profile_mvp_invariants" BEFORE INSERT OR UPDATE ON "public"."payout_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_payout_profile_mvp_invariants"();
 
 
@@ -3599,7 +3632,7 @@ CREATE POLICY "Creators can delete own events" ON "public"."events" FOR DELETE T
 
 
 
-CREATE POLICY "Creators can insert own events" ON "public"."events" FOR INSERT TO "authenticated" WITH CHECK ("public"."is_community_owner"("community_id"));
+CREATE POLICY "Creators can insert own events" ON "public"."events" FOR INSERT TO "authenticated" WITH CHECK (("public"."is_community_owner"("community_id") AND (( SELECT "auth"."uid"() AS "uid") = "created_by")));
 
 
 
@@ -4019,6 +4052,11 @@ GRANT ALL ON FUNCTION "public"."enforce_community_mvp_invariants"() TO "service_
 
 
 
+GRANT ALL ON FUNCTION "public"."enforce_event_mvp_invariants"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."enforce_event_mvp_invariants"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."enforce_payout_profile_mvp_invariants"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."enforce_payout_profile_mvp_invariants"() TO "service_role";
 
@@ -4030,8 +4068,8 @@ GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uu
 
 
 
-GRANT ALL ON FUNCTION "public"."get_dashboard_stats"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_dashboard_stats"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_dashboard_stats"("p_community_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_dashboard_stats"("p_community_id" "uuid") TO "service_role";
 
 
 
@@ -4056,8 +4094,8 @@ GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_recent_events"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_recent_events"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_recent_events"("p_community_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_recent_events"("p_community_id" "uuid") TO "service_role";
 
 
 

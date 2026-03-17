@@ -1,4 +1,4 @@
-import React, { Suspense } from "react";
+import React from "react";
 
 import Link from "next/link";
 
@@ -6,26 +6,30 @@ import { Plus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
+import { requireNonEmptyCommunityWorkspaceForServerComponent } from "@core/community/app-workspace";
 import {
   DEFAULT_SORT_BY,
   DEFAULT_SORT_ORDER,
   DEFAULT_STATUS_FILTER,
   DEFAULT_PAYMENT_FILTER,
 } from "@core/constants/event-filters";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import type { SortBy, SortOrder, StatusFilter, PaymentFilter } from "@core/types/event-query";
 
-import { EventListWithFilters, EventLoading } from "@features/events";
+import { EventListWithFilters } from "@features/events";
+import { listEventsForCommunity } from "@features/events/server";
 
 import { InlineErrorCard } from "@/components/errors/ui/ErrorCard";
 import { Button } from "@/components/ui/button";
-
-import { getEventsAction } from "./actions";
 
 interface EventsContentProps {
   searchParams: { [key: string]: string | string[] | undefined };
 }
 
-async function EventsContent({ searchParams }: EventsContentProps) {
+async function getEventsPageResult({
+  currentCommunityId,
+  searchParams,
+}: EventsContentProps & { currentCommunityId: string }) {
   // URLパラメータから検索・ソート条件を抽出
   const sortBy =
     ((Array.isArray(searchParams.sortBy)
@@ -65,7 +69,8 @@ async function EventsContent({ searchParams }: EventsContentProps) {
     10
   );
 
-  const result = await getEventsAction({
+  const supabase = await createServerComponentSupabaseClient();
+  const result = await listEventsForCommunity(supabase, currentCommunityId, {
     limit,
     offset: (page - 1) * limit,
     sortBy,
@@ -78,38 +83,7 @@ async function EventsContent({ searchParams }: EventsContentProps) {
     },
   });
 
-  if (!result.success) {
-    const isUnauthorized = result.error.code === "UNAUTHORIZED";
-
-    return (
-      <InlineErrorCard
-        code={result.error.code}
-        category={isUnauthorized ? "auth" : "business"}
-        severity="medium"
-        title={isUnauthorized ? "認証エラー" : "イベントの読み込みエラー"}
-        message={result.error.userMessage}
-        description={
-          isUnauthorized
-            ? "セッション情報を確認できませんでした。時間をおいて再度お試しください。"
-            : "イベント一覧の取得に失敗しました。ページを再読み込みしてください。"
-        }
-        showRetry={true}
-        compact={false}
-      />
-    );
-  }
-
-  return (
-    <EventListWithFilters
-      events={result.data?.items ?? []}
-      totalCount={result.data?.totalCount ?? 0}
-      initialSortBy={sortBy}
-      initialSortOrder={sortOrder}
-      initialStatusFilter={statusFilter}
-      initialPaymentFilter={paymentFilter}
-      initialDateFilter={{ start: dateStart, end: dateEnd }}
-    />
-  );
+  return { result, sortBy, sortOrder, statusFilter, paymentFilter, dateStart, dateEnd };
 }
 
 interface EventsPageProps {
@@ -117,15 +91,33 @@ interface EventsPageProps {
 }
 
 export default async function EventsPage(props: EventsPageProps) {
+  const workspace = await requireNonEmptyCommunityWorkspaceForServerComponent();
   const searchParams = await props.searchParams;
+  const currentCommunity = workspace.currentCommunity;
+
+  if (!currentCommunity) {
+    return null;
+  }
+
+  const { result, sortBy, sortOrder, statusFilter, paymentFilter, dateStart, dateEnd } =
+    await getEventsPageResult({
+      currentCommunityId: currentCommunity.id,
+      searchParams,
+    });
+
   return (
     <div data-testid="events-page-container" className="container mx-auto max-w-7xl">
       {/* ヘッダー - コンパクト化 */}
       <div data-testid="events-page-header" className="mb-4 border-b border-border/40 pb-3">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            イベント一覧
-          </h1>
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+              イベント一覧
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {currentCommunity.name} に属するイベントを表示しています
+            </p>
+          </div>
           <Button
             asChild
             size="sm"
@@ -141,9 +133,32 @@ export default async function EventsPage(props: EventsPageProps) {
         </div>
       </div>
 
-      <Suspense fallback={<EventLoading />}>
-        <EventsContent searchParams={searchParams} />
-      </Suspense>
+      {result.success ? (
+        <EventListWithFilters
+          events={result.data?.items ?? []}
+          totalCount={result.data?.totalCount ?? 0}
+          initialSortBy={sortBy}
+          initialSortOrder={sortOrder}
+          initialStatusFilter={statusFilter}
+          initialPaymentFilter={paymentFilter}
+          initialDateFilter={{ start: dateStart, end: dateEnd }}
+        />
+      ) : (
+        <InlineErrorCard
+          code={result.error.code}
+          category={result.error.code === "UNAUTHORIZED" ? "auth" : "business"}
+          severity="medium"
+          title={result.error.code === "UNAUTHORIZED" ? "認証エラー" : "イベントの読み込みエラー"}
+          message={result.error.userMessage}
+          description={
+            result.error.code === "UNAUTHORIZED"
+              ? "セッション情報を確認できませんでした。時間をおいて再度お試しください。"
+              : "イベント一覧の取得に失敗しました。ページを再読み込みしてください。"
+          }
+          showRetry={true}
+          compact={false}
+        />
+      )}
     </div>
   );
 }

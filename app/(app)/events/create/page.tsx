@@ -1,11 +1,15 @@
 export const dynamic = "force-dynamic";
 
+import { requireNonEmptyCommunityWorkspaceForServerComponent } from "@core/community/app-workspace";
+
 import { SinglePageEventForm } from "@features/events";
 import { getDetailedAccountStatusAction } from "@features/stripe-connect/server";
 
 import { createEventAction } from "./actions";
 
 export default async function CreateEventPage() {
+  await requireNonEmptyCommunityWorkspaceForServerComponent();
+
   // Stripe Connectの詳細状態を取得し、オンライン決済可否を決定
   const detailedStatus = await getDetailedAccountStatusAction();
 

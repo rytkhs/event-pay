@@ -5,6 +5,16 @@ import { generateInviteToken } from "@core/utils/invite-token";
 import type { Database } from "@/types/database";
 
 type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
+type CommunityInsert = Database["public"]["Tables"]["communities"]["Insert"];
+
+type OwnedCommunityFixture = {
+  community: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  payoutProfileId: string | null;
+};
 
 type CommunityOwnedEventFixture = {
   communityId: string;
@@ -36,54 +46,54 @@ type CreateCommunityOwnedEventOptions = {
   chargesEnabled?: boolean;
 };
 
-export async function createCommunityOwnedEventFixture(
+type CreateOwnedCommunityOptions = {
+  name?: string;
+  description?: string;
+  slug?: string;
+  withPayoutProfile?: boolean;
+  payoutProfileStatus?: string;
+  payoutsEnabled?: boolean;
+  chargesEnabled?: boolean;
+};
+
+export async function createOwnedCommunityFixture(
   createdBy: string,
-  options: CreateCommunityOwnedEventOptions = {}
-): Promise<CommunityOwnedEventFixture> {
+  options: CreateOwnedCommunityOptions = {}
+): Promise<OwnedCommunityFixture> {
   const adminClient = await createAuditedAdminClient(
     AdminReason.TEST_DATA_SETUP,
-    "Creating community-owned event fixture",
+    "Creating owned community fixture",
     {
       operationType: "INSERT",
-      accessedTables: ["public.communities", "public.payout_profiles", "public.events"],
+      accessedTables: ["public.communities", "public.payout_profiles"],
       additionalInfo: {
-        testContext: "community-owner-fixture",
+        testContext: "owned-community-fixture",
         createdBy,
       },
     }
   );
 
-  const futureDate = new Date(Date.now() + 60 * 60 * 1000);
-  const futureDateString = futureDate.toISOString();
-  const defaultRegistrationDeadline = new Date(futureDate.getTime() - 30 * 60 * 1000).toISOString();
-
   const {
-    title = "community owner fixture event",
-    date = futureDateString,
-    fee = 0,
-    capacity = null,
-    payment_methods = fee > 0 ? ["stripe"] : [],
-    location = "fixture hall",
+    name = `fixture-community-${Date.now()}`,
     description = "community owner fixture",
-    registration_deadline = defaultRegistrationDeadline,
-    payment_deadline = null,
-    canceled_at = null,
+    slug = `fixture-community-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
     withPayoutProfile = true,
-    attachPayoutProfileToEvent = withPayoutProfile,
     payoutProfileStatus = "verified",
     payoutsEnabled = true,
     chargesEnabled = true,
   } = options;
 
+  const communityInsert: CommunityInsert = {
+    created_by: createdBy,
+    name,
+    slug,
+    description,
+  };
+
   const { data: community, error: communityError } = await adminClient
     .from("communities")
-    .insert({
-      created_by: createdBy,
-      name: `fixture-community-${Date.now()}`,
-      slug: `fixture-community-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
-      description: "community owner fixture",
-    })
-    .select("id")
+    .insert(communityInsert)
+    .select("id, name, slug")
     .single();
 
   if (communityError || !community) {
@@ -158,6 +168,58 @@ export async function createCommunityOwnedEventFixture(
       );
     }
   }
+
+  return {
+    community,
+    payoutProfileId,
+  };
+}
+
+export async function createCommunityOwnedEventFixture(
+  createdBy: string,
+  options: CreateCommunityOwnedEventOptions = {}
+): Promise<CommunityOwnedEventFixture> {
+  const adminClient = await createAuditedAdminClient(
+    AdminReason.TEST_DATA_SETUP,
+    "Creating community-owned event fixture",
+    {
+      operationType: "INSERT",
+      accessedTables: ["public.communities", "public.payout_profiles", "public.events"],
+      additionalInfo: {
+        testContext: "community-owner-fixture",
+        createdBy,
+      },
+    }
+  );
+
+  const futureDate = new Date(Date.now() + 60 * 60 * 1000);
+  const futureDateString = futureDate.toISOString();
+  const defaultRegistrationDeadline = new Date(futureDate.getTime() - 30 * 60 * 1000).toISOString();
+
+  const {
+    title = "community owner fixture event",
+    date = futureDateString,
+    fee = 0,
+    capacity = null,
+    payment_methods = fee > 0 ? ["stripe"] : [],
+    location = "fixture hall",
+    description = "community owner fixture",
+    registration_deadline = defaultRegistrationDeadline,
+    payment_deadline = null,
+    canceled_at = null,
+    withPayoutProfile = true,
+    attachPayoutProfileToEvent = withPayoutProfile,
+    payoutProfileStatus = "verified",
+    payoutsEnabled = true,
+    chargesEnabled = true,
+  } = options;
+
+  const { community, payoutProfileId } = await createOwnedCommunityFixture(createdBy, {
+    withPayoutProfile,
+    payoutProfileStatus,
+    payoutsEnabled,
+    chargesEnabled,
+  });
 
   const eventData: EventInsert = {
     title,
