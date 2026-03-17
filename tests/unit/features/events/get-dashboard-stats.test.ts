@@ -1,6 +1,6 @@
 const mockGetCurrentUserForServerAction = jest.fn();
 const mockResolveCurrentCommunityForServerAction = jest.fn();
-const mockCreateServerComponentSupabaseClient = jest.fn();
+const mockCreateServerActionSupabaseClient = jest.fn();
 
 jest.mock("@core/auth/auth-utils", () => ({
   getCurrentUserForServerAction: mockGetCurrentUserForServerAction,
@@ -11,7 +11,7 @@ jest.mock("@core/community/current-community", () => ({
 }));
 
 jest.mock("@core/supabase/factory", () => ({
-  createServerComponentSupabaseClient: mockCreateServerComponentSupabaseClient,
+  createServerActionSupabaseClient: mockCreateServerActionSupabaseClient,
 }));
 
 type DashboardActionsModule = typeof import("@features/events/actions/get-dashboard-stats");
@@ -53,7 +53,7 @@ describe("features/events/actions/get-dashboard-stats", () => {
     );
 
     expect(mockResolveCurrentCommunityForServerAction).not.toHaveBeenCalled();
-    expect(mockCreateServerComponentSupabaseClient).not.toHaveBeenCalled();
+    expect(mockCreateServerActionSupabaseClient).not.toHaveBeenCalled();
   });
 
   it("current community 未選択なら getDashboardStatsAction は 0 埋めで返す", async () => {
@@ -77,7 +77,7 @@ describe("features/events/actions/get-dashboard-stats", () => {
       needsVerification: undefined,
     });
 
-    expect(mockCreateServerComponentSupabaseClient).not.toHaveBeenCalled();
+    expect(mockCreateServerActionSupabaseClient).not.toHaveBeenCalled();
   });
 
   it("current community 未選択なら getRecentEventsAction は空配列を返す", async () => {
@@ -96,7 +96,7 @@ describe("features/events/actions/get-dashboard-stats", () => {
       needsVerification: undefined,
     });
 
-    expect(mockCreateServerComponentSupabaseClient).not.toHaveBeenCalled();
+    expect(mockCreateServerActionSupabaseClient).not.toHaveBeenCalled();
   });
 
   it("getDashboardStatsAction は current community を RPC に渡す", async () => {
@@ -117,7 +117,7 @@ describe("features/events/actions/get-dashboard-stats", () => {
         id: "community-1",
       },
     });
-    mockCreateServerComponentSupabaseClient.mockResolvedValue({ rpc });
+    mockCreateServerActionSupabaseClient.mockResolvedValue({ rpc });
 
     const { getDashboardStatsAction } = await loadDashboardActionsModule();
     const result = await getDashboardStatsAction();
@@ -160,7 +160,7 @@ describe("features/events/actions/get-dashboard-stats", () => {
         id: "community-2",
       },
     });
-    mockCreateServerComponentSupabaseClient.mockResolvedValue({ rpc });
+    mockCreateServerActionSupabaseClient.mockResolvedValue({ rpc });
 
     const { getRecentEventsAction } = await loadDashboardActionsModule();
     const result = await getRecentEventsAction();

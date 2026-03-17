@@ -5,7 +5,7 @@ import {
   type ActionResult,
   fail,
 } from "@core/errors/adapters/server-actions";
-import { createServerComponentSupabaseClient } from "@core/supabase/factory";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 
 import {
   listEventsForCommunity,
@@ -42,7 +42,7 @@ export async function getEventsAction(
       });
     }
 
-    const supabase = await createServerComponentSupabaseClient();
+    const supabase = await createServerActionSupabaseClient();
     const result = await listEventsForCommunity(
       supabase,
       currentCommunityResolution.currentCommunity.id,
