@@ -973,7 +973,7 @@ export type Database = {
         }[];
       };
       get_dashboard_stats: {
-        Args: never;
+        Args: { p_community_id: string };
         Returns: {
           total_upcoming_participants: number;
           unpaid_fees_total: number;
@@ -987,7 +987,7 @@ export type Database = {
       get_guest_token: { Args: never; Returns: string };
       get_min_payout_amount: { Args: never; Returns: number };
       get_recent_events: {
-        Args: never;
+        Args: { p_community_id: string };
         Returns: {
           attendances_count: number;
           canceled_at: string;

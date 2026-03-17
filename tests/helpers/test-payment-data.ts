@@ -910,11 +910,18 @@ export async function createEventForDashboardStats(
     date: string;
     fee: number;
     canceled_at?: string | null;
+    communityId?: string;
+    payoutProfileId?: string | null;
   }
 ): Promise<Database["public"]["Tables"]["events"]["Row"]> {
   const eventDate = new Date(options.date);
   const registrationDeadline = new Date(eventDate.getTime() - 12 * 60 * 60 * 1000);
   const paymentDeadline = new Date(eventDate.getTime() - 6 * 60 * 60 * 1000);
+  const communityId = options.communityId || (adminClient as any)._test_community_id;
+
+  if (!communityId) {
+    throw new Error("communityId is required for dashboard stats event fixtures");
+  }
 
   const { data: event, error } = await adminClient
     .from("events")
@@ -928,6 +935,11 @@ export async function createEventForDashboardStats(
       payment_methods: options.fee > 0 ? ["stripe"] : [],
       canceled_at: options.canceled_at || null,
       invite_token: `test-token-${Date.now()}-${Math.random()}`,
+      community_id: communityId,
+      payout_profile_id:
+        options.fee > 0
+          ? (options.payoutProfileId ?? (adminClient as any)._test_payout_profile_id ?? null)
+          : null,
     })
     .select()
     .single();
@@ -997,7 +1009,8 @@ export async function createPaymentForDashboardStats(
   createdPaymentIds: string[],
   amount: number,
   status: "paid" | "received" | "pending" | "failed",
-  method: "stripe" | "cash"
+  method: "stripe" | "cash",
+  payoutProfileId?: string | null
 ): Promise<Database["public"]["Tables"]["payments"]["Row"]> {
   // statusが"paid"または"received"の場合はpaid_atを設定
   const paidAt = ["paid", "received"].includes(status) ? new Date().toISOString() : null;
@@ -1005,6 +1018,14 @@ export async function createPaymentForDashboardStats(
   // Stripe決済の場合はstripe_payment_intent_idが必須
   const stripePaymentIntentId =
     method === "stripe" ? `pi_test_${Math.random().toString(36).substring(2, 15)}` : null;
+  const resolvedPayoutProfileId =
+    method === "stripe"
+      ? (payoutProfileId ?? (adminClient as any)._test_payout_profile_id ?? null)
+      : null;
+
+  if (method === "stripe" && !resolvedPayoutProfileId) {
+    throw new Error("payoutProfileId is required for stripe dashboard payment fixtures");
+  }
 
   const { data: payment, error } = await adminClient
     .from("payments")
@@ -1015,7 +1036,7 @@ export async function createPaymentForDashboardStats(
       method: method,
       paid_at: paidAt,
       stripe_payment_intent_id: stripePaymentIntentId,
-      payout_profile_id: (adminClient as any)._test_payout_profile_id, // Hack for simple helper if needed, but better to be explicit
+      payout_profile_id: resolvedPayoutProfileId,
     })
     .select()
     .single();
