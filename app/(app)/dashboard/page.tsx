@@ -40,7 +40,13 @@ export default async function DashboardPage() {
     );
   }
 
-  const dashboardDataResource = createDashboardDataResource();
+  const currentCommunity = workspace.currentCommunity;
+
+  if (!currentCommunity) {
+    return null;
+  }
+
+  const dashboardDataResource = createDashboardDataResource(currentCommunity.id);
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -50,7 +56,7 @@ export default async function DashboardPage() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">ダッシュボード</h1>
             <p className="text-muted-foreground text-sm sm:text-base">
-              イベント管理の概要を確認できます
+              {currentCommunity.name} の運営状況を確認できます
             </p>
           </div>
           <Button asChild size="default" className="hidden sm:flex w-fit items-center gap-2">

@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { StripeConnectAccountRow } from "@core/types/stripe-connect";
+import type { PayoutProfileRow } from "@core/types/payout-profile";
 import type { AppSupabaseClient } from "@core/types/supabase";
 
 import { fetchStripeBalanceByAccountId } from "../actions/get-balance";
@@ -12,13 +12,13 @@ import {
 } from "../constants/detailed-account-status";
 import type { DetailedAccountStatus } from "../types";
 
-type DashboardConnectAccountRow = Pick<
-  StripeConnectAccountRow,
+type DashboardPayoutProfileRow = Pick<
+  PayoutProfileRow,
   "status" | "payouts_enabled" | "stripe_account_id"
 >;
 
 export function resolveDashboardConnectCtaStatus(
-  account: DashboardConnectAccountRow | null
+  account: DashboardPayoutProfileRow | null
 ): DetailedAccountStatus | undefined {
   if (!account) {
     return NO_ACCOUNT_STATUS;
@@ -37,36 +37,52 @@ export function resolveDashboardConnectCtaStatus(
   }
 }
 
-async function getDashboardConnectAccount(
+async function getDashboardPayoutProfile(
   supabase: AppSupabaseClient,
-  userId: string
-): Promise<DashboardConnectAccountRow | null> {
+  communityId: string
+): Promise<DashboardPayoutProfileRow | null> {
   const { data, error } = await supabase
-    .from("stripe_connect_accounts")
-    .select("status, payouts_enabled, stripe_account_id")
-    .eq("user_id", userId)
-    .maybeSingle<DashboardConnectAccountRow>();
+    .from("communities")
+    .select("current_payout_profile_id")
+    .eq("id", communityId)
+    .maybeSingle<{ current_payout_profile_id: string | null }>();
 
   if (error) {
     throw error;
   }
 
-  return data;
+  const payoutProfileId = data?.current_payout_profile_id ?? null;
+
+  if (!payoutProfileId) {
+    return null;
+  }
+
+  const { data: payoutProfile, error: payoutProfileError } = await supabase
+    .from("payout_profiles")
+    .select("status, payouts_enabled, stripe_account_id")
+    .eq("id", payoutProfileId)
+    .maybeSingle<DashboardPayoutProfileRow>();
+
+  if (payoutProfileError) {
+    throw payoutProfileError;
+  }
+
+  return payoutProfile;
 }
 
 export async function getDashboardConnectCtaStatus(
   supabase: AppSupabaseClient,
-  userId: string
+  communityId: string
 ): Promise<DetailedAccountStatus | undefined> {
-  const account = await getDashboardConnectAccount(supabase, userId);
+  const account = await getDashboardPayoutProfile(supabase, communityId);
   return resolveDashboardConnectCtaStatus(account);
 }
 
 export async function getDashboardConnectBalance(
   supabase: AppSupabaseClient,
-  userId: string
+  communityId: string
 ): Promise<number | null> {
-  const account = await getDashboardConnectAccount(supabase, userId);
+  const account = await getDashboardPayoutProfile(supabase, communityId);
 
   if (!account) {
     return null;

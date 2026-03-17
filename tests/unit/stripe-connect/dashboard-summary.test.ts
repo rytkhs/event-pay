@@ -9,20 +9,55 @@ jest.mock("@features/stripe-connect/actions/get-balance", () => ({
   fetchStripeBalanceByAccountId: jest.fn(),
 }));
 
-function createSupabaseMock(result: { data: unknown; error: unknown }) {
-  const maybeSingle = jest.fn().mockResolvedValue(result);
-  const eq = jest.fn().mockReturnValue({ maybeSingle });
-  const select = jest.fn().mockReturnValue({ eq });
-  const from = jest.fn().mockReturnValue({ select });
+function createSupabaseMock(result: {
+  data: unknown;
+  error: unknown;
+  community?: { data: unknown; error: unknown };
+  payoutProfile?: { data: unknown; error: unknown };
+}) {
+  const communityMaybeSingle = jest.fn().mockResolvedValue(
+    "community" in result
+      ? result.community
+      : {
+          data: { current_payout_profile_id: "profile-1" },
+          error: null,
+        }
+  );
+  const payoutProfileMaybeSingle = jest.fn().mockResolvedValue(
+    "payoutProfile" in result
+      ? result.payoutProfile
+      : {
+          data: result.data,
+          error: result.error,
+        }
+  );
+  const communityEq = jest.fn().mockReturnValue({ maybeSingle: communityMaybeSingle });
+  const payoutProfileEq = jest.fn().mockReturnValue({ maybeSingle: payoutProfileMaybeSingle });
+  const communitySelect = jest.fn().mockReturnValue({ eq: communityEq });
+  const payoutProfileSelect = jest.fn().mockReturnValue({ eq: payoutProfileEq });
+  const from = jest.fn((table: string) => {
+    if (table === "communities") {
+      return { select: communitySelect };
+    }
+
+    if (table === "payout_profiles") {
+      return { select: payoutProfileSelect };
+    }
+
+    throw new Error(`Unexpected table: ${table}`);
+  });
 
   return {
     supabase: {
       from,
     },
     from,
-    select,
-    eq,
-    maybeSingle,
+    communitySelect,
+    payoutProfileSelect,
+    communityEq,
+    payoutProfileEq,
+    communityMaybeSingle,
+    payoutProfileMaybeSingle,
   };
 }
 
@@ -34,17 +69,21 @@ describe("dashboard stripe summary", () => {
   });
 
   it("returns no-account CTA and skips balance lookup when no connect account exists", async () => {
-    const { supabase, from, select, eq } = createSupabaseMock({
+    const { supabase, from, communitySelect, communityEq } = createSupabaseMock({
+      community: {
+        data: { current_payout_profile_id: null },
+        error: null,
+      },
       data: null,
       error: null,
     });
 
-    const ctaStatus = await getDashboardConnectCtaStatus(supabase as any, "user-1");
+    const ctaStatus = await getDashboardConnectCtaStatus(supabase as any, "community-1");
 
     expect(ctaStatus).toEqual(expect.objectContaining({ statusType: "no_account" }));
-    expect(from).toHaveBeenCalledWith("stripe_connect_accounts");
-    expect(select).toHaveBeenCalledWith("status, payouts_enabled, stripe_account_id");
-    expect(eq).toHaveBeenCalledWith("user_id", "user-1");
+    expect(from).toHaveBeenCalledWith("communities");
+    expect(communitySelect).toHaveBeenCalledWith("current_payout_profile_id");
+    expect(communityEq).toHaveBeenCalledWith("id", "community-1");
     expect(mockedFetchStripeBalanceByAccountId).not.toHaveBeenCalled();
   });
 
@@ -58,7 +97,7 @@ describe("dashboard stripe summary", () => {
       error: null,
     });
 
-    const ctaStatus = await getDashboardConnectCtaStatus(supabase as any, "user-2");
+    const ctaStatus = await getDashboardConnectCtaStatus(supabase as any, "community-2");
 
     expect(ctaStatus).toBeUndefined();
     expect(mockedFetchStripeBalanceByAccountId).not.toHaveBeenCalled();
@@ -74,7 +113,7 @@ describe("dashboard stripe summary", () => {
       error: null,
     });
 
-    const ctaStatus = await getDashboardConnectCtaStatus(supabase as any, "user-3");
+    const ctaStatus = await getDashboardConnectCtaStatus(supabase as any, "community-3");
 
     expect(ctaStatus).toEqual(
       expect.objectContaining({
@@ -87,11 +126,15 @@ describe("dashboard stripe summary", () => {
 
   it("returns null balance when no connect account exists", async () => {
     const { supabase } = createSupabaseMock({
+      community: {
+        data: { current_payout_profile_id: null },
+        error: null,
+      },
       data: null,
       error: null,
     });
 
-    const balance = await getDashboardConnectBalance(supabase as any, "user-4");
+    const balance = await getDashboardConnectBalance(supabase as any, "community-4");
 
     expect(balance).toBeNull();
     expect(mockedFetchStripeBalanceByAccountId).not.toHaveBeenCalled();
@@ -108,7 +151,7 @@ describe("dashboard stripe summary", () => {
       error: null,
     });
 
-    const balance = await getDashboardConnectBalance(supabase as any, "user-5");
+    const balance = await getDashboardConnectBalance(supabase as any, "community-5");
 
     expect(balance).toBe(4200);
     expect(mockedFetchStripeBalanceByAccountId).toHaveBeenCalledWith("acct_ready");
@@ -125,7 +168,7 @@ describe("dashboard stripe summary", () => {
       error: null,
     });
 
-    await expect(getDashboardConnectBalance(supabase as any, "user-6")).rejects.toThrow(
+    await expect(getDashboardConnectBalance(supabase as any, "community-6")).rejects.toThrow(
       "stripe down"
     );
   });

@@ -1,4 +1,3 @@
-import { requireCurrentUserForServerComponent } from "@core/auth/auth-utils";
 import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 
 import {
@@ -20,14 +19,15 @@ export type DashboardDataResource = {
   stripeCtaStatus: Promise<DetailedAccountStatus | undefined>;
 };
 
-export async function createDashboardDataResource(): Promise<DashboardDataResource> {
-  const user = await requireCurrentUserForServerComponent();
+export async function createDashboardDataResource(
+  currentCommunityId: string
+): Promise<DashboardDataResource> {
   const supabase = await createServerComponentSupabaseClient();
 
   return {
-    stats: fetchDashboardStats(supabase),
-    recentEvents: fetchRecentEvents(supabase),
-    stripeBalance: getDashboardConnectBalance(supabase, user.id),
-    stripeCtaStatus: getDashboardConnectCtaStatus(supabase, user.id),
+    stats: fetchDashboardStats(supabase, currentCommunityId),
+    recentEvents: fetchRecentEvents(supabase, currentCommunityId),
+    stripeBalance: getDashboardConnectBalance(supabase, currentCommunityId),
+    stripeCtaStatus: getDashboardConnectCtaStatus(supabase, currentCommunityId),
   };
 }
