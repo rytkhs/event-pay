@@ -1,6 +1,6 @@
 const mockGetCurrentUserForServerAction = jest.fn();
 const mockResolveCurrentCommunityForServerAction = jest.fn();
-const mockCreateServerComponentSupabaseClient = jest.fn();
+const mockCreateServerActionSupabaseClient = jest.fn();
 const mockListEventsForCommunity = jest.fn();
 
 jest.mock("@core/auth/auth-utils", () => ({
@@ -12,7 +12,7 @@ jest.mock("@core/community/current-community", () => ({
 }));
 
 jest.mock("@core/supabase/factory", () => ({
-  createServerComponentSupabaseClient: mockCreateServerComponentSupabaseClient,
+  createServerActionSupabaseClient: mockCreateServerActionSupabaseClient,
 }));
 
 jest.mock("@features/events/services/list-events", () => ({
@@ -81,7 +81,7 @@ describe("features/events/actions/get-events", () => {
       needsVerification: undefined,
     });
 
-    expect(mockCreateServerComponentSupabaseClient).not.toHaveBeenCalled();
+    expect(mockCreateServerActionSupabaseClient).not.toHaveBeenCalled();
     expect(mockListEventsForCommunity).not.toHaveBeenCalled();
   });
 
@@ -93,7 +93,7 @@ describe("features/events/actions/get-events", () => {
         id: "community-9",
       },
     });
-    mockCreateServerComponentSupabaseClient.mockResolvedValue(supabase);
+    mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
     mockListEventsForCommunity.mockResolvedValue({
       success: true,
       data: {

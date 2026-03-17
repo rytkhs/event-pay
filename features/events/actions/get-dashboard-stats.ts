@@ -1,7 +1,7 @@
 import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
 import { resolveCurrentCommunityForServerAction } from "@core/community/current-community";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
-import { createServerComponentSupabaseClient } from "@core/supabase/factory";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import type { EventRow } from "@core/types/event";
 import type { AppSupabaseClient } from "@core/types/supabase";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
@@ -78,7 +78,7 @@ export async function getDashboardStatsAction(): Promise<ActionResult<DashboardS
       });
     }
 
-    const supabase = await createServerComponentSupabaseClient();
+    const supabase = await createServerActionSupabaseClient();
     return ok(await fetchDashboardStats(supabase, currentCommunityResolution.currentCommunity.id));
   } catch (error) {
     return fail("INTERNAL_ERROR", {
@@ -131,7 +131,7 @@ export async function getRecentEventsAction(): Promise<ActionResult<RecentEvent[
       return ok([]);
     }
 
-    const supabase = await createServerComponentSupabaseClient();
+    const supabase = await createServerActionSupabaseClient();
     return ok(await fetchRecentEvents(supabase, currentCommunityResolution.currentCommunity.id));
   } catch (error) {
     return fail("INTERNAL_ERROR", {
