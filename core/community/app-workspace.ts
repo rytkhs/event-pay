@@ -1,5 +1,7 @@
 import { cache } from "react";
 
+import { redirect } from "next/navigation";
+
 import {
   requireCurrentAppUserForServerComponent,
   type CurrentAppUser,
@@ -53,6 +55,16 @@ const getCachedAppWorkspaceForServerComponent = cache(async (): Promise<AppWorks
 
 export async function resolveAppWorkspaceForServerComponent(): Promise<AppWorkspaceContext> {
   return await getCachedAppWorkspaceForServerComponent();
+}
+
+export async function requireNonEmptyCommunityWorkspaceForServerComponent(): Promise<AppWorkspaceContext> {
+  const workspace = await resolveAppWorkspaceForServerComponent();
+
+  if (workspace.isCommunityEmptyState) {
+    redirect("/dashboard");
+  }
+
+  return workspace;
 }
 
 export function toAppWorkspaceShellData(
