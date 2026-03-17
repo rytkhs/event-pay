@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
+import { requireNonEmptyCommunityWorkspaceForServerComponent } from "@core/community/app-workspace";
 import {
   DEFAULT_SORT_BY,
   DEFAULT_SORT_ORDER,
@@ -117,6 +118,7 @@ interface EventsPageProps {
 }
 
 export default async function EventsPage(props: EventsPageProps) {
+  await requireNonEmptyCommunityWorkspaceForServerComponent();
   const searchParams = await props.searchParams;
   return (
     <div data-testid="events-page-container" className="container mx-auto max-w-7xl">

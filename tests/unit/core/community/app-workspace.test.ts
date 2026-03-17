@@ -2,9 +2,16 @@ import { jest } from "@jest/globals";
 
 const requireCurrentAppUserForServerComponent = jest.fn();
 const resolveCurrentCommunityForServerComponent = jest.fn();
+const redirect = jest.fn((path: string) => {
+  throw new Error(`NEXT_REDIRECT:${path}`);
+});
 
 jest.mock("@core/auth/auth-utils", () => ({
   requireCurrentAppUserForServerComponent,
+}));
+
+jest.mock("next/navigation", () => ({
+  redirect,
 }));
 
 jest.mock("@core/community/current-community", () => ({
@@ -136,5 +143,66 @@ describe("core/community/app-workspace", () => {
       isCommunityEmptyState: true,
     });
     expect(shell).not.toHaveProperty("currentCommunityResolution");
+  });
+
+  it("requireNonEmptyCommunityWorkspaceForServerComponent は空状態なら /dashboard に redirect する", async () => {
+    requireCurrentAppUserForServerComponent.mockResolvedValue({
+      id: "user-2",
+      email: "empty@example.com",
+      name: "empty@example.com",
+    });
+    resolveCurrentCommunityForServerComponent.mockResolvedValue({
+      currentCommunity: null,
+      ownedCommunities: [],
+      requestedCommunityId: null,
+      cookieMutation: "clear",
+      resolvedBy: "empty",
+    });
+
+    const { requireNonEmptyCommunityWorkspaceForServerComponent } = await loadAppWorkspaceModule();
+
+    await expect(requireNonEmptyCommunityWorkspaceForServerComponent()).rejects.toThrow(
+      "NEXT_REDIRECT:/dashboard"
+    );
+    expect(redirect).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("requireNonEmptyCommunityWorkspaceForServerComponent は community があれば workspace を返す", async () => {
+    requireCurrentAppUserForServerComponent.mockResolvedValue({
+      id: "user-1",
+      email: "owner@example.com",
+      name: "集金 太郎",
+    });
+    resolveCurrentCommunityForServerComponent.mockResolvedValue({
+      currentCommunity: {
+        id: "community-1",
+        name: "ボドゲ会",
+        slug: "board-games",
+        createdAt: "2026-03-01T00:00:00.000Z",
+      },
+      ownedCommunities: [
+        {
+          id: "community-1",
+          name: "ボドゲ会",
+          slug: "board-games",
+          createdAt: "2026-03-01T00:00:00.000Z",
+        },
+      ],
+      requestedCommunityId: "community-1",
+      cookieMutation: "none",
+      resolvedBy: "cookie",
+    });
+
+    const { requireNonEmptyCommunityWorkspaceForServerComponent } = await loadAppWorkspaceModule();
+
+    await expect(requireNonEmptyCommunityWorkspaceForServerComponent()).resolves.toMatchObject({
+      currentCommunity: {
+        id: "community-1",
+        name: "ボドゲ会",
+      },
+      hasOwnedCommunities: true,
+      isCommunityEmptyState: false,
+    });
+    expect(redirect).not.toHaveBeenCalled();
   });
 });
