@@ -22,7 +22,8 @@ export function generateRandomBytes(length: number): Uint8Array {
  */
 export function toBase64UrlSafe(bytes: Uint8Array): string {
   // Base64エンコード
-  const base64 = btoa(String.fromCharCode(...bytes));
+  const binString = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
+  const base64 = btoa(binString);
 
   // URL安全な形式に変換
   return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
@@ -46,21 +47,11 @@ export async function hashToken(token: string): Promise<string> {
  * @returns UUID v4文字列
  */
 export function generateSecureUuid(): string {
-  const bytes = generateRandomBytes(16);
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
 
-  // バージョン4を設定
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  // バリアント2を設定
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-
-  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-  return [
-    hex.substring(0, 8),
-    hex.substring(8, 12),
-    hex.substring(12, 16),
-    hex.substring(16, 20),
-    hex.substring(20, 32),
-  ].join("-");
+  throw new Error("No secure random number generator available");
 }
 
 /**
