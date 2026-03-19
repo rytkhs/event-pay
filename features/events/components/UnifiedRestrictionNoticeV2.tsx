@@ -229,11 +229,11 @@ function CombinedRestrictionsValidation({
 
   const totalCount = sections.reduce((acc, sec) => acc + sec.restrictions.length, 0);
 
-  // 初期状態: structuralまたはconditionalがある場合は開く
+  // 初期状態: 常に閉じた状態
   const hasBlockingIssues = sections.some(
     (s) => s.level === "structural" || s.level === "conditional"
   );
-  const [isOpen, setIsOpen] = useState(hasBlockingIssues);
+  const [isOpen, setIsOpen] = useState(false);
 
   const headerConfig = LEVEL_CONFIG[worstLevel];
 
