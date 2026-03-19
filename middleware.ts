@@ -9,6 +9,7 @@ import { buildCsp } from "@core/security/csp";
 import { createMiddlewareSupabaseClient } from "@core/supabase/middleware-client";
 
 const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
+const PROTECTED_PATH_PREFIXES = ["/dashboard", "/events", "/settings"] as const;
 
 function getDemoAction(pathname: string): "redirect" | "allow" | "block" {
   if (DEMO_REDIRECT_PATHS.includes(pathname)) return "redirect";
@@ -22,6 +23,12 @@ function isAuthPath(pathname: string): boolean {
   return false;
 }
 
+function isProtectedPath(pathname: string): boolean {
+  return PROTECTED_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
 function isStaticPage(pathname: string): boolean {
   // SSGされた静的ページのリスト
   const staticPages = [
@@ -32,40 +39,6 @@ function isStaticPage(pathname: string): boolean {
     "/contact", // お問い合わせ
   ];
   return staticPages.includes(pathname);
-}
-
-function isPublicPath(pathname: string): boolean {
-  // 明示的な公開ページ。その他はデフォルトで保護扱い
-  const publicExact = [
-    "/",
-    "/start-demo",
-    "/login",
-    "/register",
-    "/reset-password",
-    "/verify-otp",
-    "/verify-email",
-    "/reset-password/update",
-    "/confirm",
-    "/contact",
-    "/terms",
-    "/privacy",
-    "/tokushoho",
-    "/debug",
-    "/auth/callback",
-    "/auth/callback/line",
-    "/auth/line",
-    "/auth/auth-code-error",
-    "/demo-redirect",
-  ];
-  if (publicExact.includes(pathname)) return true;
-  const publicPrefixes = [
-    "/guest/",
-    "/invite/",
-    "/auth/reset-password/",
-    "/tokushoho/",
-    "/reset-password/",
-  ];
-  return publicPrefixes.some((p) => pathname.startsWith(p));
 }
 
 /**
@@ -161,7 +134,7 @@ export async function middleware(request: NextRequest) {
 
   // 3. ページタイプ判定
   const isStatic = isStaticPage(pathname);
-  const isPublic = isPublicPath(pathname);
+  const isProtected = isProtectedPath(pathname);
 
   // 4. nonce生成（動的ページのみ）
   const nonce = isStatic ? null : generateNonce(requestId);
@@ -196,8 +169,9 @@ export async function middleware(request: NextRequest) {
   // ログイン済みユーザーをダッシュボードへリダイレクトするため、認証チェックが必要
   const isAuth = isAuthPath(pathname);
 
-  // 8. 公開ページかつ認証ページでない場合は早期リターン（Supabase認証スキップ）
-  if (isPublic && !isAuth) {
+  // 8. 認証判定が不要なページは早期リターン
+  // 未定義URLも Next.js の route resolution/not-found に委ねる。
+  if (!isProtected && !isAuth) {
     return response;
   }
 
@@ -245,8 +219,8 @@ export async function middleware(request: NextRequest) {
       return redirectResponse;
     }
 
-    // 公開ページの場合はそのまま表示
-    if (isPublic) {
+    // 認証ページは未ログインでも表示する
+    if (isAuth) {
       return response;
     }
 
