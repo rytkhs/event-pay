@@ -39,6 +39,15 @@ test.describe("認証ガード・セッション検証", () => {
     expect(url.searchParams.get("redirectTo")).toBe("/dashboard");
   });
 
+  test("未認証ユーザーが設定配下にアクセスするとloginにリダイレクトされる", async ({ page }) => {
+    await page.goto("/settings/profile");
+
+    await expect(page).toHaveURL(/\/login/);
+
+    const url = new URL(page.url());
+    expect(url.searchParams.get("redirectTo")).toBe("/settings/profile");
+  });
+
   test("未認証ユーザーが公開ページ（/）にはアクセスできる", async ({ page }) => {
     // トップページにアクセス
     await page.goto("/");
@@ -48,6 +57,30 @@ test.describe("認証ガード・セッション検証", () => {
 
     // ページが正常に表示されることを確認（例：ランディングページのタイトルなど）
     await expect(page.locator("body")).toBeVisible();
+  });
+
+  test("未認証ユーザーが存在しないURLにアクセスすると404になりloginへリダイレクトされない", async ({
+    page,
+  }) => {
+    const response = await page.goto("/does-not-exist");
+
+    expect(response).not.toBeNull();
+    expect(response?.status()).toBe(404);
+    await expect(page).toHaveURL("/does-not-exist");
+    await expect(page.getByText("ページが見つかりません")).toBeVisible();
+    await expect(page.locator('input[type="email"]')).toHaveCount(0);
+  });
+
+  test("未認証ユーザーが典型的な探索パスにアクセスすると404になりloginへリダイレクトされない", async ({
+    page,
+  }) => {
+    const response = await page.goto("/wp-admin/setup-config.php");
+
+    expect(response).not.toBeNull();
+    expect(response?.status()).toBe(404);
+    await expect(page).toHaveURL("/wp-admin/setup-config.php");
+    await expect(page.getByText("ページが見つかりません")).toBeVisible();
+    await expect(page.locator('input[type="email"]')).toHaveCount(0);
   });
 
   test("認証済みユーザーが/loginにアクセスすると/dashboardにリダイレクトされる", async ({
