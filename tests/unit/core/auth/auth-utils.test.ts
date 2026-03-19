@@ -1,7 +1,9 @@
 import { jest } from "@jest/globals";
+import { AuthSessionMissingError } from "@supabase/supabase-js";
 
 const mockCreateServerActionSupabaseClient = jest.fn();
 const mockCreateServerComponentSupabaseClient = jest.fn();
+const mockHeaders = jest.fn();
 const mockHandleServerError = jest.fn();
 const mockRedirect = jest.fn((path: string) => {
   throw new Error(`NEXT_REDIRECT:${path}`);
@@ -18,6 +20,10 @@ jest.mock("@core/utils/error-handler.server", () => ({
 
 jest.mock("next/navigation", () => ({
   redirect: mockRedirect,
+}));
+
+jest.mock("next/headers", () => ({
+  headers: mockHeaders,
 }));
 
 type AuthUtilsModule = typeof import("@core/auth/auth-utils");
@@ -83,6 +89,7 @@ async function loadAuthUtils(): Promise<AuthUtilsModule> {
 describe("core/auth/auth-utils", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockHeaders.mockResolvedValue(new Headers());
   });
 
   it("requireCurrentAppUserForServerComponent は profile の name を優先する", async () => {
@@ -136,31 +143,58 @@ describe("core/auth/auth-utils", () => {
     );
   });
 
-  it("セッション欠如時は requireCurrentUserForServerComponent が /login に redirect する", async () => {
+  it("セッション欠如時は requireCurrentUserForServerComponent が redirectTo 付きで /login に redirect する", async () => {
     const { client } = createLookupClient({
-      authError: new Error("Auth session missing!"),
+      authError: new AuthSessionMissingError(),
       user: null,
     });
     mockCreateServerComponentSupabaseClient.mockResolvedValue(client);
+    mockHeaders.mockResolvedValue(
+      new Headers({
+        "x-pathname": "/settings/profile",
+      })
+    );
+
+    const { requireCurrentUserForServerComponent } = await loadAuthUtils();
+
+    await expect(requireCurrentUserForServerComponent()).rejects.toThrow(
+      "NEXT_REDIRECT:/login?redirectTo=%2Fsettings%2Fprofile"
+    );
+    expect(mockRedirect).toHaveBeenCalledWith("/login?redirectTo=%2Fsettings%2Fprofile");
+    expect(mockHandleServerError).not.toHaveBeenCalled();
+  });
+
+  it("未認証時は requireCurrentAppUserForServerComponent が redirectTo 付きで /login に redirect する", async () => {
+    const { client } = createLookupClient({
+      user: null,
+    });
+    mockCreateServerComponentSupabaseClient.mockResolvedValue(client);
+    mockHeaders.mockResolvedValue(
+      new Headers({
+        "x-pathname": "/events/create",
+      })
+    );
+
+    const { requireCurrentAppUserForServerComponent } = await loadAuthUtils();
+
+    await expect(requireCurrentAppUserForServerComponent()).rejects.toThrow(
+      "NEXT_REDIRECT:/login?redirectTo=%2Fevents%2Fcreate"
+    );
+    expect(mockRedirect).toHaveBeenCalledWith("/login?redirectTo=%2Fevents%2Fcreate");
+    expect(mockHandleServerError).not.toHaveBeenCalled();
+  });
+
+  it("x-pathname が無い場合は /login に redirect する", async () => {
+    const { client } = createLookupClient({
+      user: null,
+    });
+    mockCreateServerComponentSupabaseClient.mockResolvedValue(client);
+    mockHeaders.mockResolvedValue(new Headers());
 
     const { requireCurrentUserForServerComponent } = await loadAuthUtils();
 
     await expect(requireCurrentUserForServerComponent()).rejects.toThrow("NEXT_REDIRECT:/login");
     expect(mockRedirect).toHaveBeenCalledWith("/login");
-    expect(mockHandleServerError).not.toHaveBeenCalled();
-  });
-
-  it("未認証時は requireCurrentAppUserForServerComponent が /login に redirect する", async () => {
-    const { client } = createLookupClient({
-      user: null,
-    });
-    mockCreateServerComponentSupabaseClient.mockResolvedValue(client);
-
-    const { requireCurrentAppUserForServerComponent } = await loadAuthUtils();
-
-    await expect(requireCurrentAppUserForServerComponent()).rejects.toThrow("NEXT_REDIRECT:/login");
-    expect(mockRedirect).toHaveBeenCalledWith("/login");
-    expect(mockHandleServerError).not.toHaveBeenCalled();
   });
 
   it("requireCurrentUserForServerComponent は server component の user を返す", async () => {
@@ -180,7 +214,7 @@ describe("core/auth/auth-utils", () => {
 
   it("getOptionalCurrentUserForServerComponent はセッション欠如を null として扱う", async () => {
     const { client } = createLookupClient({
-      authError: new Error("Auth session missing!"),
+      authError: new AuthSessionMissingError(),
       user: null,
     });
     mockCreateServerComponentSupabaseClient.mockResolvedValue(client);

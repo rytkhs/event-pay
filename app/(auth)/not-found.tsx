@@ -12,7 +12,7 @@ import { NotFoundLayout } from "@/components/errors/ErrorLayout";
  */
 export default function AuthNotFoundPage() {
   const handleGoToLogin = () => {
-    window.location.href = "/auth/login";
+    window.location.href = "/login";
   };
 
   return (
