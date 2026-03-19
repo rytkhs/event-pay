@@ -18,19 +18,43 @@ import { createCommunity, createCommunitySchema } from "@features/communities/se
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
-type CreateCommunityActionResult = ActionResult<{ communityId: string }>;
+export type CreateCommunityActionResult = ActionResult<{ communityId: string }>;
 
 function getStringFormValue(formData: FormData, key: string): string | undefined {
   const value = formData.get(key);
   return typeof value === "string" ? value : undefined;
 }
 
+function resolveCreateCommunityFormData(
+  stateOrFormData: CreateCommunityActionResult | FormData,
+  maybeFormData?: FormData
+): FormData {
+  if (stateOrFormData instanceof FormData) {
+    return stateOrFormData;
+  }
+
+  if (maybeFormData instanceof FormData) {
+    return maybeFormData;
+  }
+
+  throw new TypeError("FormData is required");
+}
+
 export async function createCommunityAction(
   formData: FormData
+): Promise<CreateCommunityActionResult>;
+export async function createCommunityAction(
+  _state: CreateCommunityActionResult,
+  formData: FormData
+): Promise<CreateCommunityActionResult>;
+export async function createCommunityAction(
+  stateOrFormData: CreateCommunityActionResult | FormData,
+  maybeFormData?: FormData
 ): Promise<CreateCommunityActionResult> {
   ensureFeaturesRegistered();
 
   try {
+    const formData = resolveCreateCommunityFormData(stateOrFormData, maybeFormData);
     const user = await getCurrentUserForServerAction();
 
     if (!user) {

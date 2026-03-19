@@ -2,7 +2,10 @@
 
 import React from "react";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+import { Plus } from "lucide-react";
 
 import type { AppWorkspaceShellData } from "@core/community/app-workspace";
 
@@ -14,6 +17,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
@@ -39,6 +43,7 @@ export function Header({ workspace }: HeaderProps) {
     const commonLabels: Record<string, string> = {
       dashboard: "ダッシュボード",
       events: "イベント一覧",
+      communities: "コミュニティ",
       settings: "設定",
       profile: "プロフィール設定",
       payments: "決済設定",
@@ -87,6 +92,17 @@ export function Header({ workspace }: HeaderProps) {
         </Breadcrumb>
       </div>
       <div className="ml-auto flex min-w-0 items-center gap-2">
+        <Button
+          asChild
+          size="sm"
+          variant={workspace.hasOwnedCommunities ? "outline" : "default"}
+          className="shrink-0"
+        >
+          <Link href="/communities/create">
+            <Plus className="h-4 w-4" />
+            コミュニティを作成
+          </Link>
+        </Button>
         <span className="hidden text-xs text-muted-foreground sm:inline">現在のコミュニティ</span>
         <div className="max-w-40 truncate rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground sm:max-w-56">
           {workspace.currentCommunity?.name ?? "コミュニティ未作成"}
