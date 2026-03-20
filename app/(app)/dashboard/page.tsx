@@ -2,7 +2,7 @@ import { Suspense } from "react";
 
 import Link from "next/link";
 
-import { Plus } from "lucide-react";
+import { Plus, Settings } from "lucide-react";
 
 import { resolveAppWorkspaceForServerComponent } from "@core/community/app-workspace";
 
@@ -59,12 +59,20 @@ export default async function DashboardPage() {
               {currentCommunity.name} の運営状況を確認できます
             </p>
           </div>
-          <Button asChild size="default" className="hidden sm:flex w-fit items-center gap-2">
-            <Link href="/events/create">
-              <Plus className="h-4 w-4" />
-              新しいイベント
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline" size="default" className="w-fit items-center gap-2">
+              <Link href="/settings/community">
+                <Settings className="h-4 w-4" />
+                コミュニティ設定
+              </Link>
+            </Button>
+            <Button asChild size="default" className="hidden sm:flex w-fit items-center gap-2">
+              <Link href="/events/create">
+                <Plus className="h-4 w-4" />
+                新しいイベント
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* 統計カードセクション（4つのカード） */}

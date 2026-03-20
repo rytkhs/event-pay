@@ -5,7 +5,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Plus } from "lucide-react";
+import { Plus, Settings } from "lucide-react";
 
 import type { AppWorkspaceShellData } from "@core/community/app-workspace";
 
@@ -92,6 +92,14 @@ export function Header({ workspace }: HeaderProps) {
         </Breadcrumb>
       </div>
       <div className="ml-auto flex min-w-0 items-center gap-2">
+        {workspace.currentCommunity ? (
+          <Button asChild size="sm" variant="ghost" className="shrink-0">
+            <Link href="/settings/community">
+              <Settings className="h-4 w-4" />
+              コミュニティ設定
+            </Link>
+          </Button>
+        ) : null}
         <Button
           asChild
           size="sm"

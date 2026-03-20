@@ -106,5 +106,9 @@ describe("DashboardPage", () => {
     expect(createDashboardDataResource).toHaveBeenCalledWith("community-1");
     expect(screen.getByText("ダッシュボード")).toBeInTheDocument();
     expect(screen.getByText("ボドゲ会 の運営状況を確認できます")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /コミュニティ設定/ })).toHaveAttribute(
+      "href",
+      "/settings/community"
+    );
   });
 });
