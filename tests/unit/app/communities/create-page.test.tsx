@@ -7,11 +7,7 @@ import { render, screen } from "@testing-library/react";
 
 const resolveAppWorkspaceForServerComponent = jest.fn();
 const createCommunityAction = jest.fn();
-const createCommunityForm = jest.fn(
-  ({ currentCommunityName }: { currentCommunityName: string | null }) => (
-    <div data-testid="create-community-form">{currentCommunityName}</div>
-  )
-);
+const createCommunityForm = jest.fn((_props: any) => <div data-testid="create-community-form" />);
 
 jest.mock("@core/community/app-workspace", () => ({
   resolveAppWorkspaceForServerComponent,
@@ -69,7 +65,6 @@ describe("CreateCommunityPage", () => {
     expect(createCommunityForm).toHaveBeenCalledWith(
       expect.objectContaining({
         createCommunityAction,
-        currentCommunityName: null,
         hasOwnedCommunities: false,
       })
     );
@@ -91,10 +86,8 @@ describe("CreateCommunityPage", () => {
     render(ui);
 
     expect(screen.getByText("コミュニティを追加する")).toBeInTheDocument();
-    expect(screen.getByText(/ボドゲ会/)).toBeInTheDocument();
     expect(createCommunityForm).toHaveBeenCalledWith(
       expect.objectContaining({
-        currentCommunityName: "ボドゲ会",
         hasOwnedCommunities: true,
       })
     );

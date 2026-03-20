@@ -53,7 +53,6 @@ describe("CreateCommunityForm", () => {
     render(
       <CreateCommunityForm
         createCommunityAction={createCommunityAction}
-        currentCommunityName={null}
         hasOwnedCommunities={false}
       />
     );
@@ -88,7 +87,6 @@ describe("CreateCommunityForm", () => {
     render(
       <CreateCommunityForm
         createCommunityAction={createCommunityAction}
-        currentCommunityName={null}
         hasOwnedCommunities={false}
       />
     );
@@ -116,11 +114,7 @@ describe("CreateCommunityForm", () => {
       await import("@/features/communities/components/CreateCommunityForm");
 
     render(
-      <CreateCommunityForm
-        createCommunityAction={createCommunityAction}
-        currentCommunityName="ボドゲ会"
-        hasOwnedCommunities
-      />
+      <CreateCommunityForm createCommunityAction={createCommunityAction} hasOwnedCommunities />
     );
 
     await user.type(screen.getByLabelText("コミュニティ名"), "読書会");
@@ -148,7 +142,6 @@ describe("CreateCommunityForm", () => {
     render(
       <CreateCommunityForm
         createCommunityAction={createCommunityAction}
-        currentCommunityName={null}
         hasOwnedCommunities={false}
       />
     );
@@ -176,7 +169,6 @@ describe("CreateCommunityForm", () => {
     render(
       <CreateCommunityForm
         createCommunityAction={createCommunityAction}
-        currentCommunityName={null}
         hasOwnedCommunities={false}
       />
     );
