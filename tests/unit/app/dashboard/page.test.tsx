@@ -80,7 +80,10 @@ describe("DashboardPage", () => {
     render(ui);
 
     expect(screen.getByText("コミュニティをまだ作成していません")).toBeInTheDocument();
-    expect(screen.getByText("コミュニティ作成（準備中）")).toBeDisabled();
+    expect(screen.getByRole("link", { name: "最初のコミュニティを作成" })).toHaveAttribute(
+      "href",
+      "/communities/create"
+    );
     expect(createDashboardDataResource).not.toHaveBeenCalled();
   });
 

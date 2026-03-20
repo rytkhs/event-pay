@@ -1,3 +1,16 @@
+CREATE OR REPLACE FUNCTION public.generate_community_slug()
+RETURNS text
+LANGUAGE sql
+VOLATILE
+AS $$
+    SELECT translate(encode(gen_random_bytes(18), 'base64'), '+/', '-_');
+$$;
+
+GRANT EXECUTE ON FUNCTION public.generate_community_slug() TO authenticated, service_role;
+
+ALTER TABLE public.communities
+    ALTER COLUMN slug SET DEFAULT public.generate_community_slug();
+
 CREATE TEMP TABLE migration_candidate_community_owners ON COMMIT DROP AS
 SELECT DISTINCT owner_user_id
 FROM (
@@ -12,13 +25,11 @@ FROM (
 
 INSERT INTO public.communities (
     created_by,
-    name,
-    slug
+    name
 )
 SELECT
     owner.owner_user_id,
-    LEFT(u.name, 248) || 'のコミュニティ',
-    REPLACE(gen_random_uuid()::text, '-', '')
+    LEFT(u.name, 248) || 'のコミュニティ'
 FROM migration_candidate_community_owners owner
 JOIN public.users u
     ON u.id = owner.owner_user_id

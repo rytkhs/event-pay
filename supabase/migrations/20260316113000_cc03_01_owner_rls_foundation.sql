@@ -559,7 +559,10 @@ CREATE POLICY "Owners can view own communities"
 ON public.communities
 FOR SELECT
 TO authenticated
-USING (public.is_community_owner(id));
+USING (
+  (SELECT auth.uid()) = created_by
+  OR public.is_community_owner(id)
+);
 
 CREATE POLICY "Owners can insert own communities"
 ON public.communities
@@ -571,7 +574,10 @@ CREATE POLICY "Owners can update own communities"
 ON public.communities
 FOR UPDATE
 TO authenticated
-USING (public.is_community_owner(id))
+USING (
+  (SELECT auth.uid()) = created_by
+  OR public.is_community_owner(id)
+)
 WITH CHECK ((SELECT auth.uid()) = created_by);
 
 CREATE POLICY "Service role can manage communities"

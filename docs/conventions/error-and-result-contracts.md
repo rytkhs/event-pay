@@ -7,22 +7,41 @@
 
 ## Boundary Map（どれを返すか）
 
-- 内部（features/core/services/hooks）: `AppResult`
+- 内部アプリケーションサービス（use case / service / command / DB・外部API・認可を伴う orchestration）: `AppResult`
+- pure helper（mapper / formatter / selector / builder）: 生値
 - Server Actions（UI境界）: `ActionResult<T>`（redirect-only 例外は ADR-0014）
 - HTTP(Route Handlers): errorは RFC7807 Problem Details、successはpayloadのみ（または `204 No Content`）
+- Server Component / Page / Layout の画面制御: 必要に応じて `redirect()` / `notFound()`
 
-## Internal: `AppResult`（正規形）
+## Internal Application Services: `AppResult`（正規形）
 
-目的: 内部ロジックの成功/失敗を、1つの正規形で表現する。
+目的: 副作用を持つ内部アプリケーションサービスの成功/失敗を、1つの正規形で表現する。
 
 - Type/Helpers: `core/errors/app-result.ts`
 - Error type: `core/errors/app-error.ts`
 
 ルール:
 
+- DB / Supabase / Stripe / 外部API / 認可 / 業務ルール判定を含む関数は `AppResult` を返す
 - 期待される失敗（入力不正、状態不整合、外部APIの想定内失敗等）は `AppResult` で返す
 - `throw` は「想定外（バグ/不変条件違反/握れない例外）」に寄せ、境界で `normalizeError` する
 - `AppResult.meta` は内部専用（UIやHTTPへ露出させたい情報は、境界で明示的に投影する）
+
+## Pure Helpers: 生値
+
+目的: 失敗契約を持たない純粋処理に `AppResult` を持ち込まず、ノイズを増やさない。
+
+対象:
+
+- mapper / formatter / selector / builder
+- 既に取得済みデータの組み立て
+- 契約上、失敗を返して呼び出し側が分岐する必要がない処理
+
+ルール:
+
+- 生値を返す
+- 想定外のみ `throw` する
+- DBや外部APIを直接呼び始めた時点で pure helper ではなくなるため、`AppResult` を検討する
 
 ## Server Actions: `ActionResult<T>`（UI境界契約）
 
@@ -71,7 +90,8 @@ QStash worker は「HTTP status/headers」でACK/Retry/DLQを制御する（Resu
 
 ## Quick Checklist（レビュー観点）
 
-- 内部の戻り値が `AppResult` になっている
+- 副作用を持つ内部アプリケーションサービスの戻り値が `AppResult` になっている
+- pure helper が不必要に `AppResult` 化されていない
 - Server Actions が `ActionResult<T>` で、UIは `userMessage` を表示している
 - HTTP success が wrapper を返していない（payloadのみ / 204）
 - HTTP error が `respondWithProblem` / `respondWithCode` 経由になっている

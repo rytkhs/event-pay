@@ -39,6 +39,8 @@ export function Header({ workspace }: HeaderProps) {
     const commonLabels: Record<string, string> = {
       dashboard: "ダッシュボード",
       events: "イベント一覧",
+      communities: "コミュニティ",
+      community: "コミュニティ",
       settings: "設定",
       profile: "プロフィール設定",
       payments: "決済設定",

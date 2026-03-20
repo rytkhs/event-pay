@@ -1,6 +1,11 @@
 import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
 import { resolveCurrentCommunityForServerAction } from "@core/community/current-community";
-import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
+import {
+  fail,
+  ok,
+  toActionResultFromAppResult,
+  type ActionResult,
+} from "@core/errors/adapters/server-actions";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import type { EventRow } from "@core/types/event";
 import type { AppSupabaseClient } from "@core/types/supabase";
@@ -67,7 +72,19 @@ export async function getDashboardStatsAction(): Promise<ActionResult<DashboardS
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
-    const currentCommunityResolution = await resolveCurrentCommunityForServerAction();
+    const currentCommunityResolutionResult = await resolveCurrentCommunityForServerAction();
+
+    if (!currentCommunityResolutionResult.success) {
+      return toActionResultFromAppResult(currentCommunityResolutionResult, {
+        userMessage: "ダッシュボード統計の取得に失敗しました",
+      });
+    }
+
+    if (!currentCommunityResolutionResult.data) {
+      return fail("INTERNAL_ERROR", { userMessage: "ダッシュボード統計の取得に失敗しました" });
+    }
+
+    const currentCommunityResolution = currentCommunityResolutionResult.data;
 
     if (!currentCommunityResolution.currentCommunity) {
       return ok({
@@ -125,7 +142,19 @@ export async function getRecentEventsAction(): Promise<ActionResult<RecentEvent[
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
-    const currentCommunityResolution = await resolveCurrentCommunityForServerAction();
+    const currentCommunityResolutionResult = await resolveCurrentCommunityForServerAction();
+
+    if (!currentCommunityResolutionResult.success) {
+      return toActionResultFromAppResult(currentCommunityResolutionResult, {
+        userMessage: "最近のイベント取得に失敗しました",
+      });
+    }
+
+    if (!currentCommunityResolutionResult.data) {
+      return fail("INTERNAL_ERROR", { userMessage: "最近のイベント取得に失敗しました" });
+    }
+
+    const currentCommunityResolution = currentCommunityResolutionResult.data;
 
     if (!currentCommunityResolution.currentCommunity) {
       return ok([]);

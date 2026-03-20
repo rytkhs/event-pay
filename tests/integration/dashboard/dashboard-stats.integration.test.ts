@@ -21,7 +21,8 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
 import type { CurrentCommunitySummary } from "@core/community/current-community";
 import { resolveCurrentCommunityForServerAction } from "@core/community/current-community";
-import { createServerComponentSupabaseClient } from "@core/supabase/factory";
+import { okResult } from "@core/errors/app-result";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 
 import {
   createCommonTestSetup,
@@ -47,9 +48,9 @@ jest.mock("@core/community/current-community", () => ({
   resolveCurrentCommunityForServerAction: jest.fn(),
 }));
 
-// createServerComponentSupabaseClientをモック
+// createServerActionSupabaseClientをモック
 jest.mock("@core/supabase/factory", () => ({
-  createServerComponentSupabaseClient: jest.fn(),
+  createServerActionSupabaseClient: jest.fn(),
 }));
 
 describe("ダッシュボード統計情報 統合テスト", () => {
@@ -58,9 +59,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
   let mockResolveCurrentCommunity: jest.MockedFunction<
     typeof resolveCurrentCommunityForServerAction
   >;
-  let mockCreateServerComponentClient: jest.MockedFunction<
-    typeof createServerComponentSupabaseClient
-  >;
+  let mockCreateServerActionClient: jest.MockedFunction<typeof createServerActionSupabaseClient>;
   let cleanupHelper: ReturnType<typeof createTestDataCleanupHelper>;
   let currentCommunity: CurrentCommunitySummary | null;
 
@@ -68,13 +67,15 @@ describe("ダッシュボード統計情報 統合テスト", () => {
     currentCommunity = summary;
     (setup.adminClient as any)._test_community_id = summary?.id;
 
-    mockResolveCurrentCommunity.mockResolvedValue({
-      currentCommunity: summary,
-      ownedCommunities: summary ? [summary] : [],
-      requestedCommunityId: summary?.id ?? null,
-      cookieMutation: summary ? "none" : "clear",
-      resolvedBy: summary ? "cookie" : "empty",
-    });
+    mockResolveCurrentCommunity.mockResolvedValue(
+      okResult({
+        currentCommunity: summary,
+        ownedCommunities: summary ? [summary] : [],
+        requestedCommunityId: summary?.id ?? null,
+        cookieMutation: summary ? "none" : "clear",
+        resolvedBy: summary ? "cookie" : "empty",
+      })
+    );
   }
 
   async function provisionCurrentCommunity(
@@ -121,8 +122,8 @@ describe("ダッシュボード統計情報 統合テスト", () => {
     mockResolveCurrentCommunity = resolveCurrentCommunityForServerAction as jest.MockedFunction<
       typeof resolveCurrentCommunityForServerAction
     >;
-    mockCreateServerComponentClient = createServerComponentSupabaseClient as jest.MockedFunction<
-      typeof createServerComponentSupabaseClient
+    mockCreateServerActionClient = createServerActionSupabaseClient as jest.MockedFunction<
+      typeof createServerActionSupabaseClient
     >;
 
     // createTestDataCleanupHelperを使用してクリーンアップ処理を標準化
@@ -165,15 +166,15 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       throw new Error(`Failed to sign in test user: ${error.message}`);
     }
 
-    // Server Componentがこのクライアントを使用する
-    mockCreateServerComponentClient.mockResolvedValue(authClient as any);
+    // Server Action がこのクライアントを使用する
+    mockCreateServerActionClient.mockResolvedValue(authClient as any);
     await provisionCurrentCommunity();
   });
 
   afterEach(async () => {
     mockGetCurrentUser?.mockReset();
     mockResolveCurrentCommunity?.mockReset();
-    mockCreateServerComponentClient?.mockReset();
+    mockCreateServerActionClient?.mockReset();
     if (setup?.adminClient) {
       (setup.adminClient as any)._test_community_id = undefined;
       (setup.adminClient as any)._test_payout_profile_id = undefined;

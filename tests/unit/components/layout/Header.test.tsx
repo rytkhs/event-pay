@@ -5,8 +5,27 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
+const mockUsePathname = jest.fn(() => "/events");
+
 jest.mock("next/navigation", () => ({
-  usePathname: jest.fn(() => "/events"),
+  usePathname: mockUsePathname,
+}));
+
+jest.mock("next/link", () => ({
+  __esModule: true,
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a href={href}>{children}</a>
+  ),
+}));
+
+jest.mock("@/components/ui/button", () => ({
+  Button: ({
+    children,
+    asChild: _asChild,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement> & { asChild?: boolean }) => (
+    <button {...props}>{children}</button>
+  ),
 }));
 
 jest.mock("@/components/ui/breadcrumb", () => ({
@@ -29,6 +48,11 @@ jest.mock("@/components/ui/sidebar", () => ({
 }));
 
 describe("Header", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUsePathname.mockReturnValue("/events");
+  });
+
   it("current community 名を表示する", async () => {
     const { Header } = await import("@/components/layout/Header");
 
@@ -53,7 +77,9 @@ describe("Header", () => {
     expect(screen.getByText("イベント一覧")).toBeInTheDocument();
   });
 
-  it("current community が無い場合は未作成ラベルを表示する", async () => {
+  it("communities/create では breadcrumb にコミュニティ / 新規作成を表示する", async () => {
+    mockUsePathname.mockReturnValue("/communities/create");
+
     const { Header } = await import("@/components/layout/Header");
 
     render(
@@ -67,6 +93,7 @@ describe("Header", () => {
       />
     );
 
-    expect(screen.getByText("コミュニティ未作成")).toBeInTheDocument();
+    expect(screen.getByText("コミュニティ")).toBeInTheDocument();
+    expect(screen.getByText("新規作成")).toBeInTheDocument();
   });
 });

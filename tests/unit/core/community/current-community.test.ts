@@ -140,29 +140,33 @@ describe("core/community/current-community", () => {
         requestedCommunityId: "community-2",
       })
     ).resolves.toEqual({
-      cookieMutation: "none",
-      currentCommunity: {
-        createdAt: "2026-03-11T00:00:00.000Z",
-        id: "community-2",
-        name: "B",
-        slug: "b",
-      },
-      ownedCommunities: [
-        {
-          createdAt: "2026-03-10T00:00:00.000Z",
-          id: "community-1",
-          name: "A",
-          slug: "a",
-        },
-        {
+      success: true,
+      data: {
+        cookieMutation: "none",
+        currentCommunity: {
           createdAt: "2026-03-11T00:00:00.000Z",
           id: "community-2",
           name: "B",
           slug: "b",
         },
-      ],
-      requestedCommunityId: "community-2",
-      resolvedBy: "cookie",
+        ownedCommunities: [
+          {
+            createdAt: "2026-03-10T00:00:00.000Z",
+            id: "community-1",
+            name: "A",
+            slug: "a",
+          },
+          {
+            createdAt: "2026-03-11T00:00:00.000Z",
+            id: "community-2",
+            name: "B",
+            slug: "b",
+          },
+        ],
+        requestedCommunityId: "community-2",
+        resolvedBy: "cookie",
+      },
+      meta: undefined,
     });
 
     expect(spies.from).toHaveBeenCalledWith("communities");
@@ -171,6 +175,35 @@ describe("core/community/current-community", () => {
     expect(spies.eqIsDeleted).toHaveBeenCalledWith("is_deleted", false);
     expect(spies.orderCreatedAt).toHaveBeenCalledWith("created_at", { ascending: true });
     expect(spies.orderId).toHaveBeenCalledWith("id", { ascending: true });
+  });
+
+  it("resolveCurrentCommunityContext は query error を DATABASE_ERROR で返す", async () => {
+    const { client } = createSupabaseClientForCommunities({
+      error: {
+        message: "database unavailable",
+      },
+    });
+
+    const { resolveCurrentCommunityContext } = await loadCurrentCommunityModule();
+    const result = await resolveCurrentCommunityContext({
+      userId: "user-1",
+      supabase: client as any,
+      requestedCommunityId: "community-2",
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error("Expected failure result");
+    }
+
+    expect(result.error.name).toBe("AppError");
+    expect(result.error.code).toBe("DATABASE_ERROR");
+    expect(result.error.retryable).toBe(true);
+    expect(result.error.userMessage).toBe("コミュニティ情報の取得に失敗しました");
+    expect(result.error.details).toEqual({
+      operation: "list_owned_communities",
+      userId: "user-1",
+    });
   });
 
   it("resolveCurrentCommunityContext は cookie が無いと最古 community にフォールバックする", async () => {
@@ -199,12 +232,15 @@ describe("core/community/current-community", () => {
         supabase: client as any,
       })
     ).resolves.toMatchObject({
-      cookieMutation: "set",
-      currentCommunity: {
-        id: "community-1",
+      success: true,
+      data: {
+        cookieMutation: "set",
+        currentCommunity: {
+          id: "community-1",
+        },
+        requestedCommunityId: null,
+        resolvedBy: "oldest_fallback",
       },
-      requestedCommunityId: null,
-      resolvedBy: "oldest_fallback",
     });
   });
 
@@ -229,12 +265,15 @@ describe("core/community/current-community", () => {
         requestedCommunityId: "community-unknown",
       })
     ).resolves.toMatchObject({
-      cookieMutation: "set",
-      currentCommunity: {
-        id: "community-1",
+      success: true,
+      data: {
+        cookieMutation: "set",
+        currentCommunity: {
+          id: "community-1",
+        },
+        requestedCommunityId: "community-unknown",
+        resolvedBy: "oldest_fallback",
       },
-      requestedCommunityId: "community-unknown",
-      resolvedBy: "oldest_fallback",
     });
   });
 
@@ -252,11 +291,15 @@ describe("core/community/current-community", () => {
         requestedCommunityId: "community-1",
       })
     ).resolves.toEqual({
-      cookieMutation: "clear",
-      currentCommunity: null,
-      ownedCommunities: [],
-      requestedCommunityId: "community-1",
-      resolvedBy: "empty",
+      success: true,
+      data: {
+        cookieMutation: "clear",
+        currentCommunity: null,
+        ownedCommunities: [],
+        requestedCommunityId: "community-1",
+        resolvedBy: "empty",
+      },
+      meta: undefined,
     });
   });
 

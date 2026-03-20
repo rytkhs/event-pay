@@ -91,7 +91,7 @@ export type Database = {
           id?: string;
           is_deleted?: boolean;
           name: string;
-          slug: string;
+          slug?: string;
           updated_at?: string;
         };
         Update: {
@@ -948,6 +948,7 @@ export type Database = {
         Args: { p_event_id: string };
         Returns: boolean;
       };
+      generate_community_slug: { Args: never; Returns: string };
       generate_settlement_report: {
         Args: { input_created_by: string; input_event_id: string };
         Returns: {

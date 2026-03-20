@@ -8,7 +8,13 @@ import {
   resolveCurrentCommunityContext,
   setCurrentCommunityCookie,
 } from "@core/community/current-community";
-import { fail, failFrom, ok, type ActionResult } from "@core/errors/adapters/server-actions";
+import {
+  fail,
+  failFrom,
+  ok,
+  toActionResultFromAppResult,
+  type ActionResult,
+} from "@core/errors/adapters/server-actions";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
@@ -46,11 +52,25 @@ export async function updateCurrentCommunityAction(
     }
 
     const supabase = await createServerActionSupabaseClient();
-    const resolution = await resolveCurrentCommunityContext({
+    const resolutionResult = await resolveCurrentCommunityContext({
       userId: user.id,
       supabase,
       requestedCommunityId: parsedCommunityId.data,
     });
+
+    if (!resolutionResult.success) {
+      return toActionResultFromAppResult(resolutionResult, {
+        userMessage: "現在選択中コミュニティの更新に失敗しました",
+      });
+    }
+
+    if (!resolutionResult.data) {
+      return fail("INTERNAL_ERROR", {
+        userMessage: "現在選択中コミュニティの更新に失敗しました",
+      });
+    }
+
+    const resolution = resolutionResult.data;
 
     if (resolution.currentCommunity?.id !== parsedCommunityId.data) {
       return fail("FORBIDDEN", {

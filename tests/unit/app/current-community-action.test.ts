@@ -1,5 +1,8 @@
 import { jest } from "@jest/globals";
 
+import { AppError } from "@core/errors/app-error";
+import { errResult, okResult } from "@core/errors/app-result";
+
 const mockGetCurrentUserForServerAction = jest.fn();
 const mockResolveCurrentCommunityContext = jest.fn();
 const mockSetCurrentCommunityCookie = jest.fn();
@@ -115,18 +118,20 @@ describe("app/(app)/actions/current-community", () => {
 
     mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
     mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
-    mockResolveCurrentCommunityContext.mockResolvedValue({
-      currentCommunity: {
-        id: targetCommunityId,
-        name: "Community A",
-        slug: "community-a",
-        createdAt: "2026-03-10T00:00:00.000Z",
-      },
-      ownedCommunities: [],
-      requestedCommunityId: targetCommunityId,
-      cookieMutation: "none",
-      resolvedBy: "cookie",
-    });
+    mockResolveCurrentCommunityContext.mockResolvedValue(
+      okResult({
+        currentCommunity: {
+          id: targetCommunityId,
+          name: "Community A",
+          slug: "community-a",
+          createdAt: "2026-03-10T00:00:00.000Z",
+        },
+        ownedCommunities: [],
+        requestedCommunityId: targetCommunityId,
+        cookieMutation: "none",
+        resolvedBy: "cookie",
+      })
+    );
 
     const { updateCurrentCommunityAction } = await loadCurrentCommunityActionModule();
 
@@ -153,18 +158,20 @@ describe("app/(app)/actions/current-community", () => {
 
     mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
     mockCreateServerActionSupabaseClient.mockResolvedValue({ from: jest.fn() });
-    mockResolveCurrentCommunityContext.mockResolvedValue({
-      currentCommunity: {
-        id: "fallback-community",
-        name: "Fallback",
-        slug: "fallback",
-        createdAt: "2026-03-10T00:00:00.000Z",
-      },
-      ownedCommunities: [],
-      requestedCommunityId: targetCommunityId,
-      cookieMutation: "set",
-      resolvedBy: "oldest_fallback",
-    });
+    mockResolveCurrentCommunityContext.mockResolvedValue(
+      okResult({
+        currentCommunity: {
+          id: "fallback-community",
+          name: "Fallback",
+          slug: "fallback",
+          createdAt: "2026-03-10T00:00:00.000Z",
+        },
+        ownedCommunities: [],
+        requestedCommunityId: targetCommunityId,
+        cookieMutation: "set",
+        resolvedBy: "oldest_fallback",
+      })
+    );
 
     const { updateCurrentCommunityAction } = await loadCurrentCommunityActionModule();
 
@@ -173,6 +180,35 @@ describe("app/(app)/actions/current-community", () => {
         success: false,
         error: expect.objectContaining({
           code: "FORBIDDEN",
+        }),
+      })
+    );
+
+    expect(mockSetCurrentCommunityCookie).not.toHaveBeenCalled();
+  });
+
+  it("community 解決失敗は ActionResult の失敗へ投影する", async () => {
+    mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
+    mockCreateServerActionSupabaseClient.mockResolvedValue({ from: jest.fn() });
+    mockResolveCurrentCommunityContext.mockResolvedValue(
+      errResult(
+        new AppError("DATABASE_ERROR", {
+          userMessage: "コミュニティ情報の取得に失敗しました",
+          retryable: true,
+        })
+      )
+    );
+
+    const { updateCurrentCommunityAction } = await loadCurrentCommunityActionModule();
+
+    await expect(
+      updateCurrentCommunityAction("84b9e6ca-8b96-4d0a-bb62-4e7648f59223")
+    ).resolves.toEqual(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: "DATABASE_ERROR",
+          userMessage: "現在選択中コミュニティの更新に失敗しました",
         }),
       })
     );

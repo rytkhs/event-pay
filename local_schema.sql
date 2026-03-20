@@ -653,6 +653,16 @@ $$;
 ALTER FUNCTION "public"."enforce_payout_profile_mvp_invariants"() OWNER TO "app_definer";
 
 
+CREATE OR REPLACE FUNCTION "public"."generate_community_slug"() RETURNS "text"
+    LANGUAGE "sql"
+    AS $$
+    SELECT translate(encode(gen_random_bytes(18), 'base64'), '+/', '-_');
+$$;
+
+
+ALTER FUNCTION "public"."generate_community_slug"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") RETURNS TABLE("report_id" "uuid", "already_exists" boolean, "returned_event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "created_by" "uuid", "stripe_account_id" character varying, "transfer_group" "text", "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "dispute_count" integer, "total_disputed_amount" integer, "report_generated_at" timestamp with time zone, "report_updated_at" timestamp with time zone)
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
@@ -2362,7 +2372,7 @@ CREATE TABLE IF NOT EXISTS "public"."communities" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "created_by" "uuid" NOT NULL,
     "name" character varying(255) NOT NULL,
-    "slug" character varying(255) NOT NULL,
+    "slug" character varying(255) DEFAULT "public"."generate_community_slug"() NOT NULL,
     "description" "text",
     "current_payout_profile_id" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
@@ -3659,11 +3669,11 @@ CREATE POLICY "Owners can insert own communities" ON "public"."communities" FOR 
 
 
 
-CREATE POLICY "Owners can update own communities" ON "public"."communities" FOR UPDATE TO "authenticated" USING ("public"."is_community_owner"("id")) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "created_by"));
+CREATE POLICY "Owners can update own communities" ON "public"."communities" FOR UPDATE TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "created_by") OR "public"."is_community_owner"("id"))) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "created_by"));
 
 
 
-CREATE POLICY "Owners can view own communities" ON "public"."communities" FOR SELECT TO "authenticated" USING ("public"."is_community_owner"("id"));
+CREATE POLICY "Owners can view own communities" ON "public"."communities" FOR SELECT TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "created_by") OR "public"."is_community_owner"("id")));
 
 
 
@@ -4059,6 +4069,11 @@ GRANT ALL ON FUNCTION "public"."enforce_event_mvp_invariants"() TO "service_role
 
 GRANT ALL ON FUNCTION "public"."enforce_payout_profile_mvp_invariants"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."enforce_payout_profile_mvp_invariants"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."generate_community_slug"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."generate_community_slug"() TO "service_role";
 
 
 

@@ -59,12 +59,14 @@ export default async function DashboardPage() {
               {currentCommunity.name} の運営状況を確認できます
             </p>
           </div>
-          <Button asChild size="default" className="hidden sm:flex w-fit items-center gap-2">
-            <Link href="/events/create">
-              <Plus className="h-4 w-4" />
-              新しいイベント
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild size="default" className="hidden sm:flex w-fit items-center gap-2">
+              <Link href="/events/create">
+                <Plus className="h-4 w-4" />
+                新しいイベント
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* 統計カードセクション（4つのカード） */}
