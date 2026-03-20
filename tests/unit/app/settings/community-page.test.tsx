@@ -10,6 +10,7 @@ import { AppError } from "@core/errors/app-error";
 const requireNonEmptyCommunityWorkspaceForServerComponent = jest.fn();
 const createServerComponentSupabaseClient = jest.fn();
 const getCurrentCommunitySettings = jest.fn();
+const deleteCommunityAction = jest.fn();
 const updateCommunityAction = jest.fn();
 const redirect = jest.fn((path: string) => {
   throw new Error(`NEXT_REDIRECT:${path}`);
@@ -28,6 +29,7 @@ jest.mock("@features/communities/server", () => ({
 }));
 
 jest.mock("@/app/(app)/actions/communities", () => ({
+  deleteCommunityAction,
   updateCommunityAction,
 }));
 
@@ -37,15 +39,18 @@ jest.mock("next/navigation", () => ({
 
 jest.mock("@features/communities", () => ({
   CurrentCommunitySettingsOverview: ({
+    deleteCommunityAction: mockedDeleteCommunityAction,
     settings,
     updateCommunityAction: mockedUpdateCommunityAction,
   }: {
     settings: { community: { name: string } };
+    deleteCommunityAction: unknown;
     updateCommunityAction: unknown;
   }) => (
     <div>
       settings:{settings.community.name}
-      {mockedUpdateCommunityAction ? ":action" : ""}
+      {mockedUpdateCommunityAction ? ":update" : ""}
+      {mockedDeleteCommunityAction ? ":delete" : ""}
     </div>
   ),
 }));
@@ -98,7 +103,7 @@ describe("CommunitySettingsPage", () => {
       "user-1",
       "community-1"
     );
-    expect(screen.getByText("settings:ボドゲ会:action")).toBeInTheDocument();
+    expect(screen.getByText("settings:ボドゲ会:update:delete")).toBeInTheDocument();
   });
 
   it("read model が解決できない場合は /dashboard に fail-close する", async () => {

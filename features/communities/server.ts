@@ -1,6 +1,7 @@
 import "server-only";
 
 export { createCommunity, type CreateCommunityResult } from "./services/create-community";
+export { deleteCommunity, type DeleteCommunityResult } from "./services/delete-community";
 export {
   getCurrentCommunitySettings,
   type CurrentCommunitySettingsReadModel,

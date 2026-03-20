@@ -5,14 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 import type { CurrentCommunitySettingsReadModel } from "../server";
 
+import { DeleteCommunityDangerZone, type DeleteCommunityAction } from "./DeleteCommunityDangerZone";
 import { UpdateCommunityForm, type UpdateCommunityFormAction } from "./UpdateCommunityForm";
 
 type CurrentCommunitySettingsOverviewProps = {
+  deleteCommunityAction: DeleteCommunityAction;
   settings: CurrentCommunitySettingsReadModel;
   updateCommunityAction: UpdateCommunityFormAction;
 };
 
 export function CurrentCommunitySettingsOverview({
+  deleteCommunityAction,
   settings,
   updateCommunityAction,
 }: CurrentCommunitySettingsOverviewProps) {
@@ -75,6 +78,11 @@ export function CurrentCommunitySettingsOverview({
         defaultDescription={settings.community.description}
         defaultName={settings.community.name}
         updateCommunityAction={updateCommunityAction}
+      />
+
+      <DeleteCommunityDangerZone
+        communityName={settings.community.name}
+        deleteCommunityAction={deleteCommunityAction}
       />
     </div>
   );

@@ -3,9 +3,12 @@ import { errResult, okResult } from "@core/errors/app-result";
 
 const mockGetCurrentUserForServerAction = jest.fn();
 const mockSetCurrentCommunityCookie = jest.fn();
+const mockClearCurrentCommunityCookie = jest.fn();
+const mockResolveCurrentCommunityContext = jest.fn();
 const mockResolveCurrentCommunityForServerAction = jest.fn();
 const mockCreateServerActionSupabaseClient = jest.fn();
 const mockCreateCommunity = jest.fn();
+const mockDeleteCommunity = jest.fn();
 const mockUpdateCommunity = jest.fn();
 const mockEnsureFeaturesRegistered = jest.fn();
 const mockRevalidatePath = jest.fn();
@@ -15,6 +18,8 @@ jest.mock("@core/auth/auth-utils", () => ({
 }));
 
 jest.mock("@core/community/current-community", () => ({
+  clearCurrentCommunityCookie: mockClearCurrentCommunityCookie,
+  resolveCurrentCommunityContext: mockResolveCurrentCommunityContext,
   resolveCurrentCommunityForServerAction: mockResolveCurrentCommunityForServerAction,
   setCurrentCommunityCookie: mockSetCurrentCommunityCookie,
 }));
@@ -35,6 +40,7 @@ jest.mock("@features/communities/server", () => {
   return {
     ...actual,
     createCommunity: mockCreateCommunity,
+    deleteCommunity: mockDeleteCommunity,
     updateCommunity: mockUpdateCommunity,
   };
 });
@@ -70,6 +76,24 @@ describe("app/(app)/actions/communities", () => {
         currentCommunity: {
           id: "community-1",
         },
+      })
+    );
+    mockResolveCurrentCommunityContext.mockResolvedValue(
+      okResult({
+        currentCommunity: {
+          id: "community-1",
+        },
+        ownedCommunities: [
+          {
+            id: "community-1",
+            name: "ボドゲ会",
+            slug: "board-games",
+            createdAt: "2026-03-10T00:00:00.000Z",
+          },
+        ],
+        requestedCommunityId: null,
+        cookieMutation: "set",
+        resolvedBy: "oldest_fallback",
       })
     );
   });
@@ -352,5 +376,177 @@ describe("app/(app)/actions/communities", () => {
 
     expect(mockUpdateCommunity).not.toHaveBeenCalled();
     expect(mockRevalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("deleteCommunityAction は未認証時に UNAUTHORIZED を返す", async () => {
+    mockGetCurrentUserForServerAction.mockResolvedValue(null);
+
+    const { deleteCommunityAction } = await loadCommunitiesActionModule();
+
+    await expect(deleteCommunityAction(new FormData())).resolves.toEqual(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: "UNAUTHORIZED",
+        }),
+      })
+    );
+
+    expect(mockDeleteCommunity).not.toHaveBeenCalled();
+  });
+
+  it("deleteCommunityAction は current community が無ければ NOT_FOUND を返す", async () => {
+    mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
+    mockResolveCurrentCommunityForServerAction.mockResolvedValue(
+      okResult({
+        currentCommunity: null,
+      })
+    );
+
+    const { deleteCommunityAction } = await loadCommunitiesActionModule();
+
+    await expect(deleteCommunityAction(new FormData())).resolves.toEqual(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: "NOT_FOUND",
+          userMessage: "削除対象のコミュニティが見つかりません",
+        }),
+      })
+    );
+
+    expect(mockDeleteCommunity).not.toHaveBeenCalled();
+  });
+
+  it("deleteCommunityAction は representative block を ActionResult に投影する", async () => {
+    const supabase = { from: jest.fn() };
+    mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
+    mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
+    mockDeleteCommunity.mockResolvedValue(
+      errResult(
+        new AppError("RESOURCE_CONFLICT", {
+          retryable: false,
+          userMessage:
+            "代表コミュニティに設定されているため削除できません。付け替え後に削除してください",
+        })
+      )
+    );
+
+    const { deleteCommunityAction } = await loadCommunitiesActionModule();
+
+    await expect(deleteCommunityAction(new FormData())).resolves.toEqual(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: "RESOURCE_CONFLICT",
+          userMessage:
+            "代表コミュニティに設定されているため削除できません。付け替え後に削除してください",
+        }),
+      })
+    );
+
+    expect(mockResolveCurrentCommunityContext).not.toHaveBeenCalled();
+    expect(mockSetCurrentCommunityCookie).not.toHaveBeenCalled();
+    expect(mockClearCurrentCommunityCookie).not.toHaveBeenCalled();
+    expect(mockRevalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("deleteCommunityAction は削除後に fallback community を cookie へ設定する", async () => {
+    const supabase = { from: jest.fn() };
+    mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
+    mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
+    mockResolveCurrentCommunityForServerAction.mockResolvedValue(
+      okResult({
+        currentCommunity: {
+          id: "community-9",
+        },
+      })
+    );
+    mockDeleteCommunity.mockResolvedValue(
+      okResult({
+        communityId: "community-9",
+      })
+    );
+    mockResolveCurrentCommunityContext.mockResolvedValue(
+      okResult({
+        currentCommunity: {
+          id: "community-2",
+          name: "読書会",
+          slug: "reading",
+          createdAt: "2026-03-11T00:00:00.000Z",
+        },
+        ownedCommunities: [
+          {
+            id: "community-2",
+            name: "読書会",
+            slug: "reading",
+            createdAt: "2026-03-11T00:00:00.000Z",
+          },
+        ],
+        requestedCommunityId: null,
+        cookieMutation: "set",
+        resolvedBy: "oldest_fallback",
+      })
+    );
+
+    const { deleteCommunityAction } = await loadCommunitiesActionModule();
+
+    await expect(deleteCommunityAction(new FormData())).resolves.toEqual({
+      success: true,
+      data: {
+        deletedCommunityId: "community-9",
+        nextCurrentCommunityId: "community-2",
+      },
+      message: "コミュニティを削除しました",
+      redirectUrl: "/dashboard",
+      needsVerification: undefined,
+    });
+
+    expect(mockDeleteCommunity).toHaveBeenCalledWith(supabase, "user-1", "community-9");
+    expect(mockResolveCurrentCommunityContext).toHaveBeenCalledWith({
+      requestedCommunityId: null,
+      supabase,
+      userId: "user-1",
+    });
+    expect(mockSetCurrentCommunityCookie).toHaveBeenCalledWith("community-2");
+    expect(mockClearCurrentCommunityCookie).not.toHaveBeenCalled();
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/(app)", "layout");
+  });
+
+  it("deleteCommunityAction は最後の1件を削除したら cookie を削除する", async () => {
+    const supabase = { from: jest.fn() };
+    mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
+    mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
+    mockDeleteCommunity.mockResolvedValue(
+      okResult({
+        communityId: "community-1",
+      })
+    );
+    mockResolveCurrentCommunityContext.mockResolvedValue(
+      okResult({
+        currentCommunity: null,
+        ownedCommunities: [],
+        requestedCommunityId: null,
+        cookieMutation: "clear",
+        resolvedBy: "empty",
+      })
+    );
+
+    const { deleteCommunityAction } = await loadCommunitiesActionModule();
+
+    await expect(deleteCommunityAction(new FormData())).resolves.toEqual({
+      success: true,
+      data: {
+        deletedCommunityId: "community-1",
+        nextCurrentCommunityId: null,
+      },
+      message: "コミュニティを削除しました",
+      redirectUrl: "/dashboard",
+      needsVerification: undefined,
+    });
+
+    expect(mockSetCurrentCommunityCookie).not.toHaveBeenCalled();
+    expect(mockClearCurrentCommunityCookie).toHaveBeenCalledTimes(1);
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/(app)", "layout");
   });
 });

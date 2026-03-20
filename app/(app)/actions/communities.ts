@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 
 import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
 import {
+  clearCurrentCommunityCookie,
+  resolveCurrentCommunityContext,
   resolveCurrentCommunityForServerAction,
   setCurrentCommunityCookie,
 } from "@core/community/current-community";
@@ -20,6 +22,7 @@ import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import {
   createCommunity,
   createCommunitySchema,
+  deleteCommunity,
   updateCommunity,
   updateCommunitySchema,
 } from "@features/communities/server";
@@ -31,6 +34,10 @@ export type UpdateCommunityActionResult = ActionResult<{
   communityId: string;
   description: string | null;
   name: string;
+}>;
+export type DeleteCommunityActionResult = ActionResult<{
+  deletedCommunityId: string;
+  nextCurrentCommunityId: string | null;
 }>;
 
 function getStringFormValue(formData: FormData, key: string): string | undefined {
@@ -183,6 +190,88 @@ export async function updateCommunityAction(
   } catch (error) {
     return failFrom(error, {
       userMessage: "コミュニティの更新に失敗しました",
+    });
+  }
+}
+
+export async function deleteCommunityAction(
+  formData: FormData
+): Promise<DeleteCommunityActionResult>;
+export async function deleteCommunityAction(
+  _state: DeleteCommunityActionResult,
+  formData: FormData
+): Promise<DeleteCommunityActionResult>;
+export async function deleteCommunityAction(
+  stateOrFormData: DeleteCommunityActionResult | FormData,
+  maybeFormData?: FormData
+): Promise<DeleteCommunityActionResult> {
+  ensureFeaturesRegistered();
+
+  try {
+    resolveActionFormData(stateOrFormData, maybeFormData);
+    const user = await getCurrentUserForServerAction();
+
+    if (!user) {
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
+    }
+
+    const resolutionResult = await resolveCurrentCommunityForServerAction();
+
+    if (!resolutionResult.success) {
+      return toActionResultFromAppResult(resolutionResult, {
+        userMessage: "コミュニティの削除に失敗しました",
+      });
+    }
+
+    if (!resolutionResult.data) {
+      return fail("INTERNAL_ERROR", { userMessage: "コミュニティの削除に失敗しました" });
+    }
+
+    const currentCommunity = resolutionResult.data.currentCommunity;
+
+    if (!currentCommunity) {
+      return fail("NOT_FOUND", { userMessage: "削除対象のコミュニティが見つかりません" });
+    }
+
+    const supabase = await createServerActionSupabaseClient();
+    const result = await deleteCommunity(supabase, user.id, currentCommunity.id);
+
+    if (!result.success || !result.data) {
+      return result.success
+        ? fail("INTERNAL_ERROR", { userMessage: "コミュニティの削除に失敗しました" })
+        : toActionResultFromAppResult(result);
+    }
+
+    const nextResolutionResult = await resolveCurrentCommunityContext({
+      userId: user.id,
+      supabase,
+      requestedCommunityId: null,
+    });
+
+    let nextCurrentCommunityId: string | null = null;
+
+    if (nextResolutionResult.success && nextResolutionResult.data?.currentCommunity?.id) {
+      nextCurrentCommunityId = nextResolutionResult.data.currentCommunity.id;
+      await setCurrentCommunityCookie(nextCurrentCommunityId);
+    } else {
+      await clearCurrentCommunityCookie();
+    }
+
+    revalidatePath("/(app)", "layout");
+
+    return ok(
+      {
+        deletedCommunityId: result.data.communityId,
+        nextCurrentCommunityId,
+      },
+      {
+        message: "コミュニティを削除しました",
+        redirectUrl: "/dashboard",
+      }
+    );
+  } catch (error) {
+    return failFrom(error, {
+      userMessage: "コミュニティの削除に失敗しました",
     });
   }
 }
