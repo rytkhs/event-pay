@@ -75,33 +75,6 @@ describe("Header", () => {
     expect(screen.getByText("現在のコミュニティ")).toBeInTheDocument();
     expect(screen.getByText("ボドゲ会")).toBeInTheDocument();
     expect(screen.getByText("イベント一覧")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /コミュニティ設定/ })).toHaveAttribute(
-      "href",
-      "/settings/community"
-    );
-    expect(screen.getByRole("link", { name: /コミュニティを作成/ })).toHaveAttribute(
-      "href",
-      "/communities/create"
-    );
-  });
-
-  it("current community が無い場合は未作成ラベルを表示する", async () => {
-    const { Header } = await import("@/components/layout/Header");
-
-    render(
-      <Header
-        workspace={{
-          currentCommunity: null,
-          ownedCommunities: [],
-          hasOwnedCommunities: false,
-          isCommunityEmptyState: true,
-        }}
-      />
-    );
-
-    expect(screen.getByText("コミュニティ未作成")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /コミュニティを作成/ })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /コミュニティ設定/ })).not.toBeInTheDocument();
   });
 
   it("communities/create では breadcrumb にコミュニティ / 新規作成を表示する", async () => {

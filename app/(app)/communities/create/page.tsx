@@ -42,7 +42,6 @@ export default async function CreateCommunityPage() {
 
           <CreateCommunityForm
             createCommunityAction={createCommunityAction}
-            currentCommunityName={workspace.currentCommunity?.name ?? null}
             hasOwnedCommunities={workspace.hasOwnedCommunities}
           />
         </div>

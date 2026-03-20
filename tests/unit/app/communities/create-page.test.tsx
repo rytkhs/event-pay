@@ -7,14 +7,18 @@ import { render, screen } from "@testing-library/react";
 
 const resolveAppWorkspaceForServerComponent = jest.fn();
 const createCommunityAction = jest.fn();
-const createCommunityForm = jest.fn(() => <div data-testid="create-community-form" />);
+const createCommunityForm = jest.fn(
+  ({ currentCommunityName }: { currentCommunityName: string | null }) => (
+    <div data-testid="create-community-form">{currentCommunityName}</div>
+  )
+);
 
 jest.mock("@core/community/app-workspace", () => ({
   resolveAppWorkspaceForServerComponent,
 }));
 
 jest.mock("@features/communities/components/CreateCommunityForm", () => ({
-  CreateCommunityForm: (props: unknown) => createCommunityForm(props),
+  CreateCommunityForm: (props: any) => createCommunityForm(props),
 }));
 
 jest.mock("@/app/(app)/actions/communities", () => ({
@@ -86,7 +90,7 @@ describe("CreateCommunityPage", () => {
 
     render(ui);
 
-    expect(screen.getByText("運営先をもう1つ追加する")).toBeInTheDocument();
+    expect(screen.getByText("コミュニティを追加する")).toBeInTheDocument();
     expect(screen.getByText(/ボドゲ会/)).toBeInTheDocument();
     expect(createCommunityForm).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -62,7 +62,7 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
         {/* ヘッダー */}
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold">設定</h1>
-          <p className="text-muted-foreground mt-1">current community とアカウント設定を管理</p>
+          <p className="text-muted-foreground mt-1">アカウントとコミュニティを管理</p>
         </div>
 
         {/* 設定メニューカード */}

@@ -59,6 +59,6 @@ describe("SettingsLayout", () => {
     render(<SettingsLayout>child</SettingsLayout>);
 
     expect(screen.getByText("コミュニティ設定")).toBeInTheDocument();
-    expect(screen.getByText("現在選択中コミュニティの公開情報と決済状態")).toBeInTheDocument();
+    expect(screen.getByText("選択中のコミュニティの公開情報と設定")).toBeInTheDocument();
   });
 });

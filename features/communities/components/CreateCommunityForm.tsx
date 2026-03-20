@@ -29,7 +29,6 @@ type CreateCommunityFormAction = (
 
 type CreateCommunityFormProps = {
   createCommunityAction: CreateCommunityFormAction;
-  currentCommunityName?: string | null;
   hasOwnedCommunities: boolean;
 };
 
@@ -45,7 +44,6 @@ const initialState: CreateCommunityFormState = {
 
 export function CreateCommunityForm({
   createCommunityAction,
-  currentCommunityName,
   hasOwnedCommunities,
 }: CreateCommunityFormProps) {
   const router = useRouter();
@@ -72,13 +70,6 @@ export function CreateCommunityForm({
             </CardDescription>
           </div>
         </div>
-
-        {hasOwnedCommunities && currentCommunityName ? (
-          <div className="rounded-xl border border-dashed border-border/80 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-            現在のコミュニティ:{" "}
-            <span className="font-medium text-foreground">{currentCommunityName}</span>
-          </div>
-        ) : null}
       </CardHeader>
 
       <CardContent className="space-y-6">
