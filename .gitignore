@@ -127,3 +127,5 @@ docs/analysis/
 .agents/
 # next-agents-md
 .next-docs/
+
+app/debug/
