@@ -1,3 +1,4 @@
+import { AppError } from "@core/errors/app-error";
 import { getCurrentCommunitySettings } from "@features/communities/services/get-current-community-settings";
 
 function createSupabaseMock(options: { community?: { data: unknown; error: unknown } }) {
@@ -62,13 +63,17 @@ describe("getCurrentCommunitySettings", () => {
     const result = await getCurrentCommunitySettings(supabase as never, "user-1", "community-1");
 
     expect(result).toEqual({
-      community: {
-        id: "community-1",
-        name: "ボドゲ会",
-        description: "毎月集まるサークルです",
-        slug: "community-slug",
+      success: true,
+      data: {
+        community: {
+          id: "community-1",
+          name: "ボドゲ会",
+          description: "毎月集まるサークルです",
+          slug: "community-slug",
+        },
+        publicPageUrl: "https://example.com/c/community-slug",
       },
-      publicPageUrl: "https://example.com/c/community-slug",
+      meta: undefined,
     });
     expect(from).toHaveBeenCalledWith("communities");
     expect(communitySelect).toHaveBeenCalledWith("id, name, description, slug");
@@ -87,6 +92,41 @@ describe("getCurrentCommunitySettings", () => {
 
     await expect(
       getCurrentCommunitySettings(supabase as never, "user-1", "community-x")
-    ).resolves.toBeNull();
+    ).resolves.toEqual({
+      success: true,
+      data: null,
+      meta: undefined,
+    });
+  });
+
+  it("DB エラー時は DATABASE_ERROR を AppResult failure で返す", async () => {
+    const dbError = new Error("db failed");
+    const { supabase } = createSupabaseMock({
+      community: {
+        data: null,
+        error: dbError,
+      },
+    });
+
+    const result = await getCurrentCommunitySettings(supabase as never, "user-1", "community-1");
+
+    expect(result.success).toBe(false);
+    expect(result).toMatchObject({
+      success: false,
+      meta: undefined,
+    });
+
+    if (result.success) {
+      throw new Error("expected failure result");
+    }
+
+    expect(result.error).toBeInstanceOf(AppError);
+    expect(result.error.code).toBe("DATABASE_ERROR");
+    expect(result.error.userMessage).toBe("コミュニティ設定の取得に失敗しました");
+    expect(result.error.details).toEqual({
+      communityId: "community-1",
+      operation: "get_current_community_settings",
+      ownerUserId: "user-1",
+    });
   });
 });

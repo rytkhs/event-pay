@@ -33,7 +33,19 @@ export async function getEventsAction(
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
-    const currentCommunityResolution = await resolveCurrentCommunityForServerAction();
+    const currentCommunityResolutionResult = await resolveCurrentCommunityForServerAction();
+
+    if (!currentCommunityResolutionResult.success) {
+      return toActionResultFromAppResult(currentCommunityResolutionResult, {
+        userMessage: "イベント一覧の取得に失敗しました",
+      });
+    }
+
+    if (!currentCommunityResolutionResult.data) {
+      return fail("INTERNAL_ERROR", { userMessage: "イベント一覧の取得に失敗しました" });
+    }
+
+    const currentCommunityResolution = currentCommunityResolutionResult.data;
 
     if (!currentCommunityResolution.currentCommunity) {
       return toActionResultFromAppResult({

@@ -141,8 +141,19 @@ export async function updateCommunityAction(
       return zodFail(parsedInput.error, { userMessage: "入力内容を確認してください" });
     }
 
-    const resolution = await resolveCurrentCommunityForServerAction();
-    const currentCommunity = resolution.currentCommunity;
+    const resolutionResult = await resolveCurrentCommunityForServerAction();
+
+    if (!resolutionResult.success) {
+      return toActionResultFromAppResult(resolutionResult, {
+        userMessage: "コミュニティの更新に失敗しました",
+      });
+    }
+
+    if (!resolutionResult.data) {
+      return fail("INTERNAL_ERROR", { userMessage: "コミュニティの更新に失敗しました" });
+    }
+
+    const currentCommunity = resolutionResult.data.currentCommunity;
 
     if (!currentCommunity) {
       return fail("NOT_FOUND", { userMessage: "更新対象のコミュニティが見つかりません" });

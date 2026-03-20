@@ -1,3 +1,6 @@
+import { AppError } from "@core/errors/app-error";
+import { errResult, okResult } from "@core/errors/app-result";
+
 const mockGetCurrentUserForServerAction = jest.fn();
 const mockResolveCurrentCommunityForServerAction = jest.fn();
 const mockCreateServerActionSupabaseClient = jest.fn();
@@ -63,9 +66,11 @@ describe("features/events/actions/get-events", () => {
 
   it("current community 未選択なら空一覧を返す", async () => {
     mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
-    mockResolveCurrentCommunityForServerAction.mockResolvedValue({
-      currentCommunity: null,
-    });
+    mockResolveCurrentCommunityForServerAction.mockResolvedValue(
+      okResult({
+        currentCommunity: null,
+      })
+    );
 
     const { getEventsAction } = await loadGetEventsModule();
 
@@ -88,11 +93,13 @@ describe("features/events/actions/get-events", () => {
   it("current community を helper に渡して ActionResult へ投影する", async () => {
     const supabase = { from: jest.fn() };
     mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
-    mockResolveCurrentCommunityForServerAction.mockResolvedValue({
-      currentCommunity: {
-        id: "community-9",
-      },
-    });
+    mockResolveCurrentCommunityForServerAction.mockResolvedValue(
+      okResult({
+        currentCommunity: {
+          id: "community-9",
+        },
+      })
+    );
     mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
     mockListEventsForCommunity.mockResolvedValue({
       success: true,
@@ -117,5 +124,31 @@ describe("features/events/actions/get-events", () => {
     expect(mockListEventsForCommunity).toHaveBeenCalledWith(supabase, "community-9", {
       limit: 12,
     });
+  });
+
+  it("current community 解決失敗は ActionResult の失敗へ投影する", async () => {
+    mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
+    mockResolveCurrentCommunityForServerAction.mockResolvedValue(
+      errResult(
+        new AppError("DATABASE_ERROR", {
+          userMessage: "コミュニティ情報の取得に失敗しました",
+          retryable: true,
+        })
+      )
+    );
+
+    const { getEventsAction } = await loadGetEventsModule();
+
+    await expect(getEventsAction()).resolves.toEqual(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: "DATABASE_ERROR",
+          userMessage: "イベント一覧の取得に失敗しました",
+        }),
+      })
+    );
+
+    expect(mockListEventsForCommunity).not.toHaveBeenCalled();
   });
 });

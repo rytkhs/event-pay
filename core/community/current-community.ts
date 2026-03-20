@@ -6,6 +6,8 @@ import {
   requireCurrentUserForServerAction,
   requireCurrentUserForServerComponent,
 } from "@core/auth/auth-utils";
+import { AppError } from "@core/errors/app-error";
+import { errResult, okResult, type AppResult } from "@core/errors/app-result";
 import {
   createServerActionSupabaseClient,
   createServerComponentSupabaseClient,
@@ -33,6 +35,8 @@ export type CurrentCommunityResolution = {
   resolvedBy: CurrentCommunityResolvedBy;
 };
 
+export type CurrentCommunityResolutionResult = AppResult<CurrentCommunityResolution>;
+
 type ResolveCurrentCommunityContextParams = {
   userId: string;
   supabase: AppSupabaseClient;
@@ -45,6 +49,8 @@ type CommunitiesQueryResult = {
   name: string;
   slug: string;
 };
+
+const CURRENT_COMMUNITY_ERROR_MESSAGE = "コミュニティ情報の取得に失敗しました";
 
 function mapCommunitySummary(community: CommunitiesQueryResult): CurrentCommunitySummary {
   return {
@@ -87,7 +93,7 @@ export async function clearCurrentCommunityCookie(): Promise<void> {
 export async function listOwnedCommunities(
   supabase: AppSupabaseClient,
   userId: string
-): Promise<CurrentCommunitySummary[]> {
+): Promise<AppResult<CurrentCommunitySummary[]>> {
   const { data, error } = await supabase
     .from("communities")
     .select("id, name, slug, created_at")
@@ -97,28 +103,44 @@ export async function listOwnedCommunities(
     .order("id", { ascending: true });
 
   if (error) {
-    throw error;
+    return errResult(
+      new AppError("DATABASE_ERROR", {
+        cause: error,
+        details: {
+          operation: "list_owned_communities",
+          userId,
+        },
+        retryable: true,
+        userMessage: CURRENT_COMMUNITY_ERROR_MESSAGE,
+      })
+    );
   }
 
-  return (data ?? []).map(mapCommunitySummary);
+  return okResult((data ?? []).map(mapCommunitySummary));
 }
 
 export async function resolveCurrentCommunityContext({
   userId,
   supabase,
   requestedCommunityId,
-}: ResolveCurrentCommunityContextParams): Promise<CurrentCommunityResolution> {
-  const ownedCommunities = await listOwnedCommunities(supabase, userId);
+}: ResolveCurrentCommunityContextParams): Promise<CurrentCommunityResolutionResult> {
+  const ownedCommunitiesResult = await listOwnedCommunities(supabase, userId);
+
+  if (!ownedCommunitiesResult.success) {
+    return ownedCommunitiesResult;
+  }
+
+  const ownedCommunities = ownedCommunitiesResult.data ?? [];
   const normalizedRequestedCommunityId = requestedCommunityId ?? null;
 
   if (ownedCommunities.length === 0) {
-    return {
+    return okResult({
       currentCommunity: null,
       ownedCommunities,
       requestedCommunityId: normalizedRequestedCommunityId,
       cookieMutation: "clear",
       resolvedBy: "empty",
-    };
+    });
   }
 
   const resolvedFromCookie =
@@ -128,22 +150,22 @@ export async function resolveCurrentCommunityContext({
         null);
 
   if (resolvedFromCookie) {
-    return {
+    return okResult({
       currentCommunity: resolvedFromCookie,
       ownedCommunities,
       requestedCommunityId: normalizedRequestedCommunityId,
       cookieMutation: "none",
       resolvedBy: "cookie",
-    };
+    });
   }
 
-  return {
+  return okResult({
     currentCommunity: ownedCommunities[0] ?? null,
     ownedCommunities,
     requestedCommunityId: normalizedRequestedCommunityId,
     cookieMutation: "set",
     resolvedBy: "oldest_fallback",
-  };
+  });
 }
 
 const getCachedCurrentCommunityForServerComponent = cache(
@@ -152,11 +174,24 @@ const getCachedCurrentCommunityForServerComponent = cache(
     const supabase = await createServerComponentSupabaseClient();
     const requestedCommunityId = await readCurrentCommunityCookie();
 
-    return await resolveCurrentCommunityContext({
+    const result = await resolveCurrentCommunityContext({
       userId: user.id,
       supabase,
       requestedCommunityId,
     });
+
+    if (!result.success) {
+      throw result.error;
+    }
+
+    if (!result.data) {
+      throw new AppError("INTERNAL_ERROR", {
+        message: "Current community resolution returned no data.",
+        userMessage: CURRENT_COMMUNITY_ERROR_MESSAGE,
+      });
+    }
+
+    return result.data;
   }
 );
 
@@ -164,7 +199,7 @@ export async function resolveCurrentCommunityForServerComponent(): Promise<Curre
   return await getCachedCurrentCommunityForServerComponent();
 }
 
-export async function resolveCurrentCommunityForServerAction(): Promise<CurrentCommunityResolution> {
+export async function resolveCurrentCommunityForServerAction(): Promise<CurrentCommunityResolutionResult> {
   const user = await requireCurrentUserForServerAction();
   const supabase = await createServerActionSupabaseClient();
   const requestedCommunityId = await readCurrentCommunityCookie();

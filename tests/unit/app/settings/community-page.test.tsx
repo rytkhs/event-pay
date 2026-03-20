@@ -5,6 +5,8 @@ import React from "react";
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 
+import { AppError } from "@core/errors/app-error";
+
 const requireNonEmptyCommunityWorkspaceForServerComponent = jest.fn();
 const createServerComponentSupabaseClient = jest.fn();
 const getCurrentCommunitySettings = jest.fn();
@@ -77,8 +79,11 @@ describe("CommunitySettingsPage", () => {
       },
     });
     getCurrentCommunitySettings.mockResolvedValue({
-      community: {
-        name: "ボドゲ会",
+      success: true,
+      data: {
+        community: {
+          name: "ボドゲ会",
+        },
       },
     });
 
@@ -106,12 +111,40 @@ describe("CommunitySettingsPage", () => {
         id: "community-1",
       },
     });
-    getCurrentCommunitySettings.mockResolvedValue(null);
+    getCurrentCommunitySettings.mockResolvedValue({
+      success: true,
+      data: null,
+    });
 
     const CommunitySettingsPage = (await import("../../../../app/(app)/settings/community/page"))
       .default;
 
     await expect(CommunitySettingsPage()).rejects.toThrow("NEXT_REDIRECT:/dashboard");
     expect(redirect).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("read model 取得失敗は AppError を throw する", async () => {
+    const appError = new AppError("DATABASE_ERROR", {
+      userMessage: "コミュニティ設定の取得に失敗しました",
+    });
+
+    createServerComponentSupabaseClient.mockResolvedValue({ from: jest.fn() });
+    requireNonEmptyCommunityWorkspaceForServerComponent.mockResolvedValue({
+      currentUser: {
+        id: "user-1",
+      },
+      currentCommunity: {
+        id: "community-1",
+      },
+    });
+    getCurrentCommunitySettings.mockResolvedValue({
+      success: false,
+      error: appError,
+    });
+
+    const CommunitySettingsPage = (await import("../../../../app/(app)/settings/community/page"))
+      .default;
+
+    await expect(CommunitySettingsPage()).rejects.toBe(appError);
   });
 });

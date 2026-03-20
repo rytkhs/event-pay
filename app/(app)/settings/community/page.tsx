@@ -32,13 +32,17 @@ export default async function CommunitySettingsPage() {
     currentCommunity.id
   );
 
-  if (!settings) {
+  if (!settings.success) {
+    throw settings.error;
+  }
+
+  if (!settings.data) {
     redirect("/dashboard");
   }
 
   return (
     <CurrentCommunitySettingsOverview
-      settings={settings}
+      settings={settings.data}
       updateCommunityAction={updateCommunityAction}
     />
   );

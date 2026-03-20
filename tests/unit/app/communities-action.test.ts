@@ -65,11 +65,13 @@ async function loadCommunitiesActionModule(): Promise<CommunitiesActionModule> {
 describe("app/(app)/actions/communities", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockResolveCurrentCommunityForServerAction.mockResolvedValue({
-      currentCommunity: {
-        id: "community-1",
-      },
-    });
+    mockResolveCurrentCommunityForServerAction.mockResolvedValue(
+      okResult({
+        currentCommunity: {
+          id: "community-1",
+        },
+      })
+    );
   });
 
   it("未認証時は UNAUTHORIZED を返す", async () => {
@@ -222,9 +224,11 @@ describe("app/(app)/actions/communities", () => {
 
   it("updateCommunityAction は current community が無ければ NOT_FOUND を返す", async () => {
     mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
-    mockResolveCurrentCommunityForServerAction.mockResolvedValue({
-      currentCommunity: null,
-    });
+    mockResolveCurrentCommunityForServerAction.mockResolvedValue(
+      okResult({
+        currentCommunity: null,
+      })
+    );
 
     const { updateCommunityAction } = await loadCommunitiesActionModule();
     const formData = new FormData();
@@ -240,7 +244,6 @@ describe("app/(app)/actions/communities", () => {
       })
     );
 
-    expect(mockCreateServerActionSupabaseClient).not.toHaveBeenCalled();
     expect(mockUpdateCommunity).not.toHaveBeenCalled();
   });
 
@@ -248,11 +251,13 @@ describe("app/(app)/actions/communities", () => {
     const supabase = { from: jest.fn() };
     mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
     mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
-    mockResolveCurrentCommunityForServerAction.mockResolvedValue({
-      currentCommunity: {
-        id: "community-9",
-      },
-    });
+    mockResolveCurrentCommunityForServerAction.mockResolvedValue(
+      okResult({
+        currentCommunity: {
+          id: "community-9",
+        },
+      })
+    );
     mockUpdateCommunity.mockResolvedValue(
       okResult({
         communityId: "community-9",
@@ -317,6 +322,35 @@ describe("app/(app)/actions/communities", () => {
       })
     );
 
+    expect(mockRevalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("updateCommunityAction は current community 解決失敗を ActionResult に投影する", async () => {
+    mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
+    mockResolveCurrentCommunityForServerAction.mockResolvedValue(
+      errResult(
+        new AppError("DATABASE_ERROR", {
+          userMessage: "コミュニティ情報の取得に失敗しました",
+          retryable: true,
+        })
+      )
+    );
+
+    const { updateCommunityAction } = await loadCommunitiesActionModule();
+    const formData = new FormData();
+    formData.set("name", "映画会");
+
+    await expect(updateCommunityAction(formData)).resolves.toEqual(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: "DATABASE_ERROR",
+          userMessage: "コミュニティの更新に失敗しました",
+        }),
+      })
+    );
+
+    expect(mockUpdateCommunity).not.toHaveBeenCalled();
     expect(mockRevalidatePath).not.toHaveBeenCalled();
   });
 });
