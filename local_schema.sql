@@ -3669,11 +3669,11 @@ CREATE POLICY "Owners can insert own communities" ON "public"."communities" FOR 
 
 
 
-CREATE POLICY "Owners can update own communities" ON "public"."communities" FOR UPDATE TO "authenticated" USING ("public"."is_community_owner"("id")) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "created_by"));
+CREATE POLICY "Owners can update own communities" ON "public"."communities" FOR UPDATE TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "created_by") OR "public"."is_community_owner"("id"))) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "created_by"));
 
 
 
-CREATE POLICY "Owners can view own communities" ON "public"."communities" FOR SELECT TO "authenticated" USING ("public"."is_community_owner"("id"));
+CREATE POLICY "Owners can view own communities" ON "public"."communities" FOR SELECT TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "created_by") OR "public"."is_community_owner"("id")));
 
 
 
