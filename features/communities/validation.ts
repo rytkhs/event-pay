@@ -5,7 +5,7 @@ function normalizeOptionalText(value: string | undefined): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
-export const createCommunitySchema = z.object({
+const communityEditableFieldsSchema = z.object({
   name: z
     .string()
     .trim()
@@ -14,4 +14,8 @@ export const createCommunitySchema = z.object({
   description: z.string().optional().transform(normalizeOptionalText),
 });
 
+export const createCommunitySchema = communityEditableFieldsSchema;
+export const updateCommunitySchema = communityEditableFieldsSchema;
+
 export type CreateCommunityInput = z.infer<typeof createCommunitySchema>;
+export type UpdateCommunityInput = z.infer<typeof updateCommunitySchema>;

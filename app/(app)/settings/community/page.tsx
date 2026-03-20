@@ -10,6 +10,8 @@ import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import { CurrentCommunitySettingsOverview } from "@features/communities";
 import { getCurrentCommunitySettings } from "@features/communities/server";
 
+import { updateCommunityAction } from "@/app/(app)/actions/communities";
+
 export const metadata: Metadata = {
   title: "コミュニティ設定",
   description: "現在選択中コミュニティの基本情報と決済状態を確認します",
@@ -34,5 +36,10 @@ export default async function CommunitySettingsPage() {
     redirect("/dashboard");
   }
 
-  return <CurrentCommunitySettingsOverview settings={settings} />;
+  return (
+    <CurrentCommunitySettingsOverview
+      settings={settings}
+      updateCommunityAction={updateCommunityAction}
+    />
+  );
 }

@@ -1,16 +1,20 @@
-import { Building2, ExternalLink, Globe2, Pencil, Trash2 } from "lucide-react";
+import { Building2, ExternalLink, Globe2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 import type { CurrentCommunitySettingsReadModel } from "../server";
 
+import { UpdateCommunityForm, type UpdateCommunityFormAction } from "./UpdateCommunityForm";
+
 type CurrentCommunitySettingsOverviewProps = {
   settings: CurrentCommunitySettingsReadModel;
+  updateCommunityAction: UpdateCommunityFormAction;
 };
 
 export function CurrentCommunitySettingsOverview({
   settings,
+  updateCommunityAction,
 }: CurrentCommunitySettingsOverviewProps) {
   return (
     <div className="space-y-6">
@@ -20,9 +24,7 @@ export function CurrentCommunitySettingsOverview({
             <Building2 className="h-5 w-5" />
             コミュニティ基本情報
           </CardTitle>
-          <CardDescription>
-            現在選択中コミュニティの基本情報です。編集と削除は次のタスクでこの画面に追加します。
-          </CardDescription>
+          <CardDescription>現在選択中コミュニティの基本情報です。</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border bg-muted/30 p-4">
@@ -69,24 +71,11 @@ export function CurrentCommunitySettingsOverview({
         </CardContent>
       </Card>
 
-      <Card className="border-dashed border-border/80 bg-background/80 shadow-sm">
-        <CardContent className="flex flex-col gap-3 p-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <div className="font-medium text-foreground">次のタスクでここに追加する項目</div>
-            <p>name / description の編集フォームと、論理削除の danger zone を接続します。</p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" disabled>
-              <Pencil className="h-4 w-4" />
-              編集
-            </Button>
-            <Button variant="outline" disabled>
-              <Trash2 className="h-4 w-4" />
-              削除
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <UpdateCommunityForm
+        defaultDescription={settings.community.description}
+        defaultName={settings.community.name}
+        updateCommunityAction={updateCommunityAction}
+      />
     </div>
   );
 }
