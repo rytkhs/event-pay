@@ -5,7 +5,7 @@ import { useActionState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { ArrowRight, Loader2, Sparkles } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
@@ -67,13 +67,9 @@ export function CreateCommunityForm({
             <CardTitle className="text-2xl">コミュニティを作成</CardTitle>
             <CardDescription className="text-sm leading-6">
               {hasOwnedCommunities
-                ? "新しい運営単位を追加します。作成後は、そのコミュニティが現在の作業対象に切り替わります。"
+                ? "新しい運営単位を追加します。"
                 : "最初のコミュニティを作成すると、ダッシュボードやイベント管理を使い始められます。"}
             </CardDescription>
-          </div>
-          <div className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 sm:inline-flex sm:items-center sm:gap-2">
-            <Sparkles className="h-3.5 w-3.5" />
-            workspace setup
           </div>
         </div>
 
@@ -105,7 +101,7 @@ export function CreateCommunityForm({
               aria-describedby={nameError ? "community-name-error" : undefined}
             />
             <p className="text-sm text-muted-foreground">
-              参加者や公開ページに表示される名前です。あとから変更できます。
+              招待ページや公開ページに表示される名前です。あとから変更できます。
             </p>
             {nameError ? (
               <p

@@ -66,10 +66,6 @@ export function CurrentCommunitySettingsOverview({
               <ExternalLink className="h-4 w-4" />
               公開ページを開く
             </Button>
-            <div className="flex items-center rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
-              slug は固定です:{" "}
-              <span className="ml-1 font-mono text-foreground">{settings.community.slug}</span>
-            </div>
           </div>
         </CardContent>
       </Card>

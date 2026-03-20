@@ -73,7 +73,7 @@ export function DeleteCommunityDangerZone({
           コミュニティを削除
         </CardTitle>
         <CardDescription>
-          この操作は取り消せません。公開ページは非表示になり、ダッシュボードでの管理ができなくなります。
+          この操作は取り消せません。公開ページは非表示になり、ダッシュボードでの管理はできなくなります。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
