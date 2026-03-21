@@ -5,6 +5,7 @@ import { errResult, okResult, type AppResult } from "@core/errors/app-result";
 import type { AppSupabaseClient } from "@core/types/supabase";
 
 type PublicCommunityRow = {
+  id: string;
   description: string | null;
   name: string;
   slug: string;
@@ -12,6 +13,7 @@ type PublicCommunityRow = {
 };
 
 export type PublicCommunityReadModel = {
+  id: string;
   description: string | null;
   name: string;
   slug: string;
@@ -22,6 +24,7 @@ const GET_PUBLIC_COMMUNITY_ERROR_MESSAGE = "コミュニティ情報の取得に
 
 function toReadModel(row: PublicCommunityRow): PublicCommunityReadModel {
   return {
+    id: row.id,
     description: row.description,
     name: row.name,
     slug: row.slug,
@@ -35,7 +38,7 @@ export async function getPublicCommunityBySlug(
 ): Promise<AppResult<PublicCommunityReadModel | null>> {
   const { data: community, error } = await supabase
     .from("communities")
-    .select("name, description, slug, legal_slug")
+    .select("id, name, description, slug, legal_slug")
     .eq("slug", slug)
     .eq("is_deleted", false)
     .maybeSingle<PublicCommunityRow>();
@@ -64,7 +67,7 @@ export async function getPublicCommunityByLegalSlug(
 ): Promise<AppResult<PublicCommunityReadModel | null>> {
   const { data: community, error } = await supabase
     .from("communities")
-    .select("name, description, slug, legal_slug")
+    .select("id, name, description, slug, legal_slug")
     .eq("legal_slug", legalSlug)
     .eq("is_deleted", false)
     .maybeSingle<PublicCommunityRow>();

@@ -37,13 +37,14 @@ describe("get-public-community", () => {
       const result = await getPublicCommunityBySlug(supabase, "c-slug");
 
       expect(supabase.from).toHaveBeenCalledWith("communities");
-      expect(mockSelect).toHaveBeenCalledWith("name, description, slug, legal_slug");
+      expect(mockSelect).toHaveBeenCalledWith("id, name, description, slug, legal_slug");
       expect(mockEq1).toHaveBeenCalledWith("slug", "c-slug");
       expect(mockEq2).toHaveBeenCalledWith("is_deleted", false);
 
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toEqual({
+          id: "fake-id",
           name: "Community One",
           description: "Desc",
           slug: "c-slug",
@@ -95,6 +96,7 @@ describe("get-public-community", () => {
       const mockEq2 = jest.fn().mockReturnValue({
         maybeSingle: jest.fn().mockResolvedValue({
           data: {
+            id: "fake-id-2",
             name: "Community Two",
             description: "Legal Desc",
             slug: "c-slug-2",
@@ -110,13 +112,14 @@ describe("get-public-community", () => {
       const result = await getPublicCommunityByLegalSlug(supabase, "l-slug-2");
 
       expect(supabase.from).toHaveBeenCalledWith("communities");
-      expect(mockSelect).toHaveBeenCalledWith("name, description, slug, legal_slug");
+      expect(mockSelect).toHaveBeenCalledWith("id, name, description, slug, legal_slug");
       expect(mockEq1).toHaveBeenCalledWith("legal_slug", "l-slug-2");
       expect(mockEq2).toHaveBeenCalledWith("is_deleted", false);
 
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toEqual({
+          id: "fake-id-2",
           name: "Community Two",
           description: "Legal Desc",
           slug: "c-slug-2",
