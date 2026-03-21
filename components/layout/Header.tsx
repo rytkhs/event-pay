@@ -2,6 +2,7 @@
 
 import React from "react";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import type { AppWorkspaceShellData } from "@core/community/app-workspace";
@@ -90,9 +91,12 @@ export function Header({ workspace }: HeaderProps) {
       </div>
       <div className="ml-auto flex min-w-0 items-center gap-2">
         <span className="hidden text-xs text-muted-foreground sm:inline">現在のコミュニティ</span>
-        <div className="max-w-40 truncate rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground sm:max-w-56">
-          {workspace.currentCommunity?.name ?? "コミュニティ未作成"}
-        </div>
+        <Link
+          href="/settings/community"
+          className="max-w-40 truncate rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted/80 transition-colors sm:max-w-56"
+        >
+          {workspace.currentCommunity?.name ?? "未設定"}
+        </Link>
       </div>
     </header>
   );

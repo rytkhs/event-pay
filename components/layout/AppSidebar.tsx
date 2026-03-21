@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useTransition } from "react";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -33,6 +32,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+import { CommunitySwitcher } from "./CommunitySwitcher";
 import { navigationConfig, userMenuItems } from "./GlobalHeader/navigation-config";
 
 const LOGOUT_ERROR_MESSAGE = "ログアウトに失敗しました。再度お試しください。";
@@ -105,24 +105,14 @@ export function AppSidebar({
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <Link href="/dashboard">
-                <Image src="/icon.svg" width={24} height={24} alt="Minshu" className="size-6" />
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold">みんなの集金</span>
-                  <span className="max-w-40 truncate text-xs text-muted-foreground">
-                    {workspace.currentCommunity?.name ?? "コミュニティ未作成"}
-                  </span>
-                </div>
-              </Link>
-            </SidebarMenuButton>
+            <CommunitySwitcher workspace={workspace} />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
+          <SidebarGroupLabel>メニュー</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationConfig.app.map((item) => {
@@ -149,6 +139,7 @@ export function AppSidebar({
         </SidebarGroup>
 
         <SidebarGroup className="mt-auto">
+          <SidebarGroupLabel>ツール</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
