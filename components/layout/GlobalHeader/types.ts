@@ -13,16 +13,12 @@ export interface User extends SupabaseUser {
 /**
  * ヘッダーバリアント定義
  */
-export type HeaderVariant = "marketing" | "app" | "guest" | "minimal";
+export type HeaderVariant = "marketing" | "guest" | "minimal";
 
 /**
  * グローバルヘッダーのプロパティ
  */
 export interface GlobalHeaderProps {
-  /** 認証ユーザー情報 */
-  user?: User | null;
-  /** ログアウトアクション */
-  logoutAction?: () => Promise<ActionResult>;
   /** ヘッダーの種類 */
   variant?: HeaderVariant;
   /** スクロール時の非表示制御 */

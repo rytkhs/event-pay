@@ -13,13 +13,11 @@ import { GlobalHeaderProps, HeaderVariant } from "./types";
  * variantが指定されている場合はそれを使用し（自動判定をスキップ）、
  * 指定されていない場合は認証状態とパスに基づいて自動判定します。
  *
- * @param user - 認証ユーザー情報
  * @param variant - ヘッダーの種類（指定時は自動判定をスキップ）
  * @param hideOnScroll - スクロール時の非表示制御
  * @param className - カスタムクラス名
  */
 export function GlobalHeader({
-  user,
   variant,
   hideOnScroll: _hideOnScroll = false,
   className,
@@ -69,16 +67,6 @@ export function GlobalHeader({
       pathname.startsWith("/verify-otp")
     ) {
       return "minimal";
-    }
-
-    // 認証済みユーザー向けページの判定
-    if (user) {
-      // プロテクトされたページかチェック
-      const protectedPaths = ["/dashboard", "/events", "/settings", "/profile"];
-
-      if (protectedPaths.some((path) => pathname.startsWith(path))) {
-        return "app";
-      }
     }
 
     // デフォルト（未認証のランディングページなど）

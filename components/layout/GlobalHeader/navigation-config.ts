@@ -49,7 +49,7 @@ export const navigationConfig: NavigationConfig = {
     },
     {
       label: "設定",
-      href: "/settings/community",
+      href: "/settings",
       icon: createElement(Settings),
       exactMatch: false,
     },
