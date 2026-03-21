@@ -78,6 +78,7 @@ export type Database = {
           description: string | null;
           id: string;
           is_deleted: boolean;
+          legal_slug: string;
           name: string;
           slug: string;
           updated_at: string;
@@ -90,6 +91,7 @@ export type Database = {
           description?: string | null;
           id?: string;
           is_deleted?: boolean;
+          legal_slug?: string;
           name: string;
           slug?: string;
           updated_at?: string;
@@ -102,6 +104,7 @@ export type Database = {
           description?: string | null;
           id?: string;
           is_deleted?: boolean;
+          legal_slug?: string;
           name?: string;
           slug?: string;
           updated_at?: string;

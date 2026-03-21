@@ -2379,6 +2379,7 @@ CREATE TABLE IF NOT EXISTS "public"."communities" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "is_deleted" boolean DEFAULT false NOT NULL,
     "deleted_at" timestamp with time zone,
+    "legal_slug" character varying(255) DEFAULT "public"."generate_community_slug"() NOT NULL,
     CONSTRAINT "communities_soft_delete_consistency" CHECK (("is_deleted" = ("deleted_at" IS NOT NULL)))
 );
 
@@ -3067,6 +3068,11 @@ ALTER TABLE ONLY "public"."attendances"
 
 ALTER TABLE ONLY "public"."attendances"
     ADD CONSTRAINT "attendances_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."communities"
+    ADD CONSTRAINT "communities_legal_slug_key" UNIQUE ("legal_slug");
 
 
 
