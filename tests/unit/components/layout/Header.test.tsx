@@ -73,8 +73,27 @@ describe("Header", () => {
     );
 
     expect(screen.getByText("現在のコミュニティ")).toBeInTheDocument();
-    expect(screen.getByText("ボドゲ会")).toBeInTheDocument();
+    const badge = screen.getByText("ボドゲ会");
+    expect(badge).toBeInTheDocument();
+    expect(badge.closest("a")).toHaveAttribute("href", "/settings/community");
     expect(screen.getByText("イベント一覧")).toBeInTheDocument();
+  });
+
+  it("コミュニティ未作成時に『未設定』を表示する", async () => {
+    const { Header } = await import("@/components/layout/Header");
+
+    render(
+      <Header
+        workspace={{
+          currentCommunity: null,
+          ownedCommunities: [],
+          hasOwnedCommunities: false,
+          isCommunityEmptyState: true,
+        }}
+      />
+    );
+
+    expect(screen.getByText("未設定")).toBeInTheDocument();
   });
 
   it("communities/create では breadcrumb にコミュニティ / 新規作成を表示する", async () => {

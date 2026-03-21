@@ -112,7 +112,7 @@ export function AppSidebar({
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
+          <SidebarGroupLabel>メニュー</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationConfig.app.map((item) => {
@@ -139,6 +139,7 @@ export function AppSidebar({
         </SidebarGroup>
 
         <SidebarGroup className="mt-auto">
+          <SidebarGroupLabel>ツール</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>

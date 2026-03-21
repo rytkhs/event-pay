@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { AppHeader } from "./AppHeader";
 import { GuestHeader } from "./GuestHeader";
 import { MarketingHeader } from "./MarketingHeader";
 import { GlobalHeaderProps, HeaderVariant } from "./types";
@@ -21,7 +20,6 @@ import { GlobalHeaderProps, HeaderVariant } from "./types";
  */
 export function GlobalHeader({
   user,
-  logoutAction,
   variant,
   hideOnScroll: _hideOnScroll = false,
   className,
@@ -50,12 +48,6 @@ export function GlobalHeader({
         );
       case "guest":
         return <GuestHeader attendance={undefined} className={className} />;
-      case "app":
-        if (!user) {
-          // フォールバック（通常は発生しない）
-          return <MarketingHeader className={className} />;
-        }
-        return <AppHeader user={user} logoutAction={logoutAction} className={className} />;
       case "marketing":
         return <MarketingHeader className={className} />;
     }
@@ -115,11 +107,6 @@ export function GlobalHeader({
   if (currentVariant === "guest") {
     // 招待ページやゲストページでは参加状況は表示しない（各ページのコンテンツで処理）
     return <GuestHeader attendance={undefined} className={className} />;
-  }
-
-  // アプリケーションヘッダー（認証済みユーザー）
-  if (currentVariant === "app" && user) {
-    return <AppHeader user={user} logoutAction={logoutAction} className={className} />;
   }
 
   // マーケティングヘッダー（デフォルト）
