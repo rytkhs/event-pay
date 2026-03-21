@@ -1255,6 +1255,28 @@ $$;
 ALTER FUNCTION "public"."is_payout_profile_owner"("p_payout_profile_id" "uuid") OWNER TO "app_definer";
 
 
+CREATE OR REPLACE FUNCTION "public"."is_public_community"("p_community_id" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+      FROM public.communities c
+     WHERE c.id = p_community_id
+       AND c.is_deleted = false
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."is_public_community"("p_community_id" "uuid") OWNER TO "app_definer";
+
+
+COMMENT ON FUNCTION "public"."is_public_community"("p_community_id" "uuid") IS '公開問い合わせ/公開導線向けに、未削除 community かどうかを判定する';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."prevent_payment_status_rollback"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
@@ -1713,6 +1735,50 @@ $$;
 
 
 ALTER FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text", "p_invite_token" "text") OWNER TO "app_definer";
+
+
+CREATE OR REPLACE FUNCTION "public"."rpc_public_get_community_by_legal_slug"("p_legal_slug" "text") RETURNS TABLE("id" "uuid", "name" character varying, "description" "text", "slug" character varying, "legal_slug" character varying)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+BEGIN
+  RETURN QUERY
+  SELECT c.id, c.name, c.description, c.slug, c.legal_slug
+    FROM public.communities c
+   WHERE c.legal_slug = p_legal_slug
+     AND c.is_deleted = false
+   LIMIT 1;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_public_get_community_by_legal_slug"("p_legal_slug" "text") OWNER TO "app_definer";
+
+
+COMMENT ON FUNCTION "public"."rpc_public_get_community_by_legal_slug"("p_legal_slug" "text") IS '未削除 community の公開ページ向け最小情報を legal_slug から取得する';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."rpc_public_get_community_by_slug"("p_slug" "text") RETURNS TABLE("id" "uuid", "name" character varying, "description" "text", "slug" character varying, "legal_slug" character varying)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+BEGIN
+  RETURN QUERY
+  SELECT c.id, c.name, c.description, c.slug, c.legal_slug
+    FROM public.communities c
+   WHERE c.slug = p_slug
+     AND c.is_deleted = false
+   LIMIT 1;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_public_get_community_by_slug"("p_slug" "text") OWNER TO "app_definer";
+
+
+COMMENT ON FUNCTION "public"."rpc_public_get_community_by_slug"("p_slug" "text") IS '未削除 community の公開ページ向け最小情報を slug から取得する';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") RETURNS TABLE("stripe_account_id" character varying, "payouts_enabled" boolean)
@@ -2405,6 +2471,28 @@ COMMENT ON COLUMN "public"."communities"."current_payout_profile_id" IS 'コミ�
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."community_contacts" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "community_id" "uuid" NOT NULL,
+    "name" "text" NOT NULL,
+    "email" "text" NOT NULL,
+    "message" "text" NOT NULL,
+    "fingerprint_hash" "text" NOT NULL,
+    "user_agent" "text",
+    "ip_hash" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+ALTER TABLE ONLY "public"."community_contacts" FORCE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."community_contacts" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."community_contacts" IS 'コミュニティ公開ページから主催者へ届く問い合わせ';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."contacts" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "name" "text" NOT NULL,
@@ -3086,6 +3174,11 @@ ALTER TABLE ONLY "public"."communities"
 
 
 
+ALTER TABLE ONLY "public"."community_contacts"
+    ADD CONSTRAINT "community_contacts_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."contacts"
     ADD CONSTRAINT "contacts_pkey" PRIMARY KEY ("id");
 
@@ -3211,6 +3304,14 @@ CREATE INDEX "idx_communities_created_by" ON "public"."communities" USING "btree
 
 
 CREATE INDEX "idx_communities_current_payout_profile_id" ON "public"."communities" USING "btree" ("current_payout_profile_id");
+
+
+
+CREATE INDEX "idx_community_contacts_community_id" ON "public"."community_contacts" USING "btree" ("community_id");
+
+
+
+CREATE INDEX "idx_community_contacts_created_at" ON "public"."community_contacts" USING "btree" ("created_at" DESC);
 
 
 
@@ -3490,6 +3591,10 @@ CREATE UNIQUE INDEX "unique_open_payment_per_attendance" ON "public"."payments" 
 
 
 
+CREATE UNIQUE INDEX "ux_community_contacts_community_fingerprint" ON "public"."community_contacts" USING "btree" ("community_id", "fingerprint_hash");
+
+
+
 CREATE UNIQUE INDEX "ux_contacts_fingerprint" ON "public"."contacts" USING "btree" ("fingerprint_hash");
 
 
@@ -3562,6 +3667,11 @@ ALTER TABLE ONLY "public"."communities"
 
 ALTER TABLE ONLY "public"."communities"
     ADD CONSTRAINT "communities_current_payout_profile_id_fkey" FOREIGN KEY ("current_payout_profile_id") REFERENCES "public"."payout_profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."community_contacts"
+    ADD CONSTRAINT "community_contacts_community_id_fkey" FOREIGN KEY ("community_id") REFERENCES "public"."communities"("id") ON DELETE CASCADE;
 
 
 
@@ -3683,7 +3793,15 @@ CREATE POLICY "Owners can view own communities" ON "public"."communities" FOR SE
 
 
 
+CREATE POLICY "Owners can view own community contacts" ON "public"."community_contacts" FOR SELECT TO "authenticated" USING ("public"."is_community_owner"("community_id"));
+
+
+
 CREATE POLICY "Owners can view own payout profiles" ON "public"."payout_profiles" FOR SELECT TO "authenticated" USING ("public"."is_payout_profile_owner"("id"));
+
+
+
+CREATE POLICY "Public can insert community contacts" ON "public"."community_contacts" FOR INSERT TO "authenticated", "anon" WITH CHECK ("public"."is_public_community"("community_id"));
 
 
 
@@ -3692,6 +3810,10 @@ CREATE POLICY "Service role can manage attendances" ON "public"."attendances" TO
 
 
 CREATE POLICY "Service role can manage communities" ON "public"."communities" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "Service role can manage community contacts" ON "public"."community_contacts" TO "service_role" USING (true) WITH CHECK (true);
 
 
 
@@ -3731,6 +3853,9 @@ ALTER TABLE "public"."attendances" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."communities" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."community_contacts" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."contacts" ENABLE ROW LEVEL SECURITY;
@@ -4168,6 +4293,13 @@ GRANT ALL ON FUNCTION "public"."is_payout_profile_owner"("p_payout_profile_id" "
 
 
 
+REVOKE ALL ON FUNCTION "public"."is_public_community"("p_community_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."is_public_community"("p_community_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_public_community"("p_community_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."is_public_community"("p_community_id" "uuid") TO "anon";
+
+
+
 REVOKE ALL ON FUNCTION "public"."prevent_payment_status_rollback"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "service_role";
@@ -4209,6 +4341,20 @@ GRANT ALL ON FUNCTION "public"."rpc_public_attending_count"("p_event_id" "uuid",
 GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text", "p_invite_token" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text", "p_invite_token" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text", "p_invite_token" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."rpc_public_get_community_by_legal_slug"("p_legal_slug" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."rpc_public_get_community_by_legal_slug"("p_legal_slug" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_public_get_community_by_legal_slug"("p_legal_slug" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."rpc_public_get_community_by_legal_slug"("p_legal_slug" "text") TO "anon";
+
+
+
+REVOKE ALL ON FUNCTION "public"."rpc_public_get_community_by_slug"("p_slug" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."rpc_public_get_community_by_slug"("p_slug" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_public_get_community_by_slug"("p_slug" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."rpc_public_get_community_by_slug"("p_slug" "text") TO "anon";
 
 
 
@@ -4299,6 +4445,12 @@ GRANT ALL ON TABLE "public"."communities" TO "anon";
 GRANT ALL ON TABLE "public"."communities" TO "service_role";
 GRANT SELECT ON TABLE "public"."communities" TO "app_definer";
 GRANT SELECT,INSERT,UPDATE ON TABLE "public"."communities" TO "authenticated";
+
+
+
+GRANT ALL ON TABLE "public"."community_contacts" TO "anon";
+GRANT ALL ON TABLE "public"."community_contacts" TO "authenticated";
+GRANT ALL ON TABLE "public"."community_contacts" TO "service_role";
 
 
 

@@ -11,35 +11,30 @@ describe("get-public-community", () => {
   // Use a mock supabase client using proxy to intercept method calls
   beforeEach(() => {
     supabase = {
-      from: jest.fn(),
+      rpc: jest.fn(),
     } as unknown as AppSupabaseClient;
   });
 
   describe("getPublicCommunityBySlug", () => {
-    it("should return the community model with organizer name when successful", async () => {
-      const mockEq2 = jest.fn().mockReturnValue({
-        maybeSingle: jest.fn().mockResolvedValue({
-          data: {
+    it("should return the public community model when successful", async () => {
+      (supabase.rpc as jest.Mock).mockResolvedValue({
+        data: [
+          {
             id: "fake-id",
             name: "Community One",
             description: "Desc",
             slug: "c-slug",
             legal_slug: "l-slug",
-            users: { name: "Test User" },
           },
-          error: null,
-        }),
+        ],
+        error: null,
       });
-      const mockEq1 = jest.fn().mockReturnValue({ eq: mockEq2 });
-      const mockSelect = jest.fn().mockReturnValue({ eq: mockEq1 });
-      (supabase.from as jest.Mock).mockReturnValue({ select: mockSelect });
 
       const result = await getPublicCommunityBySlug(supabase, "c-slug");
 
-      expect(supabase.from).toHaveBeenCalledWith("communities");
-      expect(mockSelect).toHaveBeenCalledWith("id, name, description, slug, legal_slug");
-      expect(mockEq1).toHaveBeenCalledWith("slug", "c-slug");
-      expect(mockEq2).toHaveBeenCalledWith("is_deleted", false);
+      expect(supabase.rpc).toHaveBeenCalledWith("rpc_public_get_community_by_slug", {
+        p_slug: "c-slug",
+      });
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -54,15 +49,10 @@ describe("get-public-community", () => {
     });
 
     it("should return null if not found", async () => {
-      const mockEq2 = jest.fn().mockReturnValue({
-        maybeSingle: jest.fn().mockResolvedValue({
-          data: null,
-          error: null,
-        }),
+      (supabase.rpc as jest.Mock).mockResolvedValue({
+        data: [],
+        error: null,
       });
-      const mockEq1 = jest.fn().mockReturnValue({ eq: mockEq2 });
-      const mockSelect = jest.fn().mockReturnValue({ eq: mockEq1 });
-      (supabase.from as jest.Mock).mockReturnValue({ select: mockSelect });
 
       const result = await getPublicCommunityBySlug(supabase, "unknown-slug");
       expect(result.success).toBe(true);
@@ -72,15 +62,10 @@ describe("get-public-community", () => {
     });
 
     it("should return errResult if database error occurs", async () => {
-      const mockEq2 = jest.fn().mockReturnValue({
-        maybeSingle: jest.fn().mockResolvedValue({
-          data: null,
-          error: new Error("db failure"),
-        }),
+      (supabase.rpc as jest.Mock).mockResolvedValue({
+        data: null,
+        error: new Error("db failure"),
       });
-      const mockEq1 = jest.fn().mockReturnValue({ eq: mockEq2 });
-      const mockSelect = jest.fn().mockReturnValue({ eq: mockEq1 });
-      (supabase.from as jest.Mock).mockReturnValue({ select: mockSelect });
 
       const result = await getPublicCommunityBySlug(supabase, "unknown-slug");
       expect(result.success).toBe(false);
@@ -92,29 +77,25 @@ describe("get-public-community", () => {
   });
 
   describe("getPublicCommunityByLegalSlug", () => {
-    it("should return the community model with organizer name when successful", async () => {
-      const mockEq2 = jest.fn().mockReturnValue({
-        maybeSingle: jest.fn().mockResolvedValue({
-          data: {
+    it("should return the public community model when successful", async () => {
+      (supabase.rpc as jest.Mock).mockResolvedValue({
+        data: [
+          {
             id: "fake-id-2",
             name: "Community Two",
             description: "Legal Desc",
             slug: "c-slug-2",
             legal_slug: "l-slug-2",
           },
-          error: null,
-        }),
+        ],
+        error: null,
       });
-      const mockEq1 = jest.fn().mockReturnValue({ eq: mockEq2 });
-      const mockSelect = jest.fn().mockReturnValue({ eq: mockEq1 });
-      (supabase.from as jest.Mock).mockReturnValue({ select: mockSelect });
 
       const result = await getPublicCommunityByLegalSlug(supabase, "l-slug-2");
 
-      expect(supabase.from).toHaveBeenCalledWith("communities");
-      expect(mockSelect).toHaveBeenCalledWith("id, name, description, slug, legal_slug");
-      expect(mockEq1).toHaveBeenCalledWith("legal_slug", "l-slug-2");
-      expect(mockEq2).toHaveBeenCalledWith("is_deleted", false);
+      expect(supabase.rpc).toHaveBeenCalledWith("rpc_public_get_community_by_legal_slug", {
+        p_legal_slug: "l-slug-2",
+      });
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -129,15 +110,10 @@ describe("get-public-community", () => {
     });
 
     it("should return null if not found", async () => {
-      const mockEq2 = jest.fn().mockReturnValue({
-        maybeSingle: jest.fn().mockResolvedValue({
-          data: null,
-          error: null,
-        }),
+      (supabase.rpc as jest.Mock).mockResolvedValue({
+        data: [],
+        error: null,
       });
-      const mockEq1 = jest.fn().mockReturnValue({ eq: mockEq2 });
-      const mockSelect = jest.fn().mockReturnValue({ eq: mockEq1 });
-      (supabase.from as jest.Mock).mockReturnValue({ select: mockSelect });
 
       const result = await getPublicCommunityByLegalSlug(supabase, "unknown-slug");
       expect(result.success).toBe(true);

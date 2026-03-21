@@ -36,12 +36,9 @@ export async function getPublicCommunityBySlug(
   supabase: AppSupabaseClient,
   slug: string
 ): Promise<AppResult<PublicCommunityReadModel | null>> {
-  const { data: community, error } = await supabase
-    .from("communities")
-    .select("id, name, description, slug, legal_slug")
-    .eq("slug", slug)
-    .eq("is_deleted", false)
-    .maybeSingle<PublicCommunityRow>();
+  const { data, error } = await supabase.rpc("rpc_public_get_community_by_slug", {
+    p_slug: slug,
+  });
 
   if (error) {
     return errResult(
@@ -54,6 +51,8 @@ export async function getPublicCommunityBySlug(
     );
   }
 
+  const community = (data?.[0] as PublicCommunityRow | undefined) ?? null;
+
   if (!community) {
     return okResult(null);
   }
@@ -65,12 +64,9 @@ export async function getPublicCommunityByLegalSlug(
   supabase: AppSupabaseClient,
   legalSlug: string
 ): Promise<AppResult<PublicCommunityReadModel | null>> {
-  const { data: community, error } = await supabase
-    .from("communities")
-    .select("id, name, description, slug, legal_slug")
-    .eq("legal_slug", legalSlug)
-    .eq("is_deleted", false)
-    .maybeSingle<PublicCommunityRow>();
+  const { data, error } = await supabase.rpc("rpc_public_get_community_by_legal_slug", {
+    p_legal_slug: legalSlug,
+  });
 
   if (error) {
     return errResult(
@@ -82,6 +78,8 @@ export async function getPublicCommunityByLegalSlug(
       })
     );
   }
+
+  const community = (data?.[0] as PublicCommunityRow | undefined) ?? null;
 
   if (!community) {
     return okResult(null);
