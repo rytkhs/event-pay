@@ -8,6 +8,7 @@ import type { AppSupabaseClient } from "@core/types/supabase";
 type CommunitySettingsRow = {
   description: string | null;
   id: string;
+  legal_slug: string;
   name: string;
   slug: string;
 };
@@ -16,9 +17,11 @@ export type CurrentCommunitySettingsReadModel = {
   community: {
     description: string | null;
     id: string;
+    legalSlug: string;
     name: string;
     slug: string;
   };
+  legalPageUrl: string;
   publicPageUrl: string;
 };
 
@@ -31,7 +34,7 @@ export async function getCurrentCommunitySettings(
 ): Promise<AppResult<CurrentCommunitySettingsReadModel | null>> {
   const { data: community, error: communityError } = await supabase
     .from("communities")
-    .select("id, name, description, slug")
+    .select("id, name, description, slug, legal_slug")
     .eq("id", currentCommunityId)
     .eq("created_by", ownerUserId)
     .eq("is_deleted", false)
@@ -60,9 +63,11 @@ export async function getCurrentCommunitySettings(
     community: {
       description: community.description,
       id: community.id,
+      legalSlug: community.legal_slug,
       name: community.name,
       slug: community.slug,
     },
+    legalPageUrl: getPublicUrl(`/tokushoho/${community.legal_slug}`),
     publicPageUrl: getPublicUrl(`/c/${community.slug}`),
   });
 }
