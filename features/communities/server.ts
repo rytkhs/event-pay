@@ -7,6 +7,7 @@ export {
   type CurrentCommunitySettingsReadModel,
 } from "./services/get-current-community-settings";
 export { updateCommunity, type UpdateCommunityResult } from "./services/update-community";
+export { getPublicCommunityBySlug } from "./services/get-public-community";
 export {
   createCommunitySchema,
   updateCommunitySchema,

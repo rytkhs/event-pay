@@ -6,22 +6,16 @@ import type { AppSupabaseClient } from "@core/types/supabase";
 
 type PublicCommunityRow = {
   description: string | null;
-  id: string;
   name: string;
   slug: string;
   legal_slug: string;
-  users: {
-    name: string | null;
-  } | null;
 };
 
 export type PublicCommunityReadModel = {
   description: string | null;
-  id: string;
   name: string;
   slug: string;
   legalSlug: string;
-  organizerName: string | null;
 };
 
 const GET_PUBLIC_COMMUNITY_ERROR_MESSAGE = "コミュニティ情報の取得に失敗しました";
@@ -29,11 +23,9 @@ const GET_PUBLIC_COMMUNITY_ERROR_MESSAGE = "コミュニティ情報の取得に
 function toReadModel(row: PublicCommunityRow): PublicCommunityReadModel {
   return {
     description: row.description,
-    id: row.id,
     name: row.name,
     slug: row.slug,
     legalSlug: row.legal_slug,
-    organizerName: row.users?.name ?? null,
   };
 }
 
@@ -43,7 +35,7 @@ export async function getPublicCommunityBySlug(
 ): Promise<AppResult<PublicCommunityReadModel | null>> {
   const { data: community, error } = await supabase
     .from("communities")
-    .select("id, name, description, slug, legal_slug, users:created_by(name)")
+    .select("name, description, slug, legal_slug")
     .eq("slug", slug)
     .eq("is_deleted", false)
     .maybeSingle<PublicCommunityRow>();
@@ -72,7 +64,7 @@ export async function getPublicCommunityByLegalSlug(
 ): Promise<AppResult<PublicCommunityReadModel | null>> {
   const { data: community, error } = await supabase
     .from("communities")
-    .select("id, name, description, slug, legal_slug, users:created_by(name)")
+    .select("name, description, slug, legal_slug")
     .eq("legal_slug", legalSlug)
     .eq("is_deleted", false)
     .maybeSingle<PublicCommunityRow>();

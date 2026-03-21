@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { Building2, ExternalLink, Globe2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -62,9 +64,11 @@ export function CurrentCommunitySettingsOverview({
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" disabled>
-              <ExternalLink className="h-4 w-4" />
-              公開ページを開く
+            <Button variant="outline" asChild>
+              <Link href={settings.publicPageUrl} rel="noopener noreferrer" target="_blank">
+                <ExternalLink className="h-4 w-4" />
+                公開ページを開く
+              </Link>
             </Button>
           </div>
         </CardContent>
