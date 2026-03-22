@@ -22,6 +22,12 @@ import {
   CommunityContactInputSchema,
   type CommunityContactInput,
 } from "@core/validation/community-contact";
+import {
+  canonicalizeContactMessageForFingerprint,
+  hasValidContactMessageContent,
+  hasValidContactNameContent,
+  normalizeContactMessageForStorage,
+} from "@core/validation/contact-message";
 
 import { createCommunityContact } from "@features/communities/server";
 
@@ -202,9 +208,26 @@ export async function submitCommunityContact(
 
   const nameSanitized = sanitizeForEventPay(parsed.data.name).trim();
   const messageSanitized = sanitizeForEventPay(parsed.data.message);
-  const normalizedMessage = messageSanitized.trim().replace(/\s+/g, " ");
+  const messageForStorage = normalizeContactMessageForStorage(messageSanitized);
+  const messageForFingerprint = canonicalizeContactMessageForFingerprint(messageSanitized);
+
+  if (
+    !hasValidContactNameContent(nameSanitized) ||
+    !hasValidContactMessageContent(messageForStorage)
+  ) {
+    return fail("VALIDATION_ERROR", {
+      userMessage: "入力内容を確認してください",
+      fieldErrors: {
+        ...(!hasValidContactNameContent(nameSanitized) ? { name: ["氏名を入力してください"] } : {}),
+        ...(!hasValidContactMessageContent(messageForStorage)
+          ? { message: ["お問い合わせ内容は10文字以上で入力してください"] }
+          : {}),
+      },
+    });
+  }
+
   const dayJst = formatDateToJstYmd(new Date());
-  const fingerprintHash = hmacSha256Hex(`${email}|${normalizedMessage}|${dayJst}`);
+  const fingerprintHash = hmacSha256Hex(`${email}|${messageForFingerprint}|${dayJst}`);
   const userAgent = h.get("user-agent") ?? null;
   const ipHash = process.env.RL_HMAC_SECRET && ip ? hmacSha256Hex(ip) : null;
 
@@ -213,7 +236,7 @@ export async function submitCommunityContact(
     communitySlug,
     name: nameSanitized,
     email,
-    message: normalizedMessage,
+    message: messageForStorage,
     fingerprintHash,
     userAgent,
     ipHash,
@@ -258,7 +281,7 @@ export async function submitCommunityContact(
       communityName: createdContact.communityName,
       senderEmail: email,
       senderName: nameSanitized,
-      messageExcerpt: normalizedMessage.slice(0, 500),
+      messageExcerpt: messageForStorage.slice(0, 500),
       fingerprintHash,
       dayJst,
     })
