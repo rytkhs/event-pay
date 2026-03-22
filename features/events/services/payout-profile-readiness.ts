@@ -20,7 +20,7 @@ export async function getEventPayoutProfileReadiness(
     return {
       isReady: false,
       userMessage:
-        "このイベントには受取先プロファイルが紐づいていないため、オンライン決済を有効化できません。コミュニティ対応のイベント作成・移行を完了してから再試行してください。",
+        "受取先プロファイルが設定されていないため、オンライン決済を有効化できません。Stripe設定を確認してから再試行してください。",
     };
   }
 

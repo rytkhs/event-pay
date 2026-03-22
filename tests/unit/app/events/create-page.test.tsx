@@ -6,20 +6,35 @@ import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 
 const requireNonEmptyCommunityWorkspaceForServerComponent = jest.fn();
-const getDetailedAccountStatusAction = jest.fn();
+const createServerComponentSupabaseClient = jest.fn();
+const getDashboardConnectCtaStatus = jest.fn();
 
 jest.mock("@core/community/app-workspace", () => ({
   requireNonEmptyCommunityWorkspaceForServerComponent,
 }));
 
+jest.mock("@core/supabase/factory", () => ({
+  createServerComponentSupabaseClient,
+}));
+
 jest.mock("@features/events", () => ({
-  SinglePageEventForm: ({ canUseOnlinePayments }: { canUseOnlinePayments: boolean }) => (
-    <div>form:{String(canUseOnlinePayments)}</div>
+  SinglePageEventForm: ({
+    canUseOnlinePayments,
+    connectStatus,
+    currentCommunityName,
+  }: {
+    canUseOnlinePayments: boolean;
+    connectStatus: string | undefined;
+    currentCommunityName: string;
+  }) => (
+    <div>
+      form:{String(canUseOnlinePayments)}:{connectStatus || "none"}:{currentCommunityName}
+    </div>
   ),
 }));
 
 jest.mock("@features/stripe-connect/server", () => ({
-  getDetailedAccountStatusAction,
+  getDashboardConnectCtaStatus,
 }));
 
 jest.mock("../../../../app/(app)/events/create/actions", () => ({
@@ -39,24 +54,28 @@ describe("CreateEventPage", () => {
     const CreateEventPage = (await import("../../../../app/(app)/events/create/page")).default;
 
     await expect(CreateEventPage()).rejects.toThrow("NEXT_REDIRECT:/dashboard");
-    expect(getDetailedAccountStatusAction).not.toHaveBeenCalled();
+    expect(createServerComponentSupabaseClient).not.toHaveBeenCalled();
+    expect(getDashboardConnectCtaStatus).not.toHaveBeenCalled();
   });
 
   it("community がある場合は既存のイベント作成フォームを描画する", async () => {
+    createServerComponentSupabaseClient.mockResolvedValue({ from: jest.fn() });
     requireNonEmptyCommunityWorkspaceForServerComponent.mockResolvedValue({
       isCommunityEmptyState: false,
+      currentCommunity: {
+        id: "community-1",
+        name: "ボドゲ会",
+      },
     });
-    getDetailedAccountStatusAction.mockResolvedValue({
-      success: true,
-      data: { status: undefined },
-    });
+    getDashboardConnectCtaStatus.mockResolvedValue(undefined);
 
     const CreateEventPage = (await import("../../../../app/(app)/events/create/page")).default;
     const ui = await CreateEventPage();
 
     render(ui);
 
-    expect(getDetailedAccountStatusAction).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("form:true")).toBeInTheDocument();
+    expect(createServerComponentSupabaseClient).toHaveBeenCalledTimes(1);
+    expect(getDashboardConnectCtaStatus).toHaveBeenCalledWith(expect.anything(), "community-1");
+    expect(screen.getByText("form:true:none:ボドゲ会")).toBeInTheDocument();
   });
 });
