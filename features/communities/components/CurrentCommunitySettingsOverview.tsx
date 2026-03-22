@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { Building2, ExternalLink, Globe2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -58,13 +60,27 @@ export function CurrentCommunitySettingsOverview({
               {settings.publicPageUrl}
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
-              実ページの公開とプレビュー導線は CC-07 で有効化します。
+              これらの URL は、Stripe 審査や問い合わせ導線として公開されます。
             </p>
           </div>
+          <div className="rounded-xl border bg-muted/30 p-4">
+            <div className="text-sm text-muted-foreground">特定商取引法に基づく表記 URL</div>
+            <div className="mt-2 break-all text-sm font-medium text-foreground">
+              {settings.legalPageUrl}
+            </div>
+          </div>
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" disabled>
-              <ExternalLink className="h-4 w-4" />
-              公開ページを開く
+            <Button variant="outline" asChild>
+              <Link href={settings.publicPageUrl} rel="noopener noreferrer" target="_blank">
+                <ExternalLink className="h-4 w-4" />
+                公開ページを開く
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href={settings.legalPageUrl} rel="noopener noreferrer" target="_blank">
+                <ExternalLink className="h-4 w-4" />
+                特商法ページを開く
+              </Link>
             </Button>
           </div>
         </CardContent>

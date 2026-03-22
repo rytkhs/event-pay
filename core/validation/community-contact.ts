@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { hasValidContactMessageContent, hasValidContactNameContent } from "./contact-message";
 
-export const ContactInputSchema = z.object({
+export const CommunityContactInputSchema = z.object({
   name: z
     .string()
     .max(100, "氏名は100文字以内で入力してください")
@@ -20,4 +20,4 @@ export const ContactInputSchema = z.object({
   }),
 });
 
-export type ContactInput = z.infer<typeof ContactInputSchema>;
+export type CommunityContactInput = z.infer<typeof CommunityContactInputSchema>;

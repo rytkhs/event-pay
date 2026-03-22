@@ -30,7 +30,7 @@ type AuthUtilsModule = typeof import("@core/auth/auth-utils");
 
 type MockLookupOptions = {
   authError?: unknown;
-  profile?: { name?: string | null } | null;
+  profile?: { email?: string | null; name?: string | null } | null;
   profileError?: unknown;
   user?: { id: string; email?: string | null } | null;
 };
@@ -94,7 +94,7 @@ describe("core/auth/auth-utils", () => {
 
   it("requireCurrentAppUserForServerComponent は profile の name を優先する", async () => {
     const { client } = createLookupClient({
-      profile: { name: "集金 太郎" },
+      profile: { name: "集金 太郎", email: "profile@example.com" },
     });
     mockCreateServerComponentSupabaseClient.mockResolvedValue(client);
 
@@ -102,7 +102,7 @@ describe("core/auth/auth-utils", () => {
 
     await expect(requireCurrentAppUserForServerComponent()).resolves.toEqual({
       id: "user_1",
-      email: "user@example.com",
+      email: "profile@example.com",
       name: "集金 太郎",
     });
   });
@@ -143,7 +143,7 @@ describe("core/auth/auth-utils", () => {
     );
   });
 
-  it("セッション欠如時は requireCurrentUserForServerComponent が redirectTo 付きで /login に redirect する", async () => {
+  it("セッション欠如時は requireCurrentUserForServerComponent が /login に redirect する", async () => {
     const { client } = createLookupClient({
       authError: new AuthSessionMissingError(),
       user: null,
@@ -157,14 +157,12 @@ describe("core/auth/auth-utils", () => {
 
     const { requireCurrentUserForServerComponent } = await loadAuthUtils();
 
-    await expect(requireCurrentUserForServerComponent()).rejects.toThrow(
-      "NEXT_REDIRECT:/login?redirectTo=%2Fsettings%2Fprofile"
-    );
-    expect(mockRedirect).toHaveBeenCalledWith("/login?redirectTo=%2Fsettings%2Fprofile");
+    await expect(requireCurrentUserForServerComponent()).rejects.toThrow("NEXT_REDIRECT:/login");
+    expect(mockRedirect).toHaveBeenCalledWith("/login");
     expect(mockHandleServerError).not.toHaveBeenCalled();
   });
 
-  it("未認証時は requireCurrentAppUserForServerComponent が redirectTo 付きで /login に redirect する", async () => {
+  it("未認証時は requireCurrentAppUserForServerComponent が /login に redirect する", async () => {
     const { client } = createLookupClient({
       user: null,
     });
@@ -177,10 +175,8 @@ describe("core/auth/auth-utils", () => {
 
     const { requireCurrentAppUserForServerComponent } = await loadAuthUtils();
 
-    await expect(requireCurrentAppUserForServerComponent()).rejects.toThrow(
-      "NEXT_REDIRECT:/login?redirectTo=%2Fevents%2Fcreate"
-    );
-    expect(mockRedirect).toHaveBeenCalledWith("/login?redirectTo=%2Fevents%2Fcreate");
+    await expect(requireCurrentAppUserForServerComponent()).rejects.toThrow("NEXT_REDIRECT:/login");
+    expect(mockRedirect).toHaveBeenCalledWith("/login");
     expect(mockHandleServerError).not.toHaveBeenCalled();
   });
 
@@ -225,9 +221,9 @@ describe("core/auth/auth-utils", () => {
     expect(mockHandleServerError).not.toHaveBeenCalled();
   });
 
-  it("requireCurrentAppUserForServerComponent は users.name のみを問い合わせる", async () => {
+  it("requireCurrentAppUserForServerComponent は users.name,email を問い合わせる", async () => {
     const { client, spies } = createLookupClient({
-      profile: { name: "共有ユーザー" },
+      profile: { name: "共有ユーザー", email: "shared@example.com" },
     });
     mockCreateServerComponentSupabaseClient.mockResolvedValue(client);
 
@@ -238,7 +234,7 @@ describe("core/auth/auth-utils", () => {
     expect(mockCreateServerComponentSupabaseClient).toHaveBeenCalledTimes(1);
     expect(spies.authGetUser).toHaveBeenCalledTimes(1);
     expect(spies.from).toHaveBeenCalledWith("users");
-    expect(spies.select).toHaveBeenCalledWith("name");
+    expect(spies.select).toHaveBeenCalledWith("name, email");
     expect(spies.eq).toHaveBeenCalledWith("id", "user_1");
     expect(spies.maybeSingle).toHaveBeenCalledTimes(1);
   });

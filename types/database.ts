@@ -78,6 +78,7 @@ export type Database = {
           description: string | null;
           id: string;
           is_deleted: boolean;
+          legal_slug: string;
           name: string;
           slug: string;
           updated_at: string;
@@ -90,6 +91,7 @@ export type Database = {
           description?: string | null;
           id?: string;
           is_deleted?: boolean;
+          legal_slug?: string;
           name: string;
           slug?: string;
           updated_at?: string;
@@ -102,6 +104,7 @@ export type Database = {
           description?: string | null;
           id?: string;
           is_deleted?: boolean;
+          legal_slug?: string;
           name?: string;
           slug?: string;
           updated_at?: string;
@@ -126,6 +129,50 @@ export type Database = {
             columns: ["current_payout_profile_id"];
             isOneToOne: false;
             referencedRelation: "payout_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      community_contacts: {
+        Row: {
+          community_id: string;
+          created_at: string;
+          email: string;
+          fingerprint_hash: string;
+          id: string;
+          ip_hash: string | null;
+          message: string;
+          name: string;
+          user_agent: string | null;
+        };
+        Insert: {
+          community_id: string;
+          created_at?: string;
+          email: string;
+          fingerprint_hash: string;
+          id?: string;
+          ip_hash?: string | null;
+          message: string;
+          name: string;
+          user_agent?: string | null;
+        };
+        Update: {
+          community_id?: string;
+          created_at?: string;
+          email?: string;
+          fingerprint_hash?: string;
+          id?: string;
+          ip_hash?: string | null;
+          message?: string;
+          name?: string;
+          user_agent?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "community_contacts_community_id_fkey";
+            columns: ["community_id"];
+            isOneToOne: false;
+            referencedRelation: "communities";
             referencedColumns: ["id"];
           },
         ];
@@ -1044,6 +1091,10 @@ export type Database = {
         Args: { p_payout_profile_id: string };
         Returns: boolean;
       };
+      is_public_community: {
+        Args: { p_community_id: string };
+        Returns: boolean;
+      };
       register_attendance_with_payment: {
         Args: {
           p_email: string;
@@ -1102,6 +1153,26 @@ export type Database = {
       rpc_public_check_duplicate_email: {
         Args: { p_email: string; p_event_id: string; p_invite_token: string };
         Returns: boolean;
+      };
+      rpc_public_get_community_by_legal_slug: {
+        Args: { p_legal_slug: string };
+        Returns: {
+          description: string;
+          id: string;
+          legal_slug: string;
+          name: string;
+          slug: string;
+        }[];
+      };
+      rpc_public_get_community_by_slug: {
+        Args: { p_slug: string };
+        Returns: {
+          description: string;
+          id: string;
+          legal_slug: string;
+          name: string;
+          slug: string;
+        }[];
       };
       rpc_public_get_connect_account: {
         Args: { p_event_id: string };

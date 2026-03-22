@@ -9,6 +9,7 @@ function createSupabaseMock(options: { community?: { data: unknown; error: unkno
         name: "ボドゲ会",
         description: "毎月集まるサークルです",
         slug: "community-slug",
+        legal_slug: "legal-slug",
       },
       error: null,
     }
@@ -70,13 +71,15 @@ describe("getCurrentCommunitySettings", () => {
           name: "ボドゲ会",
           description: "毎月集まるサークルです",
           slug: "community-slug",
+          legalSlug: "legal-slug",
         },
+        legalPageUrl: "https://example.com/tokushoho/legal-slug",
         publicPageUrl: "https://example.com/c/community-slug",
       },
       meta: undefined,
     });
     expect(from).toHaveBeenCalledWith("communities");
-    expect(communitySelect).toHaveBeenCalledWith("id, name, description, slug");
+    expect(communitySelect).toHaveBeenCalledWith("id, name, description, slug, legal_slug");
     expect(communityEqId).toHaveBeenCalledWith("id", "community-1");
     expect(communityEqCreatedBy).toHaveBeenCalledWith("created_by", "user-1");
     expect(communityEqIsDeleted).toHaveBeenCalledWith("is_deleted", false);

@@ -8,6 +8,11 @@ export {
 } from "./services/get-current-community-settings";
 export { updateCommunity, type UpdateCommunityResult } from "./services/update-community";
 export {
+  getPublicCommunityBySlug,
+  getPublicCommunityByLegalSlug,
+} from "./services/get-public-community";
+export { createCommunityContact } from "./services/create-community-contact";
+export {
   createCommunitySchema,
   updateCommunitySchema,
   type CreateCommunityInput,

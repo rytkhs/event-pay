@@ -12,14 +12,22 @@ import { createMultiUserTestSetup, type MultiUserTestSetup } from "@tests/setup/
 export interface RLSTestSetup {
   testEventId: string;
   testCommunityId: string;
+  testCommunitySlug: string;
+  testCommunityLegalSlug: string;
   testPayoutProfileId: string;
   testAttendanceId: string;
   testGuestToken: string;
   testInviteToken: string;
   testUserId: string;
+  testUserEmail: string;
+  testUserPassword: string;
   anotherEventId: string;
   anotherCommunityId: string;
+  anotherCommunitySlug: string;
+  anotherCommunityLegalSlug: string;
   anotherGuestToken: string;
+  anotherUserEmail: string;
+  anotherUserPassword: string;
   cleanup: () => Promise<void>;
 }
 
@@ -55,7 +63,7 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
       slug: `test-community-${Date.now()}`,
       description: "RLS owner test community",
     })
-    .select("id")
+    .select("id, slug, legal_slug")
     .single();
 
   if (testCommunityError || !testCommunity) {
@@ -101,7 +109,7 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
       slug: `another-community-${Date.now()}`,
       description: "RLS isolation community",
     })
-    .select("id")
+    .select("id, slug, legal_slug")
     .single();
 
   if (anotherCommunityError || !anotherCommunity) {
@@ -233,14 +241,22 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
   return {
     testEventId,
     testCommunityId: testCommunity.id,
+    testCommunitySlug: testCommunity.slug,
+    testCommunityLegalSlug: testCommunity.legal_slug,
     testPayoutProfileId: testPayoutProfile.id,
     testAttendanceId,
     testGuestToken,
     testInviteToken,
     testUserId,
+    testUserEmail: testOrganizer.email,
+    testUserPassword: testOrganizer.password,
     anotherEventId,
     anotherCommunityId: anotherCommunity.id,
+    anotherCommunitySlug: anotherCommunity.slug,
+    anotherCommunityLegalSlug: anotherCommunity.legal_slug,
     anotherGuestToken,
+    anotherUserEmail: anotherOrganizer.email,
+    anotherUserPassword: anotherOrganizer.password,
     cleanup,
   };
 }

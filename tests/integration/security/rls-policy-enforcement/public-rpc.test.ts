@@ -40,6 +40,80 @@ describe("Public Event RPC", () => {
   });
 });
 
+describe("Public Community RPC", () => {
+  let setup: RLSTestSetup;
+
+  beforeAll(async () => {
+    setup = await setupRLSTest();
+  });
+
+  afterAll(async () => {
+    await setup.cleanup();
+  });
+
+  test("rpc_public_get_community_by_slug は未削除 community の最小公開情報を返す", async () => {
+    const factory = getSecureClientFactory();
+    const anon = factory.createPublicClient();
+
+    const { data, error } = await (anon as any).rpc("rpc_public_get_community_by_slug", {
+      p_slug: setup.testCommunitySlug,
+    });
+
+    expect(error).toBeNull();
+    const row = Array.isArray(data) ? data[0] : data;
+    expect(row).toBeDefined();
+    if (row) {
+      expect((row as any).id).toBe(setup.testCommunityId);
+      expect((row as any).slug).toBe(setup.testCommunitySlug);
+      expect((row as any).legal_slug).toBe(setup.testCommunityLegalSlug);
+      expect(row).not.toHaveProperty("created_by");
+    }
+  });
+
+  test("rpc_public_get_community_by_legal_slug は legal_slug でも解決できる", async () => {
+    const factory = getSecureClientFactory();
+    const anon = factory.createPublicClient();
+
+    const { data, error } = await (anon as any).rpc("rpc_public_get_community_by_legal_slug", {
+      p_legal_slug: setup.testCommunityLegalSlug,
+    });
+
+    expect(error).toBeNull();
+    const row = Array.isArray(data) ? data[0] : data;
+    expect(row).toBeDefined();
+    if (row) {
+      expect((row as any).id).toBe(setup.testCommunityId);
+      expect((row as any).slug).toBe(setup.testCommunitySlug);
+    }
+  });
+
+  test("削除済み community は public RPC から取得できない", async () => {
+    const factory = getSecureClientFactory();
+    const admin = await factory.createAuditedAdminClient(
+      AdminReason.TEST_DATA_SETUP,
+      "soft delete community for public rpc test"
+    );
+    const anon = factory.createPublicClient();
+
+    const { error: updateError } = await admin
+      .from("communities")
+      .update({
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+      })
+      .eq("id", setup.anotherCommunityId);
+
+    expect(updateError).toBeNull();
+
+    const { data, error } = await (anon as any).rpc("rpc_public_get_community_by_slug", {
+      p_slug: setup.anotherCommunitySlug,
+    });
+
+    expect(error).toBeNull();
+    expect(Array.isArray(data) ? data : []).toHaveLength(0);
+  });
+});
+
 describe("Public Attending Count RPC", () => {
   let setup: RLSTestSetup;
 
