@@ -105,28 +105,28 @@ describe("submitCommunityContact Server Action - 統合テスト", () => {
     });
 
     mockAdminClient = {
-      from: jest.fn(() => ({
+      from: jest.fn((table: string) => ({
         select: jest.fn(() => ({
           eq: jest.fn(() => ({
-            maybeSingle: jest.fn().mockResolvedValue({
-              data: { created_by: "owner-user-id" },
-              error: null,
-            }),
+            maybeSingle: jest.fn().mockResolvedValue(
+              table === "communities"
+                ? {
+                    data: { created_by: "owner-user-id" },
+                    error: null,
+                  }
+                : table === "users"
+                  ? {
+                      data: { email: "owner@example.com" },
+                      error: null,
+                    }
+                  : {
+                      data: null,
+                      error: new Error(`Unexpected admin table: ${table}`),
+                    }
+            ),
           })),
         })),
       })),
-      auth: {
-        admin: {
-          getUserById: jest.fn().mockResolvedValue({
-            data: {
-              user: {
-                email: "owner@example.com",
-              },
-            },
-            error: null,
-          }),
-        },
-      },
     };
 
     const { createAuditedAdminClient } = require("@core/security/secure-client-factory.impl");

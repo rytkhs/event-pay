@@ -71,12 +71,14 @@ async function notifyCommunityOwner(params: {
       return;
     }
 
-    const { data: authData, error: authError } = await admin.auth.admin.getUserById(
-      community.created_by
-    );
+    const { data: ownerProfile, error: ownerProfileError } = await admin
+      .from("users")
+      .select("email")
+      .eq("id", community.created_by)
+      .maybeSingle();
 
-    const ownerEmail = authData.user?.email;
-    if (authError || !ownerEmail) {
+    const ownerEmail = ownerProfile?.email;
+    if (ownerProfileError || !ownerEmail) {
       logger.warn("Community contact owner email missing", {
         category: "email",
         action: "community_contact_owner_email_missing",
