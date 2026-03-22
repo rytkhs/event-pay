@@ -16,6 +16,7 @@ import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
+import { maskEmail } from "@core/utils/mask";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJst, formatDateToJstYmd } from "@core/utils/timezone";
 import {
@@ -30,14 +31,6 @@ import {
 } from "@core/validation/contact-message";
 
 import { createCommunityContact } from "@features/communities/server";
-
-function maskEmail(email: string): string {
-  const parts = email.split("@");
-  if (parts.length !== 2) return "***";
-  const [local, domain] = parts;
-  if (local.length <= 2) return `${local[0]}***@${domain}`;
-  return `${local.slice(0, 1)}${"*".repeat(local.length - 1)}@${domain}`;
-}
 
 async function notifyCommunityOwner(params: {
   communityId: string;
