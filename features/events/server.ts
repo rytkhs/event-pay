@@ -22,3 +22,4 @@ export { updateEventAction } from "./actions/update-event";
 export { buildCollectionProgressSummary } from "./services/build-collection-progress-summary";
 export { listEventsForCommunity } from "./services/list-events";
 export { getEventPayoutProfileReadiness } from "./services/payout-profile-readiness";
+export { getOwnedEventContextForCurrentCommunity } from "./services/get-owned-event-context-for-community";

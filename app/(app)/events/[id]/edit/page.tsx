@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 import { ArrowLeft } from "lucide-react";
 
-import { requireCurrentUserForServerComponent } from "@core/auth/auth-utils";
+import { requireNonEmptyCommunityWorkspaceForServerComponent } from "@core/community/app-workspace";
 import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import type { Event, EventRow } from "@core/types/event";
 import type { AttendanceStatus } from "@core/types/statuses";
@@ -14,7 +14,10 @@ import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { validateEventId } from "@core/validation/event-id";
 
 import { SinglePageEventEditForm } from "@features/events";
-import { getEventPayoutProfileReadiness } from "@features/events/server";
+import {
+  getEventPayoutProfileReadiness,
+  getOwnedEventContextForCurrentCommunity,
+} from "@features/events/server";
 
 import { updateEventAction } from "./actions";
 import { EventDangerZone } from "./components/EventDangerZone";
@@ -42,6 +45,7 @@ type EventEditQueryRow = Pick<
   | "created_at"
   | "updated_at"
   | "created_by"
+  | "community_id"
   | "payout_profile_id"
   | "invite_token"
   | "canceled_at"
@@ -51,16 +55,43 @@ type EventEditQueryRow = Pick<
 
 export default async function EventEditPage(props: EventEditPageProps) {
   const params = await props.params;
-  const supabase = await createServerComponentSupabaseClient();
-  await requireCurrentUserForServerComponent();
-
-  // IDバリデーション（形式不正のみ404）
-  const validation = validateEventId(params.id);
-  if (!validation.success) {
+  const workspace = await requireNonEmptyCommunityWorkspaceForServerComponent();
+  const currentCommunity = workspace.currentCommunity;
+  if (!currentCommunity) {
     notFound();
   }
 
-  // イベントの取得（RLSで他人イベントは0件として見える）
+  const supabase = await createServerComponentSupabaseClient();
+
+  const accessResult = await getOwnedEventContextForCurrentCommunity(
+    supabase,
+    params.id,
+    currentCommunity.id
+  );
+
+  if (!accessResult.success) {
+    if (
+      accessResult.error.code === "EVENT_INVALID_ID" ||
+      accessResult.error.code === "EVENT_NOT_FOUND"
+    ) {
+      notFound();
+    }
+    if (accessResult.error.code === "EVENT_ACCESS_DENIED") {
+      redirect(`/events/${params.id}/forbidden`);
+    }
+    throw accessResult.error;
+  }
+
+  const accessContext = accessResult.data;
+  if (!accessContext) {
+    notFound();
+  }
+
+  const validation = validateEventId(accessContext.id);
+  if (!validation.success || !validation.data) {
+    notFound();
+  }
+
   const { data: eventData, error: eventError } = await supabase
     .from("events")
     .select(
@@ -80,19 +111,19 @@ export default async function EventEditPage(props: EventEditPageProps) {
       created_at,
       updated_at,
       created_by,
+      community_id,
       payout_profile_id,
       invite_token,
       canceled_at,
       attendances(id, status)
     `
     )
-    .eq("id", params.id)
+    .eq("id", validation.data)
     .single()
     .overrideTypes<EventEditQueryRow, { merge: false }>();
 
-  // アクセス拒否は403へ（PGRST301=RLS拒否 / PGRST116=0件）
-  if (eventError?.code === "PGRST301" || eventError?.code === "PGRST116" || !eventData) {
-    redirect(`/events/${params.id}/forbidden`);
+  if (eventError || !eventData) {
+    notFound();
   }
   const event = eventData;
 
