@@ -45,6 +45,6 @@ describe("GuestEventSummary", () => {
 
     render(<GuestEventSummary attendance={attendance} />);
 
-    expect(screen.getByText("主催コミュニティ: テストコミュニティ")).toBeInTheDocument();
+    expect(screen.getByText("作成: テストコミュニティ")).toBeInTheDocument();
   });
 });

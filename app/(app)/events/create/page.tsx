@@ -7,13 +7,14 @@ import { SinglePageEventForm } from "@features/events";
 import { getDashboardConnectCtaStatus } from "@features/stripe-connect/server";
 
 import { createEventAction } from "./actions";
+import { notFound } from "next/navigation";
 
 export default async function CreateEventPage() {
   const workspace = await requireNonEmptyCommunityWorkspaceForServerComponent();
   const currentCommunity = workspace.currentCommunity;
 
   if (!currentCommunity) {
-    return null;
+    return notFound();
   }
 
   // current community の payout profile 状態から、オンライン決済可否を決定する
