@@ -11,7 +11,6 @@ import type { Event, EventRow } from "@core/types/event";
 import type { AttendanceStatus } from "@core/types/statuses";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
-import { validateEventId } from "@core/validation/event-id";
 
 import { SinglePageEventEditForm } from "@features/events";
 import {
@@ -86,11 +85,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
   if (!accessContext) {
     notFound();
   }
-
-  const validation = validateEventId(accessContext.id);
-  if (!validation.success || !validation.data) {
-    notFound();
-  }
+  const eventId = accessContext.id;
 
   const { data: eventData, error: eventError } = await supabase
     .from("events")
@@ -118,7 +113,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
       attendances(id, status)
     `
     )
-    .eq("id", validation.data)
+    .eq("id", eventId)
     .single()
     .overrideTypes<EventEditQueryRow, { merge: false }>();
 
@@ -133,7 +128,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
   const { data: stripePaid, error: stripePaidError } = await supabase
     .from("payments")
     .select("id, attendances!inner(event_id)")
-    .eq("attendances.event_id", params.id)
+    .eq("attendances.event_id", eventId)
     .eq("method", "stripe")
     .in("status", ["paid", "refunded"])
     .limit(1);
@@ -146,7 +141,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
 
   // 開催済み・キャンセル済みイベントの編集禁止チェック
   if (computedStatus === "past" || computedStatus === "canceled") {
-    redirect(`/events/${params.id}/forbidden?reason=${computedStatus}`);
+    redirect(`/events/${eventId}/forbidden?reason=${computedStatus}`);
   }
 
   const payoutReadiness = await getEventPayoutProfileReadiness(supabase, event.payout_profile_id);
@@ -159,7 +154,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
           {/* 戻るリンク */}
           <div>
             <Link
-              href={`/events/${params.id}`}
+              href={`/events/${eventId}`}
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -178,7 +173,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
 
           {/* 危険な操作（削除・中止） */}
           <EventDangerZone
-            eventId={params.id}
+            eventId={eventId}
             eventTitle={event.title}
             eventStatus={computedStatus}
           />
