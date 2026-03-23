@@ -2,8 +2,10 @@ import { cache } from "react";
 
 import { cookies } from "next/headers";
 
+import type { User } from "@supabase/supabase-js";
+
 import {
-  requireCurrentUserForServerAction,
+  getCurrentUserForServerAction,
   requireCurrentUserForServerComponent,
 } from "@core/auth/auth-utils";
 import { AppError } from "@core/errors/app-error";
@@ -36,6 +38,10 @@ export type CurrentCommunityResolution = {
 };
 
 export type CurrentCommunityResolutionResult = AppResult<CurrentCommunityResolution>;
+export type CurrentCommunityServerActionContext = {
+  currentCommunity: CurrentCommunitySummary;
+  user: User;
+};
 
 type ResolveCurrentCommunityContextParams = {
   userId: string;
@@ -199,8 +205,17 @@ export async function resolveCurrentCommunityForServerComponent(): Promise<Curre
   return await getCachedCurrentCommunityForServerComponent();
 }
 
-export async function resolveCurrentCommunityForServerAction(): Promise<CurrentCommunityResolutionResult> {
-  const user = await requireCurrentUserForServerAction();
+export async function resolveCurrentCommunityForServerAction(
+  userOverride?: User
+): Promise<CurrentCommunityResolutionResult> {
+  const user = userOverride ?? (await getCurrentUserForServerAction());
+  if (!user) {
+    return errResult(
+      new AppError("UNAUTHORIZED", {
+        userMessage: "認証が必要です",
+      })
+    );
+  }
   const supabase = await createServerActionSupabaseClient();
   const requestedCommunityId = await readCurrentCommunityCookie();
 
@@ -208,5 +223,37 @@ export async function resolveCurrentCommunityForServerAction(): Promise<CurrentC
     userId: user.id,
     supabase,
     requestedCommunityId,
+  });
+}
+
+export async function getCurrentCommunityServerActionContext(): Promise<
+  AppResult<CurrentCommunityServerActionContext>
+> {
+  const user = await getCurrentUserForServerAction();
+  if (!user) {
+    return errResult(
+      new AppError("UNAUTHORIZED", {
+        userMessage: "認証が必要です",
+      })
+    );
+  }
+
+  const currentCommunityResolution = await resolveCurrentCommunityForServerAction(user);
+  if (!currentCommunityResolution.success) {
+    return currentCommunityResolution;
+  }
+
+  const currentCommunity = currentCommunityResolution.data?.currentCommunity;
+  if (!currentCommunity) {
+    return errResult(
+      new AppError("NOT_FOUND", {
+        userMessage: "操作対象のコミュニティが見つかりません",
+      })
+    );
+  }
+
+  return okResult({
+    currentCommunity,
+    user,
   });
 }

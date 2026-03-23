@@ -1,8 +1,13 @@
-import { verifyEventAccess } from "@core/auth/event-authorization";
-import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
+import {
+  fail,
+  ok,
+  toActionResultFromAppResult,
+  type ActionResult,
+} from "@core/errors/adapters/server-actions";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { generateInviteToken } from "@core/utils/invite-token";
 
+import { getOwnedEventActionContextForServerAction } from "../services/get-owned-event-context-for-community";
 import { generateInviteTokenEventIdSchema } from "../validation";
 
 interface GenerateInviteTokenOptions {
@@ -19,14 +24,21 @@ export async function generateInviteTokenAction(
   try {
     const validatedEventId = generateInviteTokenEventIdSchema.parse(eventId);
 
-    await verifyEventAccess(validatedEventId);
-
     const client = await createServerActionSupabaseClient();
+    const accessResult = await getOwnedEventActionContextForServerAction(client, validatedEventId);
+    if (!accessResult.success) {
+      return toActionResultFromAppResult(accessResult);
+    }
+
+    const accessContext = accessResult.data;
+    if (!accessContext) {
+      return fail("INTERNAL_ERROR", { userMessage: "イベント情報の取得に失敗しました" });
+    }
 
     const { data: event, error: eventError } = await client
       .from("events")
       .select("id")
-      .eq("id", validatedEventId)
+      .eq("id", accessContext.id)
       .single();
 
     if (eventError || !event) {
@@ -37,7 +49,7 @@ export async function generateInviteTokenAction(
       const { data: existingToken } = await client
         .from("events")
         .select("invite_token")
-        .eq("id", validatedEventId)
+        .eq("id", accessContext.id)
         .single();
 
       if (existingToken?.invite_token) {
@@ -50,7 +62,7 @@ export async function generateInviteTokenAction(
     const { error: updateError } = await client
       .from("events")
       .update({ invite_token: newToken })
-      .eq("id", validatedEventId);
+      .eq("id", accessContext.id);
 
     if (updateError) {
       return fail("DATABASE_ERROR", { userMessage: "Failed to save invite token" });

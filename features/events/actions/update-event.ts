@@ -8,7 +8,13 @@ import {
   createFormDataSnapshot,
   evaluateEventEditViolations,
 } from "@core/domain/event-edit-restrictions";
-import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
+import {
+  type ActionResult,
+  fail,
+  ok,
+  toActionResultFromAppResult,
+  zodFail,
+} from "@core/errors/adapters/server-actions";
 import { logEventManagement } from "@core/logging/system-logger";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import type { EventRow } from "@core/types/event";
@@ -18,8 +24,8 @@ import { calculateAttendeeCount } from "@core/utils/event-calculations";
 import { extractEventUpdateFormData } from "@core/utils/form-data-extractors";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 import { updateEventSchema, type UpdateEventFormData } from "@core/validation/event";
-import { validateEventId } from "@core/validation/event-id";
 
+import { getOwnedEventActionContextForServerAction } from "../services/get-owned-event-context-for-community";
 import { getEventPayoutProfileReadiness } from "../services/payout-profile-readiness";
 
 type UpdateEventResult = ActionResult<EventRow>;
@@ -33,34 +39,26 @@ export async function updateEventAction(
   try {
     const supabase = await createServerActionSupabaseClient();
 
-    // イベントIDのバリデーション（UUID形式）
-    const eventIdValidation = validateEventId(eventId);
-    if (!eventIdValidation.success) {
-      return fail("VALIDATION_ERROR", {
-        userMessage: eventIdValidation.error?.userMessage || "無効なイベントIDです",
-      });
+    const accessResult = await getOwnedEventActionContextForServerAction(supabase, eventId);
+    if (!accessResult.success) {
+      return toActionResultFromAppResult(accessResult);
     }
 
-    // 認証チェック
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
+    const accessContext = accessResult.data;
+    if (!accessContext) {
+      return fail("INTERNAL_ERROR", { userMessage: "イベント情報の取得に失敗しました" });
     }
 
-    // イベントの存在確認と権限チェック
+    const { id: validatedEventId, user } = accessContext;
+
     const { data: existingEvent, error: eventError } = await supabase
       .from("events")
       .select("*, attendances(*)")
-      .eq("id", eventId)
+      .eq("id", validatedEventId)
       .single();
 
-    // RLSフィルターにより、存在しないイベントまたは権限のないイベントは取得不可
     if (eventError?.code === "PGRST301" || eventError?.code === "PGRST116" || !existingEvent) {
-      return fail("FORBIDDEN", { userMessage: "このイベントを編集する権限がありません" });
+      return fail("EVENT_NOT_FOUND", { userMessage: "イベントが見つかりません" });
     }
 
     // ステータスベースの編集禁止チェック
@@ -242,7 +240,7 @@ export async function updateEventAction(
     const { data: stripePayments, error: paymentsError } = await supabase
       .from("payments")
       .select("id, attendances!inner(event_id)")
-      .eq("attendances.event_id", eventId)
+      .eq("attendances.event_id", validatedEventId)
       .eq("method", "stripe")
       .in("status", ["paid", "refunded"])
       .limit(1);
@@ -333,7 +331,7 @@ export async function updateEventAction(
       const { data: latestAttendances, error: attendanceError } = await supabase
         .from("attendances")
         .select("id")
-        .eq("event_id", eventId)
+        .eq("event_id", validatedEventId)
         .eq("status", "attending");
 
       if (attendanceError) {
@@ -362,7 +360,7 @@ export async function updateEventAction(
     const { data: updatedEvent, error: updateError } = await supabase
       .from("events")
       .update(updateData)
-      .eq("id", eventId)
+      .eq("id", validatedEventId)
       .select()
       .single();
 
@@ -380,9 +378,9 @@ export async function updateEventAction(
     // 監査ログ記録
     await logEventManagement({
       action: "event.update",
-      message: `Event updated: ${eventId}`,
+      message: `Event updated: ${validatedEventId}`,
       user_id: user.id,
-      resource_id: eventId,
+      resource_id: validatedEventId,
       outcome: "success",
       metadata: {
         updated_fields: Object.keys(updateData),
@@ -393,7 +391,8 @@ export async function updateEventAction(
 
     // キャッシュの無効化
     revalidatePath("/events");
-    revalidatePath(`/events/${eventId}`);
+    revalidatePath("/dashboard");
+    revalidatePath(`/events/${validatedEventId}`);
 
     return ok(updatedEvent, { message: "イベントが正常に更新されました" });
   } catch (error) {

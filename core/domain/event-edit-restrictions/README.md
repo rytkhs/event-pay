@@ -22,8 +22,8 @@
   `validateEventId()` が失敗したら `notFound()`
 - **[イベント取得できない/権限なしは403相当へ]**  
   `events` の取得で `PGRST301`（RLS拒否）, `PGRST116`（0件）, または `!event` の場合 `redirect(/forbidden)`
-- **[作成者本人のみ編集可]**  
-  `event.created_by !== user.id` なら `redirect(/forbidden)`
+- **[current community 所属イベントのみ編集可]**  
+  `event.community_id !== currentCommunity.id` なら `redirect(/forbidden)`
 - **[開催済み/キャンセル済みは編集画面自体を禁止]**  
   `deriveEventStatus()` により `past`/`canceled` の場合 `redirect(/forbidden?reason=...)`
 
@@ -73,13 +73,13 @@
 
 - **[ステップ]**
   1. `validateEventId(params.id)`
-  2. `supabase.auth.getUser()`（未ログインなら `/login`）
+  2. current community を解決（未ログインなら `/login`）
   3. `events` を取得（RLS/0件なら forbidden）
-  4. `created_by` を照合（本人以外は forbidden）
+  4. `community_id` を照合（current community 不一致なら forbidden）
   5. `calculateAttendeeCount(event.attendances)`
   6. `payments` を参照して `hasStripePaid` 算出（エラー時は **フェイルクローズ**で `true`）
   7. `deriveEventStatus(event.date, canceled_at)` → `past/canceled` なら forbidden
-  8. `getDetailedAccountStatusAction()` で `canUseOnlinePayments` 算出
+  8. `getEventPayoutProfileReadiness()` で `canUseOnlinePayments` 算出
   9. `<SinglePageEventEditForm ... />` を描画
 
 - **[フロー図（概要）]**
@@ -89,16 +89,17 @@ flowchart TD
   B -->|invalid| Z1[404 notFound]
   B --> C[getUser]
   C -->|no user| Z2[redirect /login]
-  C --> D[select events by id]
-  D -->|RLS/0 rows| Z3[redirect forbidden]
-  D --> E[created_by check]
-  E -->|not owner| Z3
-  E --> F[attendeeCount calc]
-  F --> G[query payments for stripe paid/refunded]
-  G --> H[deriveEventStatus]
-  H -->|past/canceled| Z3b[redirect forbidden?reason=...]
-  H --> I[getDetailedAccountStatusAction]
-  I --> J[render SinglePageEventEditForm]
+  C --> D[resolve current community]
+  D --> E[select events by id]
+  E -->|RLS/0 rows| Z3[redirect forbidden]
+  E --> F[community_id check]
+  F -->|mismatch| Z3
+  F --> G[attendeeCount calc]
+  G --> H[query payments for stripe paid/refunded]
+  H --> I[deriveEventStatus]
+  I -->|past/canceled| Z3b[redirect forbidden?reason=...]
+  I --> J[getEventPayoutProfileReadiness]
+  J --> K[render SinglePageEventEditForm]
 ```
 
 #### 3.2 フロント（リアルタイム制限評価 → フィールドdisabled）
@@ -212,7 +213,7 @@ for each field in form:
   - **depends on** `@core/validation/event-id`（`validateEventId`）
   - **depends on** `@core/utils/event-calculations`（`calculateAttendeeCount`）
   - **depends on** `@core/utils/derive-event-status`（`deriveEventStatus`）
-  - **depends on** `@features/stripe-connect`（`getDetailedAccountStatusAction`）
+  - **depends on** `@features/events/server`（`getEventPayoutProfileReadiness`）
   - **depends on** `@features/events/components/single-page-event-edit-form`
     - **depends on** `features/events/hooks/use-event-edit-form`
       - **depends on** `features/events/hooks/use-unified-restrictions`

@@ -4,12 +4,11 @@ import {
   ok,
   toActionResultFromAppResult,
 } from "@core/errors/adapters/server-actions";
+import { getOwnedEventContextForCurrentCommunity } from "@core/community/get-owned-event-context-for-current-community";
 import { logger } from "@core/logging/app-logger";
 import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import type { EventDetail, EventRow } from "@core/types/event";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
-
-import { getOwnedEventContextForCurrentCommunity } from "../services/get-owned-event-context-for-community";
 
 type EventDetailQueryRow = Pick<
   EventRow,

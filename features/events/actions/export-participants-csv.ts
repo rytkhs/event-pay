@@ -1,7 +1,11 @@
 import { headers } from "next/headers";
 
-import { verifyEventAccess } from "@core/auth/event-authorization";
-import { type ActionResult, ok, fail } from "@core/errors/adapters/server-actions";
+import {
+  type ActionResult,
+  ok,
+  fail,
+  toActionResultFromAppResult,
+} from "@core/errors/adapters/server-actions";
 import { logExport } from "@core/logging/system-logger";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
@@ -15,6 +19,8 @@ import {
   ExportParticipantsCsvParamsSchema,
   type ExportParticipantsCsvResult,
 } from "@core/validation/participant-management";
+
+import { getOwnedEventActionContextForServerAction } from "../services/get-owned-event-context-for-community";
 
 import {
   PAYMENTS_LIMIT_ONE,
@@ -42,8 +48,18 @@ export async function exportParticipantsCsvAction(
     const rawIp = headersList.get("x-forwarded-for") || headersList.get("x-real-ip");
     const ip = rawIp ? rawIp.split(",")[0].trim() : undefined;
 
-    // 共通の認証・権限確認処理
-    const { user, eventId: validatedEventId } = await verifyEventAccess(eventId);
+    const supabase = await createServerActionSupabaseClient();
+    const accessResult = await getOwnedEventActionContextForServerAction(supabase, eventId);
+    if (!accessResult.success) {
+      return toActionResultFromAppResult(accessResult);
+    }
+
+    const accessContext = accessResult.data;
+    if (!accessContext) {
+      return fail("INTERNAL_ERROR", { userMessage: "イベント情報の取得に失敗しました。" });
+    }
+
+    const { user, id: validatedEventId } = accessContext;
 
     // レート制限チェック (ユーザー単位)
     const key = buildKey({ scope: "export.participantsCsv", userId: user.id });
@@ -58,8 +74,6 @@ export async function exportParticipantsCsvAction(
           "レート制限: CSVエクスポートの実行回数が上限に達しました。しばらく待ってから再度お試しください。",
       });
     }
-
-    const supabase = await createServerActionSupabaseClient();
 
     // CSVデータ取得用クエリの構築
     let query = supabase
