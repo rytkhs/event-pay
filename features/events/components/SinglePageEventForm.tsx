@@ -86,12 +86,14 @@ type SinglePageEventFormProps = {
   connectStatus?: {
     actionUrl?: string;
   };
+  currentCommunityName: string;
   createEventAction: CreateEventAction;
 };
 
 function SinglePageEventForm({
   canUseOnlinePayments = false,
   connectStatus,
+  currentCommunityName,
   createEventAction,
 }: SinglePageEventFormProps): JSX.Element {
   const { form, onSubmit, isPending, isFreeEvent } = useEventForm({ createEventAction });
@@ -149,6 +151,7 @@ function SinglePageEventForm({
         <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
           新しいイベントを作成
         </h1>
+        <p className="mt-2 text-sm text-slate-500">{currentCommunityName} のイベントを作成します</p>
       </header>
 
       <Form {...form}>

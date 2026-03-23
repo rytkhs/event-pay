@@ -2,11 +2,17 @@ import { revalidatePath } from "next/cache";
 
 import { Client } from "@upstash/qstash";
 
-import { verifyEventAccess } from "@core/auth/event-authorization";
-import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
+import {
+  type ActionResult,
+  fail,
+  ok,
+  toActionResultFromAppResult,
+} from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { logEventManagement } from "@core/logging/system-logger";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
+
+import { getOwnedEventActionContextForServerAction } from "../services/get-owned-event-context-for-community";
 
 type CancelEventInput = {
   eventId: string;
@@ -29,10 +35,18 @@ export async function cancelEventAction(
       return fail("EVENT_INVALID_ID", { userMessage: "無効なイベントID形式です" });
     }
 
-    // 認証・権限（作成者のみ）
-    const { eventId, user } = await verifyEventAccess(params.eventId);
-
     const supabase = await createServerActionSupabaseClient();
+    const accessResult = await getOwnedEventActionContextForServerAction(supabase, params.eventId);
+    if (!accessResult.success) {
+      return toActionResultFromAppResult(accessResult);
+    }
+
+    const accessContext = accessResult.data;
+    if (!accessContext) {
+      return fail("INTERNAL_ERROR", { userMessage: "イベント情報の取得に失敗しました" });
+    }
+
+    const { id: eventId, user } = accessContext;
 
     // イベントを中止状態に更新（invite_token を NULL 化）
     const { data: updatedRows, error: updateError } = await supabase
@@ -60,6 +74,7 @@ export async function cancelEventAction(
 
     // キャッシュ無効化
     revalidatePath("/events");
+    revalidatePath("/dashboard");
     revalidatePath(`/events/${eventId}`);
 
     // QStash にキャンセル通知ジョブを投入（ベストエフォート）

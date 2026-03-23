@@ -1,17 +1,31 @@
 import { revalidatePath } from "next/cache";
 
-import { verifyEventAccess } from "@core/auth/event-authorization";
-import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
+import {
+  type ActionResult,
+  fail,
+  ok,
+  toActionResultFromAppResult,
+} from "@core/errors/adapters/server-actions";
 import { logEventManagement } from "@core/logging/system-logger";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { hasPostgrestCode } from "@core/supabase/postgrest-error-guards";
 
+import { getOwnedEventActionContextForServerAction } from "../services/get-owned-event-context-for-community";
+
 export async function deleteEventAction(eventId: string): Promise<ActionResult<void>> {
   try {
-    // 認証・権限（作成者のみ）+ イベントID検証
-    const { eventId: validatedEventId, user } = await verifyEventAccess(eventId);
-
     const supabase = await createServerActionSupabaseClient();
+    const accessResult = await getOwnedEventActionContextForServerAction(supabase, eventId);
+    if (!accessResult.success) {
+      return toActionResultFromAppResult(accessResult);
+    }
+
+    const accessContext = accessResult.data;
+    if (!accessContext) {
+      return fail("INTERNAL_ERROR", { userMessage: "イベント情報の取得に失敗しました" });
+    }
+
+    const { id: validatedEventId, user } = accessContext;
 
     // 参加者カウント（attending / maybe のみを対象）
     const { count: participantCount, error: attendanceCountError } = await supabase
@@ -68,6 +82,7 @@ export async function deleteEventAction(eventId: string): Promise<ActionResult<v
 
     // キャッシュを無効化
     revalidatePath("/events");
+    revalidatePath("/dashboard");
     revalidatePath(`/events/${validatedEventId}`);
 
     return ok(undefined, { message: "イベントが正常に削除されました" });

@@ -5,16 +5,18 @@ export const dynamic = "force-dynamic";
 
 import { ArrowLeft } from "lucide-react";
 
-import { requireCurrentUserForServerComponent } from "@core/auth/auth-utils";
+import { requireNonEmptyCommunityWorkspaceForServerComponent } from "@core/community/app-workspace";
 import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import type { Event, EventRow } from "@core/types/event";
 import type { AttendanceStatus } from "@core/types/statuses";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
-import { validateEventId } from "@core/validation/event-id";
 
 import { SinglePageEventEditForm } from "@features/events";
-import { getEventPayoutProfileReadiness } from "@features/events/server";
+import {
+  getEventPayoutProfileReadiness,
+  getOwnedEventContextForCurrentCommunity,
+} from "@features/events/server";
 
 import { updateEventAction } from "./actions";
 import { EventDangerZone } from "./components/EventDangerZone";
@@ -42,6 +44,7 @@ type EventEditQueryRow = Pick<
   | "created_at"
   | "updated_at"
   | "created_by"
+  | "community_id"
   | "payout_profile_id"
   | "invite_token"
   | "canceled_at"
@@ -51,16 +54,39 @@ type EventEditQueryRow = Pick<
 
 export default async function EventEditPage(props: EventEditPageProps) {
   const params = await props.params;
-  const supabase = await createServerComponentSupabaseClient();
-  await requireCurrentUserForServerComponent();
-
-  // IDバリデーション（形式不正のみ404）
-  const validation = validateEventId(params.id);
-  if (!validation.success) {
+  const workspace = await requireNonEmptyCommunityWorkspaceForServerComponent();
+  const currentCommunity = workspace.currentCommunity;
+  if (!currentCommunity) {
     notFound();
   }
 
-  // イベントの取得（RLSで他人イベントは0件として見える）
+  const supabase = await createServerComponentSupabaseClient();
+
+  const accessResult = await getOwnedEventContextForCurrentCommunity(
+    supabase,
+    params.id,
+    currentCommunity.id
+  );
+
+  if (!accessResult.success) {
+    if (
+      accessResult.error.code === "EVENT_INVALID_ID" ||
+      accessResult.error.code === "EVENT_NOT_FOUND"
+    ) {
+      notFound();
+    }
+    if (accessResult.error.code === "EVENT_ACCESS_DENIED") {
+      redirect(`/events/${params.id}/forbidden`);
+    }
+    throw accessResult.error;
+  }
+
+  const accessContext = accessResult.data;
+  if (!accessContext) {
+    notFound();
+  }
+  const eventId = accessContext.id;
+
   const { data: eventData, error: eventError } = await supabase
     .from("events")
     .select(
@@ -80,19 +106,19 @@ export default async function EventEditPage(props: EventEditPageProps) {
       created_at,
       updated_at,
       created_by,
+      community_id,
       payout_profile_id,
       invite_token,
       canceled_at,
       attendances(id, status)
     `
     )
-    .eq("id", params.id)
+    .eq("id", eventId)
     .single()
     .overrideTypes<EventEditQueryRow, { merge: false }>();
 
-  // アクセス拒否は403へ（PGRST301=RLS拒否 / PGRST116=0件）
-  if (eventError?.code === "PGRST301" || eventError?.code === "PGRST116" || !eventData) {
-    redirect(`/events/${params.id}/forbidden`);
+  if (eventError || !eventData) {
+    notFound();
   }
   const event = eventData;
 
@@ -102,7 +128,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
   const { data: stripePaid, error: stripePaidError } = await supabase
     .from("payments")
     .select("id, attendances!inner(event_id)")
-    .eq("attendances.event_id", params.id)
+    .eq("attendances.event_id", eventId)
     .eq("method", "stripe")
     .in("status", ["paid", "refunded"])
     .limit(1);
@@ -115,7 +141,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
 
   // 開催済み・キャンセル済みイベントの編集禁止チェック
   if (computedStatus === "past" || computedStatus === "canceled") {
-    redirect(`/events/${params.id}/forbidden?reason=${computedStatus}`);
+    redirect(`/events/${eventId}/forbidden?reason=${computedStatus}`);
   }
 
   const payoutReadiness = await getEventPayoutProfileReadiness(supabase, event.payout_profile_id);
@@ -128,7 +154,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
           {/* 戻るリンク */}
           <div>
             <Link
-              href={`/events/${params.id}`}
+              href={`/events/${eventId}`}
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -147,7 +173,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
 
           {/* 危険な操作（削除・中止） */}
           <EventDangerZone
-            eventId={params.id}
+            eventId={eventId}
             eventTitle={event.title}
             eventStatus={computedStatus}
           />

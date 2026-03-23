@@ -97,7 +97,21 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
 
     const computedStatus = deriveEventStatus(evRow.date, evRow.canceled_at ?? null);
     const eventDetail: InviteEventDetail = {
-      ...evRow,
+      id: evRow.id,
+      community: {
+        name: evRow.community_name,
+        legalSlug: evRow.community_legal_slug,
+      },
+      title: evRow.title,
+      date: evRow.date,
+      location: evRow.location,
+      description: evRow.description,
+      fee: evRow.fee,
+      capacity: evRow.capacity,
+      payment_methods: evRow.payment_methods,
+      registration_deadline: evRow.registration_deadline,
+      payment_deadline: evRow.payment_deadline,
+      invite_token: evRow.invite_token,
       status: computedStatus,
       attendances_count: actualAttendancesCount,
     };

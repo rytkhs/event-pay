@@ -67,10 +67,18 @@ import {
 } from "./authenticated-client-mock";
 import { resetAuthMock } from "./supabase-auth-mock";
 
-// getCurrentUser関数のみをモック化（統合テストでは実際のSupabaseクライアントを使用）
-jest.mock("@core/auth/auth-utils", () => ({
-  getCurrentUser: jest.fn(),
-}));
+// 認証ヘルパーをモック化（統合テストでは実際のSupabaseクライアントを使用）
+// 既存の getCurrentUser 互換も残しつつ、新規の getCurrentUserForServerAction を正にする
+jest.mock("@core/auth/auth-utils", () => {
+  const actual = jest.requireActual("@core/auth/auth-utils");
+  const mockGetCurrentUserForServerAction = jest.fn();
+
+  return {
+    ...actual,
+    getCurrentUser: mockGetCurrentUserForServerAction,
+    getCurrentUserForServerAction: mockGetCurrentUserForServerAction,
+  };
+});
 
 // セキュアクライアントファクトリーのモック
 // .impl.tsから直接エクスポートされている関数をモック化

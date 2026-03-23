@@ -1,5 +1,6 @@
 import "server-only";
 
+export { getOwnedEventContextForCurrentCommunity } from "@core/community/get-owned-event-context-for-current-community";
 export { adminAddAttendanceAction } from "./actions/admin-add-attendance";
 export { cancelEventAction } from "./actions/cancel-event";
 export { createEventAction } from "./actions/create-event";

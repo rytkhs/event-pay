@@ -36,7 +36,37 @@ describe("Public Event RPC", () => {
     expect(row).toBeDefined();
     if (row) {
       expect((row as any).id).toBe(setup.testEventId);
+      expect((row as any).community_name).toBe("Test Community");
+      expect((row as any).community_legal_slug).toBe(setup.testCommunityLegalSlug);
+      expect(row).not.toHaveProperty("created_by");
+      expect(row).not.toHaveProperty("organizer_name");
     }
+  });
+
+  test("削除済み community に属する event は public RPC から取得できない", async () => {
+    const factory = getSecureClientFactory();
+    const admin = await factory.createAuditedAdminClient(
+      AdminReason.TEST_DATA_SETUP,
+      "soft delete community for public event rpc test"
+    );
+    const anon = factory.createPublicClient();
+
+    const { error: updateError } = await admin
+      .from("communities")
+      .update({
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+      })
+      .eq("id", setup.testCommunityId);
+
+    expect(updateError).toBeNull();
+
+    const { data, error } = await (anon as any).rpc("rpc_public_get_event", {
+      p_invite_token: setup.testInviteToken,
+    });
+
+    expect(error).toBeNull();
+    expect(Array.isArray(data) ? data : []).toHaveLength(0);
   });
 });
 

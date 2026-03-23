@@ -31,9 +31,11 @@ describe("updateEventAction", () => {
 
   function mockSupabaseWith(options: {
     existingEvent: any;
+    accessEvent?: any;
     paymentsData?: any[];
     attendancesData?: any[];
     updatedEvent?: any;
+    currentCommunityId?: string;
   }) {
     const captured = { updateData: undefined as any };
 
@@ -45,9 +47,16 @@ describe("updateEventAction", () => {
         error: null,
       });
 
+    const accessEvent = options.accessEvent ?? {
+      id: options.existingEvent.id,
+      community_id: options.existingEvent.community_id ?? "community-1",
+      created_by: options.existingEvent.created_by ?? "00000000-0000-0000-0000-000000000001",
+    };
+
     const eventsQuery: any = {
       select: jest.fn(() => eventsQuery),
       eq: jest.fn(() => eventsQuery),
+      maybeSingle: jest.fn(() => Promise.resolve({ data: accessEvent, error: null })),
       single: jest.fn(() => {
         // single() が呼ばれた時にPromiseを返す
         return singleMock();
@@ -90,6 +99,20 @@ describe("updateEventAction", () => {
     jest.doMock("@core/supabase/factory", () => ({
       createServerActionSupabaseClient: () => mockSupabase,
     }));
+    jest.doMock("@core/community/current-community", () => ({
+      getCurrentCommunityServerActionContext: jest.fn().mockResolvedValue({
+        success: true,
+        data: {
+          user: { id: "00000000-0000-0000-0000-000000000001" },
+          currentCommunity: {
+            id: options.currentCommunityId ?? "community-1",
+            name: "Community A",
+            slug: "community-a",
+            createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        },
+      }),
+    }));
 
     return { mockSupabase, captured };
   }
@@ -98,6 +121,7 @@ describe("updateEventAction", () => {
     const existingEvent = {
       id: "evt-1",
       created_by: "00000000-0000-0000-0000-000000000001",
+      community_id: "community-1",
       title: "t",
       date: new Date(Date.now() + 3600_000).toISOString(),
       registration_deadline: new Date(Date.now() + 600_000).toISOString(),
@@ -126,6 +150,7 @@ describe("updateEventAction", () => {
     const existingEvent = {
       id: "evt-2",
       created_by: "00000000-0000-0000-0000-000000000001",
+      community_id: "community-1",
       title: "t",
       date: new Date(Date.now() + 3600_000).toISOString(),
       registration_deadline: new Date(Date.now() + 600_000).toISOString(),
@@ -168,5 +193,32 @@ describe("updateEventAction", () => {
     expect(Object.prototype.hasOwnProperty.call(captured.updateData, "registration_deadline")).toBe(
       false
     );
+  });
+
+  it("current community 不一致なら EVENT_ACCESS_DENIED を返す", async () => {
+    const existingEvent = {
+      id: "evt-3",
+      created_by: "00000000-0000-0000-0000-000000000001",
+      community_id: "community-1",
+      title: "t",
+      date: new Date(Date.now() + 3600_000).toISOString(),
+      registration_deadline: new Date(Date.now() + 600_000).toISOString(),
+      payment_deadline: null,
+      fee: 1000,
+      payment_methods: ["cash"],
+      attendances: [],
+    };
+
+    mockSupabaseWith({
+      existingEvent,
+      currentCommunityId: "community-2",
+    });
+
+    const { updateEventAction: run } = await import("@/features/events/actions/update-event");
+    const res = await run("00000000-0000-0000-0000-000000000003", new FormData());
+
+    expect(res.success).toBe(false);
+    if (res.success) return;
+    expect(res.error.code).toBe("EVENT_ACCESS_DENIED");
   });
 });

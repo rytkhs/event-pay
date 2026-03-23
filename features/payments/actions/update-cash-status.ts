@@ -1,9 +1,15 @@
-import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
+import {
+  type ActionResult,
+  fail,
+  ok,
+  toActionResultFromAppResult,
+} from "@core/errors/adapters/server-actions";
 import type { ErrorCode } from "@core/errors/types";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 
+import { getOwnedPaymentActionContextForServerAction } from "../services/get-owned-payment-action-context";
 import { PaymentValidator, updateCashStatusActionInputSchema } from "../validation";
 
 function mapPaymentError(type: PaymentErrorType): ErrorCode {
@@ -49,13 +55,17 @@ export async function updateCashStatusAction(
     const { paymentId, status, notes, isCancel } = parsed.data;
 
     const supabase = await createServerActionSupabaseClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return fail("UNAUTHORIZED", { userMessage: "認証が必要です。" });
+    const accessResult = await getOwnedPaymentActionContextForServerAction(supabase, paymentId);
+    if (!accessResult.success) {
+      return toActionResultFromAppResult(accessResult);
     }
+
+    const accessContext = accessResult.data;
+    if (!accessContext) {
+      return fail("INTERNAL_ERROR", { userMessage: "決済レコードの取得に失敗しました。" });
+    }
+
+    const { user, attendanceId, method, version } = accessContext;
 
     // レート制限（ユーザー単位）
     try {
@@ -75,30 +85,11 @@ export async function updateCashStatusAction(
       // レート制限でのストア初期化失敗時はスキップ（安全側）
     }
 
-    // 対象決済の取得（権限・バージョン・メソッド判定をまとめて取得）
-    const { data: payment, error: fetchError } = await supabase
-      .from("payments")
-      .select(
-        `
-        id,
-        version,
-        method,
-        status,
-        attendance_id
-      `
-      )
-      .eq("id", paymentId)
-      .single();
-
-    if (fetchError || !payment) {
-      return fail("NOT_FOUND", { userMessage: "決済レコードが見つかりません。" });
-    }
-
     // 基本的な権限チェック（RPC関数内でも再チェックされる）
-    await new PaymentValidator(supabase).validateAttendanceAccess(payment.attendance_id);
+    await new PaymentValidator(supabase).validateAttendanceAccess(attendanceId);
 
     // 現金決済のみ
-    if (payment.method !== "cash") {
+    if (method !== "cash") {
       return fail("RESOURCE_CONFLICT", { userMessage: "現金決済以外は手動更新できません。" });
     }
 
@@ -127,7 +118,7 @@ export async function updateCashStatusAction(
       {
         p_payment_id: paymentId,
         p_new_status: status,
-        p_expected_version: payment.version,
+        p_expected_version: version,
         p_user_id: user.id,
         p_notes: notes,
       }
