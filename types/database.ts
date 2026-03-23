@@ -1118,7 +1118,8 @@ export type Database = {
           attendance_id: string;
           attendance_updated_at: string;
           canceled_at: string;
-          created_by: string;
+          community_legal_slug: string;
+          community_name: string;
           email: string;
           event_allow_payment_after_deadline: boolean;
           event_capacity: number;
@@ -1187,14 +1188,14 @@ export type Database = {
           attendances_count: number;
           canceled_at: string;
           capacity: number;
-          created_by: string;
+          community_legal_slug: string;
+          community_name: string;
           date: string;
           description: string;
           fee: number;
           id: string;
           invite_token: string;
           location: string;
-          organizer_name: string;
           payment_deadline: string;
           payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
           registration_deadline: string;

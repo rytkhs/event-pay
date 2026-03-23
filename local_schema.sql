@@ -1586,60 +1586,68 @@ COMMENT ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_up
 
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") RETURNS TABLE("attendance_id" "uuid", "nickname" character varying, "email" character varying, "status" "public"."attendance_status_enum", "guest_token" character varying, "attendance_created_at" timestamp with time zone, "attendance_updated_at" timestamp with time zone, "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "event_location" character varying, "event_fee" integer, "event_capacity" integer, "event_description" "text", "event_payment_methods" "public"."payment_method_enum"[], "event_allow_payment_after_deadline" boolean, "event_grace_period_days" smallint, "created_by" "uuid", "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "canceled_at" timestamp with time zone, "payment_id" "uuid", "payment_amount" integer, "payment_method" "public"."payment_method_enum", "payment_status" "public"."payment_status_enum", "payment_created_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") RETURNS TABLE("attendance_id" "uuid", "nickname" character varying, "email" character varying, "status" "public"."attendance_status_enum", "guest_token" character varying, "attendance_created_at" timestamp with time zone, "attendance_updated_at" timestamp with time zone, "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "event_location" character varying, "event_fee" integer, "event_capacity" integer, "event_description" "text", "event_payment_methods" "public"."payment_method_enum"[], "event_allow_payment_after_deadline" boolean, "event_grace_period_days" smallint, "community_name" character varying, "community_legal_slug" character varying, "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "canceled_at" timestamp with time zone, "payment_id" "uuid", "payment_amount" integer, "payment_method" "public"."payment_method_enum", "payment_status" "public"."payment_status_enum", "payment_created_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
-    v_token text;
+  v_token text;
 BEGIN
-    -- p_guest_token がNULLの場合はヘッダーから取得
-    v_token := COALESCE(p_guest_token, private._get_guest_token_from_header());
+  v_token := COALESCE(p_guest_token, private._get_guest_token_from_header());
 
-    RETURN QUERY
-    SELECT
-        a.id,
-        a.nickname,
-        a.email,
-        a.status,
-        a.guest_token,
-        a.created_at AS attendance_created_at,
-        a.updated_at AS attendance_updated_at,
-        e.id,
-        e.title,
-        e.date,
-        e.location,
-        e.fee,
-        e.capacity,
-        e.description,
-        e.payment_methods,
-        e.allow_payment_after_deadline,
-        e.grace_period_days,
-        e.created_by,
-        e.registration_deadline,
-        e.payment_deadline,
-        e.canceled_at,
-        lp.id AS payment_id,
-        lp.amount AS payment_amount,
-        lp.method AS payment_method,
-        lp.status AS payment_status,
-        lp.created_at AS payment_created_at
-    FROM public.attendances a
-    JOIN public.events e ON e.id = a.event_id
-    LEFT JOIN LATERAL (
-        SELECT p.id, p.amount, p.method, p.status, p.created_at, p.paid_at, p.updated_at
-        FROM public.payments p
-        WHERE p.attendance_id = a.id
-        ORDER BY p.paid_at DESC NULLS LAST, p.created_at DESC, p.updated_at DESC
-        LIMIT 1
-    ) lp ON TRUE
-    WHERE a.guest_token = v_token
-    LIMIT 1;
+  RETURN QUERY
+  SELECT
+    a.id,
+    a.nickname,
+    a.email,
+    a.status,
+    a.guest_token,
+    a.created_at AS attendance_created_at,
+    a.updated_at AS attendance_updated_at,
+    e.id,
+    e.title,
+    e.date,
+    e.location,
+    e.fee,
+    e.capacity,
+    e.description,
+    e.payment_methods,
+    e.allow_payment_after_deadline,
+    e.grace_period_days,
+    c.name AS community_name,
+    c.legal_slug AS community_legal_slug,
+    e.registration_deadline,
+    e.payment_deadline,
+    e.canceled_at,
+    lp.id AS payment_id,
+    lp.amount AS payment_amount,
+    lp.method AS payment_method,
+    lp.status AS payment_status,
+    lp.created_at AS payment_created_at
+  FROM public.attendances a
+  JOIN public.events e
+    ON e.id = a.event_id
+  JOIN public.communities c
+    ON c.id = e.community_id
+   AND c.is_deleted = false
+  LEFT JOIN LATERAL (
+    SELECT p.id, p.amount, p.method, p.status, p.created_at, p.paid_at, p.updated_at
+      FROM public.payments p
+     WHERE p.attendance_id = a.id
+     ORDER BY p.paid_at DESC NULLS LAST, p.created_at DESC, p.updated_at DESC
+     LIMIT 1
+  ) lp ON TRUE
+  WHERE a.guest_token = v_token
+  LIMIT 1;
 END;
 $$;
 
 
 ALTER FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") OWNER TO "app_definer";
+
+
+COMMENT ON FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") IS 'ゲストトークンから参加データを取得する公開RPC。community公開導線向け最小情報を含み、削除済みcommunityは返さない';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid", "p_guest_token" "text") RETURNS integer
@@ -1807,35 +1815,39 @@ COMMENT ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid
 
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") RETURNS TABLE("id" "uuid", "created_by" "uuid", "organizer_name" character varying, "title" character varying, "date" timestamp with time zone, "location" character varying, "description" "text", "fee" integer, "capacity" integer, "payment_methods" "public"."payment_method_enum"[], "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "invite_token" character varying, "canceled_at" timestamp with time zone, "attendances_count" integer)
+CREATE OR REPLACE FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") RETURNS TABLE("id" "uuid", "community_name" character varying, "community_legal_slug" character varying, "title" character varying, "date" timestamp with time zone, "location" character varying, "description" "text", "fee" integer, "capacity" integer, "payment_methods" "public"."payment_method_enum"[], "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "invite_token" character varying, "canceled_at" timestamp with time zone, "attendances_count" integer)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
-    RETURN QUERY
-    SELECT
-        e.id,
-        e.created_by,
-        COALESCE(u.name, '主催者') as organizer_name,
-        e.title,
-        e.date,
-        e.location,
-        e.description,
-        e.fee,
-        e.capacity,
-        e.payment_methods,
-        e.registration_deadline,
-        e.payment_deadline,
-        e.invite_token,
-        e.canceled_at,
-        (
-          SELECT COUNT(*)::int
-          FROM public.attendances a
-          WHERE a.event_id = e.id AND a.status = 'attending'
-        ) AS attendances_count
-    FROM public.events e
-    LEFT JOIN public.users u ON e.created_by = u.id
-    WHERE e.invite_token = p_invite_token;
+  RETURN QUERY
+  SELECT
+    e.id,
+    c.name AS community_name,
+    c.legal_slug AS community_legal_slug,
+    e.title,
+    e.date,
+    e.location,
+    e.description,
+    e.fee,
+    e.capacity,
+    e.payment_methods,
+    e.registration_deadline,
+    e.payment_deadline,
+    e.invite_token,
+    e.canceled_at,
+    (
+      SELECT COUNT(*)::int
+        FROM public.attendances a
+       WHERE a.event_id = e.id
+         AND a.status = 'attending'
+    ) AS attendances_count
+  FROM public.events e
+  JOIN public.communities c
+    ON c.id = e.community_id
+   AND c.is_deleted = false
+  WHERE e.invite_token = p_invite_token
+  LIMIT 1;
 END;
 $$;
 
@@ -1843,7 +1855,7 @@ $$;
 ALTER FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") OWNER TO "app_definer";
 
 
-COMMENT ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") IS '招待トークンからイベント詳細を取得(公開RPC、主催者名・ID含む、ステータスフィルタなし)';
+COMMENT ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") IS '招待トークンからイベント詳細を取得する公開RPC。community公開導線向け最小情報を含み、削除済みcommunityは返さない';
 
 
 
@@ -4320,9 +4332,9 @@ GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_
 
 
 
-GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") TO "anon";
 
 
 

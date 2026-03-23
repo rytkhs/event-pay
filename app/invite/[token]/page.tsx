@@ -155,18 +155,18 @@ export default async function InvitePage(props: InvitePageProps) {
             registerParticipationAction={registerParticipationAction}
             dismissInviteSuccessAction={dismissInviteSuccessAction}
           />
-          {/* 主催者の特商法リンク */}
+          {/* 主催コミュニティの特商法リンク */}
           {(() => {
-            const organizerId = validationResult.event?.created_by;
+            const legalSlug = validationResult.event?.community.legalSlug;
             const isDemo = process.env.NEXT_PUBLIC_IS_DEMO === "true";
-            if (!organizerId || isDemo) return null;
+            if (!legalSlug || isDemo) return null;
             return (
               <div className="mt-8 text-center">
                 <Link
-                  href={`/tokushoho/${organizerId}`}
+                  href={`/tokushoho/${legalSlug}`}
                   prefetch={false}
                   className="text-xs underline text-muted-foreground hover:no-underline"
-                  aria-label="主催者の特定商取引法に基づく表記を確認する"
+                  aria-label="コミュニティの特定商取引法に基づく表記を確認する"
                 >
                   特定商取引法に基づく表記（イベント）
                 </Link>
