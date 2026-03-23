@@ -24,11 +24,13 @@ export * from "./types/audit-log";
 
 // Stripe Connectアカウント情報の型
 export interface StripeConnectAccount {
-  user_id: string;
+  id: string;
+  owner_user_id: string;
   stripe_account_id: string;
   status: StripeAccountStatus;
   charges_enabled: boolean;
   payouts_enabled: boolean;
+  representative_community_id: string | null;
   created_at: string;
   updated_at: string;
 }

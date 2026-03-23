@@ -4,6 +4,10 @@
 
 import { redirect } from "next/navigation";
 
+import {
+  resolveCurrentCommunityForServerAction,
+  resolveCurrentCommunityForServerComponent,
+} from "@core/community/current-community";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
@@ -63,11 +67,28 @@ export async function getConnectAccountStatusAction(): Promise<
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
+    const currentCommunityResult = await resolveCurrentCommunityForServerComponent();
+    const currentCommunity = currentCommunityResult.currentCommunity;
+
+    if (!currentCommunity) {
+      const { UIStatusMapper } = await import("../services/ui-status-mapper");
+      const mapper = new UIStatusMapper();
+      return ok({
+        hasAccount: false,
+        uiStatus: mapper.mapToUIStatus(null),
+        chargesEnabled: false,
+        payoutsEnabled: false,
+      });
+    }
+
     // 2. StripeConnectServiceを初期化（ユーザーセッション使用、RLS適用）
     const stripeConnectService = await createUserStripeConnectServiceForServerComponent();
 
     // 3. アカウント情報を取得
-    const account = await stripeConnectService.getConnectAccountByUser(user.id);
+    const account = await stripeConnectService.getConnectAccountForCommunity(
+      user.id,
+      currentCommunity.id
+    );
 
     if (!account) {
       // 要件 2.2: アカウント未作成の場合は no_account を返す
@@ -106,7 +127,10 @@ export async function getConnectAccountStatusAction(): Promise<
         outcome: "failure",
       });
 
-      const updatedAccount = await stripeConnectService.getConnectAccountByUser(user.id);
+      const updatedAccount = await stripeConnectService.getConnectAccountForCommunity(
+        user.id,
+        currentCommunity.id
+      );
       if (!updatedAccount) {
         throw new Error("アカウント情報の取得に失敗しました");
       }
@@ -115,7 +139,10 @@ export async function getConnectAccountStatusAction(): Promise<
     }
 
     // 5. 最新のアカウント情報を取得（同期後）
-    const updatedAccount = await stripeConnectService.getConnectAccountByUser(user.id);
+    const updatedAccount = await stripeConnectService.getConnectAccountForCommunity(
+      user.id,
+      currentCommunity.id
+    );
     if (!updatedAccount) {
       throw new Error("アカウント情報の取得に失敗しました");
     }
@@ -469,6 +496,14 @@ export async function startOnboardingAction(): Promise<void> {
 
     // 3. StripeConnectServiceを初期化
     const stripeConnectService = await createUserStripeConnectServiceForServerAction();
+
+    const currentCommunityResult = await resolveCurrentCommunityForServerAction(user);
+    if (!currentCommunityResult.success) {
+      throw currentCommunityResult.error;
+    }
+    if (!currentCommunityResult.data?.currentCommunity) {
+      throw new Error("現在選択中コミュニティを解決できませんでした");
+    }
 
     // 4. 既存アカウントを取得（無ければ作成）
     let account = await stripeConnectService.getConnectAccountByUser(user.id);

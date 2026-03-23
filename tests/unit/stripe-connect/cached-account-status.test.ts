@@ -4,8 +4,10 @@ import type { StripeConnectAccount } from "@features/stripe-connect/types";
 describe("buildConnectAccountStatusPayloadFromCachedAccount", () => {
   const baseAccount: Omit<StripeConnectAccount, "status" | "charges_enabled" | "payouts_enabled"> =
     {
-      user_id: "550e8400-e29b-41d4-a716-446655440000",
+      id: "profile-1",
+      owner_user_id: "550e8400-e29b-41d4-a716-446655440000",
       stripe_account_id: "acct_test",
+      representative_community_id: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };

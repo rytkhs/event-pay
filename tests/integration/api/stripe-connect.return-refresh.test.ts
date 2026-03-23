@@ -16,16 +16,19 @@ jest.mock("@core/supabase/factory", () => ({
 }));
 
 jest.mock("@features/stripe-connect/services/factories", () => {
+  const buildAccount = (ownerUserId = "550e8400-e29b-41d4-a716-446655440000") => ({
+    id: "profile-1",
+    owner_user_id: ownerUserId,
+    stripe_account_id: "acct_test",
+    status: "unverified",
+    charges_enabled: false,
+    payouts_enabled: false,
+    representative_community_id: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  });
   const __mockStripeConnectService = {
-    getConnectAccountByUser: jest.fn().mockResolvedValue({
-      stripe_account_id: "acct_test",
-      user_id: "550e8400-e29b-41d4-a716-446655440000",
-      status: "unverified",
-      charges_enabled: false,
-      payouts_enabled: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }),
+    getConnectAccountByUser: jest.fn().mockResolvedValue(buildAccount()),
     createExpressAccount: jest.fn().mockResolvedValue({
       accountId: "acct_test",
       status: "unverified",
@@ -101,11 +104,13 @@ describe("Stripe Connect return/refresh actions", () => {
       "@features/stripe-connect/services/factories"
     );
     __mockStripeConnectService.getConnectAccountByUser.mockResolvedValue({
+      id: "profile-1",
+      owner_user_id: defaultUserId,
       stripe_account_id: "acct_test",
-      user_id: defaultUserId,
       status: "unverified",
       charges_enabled: false,
       payouts_enabled: false,
+      representative_community_id: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });

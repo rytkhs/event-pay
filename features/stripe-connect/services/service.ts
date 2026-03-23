@@ -30,6 +30,11 @@ import {
 
 import { IStripeConnectService, IStripeConnectErrorHandler } from "./interface";
 import {
+  getOwnerPayoutProfile,
+  resolveCurrentCommunityPayoutProfile,
+  syncOwnerPayoutProfileToCommunities,
+} from "./payout-profile-resolver";
+import {
   validateCreateExpressAccountParams,
   validateCreateAccountLinkParams,
   validateStripeAccountId,
@@ -265,12 +270,13 @@ export class StripeConnectService implements IStripeConnectService {
       }
 
       // データベースにアカウント情報を保存
-      const { error: dbError } = await this.supabase.from("stripe_connect_accounts").insert({
-        user_id: userId,
+      const { error: dbError } = await this.supabase.from("payout_profiles").insert({
+        owner_user_id: userId,
         stripe_account_id: stripeAccount.id,
         status: "unverified",
         charges_enabled: false,
         payouts_enabled: false,
+        representative_community_id: null,
       });
 
       if (dbError) {
@@ -296,6 +302,14 @@ export class StripeConnectService implements IStripeConnectService {
         }
 
         throw this.errorHandler.mapDatabaseError(dbError, "Express Account作成後のDB保存");
+      }
+
+      const persistedAccount = await this.getConnectAccountByUser(userId);
+      if (persistedAccount) {
+        await syncOwnerPayoutProfileToCommunities(this.supabase, {
+          payoutProfileId: persistedAccount.id,
+          userId,
+        });
       }
 
       return {
@@ -489,19 +503,11 @@ export class StripeConnectService implements IStripeConnectService {
       // ユーザーIDの形式チェック
       validateUserId(userId);
 
-      const { data, error } = await this.supabase
-        .from("stripe_connect_accounts")
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (error) {
-        throw this.errorHandler.mapDatabaseError(error, "Connect Account取得");
-      }
-
-      if (!data) return null;
-      return data as StripeConnectAccount;
+      return (await getOwnerPayoutProfile(this.supabase, userId)) as StripeConnectAccount | null;
     } catch (error) {
+      if (error && typeof error === "object" && "code" in error) {
+        throw this.errorHandler.mapDatabaseError(error as unknown as Error, "Connect Account取得");
+      }
       if (error instanceof StripeConnectError) {
         throw error;
       }
@@ -511,6 +517,39 @@ export class StripeConnectService implements IStripeConnectService {
         "Connect Account取得中に予期しないエラーが発生しました",
         error as Error,
         { userId }
+      );
+    }
+  }
+
+  async getConnectAccountForCommunity(
+    userId: string,
+    communityId: string
+  ): Promise<StripeConnectAccount | null> {
+    try {
+      validateUserId(userId);
+
+      const { payoutProfile } = await resolveCurrentCommunityPayoutProfile(this.supabase, {
+        communityId,
+        userId,
+      });
+
+      return payoutProfile as StripeConnectAccount | null;
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error) {
+        throw this.errorHandler.mapDatabaseError(
+          error as unknown as Error,
+          "Community Connect Account取得"
+        );
+      }
+      if (error instanceof StripeConnectError) {
+        throw error;
+      }
+
+      throw new StripeConnectError(
+        StripeConnectErrorType.DATABASE_ERROR,
+        "コミュニティの Connect Account取得中に予期しないエラーが発生しました",
+        error as Error,
+        { communityId, userId }
       );
     }
   }
@@ -539,13 +578,14 @@ export class StripeConnectService implements IStripeConnectService {
 
       // 現在のステータスを取得（ステータス変更検知用）
       const { data: currentAccount } = await this.supabase
-        .from("stripe_connect_accounts")
-        .select("status, stripe_account_id")
-        .eq("user_id", userId)
+        .from("payout_profiles")
+        .select("id, status, stripe_account_id")
+        .eq("owner_user_id", userId)
         .maybeSingle();
 
       const previousStatus = currentAccount?.status || null;
       const accountId = stripeAccountId || currentAccount?.stripe_account_id || "";
+      const payoutProfileId = currentAccount?.id || null;
 
       const updateData: StripeConnectAccountUpdate = {
         status: status,
@@ -560,10 +600,10 @@ export class StripeConnectService implements IStripeConnectService {
       }
 
       const { data: updatedRows, error } = await this.supabase
-        .from("stripe_connect_accounts")
+        .from("payout_profiles")
         .update(updateData)
-        .eq("user_id", userId)
-        .select("user_id");
+        .eq("owner_user_id", userId)
+        .select("id, owner_user_id");
 
       if (error) {
         throw this.errorHandler.mapDatabaseError(error, "Connect Accountステータス更新");
@@ -616,13 +656,13 @@ export class StripeConnectService implements IStripeConnectService {
 
         // 挿入前に stripe_account_id の衝突検知（別ユーザに紐付いていないか）
         const conflictCheck = await this.supabase
-          .from("stripe_connect_accounts")
-          .select("user_id")
+          .from("payout_profiles")
+          .select("owner_user_id")
           .eq("stripe_account_id", stripeAccountId)
           .maybeSingle();
 
         if (conflictCheck && !conflictCheck.error && conflictCheck.data) {
-          const ownerUserId = conflictCheck.data.user_id as string;
+          const ownerUserId = conflictCheck.data.owner_user_id as string;
           if (ownerUserId !== userId) {
             throw new StripeConnectError(
               StripeConnectErrorType.VALIDATION_ERROR,
@@ -633,17 +673,21 @@ export class StripeConnectService implements IStripeConnectService {
           }
         }
 
-        // 競合に強くするためUPSERT（user_id基準）
-        const { error: insertError } = await this.supabase.from("stripe_connect_accounts").upsert(
-          {
-            user_id: userId,
-            stripe_account_id: stripeAccountId,
-            status: status,
-            charges_enabled: chargesEnabled,
-            payouts_enabled: payoutsEnabled,
-          },
-          { onConflict: "user_id" }
-        );
+        // 競合に強くするためUPSERT（owner_user_id基準）
+        const { data: insertedRows, error: insertError } = await this.supabase
+          .from("payout_profiles")
+          .upsert(
+            {
+              owner_user_id: userId,
+              stripe_account_id: stripeAccountId,
+              status: status,
+              charges_enabled: chargesEnabled,
+              payouts_enabled: payoutsEnabled,
+              representative_community_id: null,
+            },
+            { onConflict: "owner_user_id" }
+          )
+          .select("id, owner_user_id");
 
         if (insertError) {
           throw this.errorHandler.mapDatabaseError(
@@ -651,6 +695,19 @@ export class StripeConnectService implements IStripeConnectService {
             "Connect Account作成（フェイルセーフ）"
           );
         }
+
+        const insertedPayoutProfileId = insertedRows?.[0]?.id ?? null;
+        if (insertedPayoutProfileId) {
+          await syncOwnerPayoutProfileToCommunities(this.supabase, {
+            payoutProfileId: insertedPayoutProfileId,
+            userId,
+          });
+        }
+      } else if (payoutProfileId) {
+        await syncOwnerPayoutProfileToCommunities(this.supabase, {
+          payoutProfileId,
+          userId,
+        });
       }
     } catch (error) {
       if (error instanceof StripeConnectError) {

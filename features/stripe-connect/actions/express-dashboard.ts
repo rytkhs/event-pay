@@ -1,5 +1,9 @@
 import { redirect } from "next/navigation";
 
+import {
+  resolveCurrentCommunityForServerAction,
+  resolveCurrentCommunityForServerComponent,
+} from "@core/community/current-community";
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import {
@@ -52,11 +56,26 @@ export async function createExpressDashboardLoginLinkAction(): Promise<void> {
       return;
     }
 
+    const currentCommunityResult = await resolveCurrentCommunityForServerAction(user);
+    if (!currentCommunityResult.success) {
+      redirect("/settings/payments");
+      return;
+    }
+
+    const currentCommunity = currentCommunityResult.data?.currentCommunity;
+    if (!currentCommunity) {
+      redirect("/settings/payments");
+      return;
+    }
+
     // 2. StripeConnectServiceを初期化
     const stripeConnectService = await createUserStripeConnectServiceForServerAction();
 
     // 3. 既存のConnect Accountを確認
-    const account = await stripeConnectService.getConnectAccountByUser(user.id);
+    const account = await stripeConnectService.getConnectAccountForCommunity(
+      user.id,
+      currentCommunity.id
+    );
 
     if (!account) {
       logger.warn("No Stripe Connect account found for Express Dashboard access", {
@@ -125,11 +144,23 @@ export async function checkExpressDashboardAccessAction(): Promise<
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
+    const currentCommunityResult = await resolveCurrentCommunityForServerComponent();
+    const currentCommunity = currentCommunityResult.currentCommunity;
+
+    if (!currentCommunity) {
+      return ok({
+        hasAccount: false,
+      });
+    }
+
     // 2. StripeConnectServiceを初期化
     const stripeConnectService = await createUserStripeConnectServiceForServerComponent();
 
     // 3. Connect Accountの確認
-    const account = await stripeConnectService.getConnectAccountByUser(user.id);
+    const account = await stripeConnectService.getConnectAccountForCommunity(
+      user.id,
+      currentCommunity.id
+    );
 
     if (!account) {
       return ok({

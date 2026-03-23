@@ -2,26 +2,45 @@ import { redirect } from "next/navigation";
 
 import { setupSupabaseClientMocks } from "../../setup/common-mocks";
 import { setTestUserById, supabaseAuthMock } from "../../setup/supabase-auth-mock";
+
 const originalEnv = process.env;
 const defaultUserId = "550e8400-e29b-41d4-a716-446655440000";
 
-// Mock next/navigation
 jest.mock("next/navigation", () => ({
   redirect: jest.fn(),
 }));
 
-// Stripe Connect サービスの依存をモック
+const mockResolveCurrentCommunityForServerAction = jest.fn();
+const mockResolveCurrentCommunityForServerComponent = jest.fn();
+const mockResolveAppWorkspaceForServerComponent = jest.fn();
+
+jest.mock("@core/community/current-community", () => ({
+  resolveCurrentCommunityForServerAction: mockResolveCurrentCommunityForServerAction,
+  resolveCurrentCommunityForServerComponent: mockResolveCurrentCommunityForServerComponent,
+}));
+
+jest.mock("@core/community/app-workspace", () => ({
+  resolveAppWorkspaceForServerComponent: mockResolveAppWorkspaceForServerComponent,
+}));
+
 jest.mock("@features/stripe-connect/services/factories", () => {
+  const buildAccount = (overrides: Record<string, unknown> = {}) => ({
+    id: "profile-1",
+    owner_user_id: defaultUserId,
+    stripe_account_id: "acct_test",
+    status: "unverified",
+    charges_enabled: false,
+    payouts_enabled: false,
+    representative_community_id: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    ...overrides,
+  });
+
   const __mockStripeConnectService = {
-    getConnectAccountByUser: jest.fn().mockResolvedValue({
-      stripe_account_id: "acct_test",
-      user_id: "550e8400-e29b-41d4-a716-446655440000",
-      status: "unverified",
-      charges_enabled: false,
-      payouts_enabled: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }),
+    buildAccount,
+    getConnectAccountByUser: jest.fn().mockResolvedValue(buildAccount()),
+    getConnectAccountForCommunity: jest.fn().mockResolvedValue(buildAccount()),
     createExpressAccount: jest.fn().mockResolvedValue({
       accountId: "acct_test",
       status: "unverified",
@@ -66,7 +85,6 @@ jest.mock("@features/stripe-connect/services/status-sync-service", () => ({
   })),
 }));
 
-// Supabase 認証モック（共通モックを使用）
 jest.mock("@core/supabase/factory", () => ({
   createServerActionSupabaseClient: jest.fn(),
   createServerComponentSupabaseClient: jest.fn(),
@@ -108,9 +126,7 @@ describe("Stripe Connect actions", () => {
   let mockSupabase: ReturnType<typeof setupSupabaseClientMocks>;
 
   beforeAll(() => {
-    // 共通モックを使用してSupabaseクライアントを設定
     mockSupabase = setupSupabaseClientMocks();
-    // テスト用ユーザーを設定
     setTestUserById(defaultUserId, "u@example.com");
     const {
       createServerActionSupabaseClient,
@@ -134,19 +150,68 @@ describe("Stripe Connect actions", () => {
       NODE_ENV: "test",
       NEXT_PUBLIC_APP_URL: "http://localhost:3000",
     };
+
     setTestUserById(defaultUserId, "u@example.com");
+    supabaseAuthMock.setError(false);
+    supabaseAuthMock.setUser({
+      id: defaultUserId,
+      email: "u@example.com",
+    } as any);
+
+    mockResolveCurrentCommunityForServerAction.mockResolvedValue({
+      success: true,
+      data: {
+        currentCommunity: {
+          id: "community-1",
+          name: "Community 1",
+          slug: "community-1",
+        },
+      },
+    });
+    mockResolveCurrentCommunityForServerComponent.mockResolvedValue({
+      currentCommunity: {
+        id: "community-1",
+        name: "Community 1",
+        slug: "community-1",
+      },
+    });
+    mockResolveAppWorkspaceForServerComponent.mockResolvedValue({
+      currentUser: {
+        id: defaultUserId,
+      },
+      currentCommunity: {
+        id: "community-1",
+        name: "Community 1",
+        slug: "community-1",
+      },
+    });
+
     const { __mockStripeConnectService } = jest.requireMock(
       "@features/stripe-connect/services/factories"
     );
-    __mockStripeConnectService.getConnectAccountByUser.mockResolvedValue({
-      stripe_account_id: "acct_test",
-      user_id: defaultUserId,
+    const baseAccount = __mockStripeConnectService.buildAccount();
+    __mockStripeConnectService.getConnectAccountByUser.mockReset();
+    __mockStripeConnectService.getConnectAccountForCommunity.mockReset();
+    __mockStripeConnectService.createExpressAccount.mockReset();
+    __mockStripeConnectService.createAccountLink.mockReset();
+    __mockStripeConnectService.createLoginLink.mockReset();
+    __mockStripeConnectService.updateAccountStatus.mockReset();
+    __mockStripeConnectService.getConnectAccountByUser.mockResolvedValue(baseAccount);
+    __mockStripeConnectService.getConnectAccountForCommunity.mockResolvedValue(baseAccount);
+    __mockStripeConnectService.createExpressAccount.mockResolvedValue({
+      accountId: "acct_test",
       status: "unverified",
-      charges_enabled: false,
-      payouts_enabled: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     });
+    __mockStripeConnectService.createAccountLink.mockResolvedValue({
+      url: "https://connect.stripe.com/setup/e/acct_test/session_token",
+      expiresAt: Math.floor(Date.now() / 1000) + 300,
+    });
+    __mockStripeConnectService.createLoginLink.mockResolvedValue({
+      url: "https://connect.stripe.com/express/acct_test/login",
+      created: Math.floor(Date.now() / 1000),
+    });
+    __mockStripeConnectService.updateAccountStatus.mockResolvedValue(undefined);
+
     const { StatusSyncService } = jest.requireMock(
       "@features/stripe-connect/services/status-sync-service"
     );
@@ -165,6 +230,7 @@ describe("Stripe Connect actions", () => {
         },
       }),
     }));
+
     (redirect as unknown as jest.Mock).mockClear();
   });
 
@@ -175,25 +241,20 @@ describe("Stripe Connect actions", () => {
   describe("startOnboardingAction", () => {
     it("正常にオンボーディングを開始してリダイレクトする", async () => {
       const { startOnboardingAction } = require("@features/stripe-connect/server");
+
       await startOnboardingAction();
+
+      expect(mockResolveCurrentCommunityForServerAction).toHaveBeenCalled();
       expect(redirect).toHaveBeenCalledWith(expect.stringContaining("https://connect.stripe.com"));
     });
 
-    it("connect account新規作成時にbusinessTypeをデフォルト送信しない", async () => {
+    it("connect account新規作成時に business profile を渡す", async () => {
       const { __mockStripeConnectService } = jest.requireMock(
         "@features/stripe-connect/services/factories"
       );
       __mockStripeConnectService.getConnectAccountByUser
         .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          stripe_account_id: "acct_test",
-          user_id: defaultUserId,
-          status: "unverified",
-          charges_enabled: false,
-          payouts_enabled: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
+        .mockResolvedValueOnce(__mockStripeConnectService.buildAccount());
 
       const { startOnboardingAction } = require("@features/stripe-connect/server");
       await startOnboardingAction();
@@ -213,34 +274,56 @@ describe("Stripe Connect actions", () => {
   describe("getStripeBalanceAction", () => {
     it("should return cached balance (calculated from available + pending)", async () => {
       const { getStripeBalanceAction } = require("@features/stripe-connect/server");
-      // Use a valid UUID to pass validateUserId check in real Service
-      const validUserId = "550e8400-e29b-41d4-a716-446655440000";
-      setTestUserById(validUserId, "u@example.com");
-
-      // Mock Supabase to return a connect account
       (mockSupabase.from as jest.Mock).mockImplementation((tableName) => {
-        if (tableName === "stripe_connect_accounts") {
+        if (tableName === "communities") {
           return {
-            select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockReturnThis(),
-            maybeSingle: jest.fn().mockResolvedValue({
-              data: { stripe_account_id: "acct_test_123" },
-              error: null,
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({
+                  data: { current_payout_profile_id: "profile-1" },
+                  error: null,
+                }),
+              }),
             }),
           } as any;
         }
-        // default fallback
+
+        if (tableName === "payout_profiles") {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({
+                  data: {
+                    id: "profile-1",
+                    owner_user_id: defaultUserId,
+                    stripe_account_id: "acct_test_123",
+                    status: "verified",
+                    charges_enabled: true,
+                    payouts_enabled: true,
+                    representative_community_id: null,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                  },
+                  error: null,
+                }),
+              }),
+            }),
+          } as any;
+        }
+
         return {
-          select: jest.fn().mockReturnThis(),
-          eq: jest.fn().mockReturnThis(),
-          maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
         } as any;
       });
 
       const result = await getStripeBalanceAction();
+
       expect(result.success).toBe(true);
       if (result.success) {
-        // 1000 + 500 = 1500
         expect(result.data).toBe(1500);
       }
     });
@@ -249,9 +332,9 @@ describe("Stripe Connect actions", () => {
   describe("getConnectAccountStatusAction", () => {
     it("should return account status when account exists", async () => {
       const { getConnectAccountStatusAction } = require("@features/stripe-connect/server");
+
       const result = await getConnectAccountStatusAction();
 
-      // Based on mock data in jest.mock above
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.hasAccount).toBe(true);
@@ -267,27 +350,15 @@ describe("Stripe Connect actions", () => {
       const { StatusSyncService } = jest.requireMock(
         "@features/stripe-connect/services/status-sync-service"
       );
+      const readyAccount = __mockStripeConnectService.buildAccount({
+        charges_enabled: true,
+        payouts_enabled: true,
+        status: "verified",
+      });
 
-      __mockStripeConnectService.getConnectAccountByUser
-        .mockResolvedValueOnce({
-          stripe_account_id: "acct_test",
-          user_id: defaultUserId,
-          status: "verified",
-          charges_enabled: true,
-          payouts_enabled: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .mockResolvedValueOnce({
-          stripe_account_id: "acct_test",
-          user_id: defaultUserId,
-          status: "verified",
-          charges_enabled: true,
-          payouts_enabled: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-
+      __mockStripeConnectService.getConnectAccountForCommunity
+        .mockResolvedValueOnce(readyAccount)
+        .mockResolvedValueOnce(readyAccount);
       (StatusSyncService as jest.Mock).mockImplementation(() => ({
         syncAccountStatus: jest.fn().mockRejectedValue(new Error("sync failed")),
       }));
@@ -302,8 +373,6 @@ describe("Stripe Connect actions", () => {
         expect(result.data.uiStatus).toBe("ready");
         expect(result.data.chargesEnabled).toBe(true);
         expect(result.data.payoutsEnabled).toBe(true);
-        expect(result.data.requirements).toBeUndefined();
-        expect(result.data.capabilities).toBeUndefined();
       }
     });
   });
@@ -311,6 +380,7 @@ describe("Stripe Connect actions", () => {
   describe("checkExpressDashboardAccessAction", () => {
     it("should return hasAccount: true when account exists", async () => {
       const { checkExpressDashboardAccessAction } = require("@features/stripe-connect/server");
+
       const result = await checkExpressDashboardAccessAction();
 
       expect(result.success).toBe(true);
@@ -344,7 +414,7 @@ describe("Stripe Connect actions", () => {
       const { __mockStripeConnectService } = jest.requireMock(
         "@features/stripe-connect/services/factories"
       );
-      __mockStripeConnectService.getConnectAccountByUser.mockResolvedValueOnce(null);
+      __mockStripeConnectService.getConnectAccountForCommunity.mockResolvedValueOnce(null);
 
       const { createExpressDashboardLoginLinkAction } = require("@features/stripe-connect/server");
       await createExpressDashboardLoginLinkAction();

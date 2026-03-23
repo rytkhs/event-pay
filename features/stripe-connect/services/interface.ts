@@ -55,6 +55,17 @@ export interface IStripeConnectService {
   getConnectAccountByUser(userId: string): Promise<StripeConnectAccount | null>;
 
   /**
+   * 現在のコミュニティ文脈でStripe Connectアカウント情報を取得する
+   * @param userId owner ユーザーID
+   * @param communityId 現在選択中コミュニティID
+   * @returns Stripe Connectアカウント情報（存在しない場合はnull）
+   */
+  getConnectAccountForCommunity(
+    userId: string,
+    communityId: string
+  ): Promise<StripeConnectAccount | null>;
+
+  /**
    * Stripe Connectアカウントのステータスを更新する
    * @param params アカウントステータス更新パラメータ
    * @throws StripeConnectError ステータス更新に失敗した場合

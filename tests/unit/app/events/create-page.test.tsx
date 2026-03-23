@@ -62,6 +62,9 @@ describe("CreateEventPage", () => {
     createServerComponentSupabaseClient.mockResolvedValue({ from: jest.fn() });
     requireNonEmptyCommunityWorkspaceForServerComponent.mockResolvedValue({
       isCommunityEmptyState: false,
+      currentUser: {
+        id: "user-1",
+      },
       currentCommunity: {
         id: "community-1",
         name: "ボドゲ会",
@@ -75,7 +78,11 @@ describe("CreateEventPage", () => {
     render(ui);
 
     expect(createServerComponentSupabaseClient).toHaveBeenCalledTimes(1);
-    expect(getDashboardConnectCtaStatus).toHaveBeenCalledWith(expect.anything(), "community-1");
+    expect(getDashboardConnectCtaStatus).toHaveBeenCalledWith(
+      expect.anything(),
+      "user-1",
+      "community-1"
+    );
     expect(screen.getByText("form:true:none:ボドゲ会")).toBeInTheDocument();
   });
 });

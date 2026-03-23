@@ -46,7 +46,10 @@ export default async function DashboardPage() {
     return null;
   }
 
-  const dashboardDataResource = createDashboardDataResource(currentCommunity.id);
+  const dashboardDataResource = createDashboardDataResource(
+    workspace.currentUser.id,
+    currentCommunity.id
+  );
 
   return (
     <div className="min-h-screen bg-muted/30">

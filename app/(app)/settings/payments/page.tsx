@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
-import { requireCurrentUserForServerComponent } from "@core/auth/auth-utils";
+import { requireNonEmptyCommunityWorkspaceForServerComponent } from "@core/community/app-workspace";
 
 import { AccountStatus, CONNECT_REFRESH_PATH, OnboardingForm } from "@features/stripe-connect";
 import {
@@ -27,13 +27,21 @@ export const metadata: Metadata = {
 };
 
 async function PaymentSettingsContent() {
-  const user = await requireCurrentUserForServerComponent();
+  const workspace = await requireNonEmptyCommunityWorkspaceForServerComponent();
+  const currentCommunity = workspace.currentCommunity;
+
+  if (!currentCommunity) {
+    return null;
+  }
 
   // StripeConnectServiceを初期化
   const stripeConnectService = await createUserStripeConnectServiceForServerComponent();
 
   // 既存のアカウントをチェック
-  const existingAccount = await stripeConnectService.getConnectAccountByUser(user.id);
+  const existingAccount = await stripeConnectService.getConnectAccountForCommunity(
+    workspace.currentUser.id,
+    currentCommunity.id
+  );
 
   // リダイレクトURL設定
   const refreshUrl = CONNECT_REFRESH_PATH;
@@ -41,8 +49,9 @@ async function PaymentSettingsContent() {
   return (
     <div className="space-y-6">
       <div className="bg-muted/40 border border-muted/60 rounded-lg p-4 text-sm text-muted-foreground space-y-1">
+        <p className="font-medium text-foreground">{currentCommunity.name} の決済設定</p>
         <p className="text-muted-foreground">
-          売上を受け取るために、Stripeの設定画面で入金設定を行います。
+          現在選択中コミュニティの売上を受け取るために、Stripeの設定画面で入金設定を行います。
         </p>
         <p>
           入力内容はStripeに直接送信され、当サービスではカード情報や身分証の画像を保持しません。
