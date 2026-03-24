@@ -27,7 +27,7 @@ export const isOpenPaymentStatus = (status: PaymentStatus): status is OpenPaymen
 };
 
 export const OPEN_PAYMENT_SELECT_COLUMNS =
-  "id, status, method, amount, checkout_idempotency_key, checkout_key_revision, stripe_payment_intent_id, paid_at, created_at, updated_at";
+  "id, status, method, amount, payout_profile_id, checkout_idempotency_key, checkout_key_revision, stripe_payment_intent_id, paid_at, created_at, updated_at";
 
 /**
  * オープン決済レコードの型
@@ -37,6 +37,7 @@ export type OpenPaymentRow = {
   status: PaymentStatus;
   method: PaymentMethod;
   amount: number;
+  payout_profile_id: string | null;
   checkout_idempotency_key: string | null;
   checkout_key_revision: number;
   stripe_payment_intent_id: string | null;

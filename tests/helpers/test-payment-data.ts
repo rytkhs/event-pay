@@ -23,6 +23,7 @@ type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
 export interface TestPaymentUser extends TestUser {
   hasStripeConnect: boolean;
   stripeConnectAccountId?: string;
+  payoutProfileId?: string;
   payoutsEnabled: boolean;
   chargesEnabled: boolean;
 }
@@ -35,6 +36,7 @@ export interface TestPaymentEvent {
   capacity: number | null;
   invite_token: string;
   created_by: string;
+  payout_profile_id: string | null;
   payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
 }
 
@@ -47,6 +49,7 @@ export interface TestPaymentData {
   application_fee_amount: number;
   paid_at?: string | null;
   stripe_account_id?: string;
+  payout_profile_id?: string | null;
 }
 
 export interface TestAttendanceData {
@@ -100,7 +103,7 @@ export async function createTestUserWithConnect(
     `Creating Stripe Connect account for test user: ${email}`,
     {
       operationType: "INSERT",
-      accessedTables: ["public.stripe_connect_accounts"],
+      accessedTables: ["public.stripe_connect_accounts", "public.payout_profiles"],
       additionalInfo: {
         testContext: "payment-test-setup",
         userId: user.id,
@@ -129,6 +132,25 @@ export async function createTestUserWithConnect(
     throw new Error(`Failed to create Stripe Connect account: ${error.message}`);
   }
 
+  const { data: payoutProfile, error: payoutProfileError } = await adminClient
+    .from("payout_profiles")
+    .upsert(
+      {
+        owner_user_id: user.id,
+        stripe_account_id: stripeAccountId,
+        payouts_enabled: payoutsEnabled,
+        charges_enabled: chargesEnabled,
+        status: payoutsEnabled && chargesEnabled ? "verified" : "onboarding",
+      },
+      { onConflict: "owner_user_id" }
+    )
+    .select("id, stripe_account_id, payouts_enabled, charges_enabled")
+    .single();
+
+  if (payoutProfileError || !payoutProfile) {
+    throw new Error(`Failed to create payout profile: ${payoutProfileError?.message}`);
+  }
+
   // eslint-disable-next-line no-console
   console.log(`✓ Created Stripe Connect account for user ${email}: ${stripeAccountId}`);
 
@@ -136,6 +158,7 @@ export async function createTestUserWithConnect(
     ...user,
     hasStripeConnect: true,
     stripeConnectAccountId: connectAccount.stripe_account_id,
+    payoutProfileId: payoutProfile.id,
     payoutsEnabled: connectAccount.payouts_enabled,
     chargesEnabled: connectAccount.charges_enabled,
   };
@@ -195,6 +218,12 @@ export async function createPaidTestEvent(
   // 招待トークンを生成
   const inviteToken = generateInviteToken();
 
+  const { data: payoutProfile } = await adminClient
+    .from("payout_profiles")
+    .select("id")
+    .eq("owner_user_id", createdBy)
+    .maybeSingle();
+
   const eventData: EventInsert = {
     title,
     date: futureDateString,
@@ -209,6 +238,7 @@ export async function createPaidTestEvent(
     invite_token: inviteToken,
     created_by: createdBy,
     community_id: options.communityId || "00000000-0000-0000-0000-000000000000", // Default dummy or required
+    payout_profile_id: payoutProfile?.id ?? null,
   };
 
   const { data: createdEvent, error } = await adminClient
@@ -232,6 +262,7 @@ export async function createPaidTestEvent(
     capacity: createdEvent.capacity,
     invite_token: createdEvent.invite_token || "",
     created_by: createdEvent.created_by,
+    payout_profile_id: createdEvent.payout_profile_id ?? null,
     payment_methods: createdEvent.payment_methods || [],
   };
 }
@@ -388,6 +419,7 @@ export async function createPendingTestPayment(
     attendance_id: payment.attendance_id,
     application_fee_amount: payment.application_fee_amount,
     stripe_account_id: payment.stripe_account_id,
+    payout_profile_id: payment.payout_profile_id,
   };
 }
 
@@ -507,6 +539,7 @@ export async function cleanupTestPaymentData(dataIds: {
         "public.attendances",
         "public.events",
         "public.stripe_connect_accounts",
+        "public.payout_profiles",
       ],
       additionalInfo: {
         testContext: "payment-test-cleanup",
@@ -540,6 +573,7 @@ export async function cleanupTestPaymentData(dataIds: {
     // Connect アカウントを削除
     if (dataIds.userIds?.length) {
       await adminClient.from("stripe_connect_accounts").delete().in("user_id", dataIds.userIds);
+      await adminClient.from("payout_profiles").delete().in("owner_user_id", dataIds.userIds);
       // eslint-disable-next-line no-console
       console.log(`✓ Deleted Stripe Connect accounts for ${dataIds.userIds.length} users`);
     }
@@ -656,6 +690,7 @@ export async function createPaidStripePayment(
     attendance_id: payment.attendance_id,
     application_fee_amount: payment.application_fee_amount,
     stripe_account_id: payment.stripe_account_id,
+    payout_profile_id: payment.payout_profile_id,
   };
 }
 

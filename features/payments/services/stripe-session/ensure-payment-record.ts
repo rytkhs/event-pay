@@ -63,6 +63,8 @@ export function normalizeOpenPaymentRow(
     status: record.status as PaymentStatus,
     method: record.method as PaymentMethod,
     amount: typeof record.amount === "number" ? record.amount : 0,
+    payout_profile_id:
+      typeof record.payout_profile_id === "string" ? record.payout_profile_id : null,
     checkout_idempotency_key:
       typeof record.checkout_idempotency_key === "string" ? record.checkout_idempotency_key : null,
     checkout_key_revision: checkoutKeyRevision,
@@ -78,12 +80,13 @@ export function normalizeOpenPaymentRow(
  * pending状態からの優先選択
  */
 function selectPreferredOpenPayment(payments: OpenPaymentRow[]): OpenPaymentRow | null {
-  if (!payments.length) return null;
-  const pendingPayments = payments.filter((payment) => payment.status === "pending");
+  const stripePayments = payments.filter((payment) => payment.method === "stripe");
+  if (!stripePayments.length) return null;
+  const pendingPayments = stripePayments.filter((payment) => payment.status === "pending");
   if (pendingPayments.length > 0) {
     return findLatestPaymentByEffectiveTime(pendingPayments, TERMINAL_PAYMENT_STATUSES);
   }
-  return findLatestPaymentByEffectiveTime(payments, TERMINAL_PAYMENT_STATUSES);
+  return findLatestPaymentByEffectiveTime(stripePayments, TERMINAL_PAYMENT_STATUSES);
 }
 
 /**
@@ -99,6 +102,7 @@ export async function ensureStripePaymentRecord(
     .from("payments")
     .select(OPEN_PAYMENT_SELECT_COLUMNS)
     .eq("attendance_id", params.attendanceId)
+    .eq("method", "stripe")
     .in("status", OPEN_PAYMENT_STATUSES);
 
   if (openPaymentsError) {
@@ -147,6 +151,7 @@ export async function ensureStripePaymentRecord(
       .from("payments")
       .select(OPEN_PAYMENT_SELECT_COLUMNS)
       .eq("id", paymentId)
+      .eq("method", "stripe")
       .maybeSingle();
 
     if (fetchError) {
@@ -193,6 +198,7 @@ export async function ensureStripePaymentRecord(
       .from("payments")
       .update({
         amount: params.amount,
+        payout_profile_id: params.payoutProfileId,
         stripe_payment_intent_id: null,
         stripe_checkout_session_id: null,
         checkout_idempotency_key: idempotencyKey,
@@ -295,6 +301,7 @@ export async function ensureStripePaymentRecord(
       .from("payments")
       .select(OPEN_PAYMENT_SELECT_COLUMNS)
       .eq("attendance_id", params.attendanceId)
+      .eq("method", "stripe")
       .in("status", OPEN_PAYMENT_STATUSES);
 
     if (refetchOpenError) {
@@ -398,6 +405,7 @@ export async function ensureStripePaymentRecord(
         attendance_id: params.attendanceId,
         method: "stripe",
         amount: params.amount,
+        payout_profile_id: params.payoutProfileId,
         status: "pending",
         checkout_idempotency_key: newIdempotencyKey,
         checkout_key_revision: 0,
@@ -433,6 +441,7 @@ export async function ensureStripePaymentRecord(
       attendance_id: params.attendanceId,
       method: "stripe",
       amount: params.amount,
+      payout_profile_id: params.payoutProfileId,
       status: "pending",
       checkout_idempotency_key: newIdempotencyKey,
       checkout_key_revision: 0,

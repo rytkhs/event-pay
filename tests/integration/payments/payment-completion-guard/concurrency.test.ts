@@ -54,6 +54,7 @@ describe("並行処理・競合対策", () => {
       attendanceId: setup.testAttendance.id,
       amount: setup.testEvent.fee,
       eventId: setup.testEvent.id,
+      payoutProfileId: setup.testEvent.payout_profile_id ?? setup.testUser.payoutProfileId!,
       actorId: setup.testAttendance.id,
       eventTitle: setup.testEvent.title,
       successUrl: "https://example.com/success",

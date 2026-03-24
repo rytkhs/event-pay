@@ -48,6 +48,13 @@ export async function createStripeSession(
   });
 
   try {
+    if (!params.payoutProfileId) {
+      throw new PaymentError(
+        PaymentErrorType.VALIDATION_ERROR,
+        "Payout profile is required for Stripe session creation"
+      );
+    }
+
     const {
       paymentId: targetPaymentId,
       idempotencyKey: idempotencyKeyToUse,
@@ -120,6 +127,7 @@ export async function createStripeSession(
     const updateDestinationPayload = {
       stripe_checkout_session_id: session.id,
       destination_account_id: destinationAccountId,
+      stripe_account_id: destinationAccountId,
       application_fee_amount: feeCalculation.applicationFeeAmount,
       transfer_group: `event_${params.eventId}_payout`,
       stripe_customer_id: customerId,

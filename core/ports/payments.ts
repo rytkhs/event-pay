@@ -38,6 +38,7 @@ export interface CreateStripeSessionParams {
   attendanceId: string;
   amount: number;
   eventId: string;
+  payoutProfileId?: string;
   actorId: string;
   eventTitle: string;
   successUrl: string;
