@@ -58,6 +58,23 @@ async function getPayoutProfileById(
   return data ?? null;
 }
 
+export async function getPayoutProfileByStripeAccountId(
+  supabase: AppSupabaseClient,
+  stripeAccountId: string
+): Promise<StripeConnectPayoutProfile | null> {
+  const { data, error } = await supabase
+    .from("payout_profiles")
+    .select(PAYOUT_PROFILE_SELECT)
+    .eq("stripe_account_id", stripeAccountId)
+    .maybeSingle<StripeConnectPayoutProfile>();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? null;
+}
+
 export async function resolveCurrentCommunityPayoutProfile(
   supabase: AppSupabaseClient,
   params: {

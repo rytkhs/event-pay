@@ -118,7 +118,8 @@ export interface AccountInfo {
 
 // アカウントステータス更新パラメータ
 export interface UpdateAccountStatusParams {
-  userId: string;
+  userId?: string;
+  payoutProfileId?: string;
   status: StripeAccountStatus;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;

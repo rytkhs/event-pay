@@ -1,17 +1,12 @@
 /**
  * ConnectWebhookHandler 単体テスト
- *
- * 要件:
- * - 5.2: account.updated Webhookを受信したとき、Account Objectを取得してClassification Algorithmを実行する
- * - 5.3: capabilities.* の status または requirements が変化したとき、Status Synchronizationを実行する
- * - 5.4: payouts_enabled または charges_enabled が変化したとき、Status Synchronizationを実行する
  */
 
 import type Stripe from "stripe";
 
+import { okResult } from "@core/errors";
 import { ConnectWebhookHandler } from "@features/stripe-connect/server";
 
-// モック設定
 jest.mock("@core/logging/app-logger", () => {
   const mockLogger = {
     info: jest.fn(),
@@ -23,26 +18,8 @@ jest.mock("@core/logging/app-logger", () => {
   mockLogger.withContext.mockReturnValue(mockLogger);
   return { logger: mockLogger };
 });
-jest.mock("@core/notification/service");
-jest.mock("@core/ports/stripe-connect");
-jest.mock("@core/security/secure-client-factory.impl");
 
-const mockGetConnectAccountByUser = jest.fn();
-const mockGetAccountInfo = jest.fn();
-const mockUpdateAccountStatus = jest.fn();
 const mockSendNotification = jest.fn();
-
-// ポートのモック
-jest.mock("@core/ports/stripe-connect", () => ({
-  getStripeConnectPort: jest.fn(() => ({
-    getConnectAccountByUser: mockGetConnectAccountByUser,
-    getAccountInfo: mockGetAccountInfo,
-    updateAccountStatus: mockUpdateAccountStatus,
-  })),
-  isStripeConnectPortRegistered: jest.fn(() => true),
-}));
-
-// NotificationServiceのモック
 jest.mock("@core/notification/service", () => ({
   NotificationService: jest.fn().mockImplementation(() => ({
     sendAccountVerifiedNotification: mockSendNotification,
@@ -51,26 +28,35 @@ jest.mock("@core/notification/service", () => ({
   })),
 }));
 
-// SecureSupabaseClientFactoryのモック
-jest.mock("@core/security/secure-client-factory.impl", () => ({
-  SecureSupabaseClientFactory: {
-    create: jest.fn(() => ({
-      createAuditedAdminClient: jest.fn().mockResolvedValue({
-        from: jest.fn(() => ({
-          select: jest.fn(() => ({
-            eq: jest.fn(() => ({
-              maybeSingle: jest.fn().mockResolvedValue({ data: null }),
-            })),
-          })),
-        })),
-      }),
-    })),
-  },
+const mockUpdateAccountStatus = jest.fn();
+jest.mock("@core/ports/stripe-connect", () => ({
+  getStripeConnectPort: jest.fn(() => ({
+    updateAccountStatus: mockUpdateAccountStatus,
+  })),
+  isStripeConnectPortRegistered: jest.fn(() => true),
 }));
 
-// system-loggerのモック
+const mockMaybeSingle = jest.fn();
+const mockFrom = jest.fn(() => ({
+  select: jest.fn(() => ({
+    eq: jest.fn(() => ({
+      maybeSingle: mockMaybeSingle,
+    })),
+  })),
+}));
+var mockSupabaseClient = {
+  from: mockFrom,
+};
+
+jest.mock("@core/security/secure-client-factory.impl", () => ({
+  createAuditedAdminClient: jest.fn(async () => mockSupabaseClient),
+}));
+
+const mockLogStripeConnect = jest.fn().mockResolvedValue(undefined);
+const mockLogToSystemLogs = jest.fn().mockResolvedValue(undefined);
 jest.mock("@core/logging/system-logger", () => ({
-  logStripeConnect: jest.fn().mockResolvedValue(undefined),
+  logStripeConnect: (...args: unknown[]) => mockLogStripeConnect(...args),
+  logToSystemLogs: (...args: unknown[]) => mockLogToSystemLogs(...args),
 }));
 
 describe("ConnectWebhookHandler", () => {
@@ -107,43 +93,61 @@ describe("ConnectWebhookHandler", () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockMaybeSingle.mockResolvedValue({
+      data: {
+        id: "profile-1",
+        owner_user_id: "test_user_id",
+        stripe_account_id: "acct_test_123",
+        status: "unverified",
+        charges_enabled: false,
+        payouts_enabled: false,
+        representative_community_id: "community-1",
+        created_at: "2026-03-25T00:00:00.000Z",
+        updated_at: "2026-03-25T00:00:00.000Z",
+      },
+      error: null,
+    });
+    mockUpdateAccountStatus.mockResolvedValue(undefined);
+    mockSendNotification.mockResolvedValue(okResult(undefined));
+
     handler = await ConnectWebhookHandler.create();
   });
 
   describe("handleAccountUpdated", () => {
-    test("actor_idが存在しない場合は警告ログを出力して処理を終了する", async () => {
+    test("payout_profile が見つからない場合は ACK skip する", async () => {
+      const account = createMockAccount({
+        metadata: {},
+      });
+
+      mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
+
+      const result = await handler.handleAccountUpdated(account);
+
+      expect(result.success).toBe(true);
+      expect(result.meta?.reason).toBe("payout_profile_not_found");
+      expect(mockUpdateAccountStatus).not.toHaveBeenCalled();
+      expect(mockLogToSystemLogs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "stripe_connect_account_update_skipped",
+          actor_type: "webhook",
+          metadata: expect.objectContaining({
+            stripe_account_id: "acct_test_123",
+          }),
+        }),
+        expect.any(Object)
+      );
+    });
+
+    test("actor_id が無くても payout_profile 基準で更新できる", async () => {
       const account = createMockAccount({
         metadata: {},
       });
 
       await handler.handleAccountUpdated(account);
 
-      expect(mockGetConnectAccountByUser).not.toHaveBeenCalled();
-      expect(mockUpdateAccountStatus).not.toHaveBeenCalled();
-    });
-
-    test("unverified状態のアカウントを正しく分類して更新する", async () => {
-      const account = createMockAccount({
-        details_submitted: false,
-        payouts_enabled: false,
-        capabilities: {
-          transfers: "inactive",
-          card_payments: "inactive",
-        },
-      });
-
-      mockGetConnectAccountByUser.mockResolvedValue({
-        user_id: "test_user_id",
-        stripe_account_id: "acct_test_123",
-        status: "unverified",
-        charges_enabled: false,
-        payouts_enabled: false,
-      });
-
-      await handler.handleAccountUpdated(account);
-
       expect(mockUpdateAccountStatus).toHaveBeenCalledWith({
         userId: "test_user_id",
+        payoutProfileId: "profile-1",
         status: "unverified",
         chargesEnabled: false,
         payoutsEnabled: false,
@@ -156,7 +160,7 @@ describe("ConnectWebhookHandler", () => {
       });
     });
 
-    test("verified状態のアカウントを正しく分類して更新する", async () => {
+    test("verified 状態を payout_profile に反映する", async () => {
       const account = createMockAccount({
         details_submitted: true,
         payouts_enabled: true,
@@ -177,18 +181,26 @@ describe("ConnectWebhookHandler", () => {
         },
       });
 
-      mockGetConnectAccountByUser.mockResolvedValue({
-        user_id: "test_user_id",
-        stripe_account_id: "acct_test_123",
-        status: "onboarding",
-        charges_enabled: false,
-        payouts_enabled: false,
+      mockMaybeSingle.mockResolvedValueOnce({
+        data: {
+          id: "profile-1",
+          owner_user_id: "test_user_id",
+          stripe_account_id: "acct_test_123",
+          status: "onboarding",
+          charges_enabled: false,
+          payouts_enabled: false,
+          representative_community_id: "community-1",
+          created_at: "2026-03-25T00:00:00.000Z",
+          updated_at: "2026-03-25T00:00:00.000Z",
+        },
+        error: null,
       });
 
       await handler.handleAccountUpdated(account);
 
       expect(mockUpdateAccountStatus).toHaveBeenCalledWith({
         userId: "test_user_id",
+        payoutProfileId: "profile-1",
         status: "verified",
         chargesEnabled: true,
         payoutsEnabled: true,
@@ -204,7 +216,7 @@ describe("ConnectWebhookHandler", () => {
       });
     });
 
-    test("restricted状態のアカウントを正しく分類して更新する", async () => {
+    test("restricted 状態を payout_profile に反映する", async () => {
       const account = createMockAccount({
         details_submitted: true,
         payouts_enabled: false,
@@ -224,18 +236,26 @@ describe("ConnectWebhookHandler", () => {
         },
       });
 
-      mockGetConnectAccountByUser.mockResolvedValue({
-        user_id: "test_user_id",
-        stripe_account_id: "acct_test_123",
-        status: "verified",
-        charges_enabled: true,
-        payouts_enabled: true,
+      mockMaybeSingle.mockResolvedValueOnce({
+        data: {
+          id: "profile-1",
+          owner_user_id: "test_user_id",
+          stripe_account_id: "acct_test_123",
+          status: "verified",
+          charges_enabled: true,
+          payouts_enabled: true,
+          representative_community_id: "community-1",
+          created_at: "2026-03-25T00:00:00.000Z",
+          updated_at: "2026-03-25T00:00:00.000Z",
+        },
+        error: null,
       });
 
       await handler.handleAccountUpdated(account);
 
       expect(mockUpdateAccountStatus).toHaveBeenCalledWith({
         userId: "test_user_id",
+        payoutProfileId: "profile-1",
         status: "restricted",
         chargesEnabled: false,
         payoutsEnabled: false,
@@ -248,48 +268,10 @@ describe("ConnectWebhookHandler", () => {
       });
     });
 
-    test("onboarding状態（under_review）のアカウントを正しく分類して更新する", async () => {
-      const account = createMockAccount({
-        details_submitted: true,
-        payouts_enabled: false,
-        requirements: {
-          alternatives: [],
-          current_deadline: null,
-          currently_due: [],
-          past_due: [],
-          eventually_due: [],
-          errors: [],
-          pending_verification: [],
-          disabled_reason: "under_review",
-        },
-        capabilities: {
-          transfers: "pending",
-          card_payments: "pending",
-        },
-      });
-
-      mockGetConnectAccountByUser.mockResolvedValue(null);
-
-      await handler.handleAccountUpdated(account);
-
-      expect(mockUpdateAccountStatus).toHaveBeenCalledWith({
-        userId: "test_user_id",
-        status: "onboarding",
-        chargesEnabled: false,
-        payoutsEnabled: false,
-        stripeAccountId: "acct_test_123",
-        classificationMetadata: expect.objectContaining({
-          gate: 2,
-          disabled_reason: "under_review",
-        }),
-        trigger: "webhook",
-      });
-    });
-
     test("エラー発生時は失敗結果を返す", async () => {
       const account = createMockAccount();
 
-      mockGetConnectAccountByUser.mockRejectedValue(new Error("Database error"));
+      mockMaybeSingle.mockRejectedValueOnce(new Error("Database error"));
 
       const result = await handler.handleAccountUpdated(account);
       expect(result.success).toBe(false);
@@ -297,48 +279,43 @@ describe("ConnectWebhookHandler", () => {
   });
 
   describe("handleAccountApplicationDeauthorized", () => {
-    test("アカウント連携解除を正しく処理する", async () => {
+    test("アカウント連携解除を payout_profile 基準で処理する", async () => {
       const application: Stripe.Application = {
         id: "ca_test_123",
         object: "application",
         name: "Test App",
       } as Stripe.Application;
 
-      const connectedAccountId = "acct_test_123";
-
-      // getAccountInfoのモック（user_idを取得するために使用される）
-      mockGetAccountInfo.mockResolvedValue({
-        accountId: connectedAccountId,
-        status: "verified",
-        chargesEnabled: true,
-        payoutsEnabled: true,
-      });
-
-      // SecureSupabaseClientFactoryのモックを更新してuser_idを返す
-      const mockSupabaseClient = {
-        from: jest.fn(() => ({
-          select: jest.fn(() => ({
-            eq: jest.fn(() => ({
-              maybeSingle: jest.fn().mockResolvedValue({
-                data: { user_id: "test_user_id" },
-              }),
-            })),
-          })),
-        })),
-      };
-
-      // handlerのsupabaseプロパティを上書き
-      (handler as any).supabase = mockSupabaseClient;
-
-      await handler.handleAccountApplicationDeauthorized(application, connectedAccountId);
+      await handler.handleAccountApplicationDeauthorized(application, "acct_test_123");
 
       expect(mockUpdateAccountStatus).toHaveBeenCalledWith({
         userId: "test_user_id",
+        payoutProfileId: "profile-1",
         status: "unverified",
         chargesEnabled: false,
         payoutsEnabled: false,
-        stripeAccountId: connectedAccountId,
+        stripeAccountId: "acct_test_123",
+        trigger: "webhook",
       });
+    });
+
+    test("対象 payout_profile が無い場合は ACK skip する", async () => {
+      const application: Stripe.Application = {
+        id: "ca_test_123",
+        object: "application",
+        name: "Test App",
+      } as Stripe.Application;
+
+      mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
+
+      const result = await handler.handleAccountApplicationDeauthorized(
+        application,
+        "acct_missing_123"
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.meta?.reason).toBe("payout_profile_not_found");
+      expect(mockUpdateAccountStatus).not.toHaveBeenCalled();
     });
   });
 });

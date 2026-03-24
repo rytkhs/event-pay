@@ -561,6 +561,7 @@ export class StripeConnectService implements IStripeConnectService {
     try {
       const {
         userId,
+        payoutProfileId,
         status,
         chargesEnabled,
         payoutsEnabled,
@@ -569,23 +570,48 @@ export class StripeConnectService implements IStripeConnectService {
         trigger = "manual",
       } = params;
 
-      validateUserId(userId);
+      if (userId) {
+        validateUserId(userId);
+      }
 
       if (stripeAccountId) {
         // オプションで指定された場合のみ形式検証
         validateStripeAccountId(stripeAccountId);
       }
 
-      // 現在のステータスを取得（ステータス変更検知用）
-      const { data: currentAccount } = await this.supabase
+      if (!payoutProfileId && !stripeAccountId && !userId) {
+        throw new StripeConnectError(
+          StripeConnectErrorType.VALIDATION_ERROR,
+          "Connect Account更新対象の識別子が不足しています"
+        );
+      }
+
+      let currentAccountQuery = this.supabase
         .from("payout_profiles")
-        .select("id, status, stripe_account_id")
-        .eq("owner_user_id", userId)
-        .maybeSingle();
+        .select("id, owner_user_id, status, stripe_account_id");
+
+      if (payoutProfileId) {
+        currentAccountQuery = currentAccountQuery.eq("id", payoutProfileId);
+      } else if (stripeAccountId) {
+        currentAccountQuery = currentAccountQuery.eq("stripe_account_id", stripeAccountId);
+      } else if (userId) {
+        currentAccountQuery = currentAccountQuery.eq("owner_user_id", userId);
+      }
+
+      const { data: currentAccount, error: currentAccountError } =
+        await currentAccountQuery.maybeSingle();
+
+      if (currentAccountError) {
+        throw this.errorHandler.mapDatabaseError(
+          currentAccountError,
+          "Connect Account現在状態取得"
+        );
+      }
 
       const previousStatus = currentAccount?.status || null;
       const accountId = stripeAccountId || currentAccount?.stripe_account_id || "";
-      const payoutProfileId = currentAccount?.id || null;
+      const resolvedPayoutProfileId = currentAccount?.id || payoutProfileId || null;
+      const resolvedUserId = currentAccount?.owner_user_id || userId || null;
 
       const updateData: StripeConnectAccountUpdate = {
         status: status,
@@ -602,7 +628,7 @@ export class StripeConnectService implements IStripeConnectService {
       const { data: updatedRows, error } = await this.supabase
         .from("payout_profiles")
         .update(updateData)
-        .eq("owner_user_id", userId)
+        .eq("id", resolvedPayoutProfileId || "00000000-0000-0000-0000-000000000000")
         .select("id, owner_user_id");
 
       if (error) {
@@ -612,11 +638,12 @@ export class StripeConnectService implements IStripeConnectService {
       // ステータス変更時の監査ログ記録
       if (updatedRows && updatedRows.length > 0 && previousStatus !== status) {
         // classificationMetadataが提供されている場合のみ詳細ログを記録
-        if (classificationMetadata && accountId) {
+        if (classificationMetadata && accountId && resolvedPayoutProfileId && resolvedUserId) {
           const { logStatusChange } = await import("./audit-logger");
           await logStatusChange({
             timestamp: new Date().toISOString(),
-            user_id: userId,
+            payout_profile_id: resolvedPayoutProfileId,
+            owner_user_id: resolvedUserId,
             stripe_account_id: accountId,
             previous_status: previousStatus,
             new_status: status,
@@ -629,9 +656,13 @@ export class StripeConnectService implements IStripeConnectService {
           await logStripeConnect({
             action: "connect.status_change",
             message: `Stripe Connect account status changed from ${previousStatus} to ${status}`,
-            user_id: userId,
+            user_id: resolvedUserId || userId || "unknown",
+            resource_type: "payout_profile",
+            resource_id: resolvedPayoutProfileId || undefined,
             outcome: "success",
             metadata: {
+              payout_profile_id: resolvedPayoutProfileId,
+              stripe_account_id: accountId || null,
               previous_status: previousStatus,
               new_status: status,
               trigger,
@@ -645,12 +676,12 @@ export class StripeConnectService implements IStripeConnectService {
       // 該当行が存在せず更新件数0件の場合のフェイルセーフ
       if (!updatedRows || updatedRows.length === 0) {
         // Insertには stripe_account_id が必須
-        if (!stripeAccountId) {
+        if (!stripeAccountId || !userId) {
           throw new StripeConnectError(
             StripeConnectErrorType.VALIDATION_ERROR,
-            "Connect Accountが存在しないため作成が必要ですが、stripeAccountId が指定されていません",
+            "Connect Accountが存在しないため作成が必要ですが、userId / stripeAccountId が不足しています",
             undefined,
-            { userId }
+            { userId, stripeAccountId }
           );
         }
 
@@ -698,15 +729,29 @@ export class StripeConnectService implements IStripeConnectService {
 
         const insertedPayoutProfileId = insertedRows?.[0]?.id ?? null;
         if (insertedPayoutProfileId) {
+          if (classificationMetadata && stripeAccountId) {
+            const { logStatusChange } = await import("./audit-logger");
+            await logStatusChange({
+              timestamp: new Date().toISOString(),
+              payout_profile_id: insertedPayoutProfileId,
+              owner_user_id: userId,
+              stripe_account_id: stripeAccountId,
+              previous_status: null,
+              new_status: status,
+              trigger,
+              classification_metadata: classificationMetadata,
+            });
+          }
+
           await syncOwnerPayoutProfileToCommunities(this.supabase, {
             payoutProfileId: insertedPayoutProfileId,
             userId,
           });
         }
-      } else if (payoutProfileId) {
+      } else if (resolvedPayoutProfileId && resolvedUserId) {
         await syncOwnerPayoutProfileToCommunities(this.supabase, {
-          payoutProfileId,
-          userId,
+          payoutProfileId: resolvedPayoutProfileId,
+          userId: resolvedUserId,
         });
       }
     } catch (error) {

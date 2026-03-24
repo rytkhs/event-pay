@@ -92,6 +92,7 @@ export function registerStripeConnectAdapters(): void {
         const service = createStripeConnectServiceWithClient(supabaseClient);
         await service.updateAccountStatus({
           userId: input.userId,
+          payoutProfileId: input.payoutProfileId,
           status: input.status,
           chargesEnabled: input.chargesEnabled,
           payoutsEnabled: input.payoutsEnabled,

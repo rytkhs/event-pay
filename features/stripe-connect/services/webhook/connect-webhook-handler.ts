@@ -23,6 +23,8 @@ import type { StripeAccountStatus } from "@core/types/statuses";
 import type { AppSupabaseClient } from "@core/types/supabase";
 import { handleServerError } from "@core/utils/error-handler.server";
 
+import { getPayoutProfileByStripeAccountId } from "../payout-profile-resolver";
+
 import type { ConnectWebhookResult } from "./connect-webhook.types";
 
 /**
@@ -72,39 +74,46 @@ export class ConnectWebhookHandler {
    */
   async handleAccountUpdated(account: Stripe.Account): Promise<ConnectWebhookResult> {
     try {
-      // メタデータからユーザーIDを取得（actor_idへ統一）
-      const userId = (account.metadata as Record<string, string | undefined> | undefined)?.actor_id;
-      if (!userId) {
-        this.logger.warn("Account missing actor_id in metadata", {
+      const payoutProfile = await getPayoutProfileByStripeAccountId(this.supabase, account.id);
+      if (!payoutProfile) {
+        this.logger.warn("Account update skipped because payout profile was not found", {
           stripe_account_id: account.id,
-          outcome: "failure",
+          metadata_actor_id: (account.metadata as Record<string, string | undefined> | undefined)
+            ?.actor_id,
+          outcome: "success",
         });
+
+        await this.logUnknownAccountEvent("stripe_connect_account_update_skipped", account.id, {
+          event_type: "account.updated",
+          metadata_actor_id: (account.metadata as Record<string, string | undefined> | undefined)
+            ?.actor_id,
+        });
+
         return okResult(undefined, {
-          reason: "missing_actor_id",
+          reason: "payout_profile_not_found",
           accountId: account.id,
         });
       }
 
-      // 現在のアカウント状態を取得（存在しない場合でも処理継続し、挿入で追従）
+      const userId = payoutProfile.owner_user_id;
+
       const stripeConnectPort = getStripeConnectPort();
-      const currentAccount = await stripeConnectPort.getConnectAccountByUser(userId);
 
       // AccountStatusClassifierを使用してステータスを分類
       const { AccountStatusClassifier } = await import("../account-status-classifier");
       const classifier = new AccountStatusClassifier();
       const classificationResult = classifier.classify(account);
 
-      // 状態変更を記録（存在しない場合は未知扱い）
-      const oldStatus = currentAccount?.status ?? "unknown";
+      const oldStatus = payoutProfile.status ?? "unknown";
       const newStatus = classificationResult.status;
 
       // データベースのアカウント情報を更新（classificationMetadataとtriggerを含む）
       await stripeConnectPort.updateAccountStatus({
         userId,
+        payoutProfileId: payoutProfile.id,
         status: classificationResult.status,
         chargesEnabled: account.charges_enabled || false,
         payoutsEnabled: account.payouts_enabled || false,
-        // レコードが無い場合の追従作成に必要
         stripeAccountId: account.id,
         classificationMetadata: classificationResult.metadata,
         trigger: "webhook",
@@ -138,6 +147,7 @@ export class ConnectWebhookHandler {
 
       // セキュリティログを記録
       await this.logAccountUpdate(userId, account.id, oldStatus, {
+        payoutProfileId: payoutProfile.id,
         status: classificationResult.status,
         chargesEnabled: account.charges_enabled || false,
         payoutsEnabled: account.payouts_enabled || false,
@@ -220,30 +230,40 @@ export class ConnectWebhookHandler {
       // 可能なら user_id をメタデータから逆引き（既存の保存がない場合はaccountIdのみで処理）
       let userId: string | undefined;
       if (accountId) {
-        try {
-          const stripeConnectPort = getStripeConnectPort();
-          const _acc = await stripeConnectPort.getAccountInfo(accountId);
-          // getAccountInfoはmetadata.actor_idまでは返さないため、DBから逆引き
-          const { data } = await this.supabase
-            .from("stripe_connect_accounts")
-            .select("user_id")
-            .eq("stripe_account_id", accountId)
-            .maybeSingle();
-          userId = (data as { user_id?: string } | null)?.user_id;
-        } catch {
-          /* noop: best-effort */
-        }
-      }
+        const payoutProfile = await getPayoutProfileByStripeAccountId(this.supabase, accountId);
+        userId = payoutProfile?.owner_user_id;
 
-      if (userId) {
-        // ステータスとフラグをリセット（連携解除）
+        if (!payoutProfile) {
+          this.logger.warn("Deauthorized account skipped because payout profile was not found", {
+            stripe_account_id: accountId,
+            application_id: application.id,
+            outcome: "success",
+          });
+
+          await this.logUnknownAccountEvent(
+            "stripe_connect_account_deauthorized_skipped",
+            accountId,
+            {
+              event_type: "account.application.deauthorized",
+              application_id: application.id,
+            }
+          );
+
+          return okResult(undefined, {
+            reason: "payout_profile_not_found",
+            accountId,
+          });
+        }
+
         const stripeConnectPort = getStripeConnectPort();
         await stripeConnectPort.updateAccountStatus({
-          userId,
+          userId: payoutProfile.owner_user_id,
+          payoutProfileId: payoutProfile.id,
           status: "unverified",
           chargesEnabled: false,
           payoutsEnabled: false,
           stripeAccountId: accountId,
+          trigger: "webhook",
         });
       }
 
@@ -448,6 +468,7 @@ export class ConnectWebhookHandler {
     accountId: string,
     oldStatus: string,
     accountInfo: {
+      payoutProfileId: string;
       status: string;
       chargesEnabled: boolean;
       payoutsEnabled: boolean;
@@ -462,12 +483,16 @@ export class ConnectWebhookHandler {
       const { logStripeConnect } = await import("@core/logging/system-logger");
 
       await logStripeConnect({
-        action: "stripe_connect_account_updated",
+        action: "payout_profile.account_status_observed",
         message: `Stripe Connect account status updated from ${oldStatus} to ${accountInfo.status}`,
         user_id: userId,
+        actor_type: "webhook",
+        resource_type: "payout_profile",
+        resource_id: accountInfo.payoutProfileId,
         outcome: "success",
         metadata: {
-          accountId,
+          payout_profile_id: accountInfo.payoutProfileId,
+          stripe_account_id: accountId,
           oldStatus,
           newStatus: accountInfo.status,
           chargesEnabled: accountInfo.chargesEnabled,
@@ -486,6 +511,36 @@ export class ConnectWebhookHandler {
         },
       });
       // ログエラーは処理を停止させない
+    }
+  }
+
+  private async logUnknownAccountEvent(
+    action: string,
+    stripeAccountId: string,
+    metadata: Record<string, unknown>
+  ): Promise<void> {
+    try {
+      const { logToSystemLogs } = await import("@core/logging/system-logger");
+      await logToSystemLogs(
+        {
+          log_category: "stripe_connect",
+          action,
+          message: `Stripe Connect webhook skipped for unknown payout profile: ${stripeAccountId}`,
+          actor_type: "webhook",
+          resource_type: "payout_profile",
+          outcome: "success",
+          metadata: {
+            stripe_account_id: stripeAccountId,
+            ...metadata,
+          },
+        },
+        {
+          alsoLogToPino: true,
+          throwOnError: false,
+        }
+      );
+    } catch {
+      // skip logging failures
     }
   }
 
