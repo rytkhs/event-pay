@@ -15,6 +15,13 @@ jest.mock("@core/supabase/factory", () => ({
   createServerComponentSupabaseClient: jest.fn(),
 }));
 
+const mockResolveRepresentativeCommunitySelection = jest.fn();
+
+jest.mock("@features/stripe-connect/services/representative-community", () => ({
+  resolveRepresentativeCommunitySelection: mockResolveRepresentativeCommunitySelection,
+  updateRepresentativeCommunitySelection: jest.fn(),
+}));
+
 jest.mock("@features/stripe-connect/services/factories", () => {
   const buildAccount = (ownerUserId = "550e8400-e29b-41d4-a716-446655440000") => ({
     id: "profile-1",
@@ -38,6 +45,13 @@ jest.mock("@features/stripe-connect/services/factories", () => {
       expiresAt: Math.floor(Date.now() / 1000) + 300,
     }),
     updateAccountStatus: jest.fn().mockResolvedValue(undefined),
+    updateBusinessProfile: jest.fn().mockResolvedValue({
+      success: true,
+      data: {
+        accountId: "acct_test",
+        updatedFields: ["url"],
+      },
+    }),
   };
 
   return {
@@ -103,6 +117,9 @@ describe("Stripe Connect return/refresh actions", () => {
     const { __mockStripeConnectService } = jest.requireMock(
       "@features/stripe-connect/services/factories"
     );
+    __mockStripeConnectService.getConnectAccountByUser.mockReset();
+    __mockStripeConnectService.createAccountLink.mockReset();
+    __mockStripeConnectService.updateBusinessProfile.mockReset();
     __mockStripeConnectService.getConnectAccountByUser.mockResolvedValue({
       id: "profile-1",
       owner_user_id: defaultUserId,
@@ -110,9 +127,29 @@ describe("Stripe Connect return/refresh actions", () => {
       status: "unverified",
       charges_enabled: false,
       payouts_enabled: false,
-      representative_community_id: null,
+      representative_community_id: "community-1",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+    });
+    __mockStripeConnectService.updateBusinessProfile.mockResolvedValue({
+      success: true,
+      data: {
+        accountId: "acct_test",
+        updatedFields: ["url"],
+      },
+    });
+    __mockStripeConnectService.createAccountLink.mockResolvedValue({
+      url: "https://connect.stripe.com/setup/e/acct_test/session_token",
+      expiresAt: Math.floor(Date.now() / 1000) + 300,
+    });
+    mockResolveRepresentativeCommunitySelection.mockResolvedValue({
+      success: true,
+      data: {
+        id: "community-1",
+        name: "Community 1",
+        slug: "community-1",
+        publicPageUrl: "http://localhost:3000/c/community-1",
+      },
     });
     (redirect as unknown as jest.Mock).mockClear();
   });
@@ -140,7 +177,35 @@ describe("Stripe Connect return/refresh actions", () => {
 
     await handleOnboardingRefreshAction();
     expect(__mockStripeConnectService.getConnectAccountByUser).toHaveBeenCalled();
+    expect(__mockStripeConnectService.updateBusinessProfile).toHaveBeenCalledWith({
+      accountId: "acct_test",
+      businessProfile: {
+        url: "http://localhost:3000/c/community-1",
+      },
+    });
     expect(__mockStripeConnectService.createAccountLink).toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith(expect.stringContaining("https://connect.stripe.com"));
+  });
+
+  it("refresh action: representative community 未設定なら error page へリダイレクトする", async () => {
+    const { handleOnboardingRefreshAction } = require("@features/stripe-connect/server");
+    const { __mockStripeConnectService } = jest.requireMock(
+      "@features/stripe-connect/services/factories"
+    );
+    __mockStripeConnectService.getConnectAccountByUser.mockResolvedValue({
+      id: "profile-1",
+      owner_user_id: defaultUserId,
+      stripe_account_id: "acct_test",
+      status: "unverified",
+      charges_enabled: false,
+      payouts_enabled: false,
+      representative_community_id: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    await handleOnboardingRefreshAction();
+
+    expect(redirect).toHaveBeenCalledWith(expect.stringContaining("/settings/payments/error"));
   });
 });

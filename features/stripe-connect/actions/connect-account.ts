@@ -2,13 +2,18 @@
  * Stripe Connect関連のServer Actions
  */
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
+import { resolveCurrentCommunityForServerComponent } from "@core/community/current-community";
 import {
-  resolveCurrentCommunityForServerAction,
-  resolveCurrentCommunityForServerComponent,
-} from "@core/community/current-community";
-import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
+  fail,
+  failFrom,
+  ok,
+  zodFail,
+  type ActionResult,
+} from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { sendSlackText } from "@core/notification/slack";
 import {
@@ -24,7 +29,45 @@ import {
   createUserStripeConnectServiceForServerAction,
   createUserStripeConnectServiceForServerComponent,
 } from "../services/factories";
+import {
+  resolveRepresentativeCommunitySelection,
+  updateRepresentativeCommunitySelection,
+} from "../services/representative-community";
 import { type ConnectAccountStatusPayload, StripeConnectError } from "../types";
+import { startOnboardingSchema } from "../validation";
+
+type StartOnboardingPayload = {
+  redirectUrl: string;
+};
+
+type StartOnboardingActionResult = ActionResult<StartOnboardingPayload>;
+
+const CONNECT_BUSINESS_PROFILE_PRODUCT_DESCRIPTION =
+  "イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。";
+
+function getStringFormValue(formData: FormData, key: string): string | undefined {
+  const value = formData.get(key);
+  return typeof value === "string" ? value : undefined;
+}
+
+function resolveActionFormData(
+  stateOrFormData: ActionResult<unknown> | FormData,
+  maybeFormData?: FormData
+): FormData {
+  if (stateOrFormData instanceof FormData) {
+    return stateOrFormData;
+  }
+
+  if (maybeFormData instanceof FormData) {
+    return maybeFormData;
+  }
+
+  throw new TypeError("FormData is required");
+}
+
+function buildOnboardingErrorRedirectUrl(message: string): string {
+  return `/settings/payments/error?message=${encodeURIComponent(message)}`;
+}
 
 /**
  * Stripe Connect アカウントステータスを取得するServer Action
@@ -286,6 +329,16 @@ export async function handleOnboardingReturnAction(): Promise<
     // 3. アカウント情報を取得
     const account = await stripeConnectService.getConnectAccountByUser(user.id);
 
+    if (account && !account.representative_community_id) {
+      return fail("RESOURCE_CONFLICT", {
+        userMessage:
+          "代表公開ページが未設定のため、Stripeアカウント設定を完了できません。Stripeアカウント設定画面から代表コミュニティを選び直してください",
+        redirectUrl: buildOnboardingErrorRedirectUrl(
+          "代表公開ページが未設定のため、Stripeアカウント設定画面から代表コミュニティを選び直してください"
+        ),
+      });
+    }
+
     if (account) {
       // 4. StatusSyncServiceを使用してリトライ付き同期を実装
       const { StatusSyncService } = await import("../services/status-sync-service");
@@ -421,22 +474,43 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
     // 3. StripeConnectServiceを初期化
     const stripeConnectService = await createUserStripeConnectServiceForServerComponent();
 
-    // 4. 既存アカウントを取得（無ければ作成）
-    let account = await stripeConnectService.getConnectAccountByUser(user.id);
-    if (!account) {
-      await stripeConnectService.createExpressAccount({
-        userId: user.id,
-        email: user.email || `${user.id}@example.com`,
-        country: "JP",
-        businessProfile: {
-          productDescription:
-            "イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。",
-        },
-      });
-      account = await stripeConnectService.getConnectAccountByUser(user.id);
-      if (!account) {
-        throw new Error("アカウント情報の取得に失敗しました");
-      }
+    // 4. 既存アカウントと representative community を確認
+    const account = await stripeConnectService.getConnectAccountByUser(user.id);
+    if (!account?.representative_community_id) {
+      redirect(
+        buildOnboardingErrorRedirectUrl(
+          "代表公開ページが未設定です。決済設定画面からコミュニティを選び直して開始してください"
+        )
+      );
+    }
+
+    const supabase = await createServerComponentSupabaseClient();
+    const representativeCommunityResult = await resolveRepresentativeCommunitySelection(
+      supabase,
+      user.id,
+      account.representative_community_id
+    );
+    if (!representativeCommunityResult.success || !representativeCommunityResult.data) {
+      redirect(
+        buildOnboardingErrorRedirectUrl(
+          "代表公開ページが見つからないため、決済設定画面からコミュニティを選び直してください"
+        )
+      );
+    }
+
+    const businessProfileUpdateResult = await stripeConnectService.updateBusinessProfile({
+      accountId: account.stripe_account_id,
+      businessProfile: {
+        url: representativeCommunityResult.data.publicPageUrl,
+      },
+    });
+    if (!businessProfileUpdateResult.success) {
+      redirect(
+        buildOnboardingErrorRedirectUrl(
+          businessProfileUpdateResult.error.userMessage ||
+            "代表公開ページの同期に失敗しました。時間を置いて再度お試しください"
+        )
+      );
     }
 
     // 5. Account Linkを生成して即リダイレクト
@@ -473,10 +547,19 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
 }
 
 /**
- * シンプルなオンボーディング開始処理
- * Connectアカウント作成とAccount Link生成のみを行う
+ * representative community を選択して Stripe onboarding を開始する
  */
-export async function startOnboardingAction(): Promise<void> {
+export async function startOnboardingAction(
+  formData: FormData
+): Promise<StartOnboardingActionResult>;
+export async function startOnboardingAction(
+  _state: StartOnboardingActionResult,
+  formData: FormData
+): Promise<StartOnboardingActionResult>;
+export async function startOnboardingAction(
+  stateOrFormData: StartOnboardingActionResult | FormData,
+  maybeFormData?: FormData
+): Promise<StartOnboardingActionResult> {
   const actionLogger = logger.withContext({
     category: "stripe_connect",
     action: "start_onboarding",
@@ -485,25 +568,48 @@ export async function startOnboardingAction(): Promise<void> {
 
   let userId: string | undefined;
   try {
+    const formData = resolveActionFormData(stateOrFormData, maybeFormData);
+
     // 1. 認証チェック
-    const user = await getAuthenticatedUser();
+    const user = await getCurrentUserForServerAction();
+    if (!user) {
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
+    }
     userId = user.id;
+
+    const parsedInput = startOnboardingSchema.safeParse({
+      representativeCommunityId: getStringFormValue(formData, "representativeCommunityId"),
+    });
+    if (!parsedInput.success) {
+      return zodFail(parsedInput.error, {
+        userMessage: "代表公開ページに使うコミュニティを選択してください",
+      });
+    }
 
     // 2. 必要情報の準備（ベースURL → refresh/return URL）
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
     const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}`;
     const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}`;
 
+    const supabase = await createServerActionSupabaseClient();
+    const representativeCommunityResult = await resolveRepresentativeCommunitySelection(
+      supabase,
+      user.id,
+      parsedInput.data.representativeCommunityId
+    );
+    if (!representativeCommunityResult.success) {
+      return failFrom(representativeCommunityResult.error, {
+        userMessage: "代表公開ページに使うコミュニティを確認してください",
+      });
+    }
+    if (!representativeCommunityResult.data) {
+      return fail("INTERNAL_ERROR", {
+        userMessage: "代表公開ページに使うコミュニティを確認してください",
+      });
+    }
+
     // 3. StripeConnectServiceを初期化
     const stripeConnectService = await createUserStripeConnectServiceForServerAction();
-
-    const currentCommunityResult = await resolveCurrentCommunityForServerAction(user);
-    if (!currentCommunityResult.success) {
-      throw currentCommunityResult.error;
-    }
-    if (!currentCommunityResult.data?.currentCommunity) {
-      throw new Error("現在選択中コミュニティを解決できませんでした");
-    }
 
     // 4. 既存アカウントを取得（無ければ作成）
     let account = await stripeConnectService.getConnectAccountByUser(user.id);
@@ -513,17 +619,42 @@ export async function startOnboardingAction(): Promise<void> {
         email: user.email || `${user.id}@example.com`,
         country: "JP",
         businessProfile: {
-          productDescription:
-            "イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。",
+          productDescription: CONNECT_BUSINESS_PROFILE_PRODUCT_DESCRIPTION,
+          url: representativeCommunityResult.data.publicPageUrl,
         },
       });
       account = await stripeConnectService.getConnectAccountByUser(user.id);
       if (!account) {
-        throw new Error("アカウント情報の取得に失敗しました");
+        return fail("INTERNAL_ERROR", { userMessage: "アカウント情報の取得に失敗しました" });
       }
     }
 
-    // 5. Account Linkを生成して即リダイレクト
+    const representativeUpdateResult = await updateRepresentativeCommunitySelection(
+      supabase,
+      account.id,
+      representativeCommunityResult.data.id
+    );
+    if (!representativeUpdateResult.success) {
+      return failFrom(representativeUpdateResult.error, {
+        userMessage: "代表公開ページの保存に失敗しました",
+      });
+    }
+
+    const businessProfileUpdateResult = await stripeConnectService.updateBusinessProfile({
+      accountId: account.stripe_account_id,
+      businessProfile: {
+        url: representativeCommunityResult.data.publicPageUrl,
+      },
+    });
+    if (!businessProfileUpdateResult.success) {
+      return failFrom(businessProfileUpdateResult.error, {
+        userMessage: "Stripe に提出する公開ページURLの更新に失敗しました",
+      });
+    }
+
+    revalidatePath("/(app)", "layout");
+
+    // 5. Account Linkを生成
     const accountLink = await stripeConnectService.createAccountLink({
       accountId: account.stripe_account_id,
       refreshUrl,
@@ -533,36 +664,33 @@ export async function startOnboardingAction(): Promise<void> {
     });
 
     // 6. ログ記録
-    actionLogger.info("Simple onboarding started", {
+    actionLogger.info("Representative-community onboarding started", {
       user_id: user.id,
       account_id: account.stripe_account_id,
+      representative_community_id: representativeCommunityResult.data.id,
       outcome: "success",
     });
 
-    redirect(accountLink.url);
+    return ok(
+      {
+        redirectUrl: accountLink.url,
+      },
+      {
+        message: `${representativeCommunityResult.data.name} の公開ページを提出先として Stripe 設定を開始します`,
+      }
+    );
   } catch (error) {
-    // redirect 例外はそのまま再スロー（エラー扱いしない）
-    if (isNextRedirectError(error)) {
-      throw error as Error;
-    }
-
-    // 構造化ログ
     handleServerError(error, {
       category: "stripe_connect",
       action: "start_onboarding_failed",
       userId,
     });
 
-    // StripeConnectErrorによるエラーページリダイレクト
-    if (error instanceof StripeConnectError) {
-      const errorMessage = encodeURIComponent(error.message);
-      redirect(`/settings/payments/error?message=${errorMessage}&type=${error.type}`);
-    }
-
-    // その他のエラー
-    const errorMessage = encodeURIComponent(
-      error instanceof Error ? error.message : "オンボーディング開始中にエラーが発生しました"
-    );
-    redirect(`/settings/payments/error?message=${errorMessage}`);
+    return failFrom(error, {
+      userMessage:
+        error instanceof StripeConnectError
+          ? error.message
+          : "オンボーディング開始中にエラーが発生しました",
+    });
   }
 }

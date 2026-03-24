@@ -20,16 +20,16 @@ const settingsPages = [
     description: "選択中のコミュニティの公開情報と設定",
   },
   {
-    title: "プロフィール情報",
-    href: "/settings/profile",
-    icon: User,
-    description: "基本情報とアカウント設定",
-  },
-  {
-    title: "決済設定",
+    title: "Stripe アカウント設定",
     href: "/settings/payments",
     icon: CreditCard,
-    description: "Stripe設定 と決済管理",
+    description: "Stripeアカウント設定とダッシュボード",
+  },
+  {
+    title: "アカウント設定",
+    href: "/settings/profile",
+    icon: User,
+    description: "アカウント情報の変更",
   },
   {
     title: "パスワード",

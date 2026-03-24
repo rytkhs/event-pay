@@ -44,7 +44,7 @@ describe("dashboard stripe summary", () => {
     expect(mockedFetchStripeBalanceByAccountId).not.toHaveBeenCalled();
   });
 
-  it("returns no CTA for verified accounts with payouts enabled", async () => {
+  it("returns setup CTA when representative community is missing", async () => {
     mockedResolveCurrentCommunityPayoutProfile.mockResolvedValue({
       payoutProfile: {
         id: "profile-1",
@@ -62,7 +62,12 @@ describe("dashboard stripe summary", () => {
 
     const ctaStatus = await getDashboardConnectCtaStatus({} as any, "user-1", "community-2");
 
-    expect(ctaStatus).toBeUndefined();
+    expect(ctaStatus).toEqual(
+      expect.objectContaining({
+        statusType: "requirements_due",
+        actionUrl: "/settings/payments",
+      })
+    );
     expect(mockedFetchStripeBalanceByAccountId).not.toHaveBeenCalled();
   });
 
@@ -75,7 +80,7 @@ describe("dashboard stripe summary", () => {
         status: "onboarding",
         charges_enabled: false,
         payouts_enabled: false,
-        representative_community_id: null,
+        representative_community_id: "community-3",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },
@@ -114,7 +119,7 @@ describe("dashboard stripe summary", () => {
         status: "verified",
         charges_enabled: true,
         payouts_enabled: true,
-        representative_community_id: null,
+        representative_community_id: "community-5",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },
@@ -137,7 +142,7 @@ describe("dashboard stripe summary", () => {
         status: "onboarding",
         charges_enabled: false,
         payouts_enabled: false,
-        representative_community_id: null,
+        representative_community_id: "community-6",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },
@@ -151,6 +156,7 @@ describe("dashboard stripe summary", () => {
 
   it("maps verified accounts without payouts to the simplified setup CTA", () => {
     const ctaStatus = resolveDashboardConnectCtaStatus({
+      representative_community_id: "community-7",
       status: "verified",
       payouts_enabled: false,
       stripe_account_id: "acct_partial",
@@ -162,5 +168,16 @@ describe("dashboard stripe summary", () => {
         actionText: "状況を確認",
       })
     );
+  });
+
+  it("returns no CTA only when verified, payouts enabled, and representative community exists", () => {
+    const ctaStatus = resolveDashboardConnectCtaStatus({
+      representative_community_id: "community-8",
+      status: "verified",
+      payouts_enabled: true,
+      stripe_account_id: "acct_complete",
+    });
+
+    expect(ctaStatus).toBeUndefined();
   });
 });

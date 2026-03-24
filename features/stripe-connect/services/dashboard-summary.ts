@@ -16,7 +16,7 @@ import { resolveCurrentCommunityPayoutProfile } from "./payout-profile-resolver"
 
 type DashboardPayoutProfileRow = Pick<
   PayoutProfileRow,
-  "status" | "payouts_enabled" | "stripe_account_id"
+  "representative_community_id" | "status" | "payouts_enabled" | "stripe_account_id"
 >;
 
 export function resolveDashboardConnectCtaStatus(
@@ -24,6 +24,10 @@ export function resolveDashboardConnectCtaStatus(
 ): DetailedAccountStatus | undefined {
   if (!account) {
     return NO_ACCOUNT_STATUS;
+  }
+
+  if (!account.representative_community_id) {
+    return DASHBOARD_SETUP_INCOMPLETE_STATUS;
   }
 
   switch (account.status) {
@@ -54,6 +58,7 @@ async function getDashboardPayoutProfile(
   }
 
   return {
+    representative_community_id: payoutProfile.representative_community_id,
     payouts_enabled: payoutProfile.payouts_enabled,
     status: payoutProfile.status,
     stripe_account_id: payoutProfile.stripe_account_id,

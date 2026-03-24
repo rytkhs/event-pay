@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
 
+import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
+
 import { setupSupabaseClientMocks } from "../../setup/common-mocks";
 import { setTestUserById, supabaseAuthMock } from "../../setup/supabase-auth-mock";
 
 const originalEnv = process.env;
 const defaultUserId = "550e8400-e29b-41d4-a716-446655440000";
+const representativeCommunityId = "11111111-1111-4111-8111-111111111111";
 
 jest.mock("next/navigation", () => ({
   redirect: jest.fn(),
@@ -13,6 +16,8 @@ jest.mock("next/navigation", () => ({
 const mockResolveCurrentCommunityForServerAction = jest.fn();
 const mockResolveCurrentCommunityForServerComponent = jest.fn();
 const mockResolveAppWorkspaceForServerComponent = jest.fn();
+const mockResolveRepresentativeCommunitySelection = jest.fn();
+const mockUpdateRepresentativeCommunitySelection = jest.fn();
 
 jest.mock("@core/community/current-community", () => ({
   resolveCurrentCommunityForServerAction: mockResolveCurrentCommunityForServerAction,
@@ -21,6 +26,11 @@ jest.mock("@core/community/current-community", () => ({
 
 jest.mock("@core/community/app-workspace", () => ({
   resolveAppWorkspaceForServerComponent: mockResolveAppWorkspaceForServerComponent,
+}));
+
+jest.mock("@features/stripe-connect/services/representative-community", () => ({
+  resolveRepresentativeCommunitySelection: mockResolveRepresentativeCommunitySelection,
+  updateRepresentativeCommunitySelection: mockUpdateRepresentativeCommunitySelection,
 }));
 
 jest.mock("@features/stripe-connect/services/factories", () => {
@@ -54,6 +64,13 @@ jest.mock("@features/stripe-connect/services/factories", () => {
       created: Math.floor(Date.now() / 1000),
     }),
     updateAccountStatus: jest.fn().mockResolvedValue(undefined),
+    updateBusinessProfile: jest.fn().mockResolvedValue({
+      success: true,
+      data: {
+        accountId: "acct_test",
+        updatedFields: ["url"],
+      },
+    }),
   };
 
   return {
@@ -93,6 +110,7 @@ jest.mock("@core/supabase/factory", () => ({
 jest.mock("next/cache", () => ({
   unstable_cache: (fn: any) => fn,
   revalidateTag: jest.fn(),
+  revalidatePath: jest.fn(),
 }));
 
 jest.mock("@core/stripe/client", () => ({
@@ -124,6 +142,9 @@ jest.mock("@core/stripe/client", () => ({
 
 describe("Stripe Connect actions", () => {
   let mockSupabase: ReturnType<typeof setupSupabaseClientMocks>;
+  const mockGetCurrentUserForServerAction = getCurrentUserForServerAction as jest.MockedFunction<
+    typeof getCurrentUserForServerAction
+  >;
 
   beforeAll(() => {
     mockSupabase = setupSupabaseClientMocks();
@@ -157,6 +178,10 @@ describe("Stripe Connect actions", () => {
       id: defaultUserId,
       email: "u@example.com",
     } as any);
+    mockGetCurrentUserForServerAction.mockResolvedValue({
+      id: defaultUserId,
+      email: "u@example.com",
+    } as any);
 
     mockResolveCurrentCommunityForServerAction.mockResolvedValue({
       success: true,
@@ -185,6 +210,19 @@ describe("Stripe Connect actions", () => {
         slug: "community-1",
       },
     });
+    mockResolveRepresentativeCommunitySelection.mockResolvedValue({
+      success: true,
+      data: {
+        id: representativeCommunityId,
+        name: "Community 1",
+        slug: "community-1",
+        publicPageUrl: "http://localhost:3000/c/community-1",
+      },
+    });
+    mockUpdateRepresentativeCommunitySelection.mockResolvedValue({
+      success: true,
+      data: undefined,
+    });
 
     const { __mockStripeConnectService } = jest.requireMock(
       "@features/stripe-connect/services/factories"
@@ -196,6 +234,7 @@ describe("Stripe Connect actions", () => {
     __mockStripeConnectService.createAccountLink.mockReset();
     __mockStripeConnectService.createLoginLink.mockReset();
     __mockStripeConnectService.updateAccountStatus.mockReset();
+    __mockStripeConnectService.updateBusinessProfile.mockReset();
     __mockStripeConnectService.getConnectAccountByUser.mockResolvedValue(baseAccount);
     __mockStripeConnectService.getConnectAccountForCommunity.mockResolvedValue(baseAccount);
     __mockStripeConnectService.createExpressAccount.mockResolvedValue({
@@ -211,6 +250,13 @@ describe("Stripe Connect actions", () => {
       created: Math.floor(Date.now() / 1000),
     });
     __mockStripeConnectService.updateAccountStatus.mockResolvedValue(undefined);
+    __mockStripeConnectService.updateBusinessProfile.mockResolvedValue({
+      success: true,
+      data: {
+        accountId: "acct_test",
+        updatedFields: ["url"],
+      },
+    });
 
     const { StatusSyncService } = jest.requireMock(
       "@features/stripe-connect/services/status-sync-service"
@@ -239,16 +285,30 @@ describe("Stripe Connect actions", () => {
   });
 
   describe("startOnboardingAction", () => {
-    it("正常にオンボーディングを開始してリダイレクトする", async () => {
+    it("代表コミュニティを保存してオンボーディングURLを返す", async () => {
       const { startOnboardingAction } = require("@features/stripe-connect/server");
+      const formData = new FormData();
+      formData.set("representativeCommunityId", representativeCommunityId);
 
-      await startOnboardingAction();
+      const result = await startOnboardingAction(formData);
 
-      expect(mockResolveCurrentCommunityForServerAction).toHaveBeenCalled();
-      expect(redirect).toHaveBeenCalledWith(expect.stringContaining("https://connect.stripe.com"));
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.redirectUrl).toContain("https://connect.stripe.com");
+      }
+      expect(mockResolveRepresentativeCommunitySelection).toHaveBeenCalledWith(
+        mockSupabase,
+        defaultUserId,
+        representativeCommunityId
+      );
+      expect(mockUpdateRepresentativeCommunitySelection).toHaveBeenCalledWith(
+        mockSupabase,
+        "profile-1",
+        representativeCommunityId
+      );
     });
 
-    it("connect account新規作成時に business profile を渡す", async () => {
+    it("connect account新規作成時に business profile url を渡す", async () => {
       const { __mockStripeConnectService } = jest.requireMock(
         "@features/stripe-connect/services/factories"
       );
@@ -257,7 +317,10 @@ describe("Stripe Connect actions", () => {
         .mockResolvedValueOnce(__mockStripeConnectService.buildAccount());
 
       const { startOnboardingAction } = require("@features/stripe-connect/server");
-      await startOnboardingAction();
+      const formData = new FormData();
+      formData.set("representativeCommunityId", representativeCommunityId);
+
+      await startOnboardingAction(formData);
 
       expect(__mockStripeConnectService.createExpressAccount).toHaveBeenCalledWith({
         userId: defaultUserId,
@@ -266,8 +329,28 @@ describe("Stripe Connect actions", () => {
         businessProfile: {
           productDescription:
             "イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。",
+          url: "http://localhost:3000/c/community-1",
         },
       });
+      expect(__mockStripeConnectService.updateBusinessProfile).toHaveBeenCalledWith({
+        accountId: "acct_test",
+        businessProfile: {
+          url: "http://localhost:3000/c/community-1",
+        },
+      });
+    });
+
+    it("代表コミュニティ未指定なら validation error を返す", async () => {
+      const { startOnboardingAction } = require("@features/stripe-connect/server");
+
+      const result = await startOnboardingAction(new FormData());
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.fieldErrors?.representativeCommunityId).toEqual([
+          "代表公開ページに使うコミュニティを選択してください",
+        ]);
+      }
     });
   });
 

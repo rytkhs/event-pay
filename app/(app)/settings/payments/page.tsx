@@ -1,10 +1,13 @@
 import { Suspense } from "react";
 
+import Link from "next/link";
+
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
 import { requireNonEmptyCommunityWorkspaceForServerComponent } from "@core/community/app-workspace";
+import { getPublicUrl } from "@core/seo/metadata";
 
 import { AccountStatus, CONNECT_REFRESH_PATH, OnboardingForm } from "@features/stripe-connect";
 import {
@@ -22,7 +25,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
-  title: "決済設定",
+  title: "Stripe アカウント設定",
   description: "Stripeで売上の受け取り方法を設定します",
 };
 
@@ -42,6 +45,18 @@ async function PaymentSettingsContent() {
     workspace.currentUser.id,
     currentCommunity.id
   );
+  const representativeCommunity = existingAccount?.representative_community_id
+    ? (workspace.ownedCommunities.find(
+        (community) => community.id === existingAccount.representative_community_id
+      ) ?? null)
+    : null;
+  const requiresRepresentativeSelection = !existingAccount || !representativeCommunity;
+  const representativeCommunityOptions = workspace.ownedCommunities.map((community) => ({
+    id: community.id,
+    name: community.name,
+    slug: community.slug,
+    publicPageUrl: getPublicUrl(`/c/${community.slug}`),
+  }));
 
   // リダイレクトURL設定
   const refreshUrl = CONNECT_REFRESH_PATH;
@@ -49,18 +64,38 @@ async function PaymentSettingsContent() {
   return (
     <div className="space-y-6">
       <div className="bg-muted/40 border border-muted/60 rounded-lg p-4 text-sm text-muted-foreground space-y-1">
-        <p className="font-medium text-foreground">{currentCommunity.name} の決済設定</p>
         <p className="text-muted-foreground">
-          現在選択中コミュニティの売上を受け取るために、Stripeの設定画面で入金設定を行います。
+          オンライン集金を有効化するために、Stripe アカウントの設定を行います。
         </p>
         <p>
-          入力内容はStripeに直接送信され、当サービスではカード情報や身分証の画像を保持しません。
+          入力内容は Stripe に直接送信され、当サービスではカード情報や身分証の画像を保持しません。
         </p>
       </div>
 
-      {/* アカウントが存在しない場合はオンボーディングフォーム */}
-      {!existingAccount ? (
-        <OnboardingForm onStartOnboarding={startOnboardingAction} />
+      {representativeCommunity ? (
+        <div className="rounded-lg border border-border/70 bg-background p-4 text-sm">
+          <p className="font-medium text-foreground">Stripe 設定で使う代表コミュニティページ</p>
+          <div className="mt-2 flex flex-col gap-1">
+            <span className="text-muted-foreground">{representativeCommunity.name}</span>
+            <Link
+              href={getPublicUrl(`/c/${representativeCommunity.slug}`)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex w-fit items-center gap-1 text-primary hover:underline"
+            >
+              {getPublicUrl(`/c/${representativeCommunity.slug}`)}
+            </Link>
+          </div>
+        </div>
+      ) : null}
+
+      {requiresRepresentativeSelection ? (
+        <OnboardingForm
+          communities={representativeCommunityOptions}
+          defaultRepresentativeCommunityId={currentCommunity.id}
+          hasExistingAccount={!!existingAccount}
+          onStartOnboarding={startOnboardingAction}
+        />
       ) : (
         <AccountStatus
           refreshUrl={refreshUrl}
