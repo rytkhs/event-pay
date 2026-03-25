@@ -1,3 +1,4 @@
+import { okResult } from "@core/errors";
 import { NextRequest } from "next/server";
 
 import { POST as ConnectWebhookPOST } from "../../../../app/api/webhooks/stripe-connect/route";
@@ -48,6 +49,10 @@ describe("/api/webhooks/stripe-connect (receiver)", () => {
     handleAccountApplicationDeauthorized.mockClear();
     handlePayoutPaid.mockClear();
     handlePayoutFailed.mockClear();
+    handleAccountUpdated.mockResolvedValue(okResult(undefined));
+    handleAccountApplicationDeauthorized.mockResolvedValue(okResult(undefined));
+    handlePayoutPaid.mockResolvedValue(okResult(undefined));
+    handlePayoutFailed.mockResolvedValue(okResult(undefined));
   });
 
   afterEach(() => {

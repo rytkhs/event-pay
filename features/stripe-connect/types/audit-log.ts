@@ -25,9 +25,14 @@ export interface StatusChangeLog {
   timestamp: string;
 
   /**
-   * ユーザーID
+   * payout profile ID
    */
-  user_id: string;
+  payout_profile_id: string;
+
+  /**
+   * payout profile owner user ID
+   */
+  owner_user_id: string;
 
   /**
    * Stripe Connect アカウントID

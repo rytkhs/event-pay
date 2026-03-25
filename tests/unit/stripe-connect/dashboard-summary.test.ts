@@ -4,116 +4,63 @@ import {
   getDashboardConnectCtaStatus,
   resolveDashboardConnectCtaStatus,
 } from "@features/stripe-connect/services/dashboard-summary";
+import { resolveCurrentCommunityPayoutProfile } from "@features/stripe-connect/services/payout-profile-resolver";
 
 jest.mock("@features/stripe-connect/actions/get-balance", () => ({
   fetchStripeBalanceByAccountId: jest.fn(),
 }));
 
-function createSupabaseMock(result: {
-  data: unknown;
-  error: unknown;
-  community?: { data: unknown; error: unknown };
-  payoutProfile?: { data: unknown; error: unknown };
-}) {
-  const communityMaybeSingle = jest.fn().mockResolvedValue(
-    "community" in result
-      ? result.community
-      : {
-          data: { current_payout_profile_id: "profile-1" },
-          error: null,
-        }
-  );
-  const payoutProfileMaybeSingle = jest.fn().mockResolvedValue(
-    "payoutProfile" in result
-      ? result.payoutProfile
-      : {
-          data: result.data,
-          error: result.error,
-        }
-  );
-  const communityEq = jest.fn().mockReturnValue({ maybeSingle: communityMaybeSingle });
-  const payoutProfileEq = jest.fn().mockReturnValue({ maybeSingle: payoutProfileMaybeSingle });
-  const communitySelect = jest.fn().mockReturnValue({ eq: communityEq });
-  const payoutProfileSelect = jest.fn().mockReturnValue({ eq: payoutProfileEq });
-  const from = jest.fn((table: string) => {
-    if (table === "communities") {
-      return { select: communitySelect };
-    }
-
-    if (table === "payout_profiles") {
-      return { select: payoutProfileSelect };
-    }
-
-    throw new Error(`Unexpected table: ${table}`);
-  });
-
-  return {
-    supabase: {
-      from,
-    },
-    from,
-    communitySelect,
-    payoutProfileSelect,
-    communityEq,
-    payoutProfileEq,
-    communityMaybeSingle,
-    payoutProfileMaybeSingle,
-  };
-}
+jest.mock("@features/stripe-connect/services/payout-profile-resolver", () => ({
+  resolveCurrentCommunityPayoutProfile: jest.fn(),
+}));
 
 describe("dashboard stripe summary", () => {
   const mockedFetchStripeBalanceByAccountId = jest.mocked(fetchStripeBalanceByAccountId);
+  const mockedResolveCurrentCommunityPayoutProfile = jest.mocked(
+    resolveCurrentCommunityPayoutProfile
+  );
 
   beforeEach(() => {
     mockedFetchStripeBalanceByAccountId.mockReset();
+    mockedResolveCurrentCommunityPayoutProfile.mockReset();
   });
 
   it("returns no-account CTA and skips balance lookup when no connect account exists", async () => {
-    const { supabase, from, communitySelect, communityEq } = createSupabaseMock({
-      community: {
-        data: { current_payout_profile_id: null },
-        error: null,
-      },
-      data: null,
-      error: null,
+    mockedResolveCurrentCommunityPayoutProfile.mockResolvedValue({
+      payoutProfile: null,
+      resolvedBy: "none",
     });
 
-    const ctaStatus = await getDashboardConnectCtaStatus(supabase as any, "community-1");
+    const ctaStatus = await getDashboardConnectCtaStatus({} as any, "user-1", "community-1");
 
     expect(ctaStatus).toEqual(expect.objectContaining({ statusType: "no_account" }));
-    expect(from).toHaveBeenCalledWith("communities");
-    expect(communitySelect).toHaveBeenCalledWith("current_payout_profile_id");
-    expect(communityEq).toHaveBeenCalledWith("id", "community-1");
+    expect(mockedResolveCurrentCommunityPayoutProfile).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        communityId: "community-1",
+        userId: "user-1",
+      })
+    );
     expect(mockedFetchStripeBalanceByAccountId).not.toHaveBeenCalled();
   });
 
-  it("returns no CTA for verified accounts with payouts enabled", async () => {
-    const { supabase } = createSupabaseMock({
-      data: {
-        status: "verified",
-        payouts_enabled: true,
+  it("returns setup CTA when representative community is missing", async () => {
+    mockedResolveCurrentCommunityPayoutProfile.mockResolvedValue({
+      payoutProfile: {
+        id: "profile-1",
+        owner_user_id: "user-1",
         stripe_account_id: "acct_ready",
+        status: "verified",
+        charges_enabled: true,
+        payouts_enabled: true,
+        representative_community_id: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       },
-      error: null,
+      resolvedBy: "community",
     });
 
-    const ctaStatus = await getDashboardConnectCtaStatus(supabase as any, "community-2");
-
-    expect(ctaStatus).toBeUndefined();
-    expect(mockedFetchStripeBalanceByAccountId).not.toHaveBeenCalled();
-  });
-
-  it("returns a simplified setup CTA for onboarding accounts", async () => {
-    const { supabase } = createSupabaseMock({
-      data: {
-        status: "onboarding",
-        payouts_enabled: false,
-        stripe_account_id: "acct_onboarding",
-      },
-      error: null,
-    });
-
-    const ctaStatus = await getDashboardConnectCtaStatus(supabase as any, "community-3");
+    const ctaStatus = await getDashboardConnectCtaStatus({} as any, "user-1", "community-2");
 
     expect(ctaStatus).toEqual(
       expect.objectContaining({
@@ -124,17 +71,39 @@ describe("dashboard stripe summary", () => {
     expect(mockedFetchStripeBalanceByAccountId).not.toHaveBeenCalled();
   });
 
-  it("returns null balance when no connect account exists", async () => {
-    const { supabase } = createSupabaseMock({
-      community: {
-        data: { current_payout_profile_id: null },
-        error: null,
+  it("returns a simplified setup CTA for onboarding accounts", async () => {
+    mockedResolveCurrentCommunityPayoutProfile.mockResolvedValue({
+      payoutProfile: {
+        id: "profile-1",
+        owner_user_id: "user-1",
+        stripe_account_id: "acct_onboarding",
+        status: "onboarding",
+        charges_enabled: false,
+        payouts_enabled: false,
+        representative_community_id: "community-3",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       },
-      data: null,
-      error: null,
+      resolvedBy: "owner_fallback",
     });
 
-    const balance = await getDashboardConnectBalance(supabase as any, "community-4");
+    const ctaStatus = await getDashboardConnectCtaStatus({} as any, "user-1", "community-3");
+
+    expect(ctaStatus).toEqual(
+      expect.objectContaining({
+        statusType: "requirements_due",
+        actionUrl: "/settings/payments",
+      })
+    );
+  });
+
+  it("returns null balance when no connect account exists", async () => {
+    mockedResolveCurrentCommunityPayoutProfile.mockResolvedValue({
+      payoutProfile: null,
+      resolvedBy: "none",
+    });
+
+    const balance = await getDashboardConnectBalance({} as any, "user-1", "community-4");
 
     expect(balance).toBeNull();
     expect(mockedFetchStripeBalanceByAccountId).not.toHaveBeenCalled();
@@ -142,16 +111,22 @@ describe("dashboard stripe summary", () => {
 
   it("fetches balance when connect account exists", async () => {
     mockedFetchStripeBalanceByAccountId.mockResolvedValue(4200);
-    const { supabase } = createSupabaseMock({
-      data: {
-        status: "verified",
-        payouts_enabled: true,
+    mockedResolveCurrentCommunityPayoutProfile.mockResolvedValue({
+      payoutProfile: {
+        id: "profile-1",
+        owner_user_id: "user-1",
         stripe_account_id: "acct_ready",
+        status: "verified",
+        charges_enabled: true,
+        payouts_enabled: true,
+        representative_community_id: "community-5",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       },
-      error: null,
+      resolvedBy: "community",
     });
 
-    const balance = await getDashboardConnectBalance(supabase as any, "community-5");
+    const balance = await getDashboardConnectBalance({} as any, "user-1", "community-5");
 
     expect(balance).toBe(4200);
     expect(mockedFetchStripeBalanceByAccountId).toHaveBeenCalledWith("acct_ready");
@@ -159,22 +134,29 @@ describe("dashboard stripe summary", () => {
 
   it("propagates balance fetch failures without affecting CTA resolution path", async () => {
     mockedFetchStripeBalanceByAccountId.mockRejectedValue(new Error("stripe down"));
-    const { supabase } = createSupabaseMock({
-      data: {
-        status: "onboarding",
-        payouts_enabled: false,
+    mockedResolveCurrentCommunityPayoutProfile.mockResolvedValue({
+      payoutProfile: {
+        id: "profile-1",
+        owner_user_id: "user-1",
         stripe_account_id: "acct_broken",
+        status: "onboarding",
+        charges_enabled: false,
+        payouts_enabled: false,
+        representative_community_id: "community-6",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       },
-      error: null,
+      resolvedBy: "community",
     });
 
-    await expect(getDashboardConnectBalance(supabase as any, "community-6")).rejects.toThrow(
+    await expect(getDashboardConnectBalance({} as any, "user-1", "community-6")).rejects.toThrow(
       "stripe down"
     );
   });
 
   it("maps verified accounts without payouts to the simplified setup CTA", () => {
     const ctaStatus = resolveDashboardConnectCtaStatus({
+      representative_community_id: "community-7",
       status: "verified",
       payouts_enabled: false,
       stripe_account_id: "acct_partial",
@@ -186,5 +168,16 @@ describe("dashboard stripe summary", () => {
         actionText: "状況を確認",
       })
     );
+  });
+
+  it("returns no CTA only when verified, payouts enabled, and representative community exists", () => {
+    const ctaStatus = resolveDashboardConnectCtaStatus({
+      representative_community_id: "community-8",
+      status: "verified",
+      payouts_enabled: true,
+      stripe_account_id: "acct_complete",
+    });
+
+    expect(ctaStatus).toBeUndefined();
   });
 });

@@ -44,7 +44,7 @@ export function Header({ workspace }: HeaderProps) {
       community: "コミュニティ",
       settings: "設定",
       profile: "プロフィール設定",
-      payments: "決済設定",
+      payments: "Stripe アカウント設定",
       security: "パスワード設定",
       create: "新規作成",
       participants: "参加者管理",

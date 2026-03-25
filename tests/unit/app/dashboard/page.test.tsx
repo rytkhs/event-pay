@@ -90,6 +90,9 @@ describe("DashboardPage", () => {
   it("community がある場合は通常の dashboard resource を作成する", async () => {
     resolveAppWorkspaceForServerComponent.mockResolvedValue({
       isCommunityEmptyState: false,
+      currentUser: {
+        id: "user-1",
+      },
       currentCommunity: {
         id: "community-1",
         name: "ボドゲ会",
@@ -103,7 +106,7 @@ describe("DashboardPage", () => {
     render(ui);
 
     expect(createDashboardDataResource).toHaveBeenCalledTimes(1);
-    expect(createDashboardDataResource).toHaveBeenCalledWith("community-1");
+    expect(createDashboardDataResource).toHaveBeenCalledWith("user-1", "community-1");
     expect(screen.getByText("ダッシュボード")).toBeInTheDocument();
     expect(screen.getByText("ボドゲ会 の運営状況を確認できます")).toBeInTheDocument();
   });

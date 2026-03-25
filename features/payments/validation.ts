@@ -25,6 +25,7 @@ const createStripeSessionParamsSchema = z.object({
     .number()
     .int("金額は整数である必要があります")
     .positive("金額は正の数である必要があります"),
+  payoutProfileId: z.string().uuid("受取先プロファイルIDは有効なUUIDである必要があります"),
   eventTitle: z
     .string()
     .min(1, "イベント名は必須です")

@@ -1306,9 +1306,11 @@ CREATE OR REPLACE FUNCTION "public"."register_attendance_with_payment"("p_event_
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $_$
 DECLARE
-  v_attendance_id UUID;
+  v_attendance_id uuid;
+  v_payout_profile_id uuid;
+  v_stripe_account_id character varying;
+  v_payout_status text;
 BEGIN
-  -- 入力パラメータの検証
   IF p_event_id IS NULL THEN
     RAISE EXCEPTION 'Event ID cannot be null';
   END IF;
@@ -1325,42 +1327,32 @@ BEGIN
     RAISE EXCEPTION 'Status cannot be null';
   END IF;
 
-  -- ゲストトークンの検証
   IF p_guest_token IS NULL OR LENGTH(p_guest_token) != 36 THEN
     RAISE EXCEPTION 'Guest token must be exactly 36 characters long with gst_ prefix, got: %', COALESCE(LENGTH(p_guest_token), 0);
   END IF;
 
-  -- ゲストトークンの形式を検証
   IF NOT (p_guest_token ~ '^gst_[a-zA-Z0-9_-]{32}$') THEN
     RAISE EXCEPTION 'Guest token must have format gst_[32 alphanumeric chars], got: %', LEFT(p_guest_token, 8) || '...';
   END IF;
 
-  -- 【レースコンディション対策強化】イベント存在確認と定員チェック（attending状態の場合のみ）
   IF p_status = 'attending' THEN
     DECLARE
-      v_capacity INTEGER;
-      v_current_attendees INTEGER;
+      v_capacity integer;
+      v_current_attendees integer;
     BEGIN
-      -- 【重要】イベント情報を排他ロック付きで取得（レースコンディション対策）
-      -- 存在確認と定員取得を一度に実行
       SELECT capacity INTO v_capacity
       FROM public.events
       WHERE id = p_event_id FOR UPDATE;
 
-      -- イベントが存在しない場合、v_capacity は NULL になる
       IF v_capacity IS NULL AND NOT EXISTS(SELECT 1 FROM public.events WHERE id = p_event_id) THEN
         RAISE EXCEPTION 'Event with ID % does not exist', p_event_id;
       END IF;
 
-      -- 定員が設定されている場合のみチェック
       IF v_capacity IS NOT NULL THEN
-        -- 【重要】イベントが既にロックされているため、他のトランザクションは待機状態
-        -- この時点で安全に参加者数をカウントできる
         SELECT COUNT(*) INTO v_current_attendees
         FROM public.attendances
         WHERE event_id = p_event_id AND status = 'attending';
 
-        -- 定員超過チェック
         IF v_current_attendees >= v_capacity THEN
           RAISE EXCEPTION 'このイベントは定員（%名）に達しています', v_capacity
             USING ERRCODE = 'P0001',
@@ -1370,104 +1362,90 @@ BEGIN
       END IF;
     END;
   ELSE
-    -- 参加ステータスが 'attending' 以外の場合、イベントの存在確認のみ実行
     IF NOT EXISTS(SELECT 1 FROM public.events WHERE id = p_event_id) THEN
       RAISE EXCEPTION 'Event with ID % does not exist', p_event_id;
     END IF;
   END IF;
 
-  -- 負の金額の事前検証（セキュリティ強化）
   IF p_event_fee IS NOT NULL AND p_event_fee < 0 THEN
     RAISE EXCEPTION 'Event fee cannot be negative, got: %', p_event_fee;
   END IF;
 
-  -- ゲストトークンの重複チェック
   IF EXISTS(SELECT 1 FROM public.attendances WHERE guest_token = p_guest_token) THEN
     RAISE EXCEPTION 'Guest token % already exists (duplicate request)', LEFT(p_guest_token, 8) || '...'
       USING ERRCODE = '23505',
             DETAIL = 'This guest token is already in use';
   END IF;
 
-  -- 1. 参加記録を挿入
+  IF p_status = 'attending' AND p_event_fee > 0 AND p_payment_method = 'stripe' THEN
+    SELECT e.payout_profile_id, pp.stripe_account_id, pp.status
+      INTO v_payout_profile_id, v_stripe_account_id, v_payout_status
+    FROM public.events e
+    LEFT JOIN public.payout_profiles pp
+      ON pp.id = e.payout_profile_id
+    WHERE e.id = p_event_id;
+
+    IF v_payout_profile_id IS NULL
+       OR v_stripe_account_id IS NULL
+       OR v_payout_status != 'verified' THEN
+      RAISE EXCEPTION 'Online payment is not available for this event';
+    END IF;
+  ELSE
+    v_payout_profile_id := NULL;
+    v_stripe_account_id := NULL;
+  END IF;
+
   BEGIN
     INSERT INTO public.attendances (event_id, nickname, email, status, guest_token)
     VALUES (p_event_id, p_nickname, p_email, p_status, p_guest_token)
     RETURNING id INTO v_attendance_id;
 
-    -- 挿入が成功したかを確認
     IF v_attendance_id IS NULL THEN
       RAISE EXCEPTION 'Failed to insert attendance record';
     END IF;
-
   EXCEPTION
     WHEN unique_violation THEN
-      -- UNIQUE制約違反の適切な処理
       DECLARE
-        v_constraint_name TEXT;
+        v_constraint_name text;
       BEGIN
-        -- 違反した制約名を取得
         GET STACKED DIAGNOSTICS v_constraint_name = CONSTRAINT_NAME;
-
-        -- 制約別のエラーメッセージ
-        IF v_constraint_name = 'attendances_guest_token_key' OR SQLERRM LIKE '%guest_token%' THEN
+        IF v_constraint_name = 'attendances_event_email_unique' THEN
+          RAISE EXCEPTION 'このメールアドレスは既にこのイベントに登録されています'
+            USING ERRCODE = '23505',
+                  DETAIL = 'attendances_event_email_unique';
+        ELSIF v_constraint_name = 'attendances_guest_token_key' THEN
           RAISE EXCEPTION 'Guest token already exists (concurrent request detected): %', LEFT(p_guest_token, 8) || '...'
             USING ERRCODE = '23505',
                   DETAIL = 'This may indicate a race condition or duplicate request';
-        ELSE
-          RAISE EXCEPTION 'Unique constraint violation: %', SQLERRM
-            USING ERRCODE = '23505';
         END IF;
+        RAISE;
       END;
-    WHEN OTHERS THEN
-      RAISE EXCEPTION 'Failed to insert attendance: %', SQLERRM;
   END;
 
-  -- 2. 参加ステータスが'attending'で、イベントが有料の場合、paymentsテーブルに決済記録を挿入
-  -- 注意: この時点では負の値チェックが完了しており、p_event_fee >= 0 が保証されている
-  DECLARE
-    v_payment_id UUID;
   BEGIN
-    IF p_status = 'attending' AND p_event_fee IS NOT NULL AND p_event_fee > 0 AND p_payment_method IS NOT NULL THEN
-      BEGIN
-        INSERT INTO public.payments (attendance_id, amount, method, status)
-        VALUES (v_attendance_id, p_event_fee, p_payment_method, 'pending')
-        RETURNING id INTO v_payment_id;
-      EXCEPTION
-        WHEN OTHERS THEN
-          -- 決済記録の挿入に失敗した場合、参加記録も削除してロールバック
-          DELETE FROM public.attendances WHERE id = v_attendance_id;
-          RAISE EXCEPTION 'Failed to insert payment record: %', SQLERRM;
-      END;
+    IF p_status = 'attending' AND p_event_fee > 0 AND p_payment_method IS NOT NULL THEN
+      INSERT INTO public.payments (
+        attendance_id,
+        amount,
+        method,
+        status,
+        payout_profile_id,
+        stripe_account_id,
+        destination_account_id
+      ) VALUES (
+        v_attendance_id,
+        p_event_fee,
+        p_payment_method,
+        'pending',
+        v_payout_profile_id,
+        v_stripe_account_id,
+        v_stripe_account_id
+      );
     END IF;
-
-    -- 3. 監査ログ記録
-    INSERT INTO public.system_logs (
-      log_category,
-      action,
-      message,
-      actor_type,
-      resource_type,
-      resource_id,
-      outcome,
-      metadata
-    )
-    VALUES (
-      'attendance',
-      'attendance.register',
-      'Attendance registered',
-      (CASE WHEN p_guest_token IS NOT NULL THEN 'guest' ELSE 'system' END)::actor_type_enum,
-      'attendance',
-      v_attendance_id::text,
-      'success',
-      jsonb_build_object(
-        'event_id', p_event_id,
-        'status', p_status,
-        'has_payment', (v_payment_id IS NOT NULL),
-        'payment_method', p_payment_method,
-        -- PII削減: emailはハッシュ化して保存
-        'email_hash', encode(extensions.digest(convert_to(p_email, 'UTF8'), 'sha256'::text), 'hex')
-      )
-    );
+  EXCEPTION
+    WHEN OTHERS THEN
+      DELETE FROM public.attendances WHERE id = v_attendance_id;
+      RAISE;
   END;
 
   RETURN v_attendance_id;
@@ -1789,7 +1767,7 @@ COMMENT ON FUNCTION "public"."rpc_public_get_community_by_slug"("p_slug" "text")
 
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") RETURNS TABLE("stripe_account_id" character varying, "payouts_enabled" boolean)
+CREATE OR REPLACE FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") RETURNS TABLE("payout_profile_id" "uuid", "stripe_account_id" character varying, "status" "text")
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
@@ -1799,11 +1777,15 @@ BEGIN
   END IF;
 
   RETURN QUERY
-  SELECT pp.stripe_account_id, pp.payouts_enabled
-    FROM public.events e
-    JOIN public.payout_profiles pp ON pp.id = e.payout_profile_id
-   WHERE e.id = p_event_id
-   LIMIT 1;
+  SELECT
+    pp.id,
+    pp.stripe_account_id,
+    pp.status::text
+  FROM public.events e
+  JOIN public.payout_profiles pp
+    ON pp.id = e.payout_profile_id
+  WHERE e.id = p_event_id
+  LIMIT 1;
 END;
 $$;
 
@@ -1811,7 +1793,7 @@ $$;
 ALTER FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") OWNER TO "app_definer";
 
 
-COMMENT ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") IS '公開/ゲスト決済前段向けに、対象イベントの payout_profile から最小の Connect 情報を取得する';
+COMMENT ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") IS '公開/ゲスト決済前段向けに、対象イベントの payout_profile から checkout に必要な最小 Connect 情報を取得する';
 
 
 
@@ -2051,20 +2033,20 @@ CREATE OR REPLACE FUNCTION "public"."update_guest_attendance_with_payment"("p_at
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
-  v_event_id UUID;
-  v_payment_id UUID;
+  v_event_id uuid;
+  v_payment_id uuid;
   v_current_status public.attendance_status_enum;
-  v_capacity INTEGER;
-  v_current_attendees INTEGER;
+  v_capacity integer;
+  v_current_attendees integer;
   v_payment_status public.payment_status_enum;
   v_payment_method public.payment_method_enum;
-  -- Guards (updated)
-  v_canceled_at TIMESTAMPTZ;
-  v_reg_deadline TIMESTAMPTZ;
-  v_event_date TIMESTAMPTZ;
-
+  v_canceled_at timestamptz;
+  v_reg_deadline timestamptz;
+  v_event_date timestamptz;
+  v_payout_profile_id uuid;
+  v_stripe_account_id character varying;
+  v_payout_status text;
 BEGIN
-  -- 参加記録の存在確認と現在のステータス取得
   SELECT event_id, status INTO v_event_id, v_current_status
   FROM public.attendances
   WHERE id = p_attendance_id;
@@ -2073,10 +2055,10 @@ BEGIN
     RAISE EXCEPTION 'Attendance record not found';
   END IF;
 
-  -- ゲスト本人確認（引数で渡されたトークンを使用）
   IF p_guest_token IS NULL OR p_guest_token = '' THEN
     RAISE EXCEPTION 'Guest token is required';
   END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM public.attendances a
     WHERE a.id = p_attendance_id AND a.guest_token = p_guest_token
@@ -2084,7 +2066,6 @@ BEGIN
     RAISE EXCEPTION 'Unauthorized: guest does not own this attendance';
   END IF;
 
-  -- イベント締切・開始・キャンセルチェック
   SELECT canceled_at, registration_deadline, date
     INTO v_canceled_at, v_reg_deadline, v_event_date
   FROM public.events
@@ -2097,7 +2078,6 @@ BEGIN
     RAISE EXCEPTION 'Event is closed for modification';
   END IF;
 
-  -- 定員チェック（attendingに変更する場合のみ）
   IF p_status = 'attending' AND v_current_status != 'attending' THEN
     SELECT capacity INTO v_capacity FROM public.events WHERE id = v_event_id FOR UPDATE;
     IF v_capacity IS NOT NULL THEN
@@ -2111,14 +2091,30 @@ BEGIN
     END IF;
   END IF;
 
-  -- 参加ステータスを更新
+  IF p_status = 'attending' AND p_event_fee > 0 AND p_payment_method = 'stripe' THEN
+    SELECT e.payout_profile_id, pp.stripe_account_id, pp.status
+      INTO v_payout_profile_id, v_stripe_account_id, v_payout_status
+    FROM public.events e
+    LEFT JOIN public.payout_profiles pp
+      ON pp.id = e.payout_profile_id
+    WHERE e.id = v_event_id;
+
+    IF v_payout_profile_id IS NULL
+       OR v_stripe_account_id IS NULL
+       OR v_payout_status != 'verified' THEN
+      RAISE EXCEPTION 'Online payment is not available for this event';
+    END IF;
+  ELSE
+    v_payout_profile_id := NULL;
+    v_stripe_account_id := NULL;
+  END IF;
+
   UPDATE public.attendances
   SET status = p_status
   WHERE id = p_attendance_id;
 
-  -- 決済レコードの処理
   IF p_status = 'attending' AND p_event_fee > 0 AND p_payment_method IS NOT NULL THEN
-    SELECT id, status INTO v_payment_id, v_payment_status
+    SELECT id, status, method INTO v_payment_id, v_payment_status, v_payment_method
     FROM public.payments
     WHERE attendance_id = p_attendance_id
     ORDER BY paid_at DESC NULLS LAST, created_at DESC, updated_at DESC
@@ -2126,21 +2122,23 @@ BEGIN
 
     IF v_payment_id IS NOT NULL THEN
       IF v_payment_status IN ('paid', 'received', 'waived') THEN
-        -- 既に確定済みの有効な決済がある場合は再利用（何もしない）
-        -- 不参加→再参加の場合でも、既存の決済を維持する
-        NULL; -- 明示的に何もしないことを示す
+        NULL;
       ELSIF v_payment_status = 'refunded' THEN
-        -- 返金済み = 決済が無効化されているため、新規決済レコードが必要
         v_payment_id := NULL;
       ELSIF v_payment_status = 'canceled' THEN
-        -- キャンセル済みレコードは新規レコードを再作成するため再利用しない
         v_payment_id := NULL;
       ELSIF v_payment_status NOT IN ('paid', 'received', 'waived', 'refunded', 'canceled') THEN
-        -- pending, failed などの未確定状態は更新可能
         UPDATE public.payments
         SET method = p_payment_method,
             amount = p_event_fee,
-            status = 'pending'
+            status = 'pending',
+            payout_profile_id = v_payout_profile_id,
+            stripe_account_id = v_stripe_account_id,
+            destination_account_id = v_stripe_account_id,
+            stripe_checkout_session_id = NULL,
+            stripe_payment_intent_id = NULL,
+            checkout_idempotency_key = NULL,
+            checkout_key_revision = 0
         WHERE id = v_payment_id;
       END IF;
     END IF;
@@ -2150,12 +2148,18 @@ BEGIN
         attendance_id,
         amount,
         method,
-        status
+        status,
+        payout_profile_id,
+        stripe_account_id,
+        destination_account_id
       ) VALUES (
         p_attendance_id,
         p_event_fee,
         p_payment_method,
-        'pending'
+        'pending',
+        v_payout_profile_id,
+        v_stripe_account_id,
+        v_stripe_account_id
       );
     END IF;
   ELSIF p_status != 'attending' THEN
@@ -2174,18 +2178,9 @@ BEGIN
         WHERE id = v_payment_id
           AND status IN ('pending', 'failed');
 
-        -- 監査ログ記録（新スキーマ対応）
         INSERT INTO public.system_logs (
-          log_category,
-          action,
-          message,
-          actor_type,
-          resource_type,
-          resource_id,
-          outcome,
-          metadata
-        )
-        VALUES (
+          log_category, action, message, actor_type, resource_type, resource_id, outcome, metadata
+        ) VALUES (
           'payment',
           'payment.canceled',
           'Payment canceled due to attendance status change',
@@ -2201,21 +2196,12 @@ BEGIN
           )
         );
       ELSIF v_payment_status IN ('paid', 'received') THEN
-        -- 監査ログ記録（新スキーマ対応）
         INSERT INTO public.system_logs (
-          log_category,
-          action,
-          message,
-          actor_type,
-          resource_type,
-          resource_id,
-          outcome,
-          metadata
-        )
-        VALUES (
+          log_category, action, message, actor_type, resource_type, resource_id, outcome, metadata
+        ) VALUES (
           'payment',
-          'payment.status_maintained',
-          'Payment status maintained on attendance cancel (already paid)',
+          'payment.status_maintained_on_cancel',
+          'Payment status maintained on attendance cancel',
           'system',
           'payment',
           v_payment_id::text,
@@ -2227,89 +2213,9 @@ BEGIN
             'attendance_status', p_status
           )
         );
-      ELSIF v_payment_status = 'waived' THEN
-        -- 監査ログ記録（新スキーマ対応）
-        INSERT INTO public.system_logs (
-          log_category,
-          action,
-          message,
-          actor_type,
-          resource_type,
-          resource_id,
-          outcome,
-          metadata
-        )
-        VALUES (
-          'payment',
-          'payment.waived_kept',
-          'Waived payment kept on attendance cancel',
-          'system',
-          'payment',
-          v_payment_id::text,
-          'success',
-          jsonb_build_object(
-            'attendance_id', p_attendance_id,
-            'payment_status', v_payment_status,
-            'attendance_status', p_status
-          )
-        );
-      ELSIF v_payment_status = 'canceled' THEN
-        -- 監査ログ記録（新スキーマ対応）
-        INSERT INTO public.system_logs (
-          log_category,
-          action,
-          message,
-          actor_type,
-          resource_type,
-          resource_id,
-          outcome,
-          metadata
-        )
-        VALUES (
-          'payment',
-          'payment.canceled_duplicate',
-          'Payment already canceled (duplicate cancel attempt)',
-          'system',
-          'payment',
-          v_payment_id::text,
-          'success',
-          jsonb_build_object(
-            'attendance_id', p_attendance_id,
-            'payment_status', v_payment_status,
-            'attendance_status', p_status
-          )
-        );
-      ELSIF v_payment_status = 'refunded' THEN
-        -- 監査ログ記録（新スキーマ対応）
-        INSERT INTO public.system_logs (
-          log_category,
-          action,
-          message,
-          actor_type,
-          resource_type,
-          resource_id,
-          outcome,
-          metadata
-        )
-        VALUES (
-          'payment',
-          'payment.refund_maintained',
-          'Refund status maintained on attendance cancel',
-          'system',
-          'payment',
-          v_payment_id::text,
-          'success',
-          jsonb_build_object(
-            'attendance_id', p_attendance_id,
-            'payment_status', v_payment_status,
-            'attendance_status', p_status
-          )
-        );
       END IF;
     END IF;
   END IF;
-
-  RETURN;
 END;
 $$;
 

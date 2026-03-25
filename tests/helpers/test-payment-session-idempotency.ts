@@ -100,6 +100,7 @@ export class PaymentSessionIdempotencyTestHelper {
       attendanceId: attendance.id,
       amount: event.fee,
       eventId: event.id,
+      payoutProfileId: event.payout_profile_id ?? user.payoutProfileId ?? "",
       actorId: attendance.id,
       eventTitle: event.title,
       successUrl: "https://example.com/success",

@@ -83,6 +83,7 @@ describe("🚨 決済完了済みガード 仕様書適合性検証", () => {
       attendanceId: testAttendance.id,
       amount: testEvent.fee,
       eventId: testEvent.id,
+      payoutProfileId: testEvent.payout_profile_id ?? testUser.payoutProfileId!,
       actorId: testAttendance.id,
       eventTitle: testEvent.title,
       successUrl: "https://example.com/success",

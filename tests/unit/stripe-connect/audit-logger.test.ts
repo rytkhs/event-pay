@@ -22,7 +22,8 @@ describe("logStatusChange", () => {
   it("should log status change with all metadata", async () => {
     const log: StatusChangeLog = {
       timestamp: "2024-01-01T00:00:00.000Z",
-      user_id: "user-123",
+      payout_profile_id: "profile-123",
+      owner_user_id: "user-123",
       stripe_account_id: "acct_123",
       previous_status: "onboarding",
       new_status: "verified",
@@ -46,10 +47,13 @@ describe("logStatusChange", () => {
         message: "Stripe Connect account status changed from onboarding to verified",
         actor_type: "webhook",
         user_id: "user-123",
-        resource_type: "stripe_connect_account",
-        resource_id: "acct_123",
+        resource_type: "payout_profile",
+        resource_id: "profile-123",
         outcome: "success",
         metadata: expect.objectContaining({
+          payout_profile_id: "profile-123",
+          owner_user_id: "user-123",
+          stripe_account_id: "acct_123",
           previous_status: "onboarding",
           new_status: "verified",
           trigger: "webhook",
@@ -62,7 +66,7 @@ describe("logStatusChange", () => {
             has_due_requirements: false,
           }),
         }),
-        dedupe_key: "status_change:user-123:onboarding:verified:2024-01-01T00:00:00.000Z",
+        dedupe_key: "status_change:profile-123:onboarding:verified:2024-01-01T00:00:00.000Z",
       }),
       expect.objectContaining({
         alsoLogToPino: true,
@@ -74,7 +78,8 @@ describe("logStatusChange", () => {
   it("should log initial status with null previous_status", async () => {
     const log: StatusChangeLog = {
       timestamp: "2024-01-01T00:00:00.000Z",
-      user_id: "user-123",
+      payout_profile_id: "profile-123",
+      owner_user_id: "user-123",
       stripe_account_id: "acct_123",
       previous_status: null,
       new_status: "unverified",
@@ -107,7 +112,8 @@ describe("logStatusChange", () => {
   it("should use correct actor_type for ondemand trigger", async () => {
     const log: StatusChangeLog = {
       timestamp: "2024-01-01T00:00:00.000Z",
-      user_id: "user-123",
+      payout_profile_id: "profile-123",
+      owner_user_id: "user-123",
       stripe_account_id: "acct_123",
       previous_status: "unverified",
       new_status: "onboarding",
@@ -138,7 +144,8 @@ describe("logStatusChange", () => {
   it("should include disabled_reason in metadata when present", async () => {
     const log: StatusChangeLog = {
       timestamp: "2024-01-01T00:00:00.000Z",
-      user_id: "user-123",
+      payout_profile_id: "profile-123",
+      owner_user_id: "user-123",
       stripe_account_id: "acct_123",
       previous_status: "verified",
       new_status: "restricted",
@@ -171,7 +178,8 @@ describe("logStatusChange", () => {
   it("should generate unique dedupe_key for each status change", async () => {
     const log1: StatusChangeLog = {
       timestamp: "2024-01-01T00:00:00.000Z",
-      user_id: "user-123",
+      payout_profile_id: "profile-123",
+      owner_user_id: "user-123",
       stripe_account_id: "acct_123",
       previous_status: "unverified",
       new_status: "onboarding",

@@ -33,7 +33,8 @@ export interface StripeConnectPort {
   }>;
 
   updateAccountStatus(input: {
-    userId: string;
+    userId?: string;
+    payoutProfileId?: string;
     status: StripeAccountStatus;
     chargesEnabled: boolean;
     payoutsEnabled: boolean;

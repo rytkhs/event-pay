@@ -20,6 +20,7 @@ export type DashboardDataResource = {
 };
 
 export async function createDashboardDataResource(
+  currentUserId: string,
   currentCommunityId: string
 ): Promise<DashboardDataResource> {
   const supabase = await createServerComponentSupabaseClient();
@@ -27,7 +28,7 @@ export async function createDashboardDataResource(
   return {
     stats: fetchDashboardStats(supabase, currentCommunityId),
     recentEvents: fetchRecentEvents(supabase, currentCommunityId),
-    stripeBalance: getDashboardConnectBalance(supabase, currentCommunityId),
-    stripeCtaStatus: getDashboardConnectCtaStatus(supabase, currentCommunityId),
+    stripeBalance: getDashboardConnectBalance(supabase, currentUserId, currentCommunityId),
+    stripeCtaStatus: getDashboardConnectCtaStatus(supabase, currentUserId, currentCommunityId),
   };
 }

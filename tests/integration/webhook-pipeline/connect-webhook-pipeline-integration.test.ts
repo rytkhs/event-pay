@@ -23,8 +23,13 @@ import crypto from "crypto";
 
 import { NextRequest } from "next/server";
 
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
+
 import { POST as ConnectWebhookPOST } from "../../../app/api/webhooks/stripe-connect/route";
 import { POST as ConnectWorkerPOST } from "../../../app/api/workers/stripe-connect-webhook/route";
+import { createOwnedCommunityFixture } from "../../helpers/community-owner-fixtures";
+import { createTestUser, deleteTestUser, type TestUser } from "../../helpers/test-user";
 
 // QStash モック（外部サービスはモック化）
 const mockPublishJSON = jest.fn();
@@ -89,6 +94,7 @@ function generateValidStripeSignature(payload: string, webhookSecret: string): s
 
 describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
   const originalEnv = process.env;
+  const createdUsers: TestUser[] = [];
   // 統合テスト用のwebhook secret
   const TEST_WEBHOOK_SECRET =
     process.env.STRIPE_CONNECT_WEBHOOK_SECRET_TEST ||
@@ -110,6 +116,7 @@ describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
     process.env.QSTASH_TOKEN = "test_token";
     process.env.QSTASH_CURRENT_SIGNING_KEY = "test_key_current";
     process.env.QSTASH_NEXT_SIGNING_KEY = "test_key_next";
+    delete process.env.SKIP_QSTASH_IN_TEST;
   });
 
   afterAll(() => {
@@ -118,6 +125,13 @@ describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    delete process.env.SKIP_QSTASH_IN_TEST;
+  });
+
+  afterAll(async () => {
+    for (const user of createdUsers) {
+      await deleteTestUser(user.email);
+    }
   });
 
   describe("🔒 セキュリティ検証", () => {
@@ -347,6 +361,101 @@ describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
       expect(response.status).toBe(489);
       expect(response.headers.get("Upstash-NonRetryable-Error")).toBe("true");
       expect(text).toContain("Missing QStash signature");
+    });
+
+    test("既知 payout_profile の account.updated は同期処理で payout_profiles を更新する", async () => {
+      process.env.SKIP_QSTASH_IN_TEST = "true";
+
+      const testUser = await createTestUser(
+        `connect-webhook-${Date.now()}@example.com`,
+        "Password123!"
+      );
+      createdUsers.push(testUser);
+
+      const fixture = await createOwnedCommunityFixture(testUser.id, {
+        withPayoutProfile: true,
+        payoutProfileStatus: "unverified",
+        payoutsEnabled: false,
+        chargesEnabled: false,
+      });
+
+      const adminClient = await createAuditedAdminClient(
+        AdminReason.TEST_DATA_SETUP,
+        "connect webhook pipeline integration verification"
+      );
+
+      await adminClient
+        .from("payout_profiles")
+        .update({
+          stripe_account_id: "acct_fixture_webhook_123",
+        })
+        .eq("id", fixture.payoutProfileId!);
+
+      const event = createMockAccountEvent({
+        id: "acct_fixture_webhook_123",
+        metadata: {},
+        details_submitted: true,
+        payouts_enabled: true,
+        charges_enabled: true,
+        capabilities: {
+          transfers: "active",
+          card_payments: "active",
+        },
+        requirements: {
+          currently_due: [],
+          past_due: [],
+          eventually_due: [],
+          disabled_reason: null,
+        },
+      });
+
+      const payload = JSON.stringify(event);
+      const validSignature = generateValidStripeSignature(payload, TEST_WEBHOOK_SECRET);
+
+      const request = new NextRequest("https://test.eventpay.com/api/webhooks/stripe-connect", {
+        method: "POST",
+        headers: {
+          "stripe-signature": validSignature,
+          "x-request-id": "req_test_sync_update",
+        },
+        body: payload,
+      });
+
+      const response = await ConnectWebhookPOST(request);
+      expect(response.status).toBe(204);
+
+      const { data: updatedProfile } = await adminClient
+        .from("payout_profiles")
+        .select("status, payouts_enabled, charges_enabled")
+        .eq("id", fixture.payoutProfileId!)
+        .single();
+
+      expect(updatedProfile?.status).toBe("verified");
+      expect(updatedProfile?.payouts_enabled).toBe(true);
+      expect(updatedProfile?.charges_enabled).toBe(true);
+    });
+
+    test("未知 stripe_account_id の account.updated は 204 で ACK skip する", async () => {
+      process.env.SKIP_QSTASH_IN_TEST = "true";
+
+      const event = createMockAccountEvent({
+        id: "acct_unknown_123",
+        metadata: {},
+      });
+      const payload = JSON.stringify(event);
+      const validSignature = generateValidStripeSignature(payload, TEST_WEBHOOK_SECRET);
+
+      const request = new NextRequest("https://test.eventpay.com/api/webhooks/stripe-connect", {
+        method: "POST",
+        headers: {
+          "stripe-signature": validSignature,
+          "x-request-id": "req_test_sync_unknown",
+        },
+        body: payload,
+      });
+
+      const response = await ConnectWebhookPOST(request);
+      expect(response.status).toBe(204);
     });
   });
 

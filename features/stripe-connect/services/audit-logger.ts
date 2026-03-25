@@ -49,11 +49,14 @@ export async function logStatusChange(log: StatusChangeLog): Promise<void> {
       action: "connect.status_change",
       message: statusChangeMessage,
       actor_type: log.trigger === "webhook" ? "webhook" : "user",
-      user_id: log.user_id,
-      resource_type: "stripe_connect_account",
-      resource_id: log.stripe_account_id,
+      user_id: log.owner_user_id,
+      resource_type: "payout_profile",
+      resource_id: log.payout_profile_id,
       outcome: "success",
       metadata: {
+        payout_profile_id: log.payout_profile_id,
+        owner_user_id: log.owner_user_id,
+        stripe_account_id: log.stripe_account_id,
         previous_status: log.previous_status,
         new_status: log.new_status,
         trigger: log.trigger,
@@ -61,7 +64,7 @@ export async function logStatusChange(log: StatusChangeLog): Promise<void> {
         timestamp: log.timestamp,
       },
       // 重複防止キー: 同一タイムスタンプ・ユーザー・ステータス変更の重複を防ぐ
-      dedupe_key: `status_change:${log.user_id}:${log.previous_status}:${log.new_status}:${log.timestamp}`,
+      dedupe_key: `status_change:${log.payout_profile_id}:${log.previous_status}:${log.new_status}:${log.timestamp}`,
     },
     {
       alsoLogToPino: true,

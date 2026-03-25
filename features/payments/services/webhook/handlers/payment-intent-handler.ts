@@ -14,6 +14,11 @@ import {
 } from "../errors/webhook-error-factory";
 import { PaymentWebhookRepository } from "../repositories/payment-webhook-repository";
 import type { WebhookProcessingResult } from "../types";
+import {
+  buildPaymentWebhookMeta,
+  getPaymentWebhookLogContext,
+  logStripeAccountSnapshotMismatch,
+} from "../webhook-payment-context";
 
 interface PaymentIntentHandlerParams {
   paymentRepository: PaymentWebhookRepository;
@@ -62,6 +67,8 @@ export class PaymentIntentHandler {
         return okResult();
       }
 
+      logStripeAccountSnapshotMismatch({ event, payment, logger: this.logger });
+
       const expectedCurrency = "jpy";
       const paymentAmount: number | undefined = (payment as { amount?: number }).amount;
       const piAmount: number | undefined = (paymentIntent as { amount?: number }).amount;
@@ -92,6 +99,8 @@ export class PaymentIntentHandler {
           reason: "amount_currency_mismatch",
           eventId: event.id,
           paymentId: payment.id,
+          payoutProfileId: payment.payout_profile_id,
+          stripeAccountId: payment.stripe_account_id,
           userMessage: "Webhook payload が不正です",
           message: "Amount or currency mismatch",
           details: {
@@ -108,7 +117,7 @@ export class PaymentIntentHandler {
       if (!canPromoteStatus(payment.status as PaymentStatus, "paid")) {
         this.logger.info("Status promotion rule preventing update", {
           event_id: event.id,
-          payment_id: payment.id,
+          ...getPaymentWebhookLogContext(payment),
           current_status: payment.status,
           outcome: "success",
         });
@@ -139,6 +148,8 @@ export class PaymentIntentHandler {
           reason: "payment_intent_succeeded_update_failed",
           eventId: event.id,
           paymentId: payment.id,
+          payoutProfileId: payment.payout_profile_id,
+          stripeAccountId: payment.stripe_account_id,
           userMessage: "決済ステータス更新に失敗しました",
           dbError: updateError,
           details: {
@@ -183,13 +194,13 @@ export class PaymentIntentHandler {
 
       this.logger.info("Payment intent succeeded processed", {
         event_id: event.id,
-        payment_id: payment.id,
+        ...getPaymentWebhookLogContext(payment),
         amount: paymentIntent.amount,
         currency: paymentIntent.currency,
         outcome: "success",
       });
 
-      return okResult(undefined, { eventId: event.id, paymentId: payment.id });
+      return okResult(undefined, buildPaymentWebhookMeta({ eventId: event.id, payment }));
     } catch (error) {
       throw error instanceof Error ? error : new Error("Unknown error");
     }
@@ -214,10 +225,12 @@ export class PaymentIntentHandler {
         return okResult();
       }
 
+      logStripeAccountSnapshotMismatch({ event, payment, logger: this.logger });
+
       if (!canPromoteStatus(payment.status as PaymentStatus, "failed")) {
         this.logger.info("Status promotion rule preventing update", {
           event_id: event.id,
-          payment_id: payment.id,
+          ...getPaymentWebhookLogContext(payment),
           current_status: payment.status,
           outcome: "success",
         });
@@ -247,6 +260,8 @@ export class PaymentIntentHandler {
           reason: "payment_intent_failed_update_failed",
           eventId: event.id,
           paymentId: payment.id,
+          payoutProfileId: payment.payout_profile_id,
+          stripeAccountId: payment.stripe_account_id,
           userMessage: "決済ステータス更新に失敗しました",
           dbError: updateError,
           details: {
@@ -260,14 +275,14 @@ export class PaymentIntentHandler {
       const failureReason = paymentIntent.last_payment_error?.message || "Unknown payment failure";
       this.logger.info("Payment intent failed processed", {
         event_id: event.id,
-        payment_id: payment.id,
+        ...getPaymentWebhookLogContext(payment),
         failure_reason: failureReason,
         amount: paymentIntent.amount,
         currency: paymentIntent.currency,
         outcome: "success",
       });
 
-      return okResult(undefined, { eventId: event.id, paymentId: payment.id });
+      return okResult(undefined, buildPaymentWebhookMeta({ eventId: event.id, payment }));
     } catch (error) {
       throw error instanceof Error ? error : new Error("Unknown error");
     }
@@ -289,6 +304,8 @@ export class PaymentIntentHandler {
         });
         return okResult();
       }
+
+      logStripeAccountSnapshotMismatch({ event, payment, logger: this.logger });
 
       if (canPromoteStatus(payment.status as PaymentStatus, "failed")) {
         const { error: updateError } =
@@ -313,6 +330,8 @@ export class PaymentIntentHandler {
             reason: "payment_intent_canceled_update_failed",
             eventId: event.id,
             paymentId: payment.id,
+            payoutProfileId: payment.payout_profile_id,
+            stripeAccountId: payment.stripe_account_id,
             userMessage: "決済ステータス更新に失敗しました",
             dbError: updateError,
             details: {
@@ -326,10 +345,10 @@ export class PaymentIntentHandler {
 
       this.logger.info("Payment intent canceled processed", {
         event_id: event.id,
-        payment_id: payment.id,
+        ...getPaymentWebhookLogContext(payment),
         outcome: "success",
       });
-      return okResult(undefined, { eventId: event.id, paymentId: payment.id });
+      return okResult(undefined, buildPaymentWebhookMeta({ eventId: event.id, payment }));
     } catch (error) {
       throw error instanceof Error ? error : new Error("Unknown error");
     }

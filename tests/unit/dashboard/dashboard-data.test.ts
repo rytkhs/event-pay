@@ -58,7 +58,7 @@ describe("dashboard shared data loader", () => {
     getDashboardConnectCtaStatus.mockResolvedValue(stripeCtaStatus);
 
     const dashboardData = await import("@/app/(app)/dashboard/_lib/dashboard-data");
-    const resource = await dashboardData.createDashboardDataResource("community-1");
+    const resource = await dashboardData.createDashboardDataResource("user-1", "community-1");
 
     const [resolvedStats, resolvedEvents, resolvedStripeBalance, resolvedStripeCtaStatus] =
       await Promise.all([
@@ -79,8 +79,8 @@ describe("dashboard shared data loader", () => {
     expect(fetchRecentEvents).toHaveBeenCalledTimes(1);
     expect(fetchRecentEvents).toHaveBeenCalledWith(supabase, "community-1");
     expect(getDashboardConnectBalance).toHaveBeenCalledTimes(1);
-    expect(getDashboardConnectBalance).toHaveBeenCalledWith(supabase, "community-1");
+    expect(getDashboardConnectBalance).toHaveBeenCalledWith(supabase, "user-1", "community-1");
     expect(getDashboardConnectCtaStatus).toHaveBeenCalledTimes(1);
-    expect(getDashboardConnectCtaStatus).toHaveBeenCalledWith(supabase, "community-1");
+    expect(getDashboardConnectCtaStatus).toHaveBeenCalledWith(supabase, "user-1", "community-1");
   });
 });

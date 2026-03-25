@@ -4,6 +4,8 @@ import type { PaymentWebhookMetaJson } from "@core/types/payment";
 export type WebhookProcessingMeta = {
   paymentId?: string;
   eventId?: string;
+  payoutProfileId?: string;
+  stripeAccountId?: string;
   terminal?: boolean;
   reason?: string;
   errorCode?: string;
