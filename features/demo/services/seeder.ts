@@ -96,14 +96,23 @@ function assertNonNull<T>(v: T | null | undefined, msg: string): T {
 
 // --- データ生成 ---
 
-function getEventScenarios(userId: string, now: Date): EventInsert[] {
+function getEventScenarios(
+  userId: string,
+  now: Date,
+  communityId: string,
+  payoutProfileId: string | null
+): EventInsert[] {
   // ヘルパー
   const day = (offset: number) => iso(addDays(now, offset));
+  // Stripe決済対応イベントには payout_profile_id をスナップショット
+  const ppForMethods = (methods: string[]) => (methods.includes("stripe") ? payoutProfileId : null);
 
   return [
     {
       // 1. 開催前（申込受付中・支払期限あり・stripe+cash）
       created_by: userId,
+      community_id: communityId,
+      payout_profile_id: ppForMethods(["stripe", "cash"]),
       title: "創立10周年記念 OB・OG交流会",
       date: day(20),
       location: "ホテルメトロポリタン宴会場「富士」",
@@ -121,6 +130,8 @@ function getEventScenarios(userId: string, now: Date): EventInsert[] {
     {
       // 2. 開催前（申込締切間近・capacity小さめ）
       created_by: userId,
+      community_id: communityId,
+      payout_profile_id: ppForMethods(["stripe", "cash"]),
       title: "【締切間近】秋季関東学生テニス選手権（予選）エントリー",
       date: day(7),
       location: "有明テニスの森公園",
@@ -138,6 +149,8 @@ function getEventScenarios(userId: string, now: Date): EventInsert[] {
     {
       // 3. 開催済み（売上が立っている：Stripe paid と cash received が混在）
       created_by: userId,
+      community_id: communityId,
+      payout_profile_id: ppForMethods(["stripe", "cash"]),
       title: "【終了】新入生歓迎 BBQ大会🍖",
       date: day(-30),
       location: "昭和記念公園 バーベキューガーデン",
@@ -157,6 +170,8 @@ function getEventScenarios(userId: string, now: Date): EventInsert[] {
     {
       // 4. 無料イベント
       created_by: userId,
+      community_id: communityId,
+      payout_profile_id: ppForMethods([]),
       title: "【自由参加】早朝自主練（コート開放）",
       date: day(14),
       location: "大学テニスコート A・B面",
@@ -172,6 +187,8 @@ function getEventScenarios(userId: string, now: Date): EventInsert[] {
     {
       // 5. Stripeのみイベント
       created_by: userId,
+      community_id: communityId,
+      payout_profile_id: ppForMethods(["stripe"]),
       title: "2026年度 チームウェア購入（パーカー）",
       date: day(10),
       location: "オンライン（後日練習時に配布）",
@@ -189,6 +206,8 @@ function getEventScenarios(userId: string, now: Date): EventInsert[] {
     {
       // 6. 現金のみイベント
       created_by: userId,
+      community_id: communityId,
+      payout_profile_id: ppForMethods(["cash"]),
       title: "定例練習 @大井ふ頭",
       date: day(15),
       location: "大井ふ頭中央海浜公園スポーツの森",
@@ -206,6 +225,8 @@ function getEventScenarios(userId: string, now: Date): EventInsert[] {
     {
       // 7. 中止イベント
       created_by: userId,
+      community_id: communityId,
+      payout_profile_id: ppForMethods(["stripe", "cash"]),
       title: "【雨天中止】お花見ミックスダブルス大会🌸",
       date: day(11),
       location: "井の頭恩賜公園",
@@ -260,7 +281,13 @@ async function waitForPublicUserRow(client: AppSupabaseClient, userId: string) {
   throw new Error("public.users row was not created by trigger in time.");
 }
 
-async function setupUserAndStripe(client: AppSupabaseClient, userId: string, now: Date) {
+type SetupResult = { communityId: string; payoutProfileId: string | null };
+
+async function setupUserAndCommunity(
+  client: AppSupabaseClient,
+  userId: string,
+  now: Date
+): Promise<SetupResult> {
   const demoStripeAccountId = process.env.DEMO_STRIPE_ACCOUNT_ID;
 
   await waitForPublicUserRow(client, userId);
@@ -279,21 +306,62 @@ async function setupUserAndStripe(client: AppSupabaseClient, userId: string, now
   );
   if (userUpsertErr) throw userUpsertErr;
 
-  const { error: stripeErr } = await client.from("stripe_connect_accounts").upsert(
-    {
-      user_id: userId,
-      stripe_account_id: demoStripeAccountId ?? "",
-      status: "verified" as StripeAccountStatus,
-      charges_enabled: true,
-      payouts_enabled: true,
-    },
-    { onConflict: "user_id" }
-  );
-  if (stripeErr) throw new Error(`seed stripe_connect_accounts failed: ${stripeErr.message}`);
+  // payout_profiles の作成
+  let payoutProfileId: string | null = null;
+  if (demoStripeAccountId) {
+    const { data: ppData, error: ppErr } = await client
+      .from("payout_profiles")
+      .upsert(
+        {
+          owner_user_id: userId,
+          stripe_account_id: demoStripeAccountId,
+          status: "verified" as StripeAccountStatus,
+          charges_enabled: true,
+          payouts_enabled: true,
+        },
+        { onConflict: "owner_user_id" }
+      )
+      .select("id")
+      .single();
+    if (ppErr) throw new Error(`seed payout_profiles failed: ${ppErr.message}`);
+    payoutProfileId = ppData.id;
+  }
+
+  // communities の作成（slug / legal_slug は DB デフォルト関数で自動生成）
+  const { data: communityData, error: communityErr } = await client
+    .from("communities")
+    .insert({
+      created_by: userId,
+      name: "デモテニスサークル",
+      description:
+        "みんなの集金のデモ環境用サークルです。イベント作成・出欠管理・集金フローを体験できます。",
+      current_payout_profile_id: payoutProfileId,
+    })
+    .select("id")
+    .single();
+  if (communityErr) throw new Error(`seed communities failed: ${communityErr.message}`);
+
+  // payout_profile の representative_community_id を設定
+  if (payoutProfileId) {
+    const { error: ppUpdateErr } = await client
+      .from("payout_profiles")
+      .update({ representative_community_id: communityData.id })
+      .eq("id", payoutProfileId);
+    if (ppUpdateErr)
+      throw new Error(`update payout_profiles representative failed: ${ppUpdateErr.message}`);
+  }
+
+  return { communityId: communityData.id, payoutProfileId };
 }
 
-async function insertEvents(client: AppSupabaseClient, userId: string, now: Date) {
-  const events = getEventScenarios(userId, now);
+async function insertEvents(
+  client: AppSupabaseClient,
+  userId: string,
+  now: Date,
+  communityId: string,
+  payoutProfileId: string | null
+) {
+  const events = getEventScenarios(userId, now, communityId, payoutProfileId);
   const { data: insertedEvents, error } = await client
     .from("events")
     .insert(events, { defaultToNull: false })
@@ -365,6 +433,7 @@ function createPaymentRecord(
   status: PaymentStatus,
   candidate: PaymentCandidate,
   now: Date,
+  payoutProfileId: string | null,
   overrides: Partial<PaymentInsert> = {}
 ): PaymentInsert {
   const amount = candidate.event.fee;
@@ -384,6 +453,7 @@ function createPaymentRecord(
     amount,
     status,
     paid_at,
+    payout_profile_id: isStripe ? payoutProfileId : null,
     refunded_amount: status === "refunded" ? amount : 0,
     updated_at: iso(now),
     created_at: iso(addDays(now, -int(MIN, MAX))),
@@ -439,7 +509,8 @@ type AttendanceUpdate = { id: string; status: AttendanceStatus };
 function generatePaymentPlan(
   attendances: AttendanceRow[],
   events: EventRow[],
-  now: Date
+  now: Date,
+  payoutProfileId: string | null
 ): { payments: PaymentInsert[]; attendanceUpdates: AttendanceUpdate[] } {
   const { stripe: stripeCandidates, cash: cashCandidates } = distributeCandidates(
     attendances,
@@ -478,7 +549,14 @@ function generatePaymentPlan(
   for (const scenario of MANDATORY_SCENARIOS) {
     const list = scenario.method === "stripe" ? stripeCandidates : cashCandidates;
     payments.push(
-      createPaymentRecord(scenario.method, scenario.status, take(list), now, scenario.overrides)
+      createPaymentRecord(
+        scenario.method,
+        scenario.status,
+        take(list),
+        now,
+        payoutProfileId,
+        scenario.overrides
+      )
     );
   }
 
@@ -504,12 +582,16 @@ function generatePaymentPlan(
     if (useStripe) {
       const candidate = stripeCandidates.pop();
       if (candidate) {
-        payments.push(createPaymentRecord("stripe", getRandomStripeStatus(), candidate, now));
+        payments.push(
+          createPaymentRecord("stripe", getRandomStripeStatus(), candidate, now, payoutProfileId)
+        );
       }
     } else {
       const candidate = cashCandidates.pop();
       if (candidate) {
-        payments.push(createPaymentRecord("cash", getRandomCashStatus(), candidate, now));
+        payments.push(
+          createPaymentRecord("cash", getRandomCashStatus(), candidate, now, payoutProfileId)
+        );
       }
     }
   }
@@ -541,9 +623,15 @@ async function processPaymentsAndCancellations(
   client: AppSupabaseClient,
   attendances: AttendanceRow[],
   events: EventRow[],
-  now: Date
+  now: Date,
+  payoutProfileId: string | null
 ) {
-  const { payments, attendanceUpdates } = generatePaymentPlan(attendances, events, now);
+  const { payments, attendanceUpdates } = generatePaymentPlan(
+    attendances,
+    events,
+    now,
+    payoutProfileId
+  );
 
   if (payments.length > 0) {
     const { error } = await client.from("payments").insert(payments, { defaultToNull: false });
@@ -575,16 +663,19 @@ async function processPaymentsAndCancellations(
 
 // --- メイン関数 ---
 
-export async function seedDemoData(adminClient: AppSupabaseClient, userId: string) {
+export async function seedDemoData(
+  adminClient: AppSupabaseClient,
+  userId: string
+): Promise<{ communityId: string }> {
   // シードの初期化
   faker.seed(Number.parseInt(userId.replace(/\+/g, "-").slice(0, 8), 16));
   const now = new Date();
 
-  // 1. ユーザー＆Stripeのセットアップ
-  await setupUserAndStripe(adminClient, userId, now);
+  // 1. ユーザー＆コミュニティのセットアップ
+  const { communityId, payoutProfileId } = await setupUserAndCommunity(adminClient, userId, now);
 
   // 2. イベント
-  const insertedEvents = await insertEvents(adminClient, userId, now);
+  const insertedEvents = await insertEvents(adminClient, userId, now, communityId, payoutProfileId);
   const primaryEvent = assertNonNull(
     insertedEvents.find((e) => e.title.includes("創立10周年記念")),
     "Primary event not found"
@@ -599,5 +690,13 @@ export async function seedDemoData(adminClient: AppSupabaseClient, userId: strin
   );
 
   // 4. 決済＆キャンセル
-  await processPaymentsAndCancellations(adminClient, insertedAttendances, insertedEvents, now);
+  await processPaymentsAndCancellations(
+    adminClient,
+    insertedAttendances,
+    insertedEvents,
+    now,
+    payoutProfileId
+  );
+
+  return { communityId };
 }
