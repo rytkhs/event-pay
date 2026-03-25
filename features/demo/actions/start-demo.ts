@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 
+import { setCurrentCommunityCookie } from "@core/community/current-community";
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { buildKey, enforceRateLimit, POLICIES } from "@core/rate-limit";
@@ -78,7 +79,42 @@ export async function startDemoSession(): Promise<ActionResult<{ redirectUrl: st
 
   // 2. Seed Data
   try {
-    await seedDemoData(adminClient, userId);
+    const { communityId } = await seedDemoData(adminClient, userId);
+
+    // 3. Login (Set Cookies)
+    // ここでは通常のServer Client (middleware連携) を使用してログインし、Cookieをセットする
+    const supabase = await createServerActionSupabaseClient();
+    const { error: loginError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (loginError) {
+      logger.error("Demo user login failed", {
+        category: "system",
+        action: "demo_login_failed",
+        outcome: "failure",
+        user_id: userId,
+        error: loginError.message,
+      });
+      return fail("INTERNAL_ERROR", {
+        userMessage: "デモユーザーのログインに失敗しました。しばらく経ってから再試行してください。",
+        retryable: true,
+      });
+    }
+
+    // 4. Set current community cookie
+    await setCurrentCommunityCookie(communityId);
+
+    logger.info("Demo session started successfully", {
+      category: "system",
+      action: "demo_session_started",
+      outcome: "success",
+      user_id: userId,
+    });
+
+    // 5. Return success with redirect URL
+    return ok({ redirectUrl: "/dashboard" });
   } catch (e) {
     logger.error("Demo data seeding failed", {
       category: "system",
@@ -94,36 +130,4 @@ export async function startDemoSession(): Promise<ActionResult<{ redirectUrl: st
       retryable: true,
     });
   }
-
-  // 3. Login (Set Cookies)
-  // ここでは通常のServer Client (middleware連携) を使用してログインし、Cookieをセットする
-  const supabase = await createServerActionSupabaseClient();
-  const { error: loginError } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (loginError) {
-    logger.error("Demo user login failed", {
-      category: "system",
-      action: "demo_login_failed",
-      outcome: "failure",
-      user_id: userId,
-      error: loginError.message,
-    });
-    return fail("INTERNAL_ERROR", {
-      userMessage: "デモユーザーのログインに失敗しました。しばらく経ってから再試行してください。",
-      retryable: true,
-    });
-  }
-
-  logger.info("Demo session started successfully", {
-    category: "system",
-    action: "demo_session_started",
-    outcome: "success",
-    user_id: userId,
-  });
-
-  // 4. Return success with redirect URL
-  return ok({ redirectUrl: "/dashboard" });
 }
