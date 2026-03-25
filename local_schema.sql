@@ -1414,6 +1414,10 @@ BEGIN
           RAISE EXCEPTION 'このメールアドレスは既にこのイベントに登録されています'
             USING ERRCODE = '23505',
                   DETAIL = 'attendances_event_email_unique';
+        ELSIF v_constraint_name = 'attendances_guest_token_key' THEN
+          RAISE EXCEPTION 'Guest token already exists (concurrent request detected): %', LEFT(p_guest_token, 8) || '...'
+            USING ERRCODE = '23505',
+                  DETAIL = 'This may indicate a race condition or duplicate request';
         END IF;
         RAISE;
       END;
