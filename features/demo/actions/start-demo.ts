@@ -78,11 +78,29 @@ export async function startDemoSession(): Promise<ActionResult<{ redirectUrl: st
   const userId = userResult.user.id;
 
   // 2. Seed Data
+  let communityId: string;
   try {
-    const { communityId } = await seedDemoData(adminClient, userId);
+    const seedResult = await seedDemoData(adminClient, userId);
+    communityId = seedResult.communityId;
+  } catch (e) {
+    logger.error("Demo data seeding failed", {
+      category: "system",
+      action: "demo_seed_data_failed",
+      outcome: "failure",
+      user_id: userId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+    // ユーザー作成済みだがデータ投入失敗。デモとしては致命的なのでエラーにする
+    // 本来はユーザー削除などのクリーンアップが必要だが、Ephemeral環境なので許容
+    return fail("INTERNAL_ERROR", {
+      userMessage: "デモデータの作成に失敗しました。しばらく経ってから再試行してください。",
+      retryable: true,
+    });
+  }
 
-    // 3. Login (Set Cookies)
-    // ここでは通常のServer Client (middleware連携) を使用してログインし、Cookieをセットする
+  // 3. Login (Set Cookies) & Session Setup
+  // ここでは通常のServer Client (middleware連携) を使用してログインし、Cookieをセットする
+  try {
     const supabase = await createServerActionSupabaseClient();
     const { error: loginError } = await supabase.auth.signInWithPassword({
       email,
@@ -116,17 +134,15 @@ export async function startDemoSession(): Promise<ActionResult<{ redirectUrl: st
     // 5. Return success with redirect URL
     return ok({ redirectUrl: "/dashboard" });
   } catch (e) {
-    logger.error("Demo data seeding failed", {
+    logger.error("Demo session initialization failed", {
       category: "system",
-      action: "demo_seed_data_failed",
+      action: "demo_session_init_failed",
       outcome: "failure",
       user_id: userId,
       error: e instanceof Error ? e.message : String(e),
     });
-    // ユーザー作成済みだがデータ投入失敗。デモとしては致命的なのでエラーにする
-    // 本来はユーザー削除などのクリーンアップが必要だが、Ephemeral環境なので許容
     return fail("INTERNAL_ERROR", {
-      userMessage: "デモデータの作成に失敗しました。しばらく経ってから再試行してください。",
+      userMessage: "デモセッションの開始に失敗しました。しばらく経ってから再試行してください。",
       retryable: true,
     });
   }
