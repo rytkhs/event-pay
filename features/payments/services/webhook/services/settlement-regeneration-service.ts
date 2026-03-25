@@ -13,10 +13,14 @@ interface SettlementRegenerationMeta {
   action: string;
   eventId?: string;
   paymentId?: string;
+  payoutProfileId?: string;
+  stripeAccountId?: string;
 }
 
 interface SettlementRegenerationPayment {
   attendance_id?: string | null;
+  payout_profile_id?: string | null;
+  stripe_account_id?: string | null;
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -88,6 +92,8 @@ export class SettlementRegenerationService {
 
       const createdBy = (eventRow as { created_by: string }).created_by;
       const settlementPort = getSettlementReportPort();
+      // Settlement remains outside CC-09 scope. Keep this event.created_by bridge
+      // only for the legacy settlement adapter contract.
       const result = await settlementPort.regenerateAfterRefundOrDispute(eventId, createdBy);
       if (!result.success) {
         handleServerError("SETTLEMENT_REGENERATE_FAILED", {
@@ -95,6 +101,8 @@ export class SettlementRegenerationService {
           additionalData: {
             eventId,
             paymentId: meta.paymentId,
+            payoutProfileId: meta.payoutProfileId ?? payment?.payout_profile_id ?? undefined,
+            stripeAccountId: meta.stripeAccountId ?? payment?.stripe_account_id ?? undefined,
             createdBy,
             error: result.error.message,
           },
@@ -105,6 +113,8 @@ export class SettlementRegenerationService {
       this.logger.info("Settlement snapshot regenerated successfully", {
         event_id: eventId,
         created_by: createdBy,
+        payout_profile_id: meta.payoutProfileId ?? payment?.payout_profile_id ?? undefined,
+        stripe_account_id: meta.stripeAccountId ?? payment?.stripe_account_id ?? undefined,
         report_id: result.data?.reportId,
         source_action: meta.action,
         outcome: "success",
@@ -115,6 +125,8 @@ export class SettlementRegenerationService {
         additionalData: {
           eventId: meta.eventId,
           paymentId: meta.paymentId,
+          payoutProfileId: meta.payoutProfileId ?? payment?.payout_profile_id ?? undefined,
+          stripeAccountId: meta.stripeAccountId ?? payment?.stripe_account_id ?? undefined,
           error: error instanceof Error ? error.message : "unknown",
         },
       });

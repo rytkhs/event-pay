@@ -12,6 +12,11 @@ import { createWebhookDbError } from "../errors/webhook-error-factory";
 import { PaymentWebhookRepository } from "../repositories/payment-webhook-repository";
 import { PaymentAnalyticsWebhookService } from "../services/payment-analytics-service";
 import type { WebhookProcessingResult } from "../types";
+import {
+  buildPaymentWebhookMeta,
+  getPaymentWebhookLogContext,
+  logStripeAccountSnapshotMismatch,
+} from "../webhook-payment-context";
 
 interface CheckoutSessionHandlerParams {
   paymentRepository: PaymentWebhookRepository;
@@ -66,14 +71,16 @@ export class CheckoutSessionHandler {
         return okResult();
       }
 
+      logStripeAccountSnapshotMismatch({ event, payment, logger: this.logger });
+
       if (payment.stripe_checkout_session_id === sessionId) {
         this.logger.info("Checkout session already linked (duplicate)", {
           event_id: event.id,
-          payment_id: payment.id,
+          ...getPaymentWebhookLogContext(payment),
           session_id: maskSessionId(sessionId),
           outcome: "success",
         });
-        return okResult();
+        return okResult(undefined, buildPaymentWebhookMeta({ eventId: event.id, payment }));
       }
 
       const { error: updateError } = await this.paymentRepository.saveCheckoutSessionLink({
@@ -98,6 +105,8 @@ export class CheckoutSessionHandler {
           reason: "checkout_session_update_failed",
           eventId: event.id,
           paymentId: payment.id,
+          payoutProfileId: payment.payout_profile_id,
+          stripeAccountId: payment.stripe_account_id,
           userMessage: "決済ステータス更新に失敗しました",
           dbError: updateError,
           details: {
@@ -111,7 +120,7 @@ export class CheckoutSessionHandler {
       this.logger.info("Checkout session processed successfully", {
         event_id: event.id,
         session_id: maskSessionId(sessionId),
-        payment_id: payment.id,
+        ...getPaymentWebhookLogContext(payment),
         payment_intent_id: paymentIntentId ?? undefined,
         outcome: "success",
       });
@@ -120,10 +129,10 @@ export class CheckoutSessionHandler {
       if (!gaClientId) {
         this.logger.debug("[GA4] No GA4 Client ID in checkout session metadata", {
           session_id: maskSessionId(sessionId),
-          payment_id: payment.id,
+          ...getPaymentWebhookLogContext(payment),
           outcome: "success",
         });
-        return okResult();
+        return okResult(undefined, buildPaymentWebhookMeta({ eventId: event.id, payment }));
       }
 
       await this.paymentAnalyticsService.trackCheckoutCompletion({
@@ -134,7 +143,7 @@ export class CheckoutSessionHandler {
         amount: payment.amount,
       });
 
-      return okResult();
+      return okResult(undefined, buildPaymentWebhookMeta({ eventId: event.id, payment }));
     } catch (error) {
       throw error instanceof Error ? error : new Error("Unknown error");
     }
@@ -164,10 +173,12 @@ export class CheckoutSessionHandler {
         return okResult();
       }
 
+      logStripeAccountSnapshotMismatch({ event, payment, logger: this.logger });
+
       if (!canPromoteStatus(payment.status as PaymentStatus, "failed")) {
         this.logger.info("Status promotion rule preventing update", {
           event_id: event.id,
-          payment_id: payment.id,
+          ...getPaymentWebhookLogContext(payment),
           current_status: payment.status,
           outcome: "success",
         });
@@ -197,6 +208,8 @@ export class CheckoutSessionHandler {
           reason: "checkout_status_update_failed",
           eventId: event.id,
           paymentId: payment.id,
+          payoutProfileId: payment.payout_profile_id,
+          stripeAccountId: payment.stripe_account_id,
           userMessage: "決済ステータス更新に失敗しました",
           dbError: updateError,
           details: {
@@ -209,12 +222,12 @@ export class CheckoutSessionHandler {
 
       this.logger.info("Checkout session expiration processed", {
         event_id: event.id,
-        payment_id: payment.id,
+        ...getPaymentWebhookLogContext(payment),
         session_id: maskSessionId(sessionId),
         payment_intent_id: paymentIntentId ?? undefined,
         outcome: "success",
       });
-      return okResult(undefined, { eventId: event.id, paymentId: payment.id });
+      return okResult(undefined, buildPaymentWebhookMeta({ eventId: event.id, payment }));
     } catch (error) {
       throw error instanceof Error ? error : new Error("Unknown error");
     }

@@ -91,6 +91,7 @@ export async function setupStripeWebhookWorkerTest(): Promise<StripeWebhookWorke
     const pending = await createPendingTestPayment(paymentSetup.testAttendance.id, {
       amount: 1500,
       stripeAccountId: paymentSetup.testUser.stripeConnectAccountId,
+      payoutProfileId: paymentSetup.testUser.payoutProfileId,
     });
 
     return {

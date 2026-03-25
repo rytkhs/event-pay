@@ -12,6 +12,8 @@ interface CreateWebhookDbErrorParams {
   dbError: WebhookDatabaseErrorLike & { message: string };
   details: Record<string, unknown>;
   paymentId?: string;
+  payoutProfileId?: string | null;
+  stripeAccountId?: string | null;
   terminalOverride?: boolean;
 }
 
@@ -31,6 +33,8 @@ interface CreateWebhookInvalidPayloadErrorParams {
   message: string;
   details: Record<string, unknown>;
   paymentId?: string;
+  payoutProfileId?: string | null;
+  stripeAccountId?: string | null;
 }
 
 function buildMeta(
@@ -52,6 +56,8 @@ export function createWebhookDbError({
   reason,
   eventId,
   paymentId,
+  payoutProfileId,
+  stripeAccountId,
   userMessage,
   dbError,
   details,
@@ -76,6 +82,8 @@ export function createWebhookDbError({
         reason,
         eventId,
         paymentId,
+        payoutProfileId: payoutProfileId ?? undefined,
+        stripeAccountId: stripeAccountId ?? undefined,
       },
       dbError.code
     )
@@ -114,6 +122,8 @@ export function createWebhookInvalidPayloadError({
   reason,
   eventId,
   paymentId,
+  payoutProfileId,
+  stripeAccountId,
   userMessage,
   message,
   details,
@@ -130,6 +140,8 @@ export function createWebhookInvalidPayloadError({
       reason,
       eventId,
       paymentId,
+      payoutProfileId: payoutProfileId ?? undefined,
+      stripeAccountId: stripeAccountId ?? undefined,
       errorCode: code,
     }
   );

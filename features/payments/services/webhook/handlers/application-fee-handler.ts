@@ -9,6 +9,11 @@ import { PaymentWebhookRepository } from "../repositories/payment-webhook-reposi
 import { SettlementRegenerationService } from "../services/settlement-regeneration-service";
 import { StripeObjectFetchService } from "../services/stripe-object-fetch-service";
 import type { WebhookProcessingResult } from "../types";
+import {
+  buildPaymentWebhookMeta,
+  getPaymentWebhookLogContext,
+  logStripeAccountSnapshotMismatch,
+} from "../webhook-payment-context";
 
 interface ApplicationFeeHandlerParams {
   paymentRepository: PaymentWebhookRepository;
@@ -78,6 +83,8 @@ export class ApplicationFeeHandler {
       return okResult();
     }
 
+    logStripeAccountSnapshotMismatch({ event, payment, logger: this.logger });
+
     let applicationFeeRefundedAmount = payment.application_fee_refunded_amount;
     let applicationFeeRefundId: string | null = payment.application_fee_refund_id;
 
@@ -122,6 +129,8 @@ export class ApplicationFeeHandler {
         reason: "application_fee_refund_update_failed",
         eventId: event.id,
         paymentId: payment.id,
+        payoutProfileId: payment.payout_profile_id,
+        stripeAccountId: payment.stripe_account_id,
         userMessage: "手数料返金の反映に失敗しました",
         dbError: updateError,
         details: {
@@ -134,7 +143,7 @@ export class ApplicationFeeHandler {
 
     this.logger.info("Application fee refund processed", {
       event_id: event.id,
-      payment_id: payment.id,
+      ...getPaymentWebhookLogContext(payment),
       application_fee_id: applicationFeeId,
       application_fee_refunded_amount: applicationFeeRefundedAmount,
       outcome: "success",
@@ -146,6 +155,6 @@ export class ApplicationFeeHandler {
       paymentId: payment.id,
     });
 
-    return okResult(undefined, { eventId: event.id, paymentId: payment.id });
+    return okResult(undefined, buildPaymentWebhookMeta({ eventId: event.id, payment }));
   }
 }

@@ -105,6 +105,8 @@ describe("PaymentWebhookRepository", () => {
     expect(selectedColumns).toContain("id");
     expect(selectedColumns).toContain("status");
     expect(selectedColumns).toContain("application_fee_refunded_amount");
+    expect(selectedColumns).toContain("payout_profile_id");
+    expect(selectedColumns).toContain("stripe_account_id");
   });
 
   it("unknownエラーでも PaymentWebhookRepositoryError として返す", async () => {
