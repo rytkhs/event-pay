@@ -714,7 +714,6 @@ export class StripeConnectService implements IStripeConnectService {
               status: status,
               charges_enabled: chargesEnabled,
               payouts_enabled: payoutsEnabled,
-              representative_community_id: null,
             },
             { onConflict: "owner_user_id" }
           )
