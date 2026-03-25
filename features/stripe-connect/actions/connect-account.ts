@@ -425,6 +425,13 @@ Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
         user_id: user.id,
         outcome: "failure",
       });
+      return fail("NOT_FOUND", {
+        userMessage:
+          "Stripeアカウントが見つかりませんでした。再度、決済設定画面からお手続きください",
+        redirectUrl: buildOnboardingErrorRedirectUrl(
+          "Stripeアカウントが見つかりませんでした。再度、決済設定画面からお手続きください"
+        ),
+      });
     }
 
     // 設定ページにリダイレクト用のURLを返す

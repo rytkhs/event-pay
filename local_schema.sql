@@ -1310,7 +1310,6 @@ DECLARE
   v_payout_profile_id uuid;
   v_stripe_account_id character varying;
   v_payout_status text;
-  v_payouts_enabled boolean;
 BEGIN
   IF p_event_id IS NULL THEN
     RAISE EXCEPTION 'Event ID cannot be null';
@@ -2047,7 +2046,6 @@ DECLARE
   v_payout_profile_id uuid;
   v_stripe_account_id character varying;
   v_payout_status text;
-  v_payouts_enabled boolean;
 BEGIN
   SELECT event_id, status INTO v_event_id, v_current_status
   FROM public.attendances
