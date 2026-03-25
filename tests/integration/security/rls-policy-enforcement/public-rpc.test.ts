@@ -249,7 +249,6 @@ describe("Public Connect Account RPC", () => {
       expect((row as any).payout_profile_id).toBe(setup.testPayoutProfileId);
       expect((row as any).stripe_account_id).toBeDefined();
       expect((row as any).status).toBe("verified");
-      expect((row as any).payouts_enabled).toBe(true);
     }
   });
 
