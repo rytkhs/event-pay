@@ -306,19 +306,6 @@ async function setupUserAndCommunity(
   );
   if (userUpsertErr) throw userUpsertErr;
 
-  // stripe_connect_accounts（既存互換用として維持）
-  const { error: stripeErr } = await client.from("stripe_connect_accounts").upsert(
-    {
-      user_id: userId,
-      stripe_account_id: demoStripeAccountId ?? "",
-      status: "verified" as StripeAccountStatus,
-      charges_enabled: true,
-      payouts_enabled: true,
-    },
-    { onConflict: "user_id" }
-  );
-  if (stripeErr) throw new Error(`seed stripe_connect_accounts failed: ${stripeErr.message}`);
-
   // payout_profiles の作成
   let payoutProfileId: string | null = null;
   if (demoStripeAccountId) {
