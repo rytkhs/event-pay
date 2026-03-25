@@ -44,6 +44,7 @@ export const DEMO_ALLOWED_PREFIXES = [
   "/start-demo",
   "/login",
   "/register",
+  "/communities/",
   "/c/",
   "/tokushoho/",
 ];
