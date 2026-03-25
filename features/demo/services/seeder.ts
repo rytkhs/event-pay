@@ -157,7 +157,7 @@ function getEventScenarios(
       fee: 4000,
       capacity: 120,
       description:
-        "（開催終了）新入生歓迎イベント。Stripe決済済みと、現地での現金回収（受領済み）のデータが混在している状態を確認できます。",
+        "（開催終了）新入生歓迎イベント。オンライン決済済みと、現地での現金回収（受領済み）のデータが混在している状態を確認できます。",
       registration_deadline: day(-45),
       payment_deadline: day(-40),
       payment_methods: ["stripe", "cash"],
@@ -246,6 +246,153 @@ function getEventScenarios(
   ];
 }
 
+function getBookClubEventScenarios(
+  userId: string,
+  now: Date,
+  communityId: string,
+  payoutProfileId: string | null
+): EventInsert[] {
+  const day = (offset: number) => iso(addDays(now, offset));
+  const ppForMethods = (methods: string[]) => (methods.includes("stripe") ? payoutProfileId : null);
+
+  return [
+    {
+      // 1. 開催前（申込受付中・支払期限あり・stripe+cash）
+      created_by: userId,
+      community_id: communityId,
+      payout_profile_id: ppForMethods(["stripe", "cash"]),
+      title: "読書会1周年記念オフ会 & 交流会",
+      date: day(20),
+      location: "渋谷貸し会議室 + 交流会会場",
+      fee: 5000,
+      capacity: 80,
+      description:
+        "読書会コミュニティの1周年を記念した交流イベントです。会場費と懇親会費を含み、オンラインと現金の両方に対応しています。",
+      registration_deadline: day(10),
+      payment_deadline: day(12),
+      payment_methods: ["stripe", "cash"],
+      invite_token: tokens.invite(),
+      allow_payment_after_deadline: true,
+      grace_period_days: 3,
+    },
+    {
+      // 2. 開催前（申込締切間近・capacity小さめ）
+      created_by: userId,
+      community_id: communityId,
+      payout_profile_id: ppForMethods(["stripe", "cash"]),
+      title: "【締切間近】外部セミナー参加費",
+      date: day(7),
+      location: "都内セミナー会場",
+      fee: 3000,
+      capacity: 30,
+      description:
+        "外部セミナーへの団体参加です。支払い期限があるため、締切後の支払いは受け付けません。",
+      registration_deadline: day(2),
+      payment_deadline: day(3),
+      payment_methods: ["stripe", "cash"],
+      invite_token: tokens.invite(),
+      allow_payment_after_deadline: false,
+      grace_period_days: 0,
+    },
+    {
+      // 3. 開催済み（売上が立っている：Stripe paid と cash received が混在）
+      created_by: userId,
+      community_id: communityId,
+      payout_profile_id: ppForMethods(["stripe", "cash"]),
+      title: "【終了】新メンバー歓迎 読書会 & 懇親会",
+      date: day(-30),
+      location: "池袋駅前イベントスペース",
+      fee: 4000,
+      capacity: 120,
+      description:
+        "（開催終了）新メンバー向け歓迎イベントです。オンライン決済済みと、当日の現金回収（受領済み）が混在している状態を確認できます。",
+      registration_deadline: day(-45),
+      payment_deadline: day(-40),
+      payment_methods: ["stripe", "cash"],
+      invite_token: tokens.invite(),
+      allow_payment_after_deadline: false,
+      grace_period_days: 0,
+      created_at: day(-50),
+      updated_at: day(-45),
+    },
+    {
+      // 4. 無料イベント
+      created_by: userId,
+      community_id: communityId,
+      payout_profile_id: ppForMethods([]),
+      title: "【自由参加】朝のもくもく読書会",
+      date: day(14),
+      location: "オンライン（Zoom）",
+      fee: 0,
+      capacity: 200,
+      description:
+        "参加費無料の朝活イベントです。決済フローが発生しないため、参加表明のみで完了します。",
+      registration_deadline: day(12),
+      payment_methods: [],
+      invite_token: tokens.invite(),
+      allow_payment_after_deadline: false,
+      grace_period_days: 0,
+    },
+    {
+      // 5. Stripeのみイベント
+      created_by: userId,
+      community_id: communityId,
+      payout_profile_id: ppForMethods(["stripe"]),
+      title: "今月の課題本",
+      date: day(10),
+      location: "オンライン（手渡し・配送）",
+      fee: 2500,
+      capacity: 150,
+      description: "今月の課題本です。オンライン決済のみ受け付けます。",
+      registration_deadline: day(6),
+      payment_deadline: day(7),
+      payment_methods: ["stripe"],
+      invite_token: tokens.invite(),
+      allow_payment_after_deadline: true,
+      grace_period_days: 2,
+    },
+    {
+      // 6. 現金のみイベント
+      created_by: userId,
+      community_id: communityId,
+      payout_profile_id: ppForMethods(["cash"]),
+      title: "定例読書会 @ 市民センター",
+      date: day(15),
+      location: "渋谷区立市民センター 第2会議室",
+      fee: 1500,
+      capacity: 60,
+      description:
+        "定例の読書会イベントです。会場費を当日現地で集めます。現金のみの設定にしており、管理者が手動で「未受領」→「受領済み」に変更するフローを想定しています。",
+      registration_deadline: day(11),
+      payment_deadline: day(13),
+      payment_methods: ["cash"],
+      invite_token: tokens.invite(),
+      allow_payment_after_deadline: false,
+      grace_period_days: 0,
+    },
+    {
+      // 7. 中止イベント
+      created_by: userId,
+      community_id: communityId,
+      payout_profile_id: ppForMethods(["stripe", "cash"]),
+      title: "文章術ミニ勉強会",
+      date: day(11),
+      location: "新宿ワークラウンジ",
+      fee: 3500,
+      capacity: 90,
+      description: "中止となった勉強会です。中止ステータスの表示確認用データです。",
+      registration_deadline: day(4),
+      payment_deadline: day(4),
+      payment_methods: ["stripe", "cash"],
+      invite_token: tokens.invite(),
+      allow_payment_after_deadline: false,
+      grace_period_days: 0,
+      canceled_at: day(-1),
+      canceled_by: userId,
+    },
+  ];
+}
+
 // --- ロジックヘルパー ---
 
 function jpNickname() {
@@ -281,7 +428,11 @@ async function waitForPublicUserRow(client: AppSupabaseClient, userId: string) {
   throw new Error("public.users row was not created by trigger in time.");
 }
 
-type SetupResult = { communityId: string; payoutProfileId: string | null };
+type SetupResult = {
+  communityId: string;
+  bookClubCommunityId: string;
+  payoutProfileId: string | null;
+};
 
 async function setupUserAndCommunity(
   client: AppSupabaseClient,
@@ -332,14 +483,28 @@ async function setupUserAndCommunity(
     .from("communities")
     .insert({
       created_by: userId,
-      name: "デモテニスサークル",
+      name: "デモ テニスサークル",
       description:
-        "みんなの集金のデモ環境用サークルです。イベント作成・出欠管理・集金フローを体験できます。",
+        "みんなの集金のデモ用サークルです。イベント作成・出欠管理・集金フローを体験できます。",
       current_payout_profile_id: payoutProfileId,
     })
     .select("id")
     .single();
   if (communityErr) throw new Error(`seed communities failed: ${communityErr.message}`);
+
+  const { data: bookClubCommunityData, error: bookClubCommunityErr } = await client
+    .from("communities")
+    .insert({
+      created_by: userId,
+      name: "デモ 読書会同好会",
+      description:
+        "みんなの集金のデモ用コミュニティです。読書会・勉強会・懇親会の出欠管理と集金フローを体験できます。",
+      current_payout_profile_id: payoutProfileId,
+    })
+    .select("id")
+    .single();
+  if (bookClubCommunityErr)
+    throw new Error(`seed book club communities failed: ${bookClubCommunityErr.message}`);
 
   // payout_profile の representative_community_id を設定
   if (payoutProfileId) {
@@ -351,7 +516,11 @@ async function setupUserAndCommunity(
       throw new Error(`update payout_profiles representative failed: ${ppUpdateErr.message}`);
   }
 
-  return { communityId: communityData.id, payoutProfileId };
+  return {
+    communityId: communityData.id,
+    bookClubCommunityId: bookClubCommunityData.id,
+    payoutProfileId,
+  };
 }
 
 async function insertEvents(
@@ -359,9 +528,15 @@ async function insertEvents(
   userId: string,
   now: Date,
   communityId: string,
-  payoutProfileId: string | null
+  payoutProfileId: string | null,
+  scenarioFactory: (
+    userId: string,
+    now: Date,
+    communityId: string,
+    payoutProfileId: string | null
+  ) => EventInsert[] = getEventScenarios
 ) {
-  const events = getEventScenarios(userId, now, communityId, payoutProfileId);
+  const events = scenarioFactory(userId, now, communityId, payoutProfileId);
   const { data: insertedEvents, error } = await client
     .from("events")
     .insert(events, { defaultToNull: false })
@@ -672,7 +847,11 @@ export async function seedDemoData(
   const now = new Date();
 
   // 1. ユーザー＆コミュニティのセットアップ
-  const { communityId, payoutProfileId } = await setupUserAndCommunity(adminClient, userId, now);
+  const { communityId, bookClubCommunityId, payoutProfileId } = await setupUserAndCommunity(
+    adminClient,
+    userId,
+    now
+  );
 
   // 2. イベント
   const insertedEvents = await insertEvents(adminClient, userId, now, communityId, payoutProfileId);
@@ -694,6 +873,37 @@ export async function seedDemoData(
     adminClient,
     insertedAttendances,
     insertedEvents,
+    now,
+    payoutProfileId
+  );
+
+  // 5. 読書会コミュニティのイベント
+  const insertedBookClubEvents = await insertEvents(
+    adminClient,
+    userId,
+    now,
+    bookClubCommunityId,
+    payoutProfileId,
+    getBookClubEventScenarios
+  );
+  const bookClubPrimaryEvent = assertNonNull(
+    insertedBookClubEvents.find((e) => e.title.includes("読書会1周年記念")),
+    "Book club primary event not found"
+  );
+
+  // 6. 読書会コミュニティの出欠参加データ
+  const insertedBookClubAttendances = await insertAttendances(
+    adminClient,
+    insertedBookClubEvents,
+    bookClubPrimaryEvent.id,
+    now
+  );
+
+  // 7. 読書会コミュニティの決済＆キャンセル
+  await processPaymentsAndCancellations(
+    adminClient,
+    insertedBookClubAttendances,
+    insertedBookClubEvents,
     now,
     payoutProfileId
   );
