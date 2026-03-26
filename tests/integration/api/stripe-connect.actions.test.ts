@@ -410,6 +410,33 @@ describe("Stripe Connect actions", () => {
         expect(result.data).toBe(1500);
       }
     });
+
+    it("returns 0 when current community has no payout profile", async () => {
+      const { getStripeBalanceAction } = require("@features/stripe-connect/server");
+      (mockSupabase.from as jest.Mock).mockImplementation((tableName) => {
+        if (tableName === "communities") {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({
+                  data: { current_payout_profile_id: null },
+                  error: null,
+                }),
+              }),
+            }),
+          } as any;
+        }
+
+        throw new Error(`unexpected table lookup: ${tableName}`);
+      });
+
+      const result = await getStripeBalanceAction();
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe(0);
+      }
+    });
   });
 
   describe("getConnectAccountStatusAction", () => {
@@ -423,6 +450,24 @@ describe("Stripe Connect actions", () => {
         expect(result.data.hasAccount).toBe(true);
         expect(result.data.accountId).toBe("acct_test");
         expect(result.data.dbStatus).toBe("unverified");
+      }
+    });
+
+    it("returns no_account when current community has no payout profile", async () => {
+      const { __mockStripeConnectService } = jest.requireMock(
+        "@features/stripe-connect/services/factories"
+      );
+      __mockStripeConnectService.getConnectAccountForCommunity.mockResolvedValueOnce(null);
+
+      const { getConnectAccountStatusAction } = require("@features/stripe-connect/server");
+      const result = await getConnectAccountStatusAction();
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.hasAccount).toBe(false);
+        expect(result.data.uiStatus).toBe("no_account");
+        expect(result.data.chargesEnabled).toBe(false);
+        expect(result.data.payoutsEnabled).toBe(false);
       }
     });
 

@@ -45,12 +45,11 @@ export function resolveDashboardConnectCtaStatus(
 
 async function getDashboardPayoutProfile(
   supabase: AppSupabaseClient,
-  userId: string,
+  _userId: string,
   communityId: string
 ): Promise<DashboardPayoutProfileRow | null> {
   const { payoutProfile } = await resolveCurrentCommunityPayoutProfile(supabase, {
     communityId,
-    userId,
   });
 
   if (!payoutProfile) {

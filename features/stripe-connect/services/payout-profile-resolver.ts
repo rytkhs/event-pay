@@ -18,7 +18,7 @@ type StripeConnectPayoutProfile = Pick<
 
 type CurrentCommunityPayoutProfileResolution = {
   payoutProfile: StripeConnectPayoutProfile | null;
-  resolvedBy: "community" | "owner_fallback" | "none";
+  resolvedBy: "community" | "none";
 };
 
 const PAYOUT_PROFILE_SELECT =
@@ -79,10 +79,9 @@ export async function resolveCurrentCommunityPayoutProfile(
   supabase: AppSupabaseClient,
   params: {
     communityId: string;
-    userId: string;
   }
 ): Promise<CurrentCommunityPayoutProfileResolution> {
-  const { communityId, userId } = params;
+  const { communityId } = params;
   const { data, error } = await supabase
     .from("communities")
     .select("current_payout_profile_id")
@@ -102,14 +101,6 @@ export async function resolveCurrentCommunityPayoutProfile(
         resolvedBy: "community",
       };
     }
-  }
-
-  const ownerPayoutProfile = await getOwnerPayoutProfile(supabase, userId);
-  if (ownerPayoutProfile) {
-    return {
-      payoutProfile: ownerPayoutProfile,
-      resolvedBy: "owner_fallback",
-    };
   }
 
   return {

@@ -530,7 +530,6 @@ export class StripeConnectService implements IStripeConnectService {
 
       const { payoutProfile } = await resolveCurrentCommunityPayoutProfile(this.supabase, {
         communityId,
-        userId,
       });
 
       return payoutProfile as StripeConnectAccount | null;

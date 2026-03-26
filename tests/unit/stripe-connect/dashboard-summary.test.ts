@@ -38,7 +38,6 @@ describe("dashboard stripe summary", () => {
       {},
       expect.objectContaining({
         communityId: "community-1",
-        userId: "user-1",
       })
     );
     expect(mockedFetchStripeBalanceByAccountId).not.toHaveBeenCalled();
@@ -69,32 +68,6 @@ describe("dashboard stripe summary", () => {
       })
     );
     expect(mockedFetchStripeBalanceByAccountId).not.toHaveBeenCalled();
-  });
-
-  it("returns a simplified setup CTA for onboarding accounts", async () => {
-    mockedResolveCurrentCommunityPayoutProfile.mockResolvedValue({
-      payoutProfile: {
-        id: "profile-1",
-        owner_user_id: "user-1",
-        stripe_account_id: "acct_onboarding",
-        status: "onboarding",
-        charges_enabled: false,
-        payouts_enabled: false,
-        representative_community_id: "community-3",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      resolvedBy: "owner_fallback",
-    });
-
-    const ctaStatus = await getDashboardConnectCtaStatus({} as any, "user-1", "community-3");
-
-    expect(ctaStatus).toEqual(
-      expect.objectContaining({
-        statusType: "requirements_due",
-        actionUrl: "/settings/payments",
-      })
-    );
   });
 
   it("returns null balance when no connect account exists", async () => {

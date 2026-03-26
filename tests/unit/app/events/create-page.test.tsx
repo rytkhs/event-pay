@@ -85,4 +85,26 @@ describe("CreateEventPage", () => {
     );
     expect(screen.getByText("form:true:none:ボドゲ会")).toBeInTheDocument();
   });
+
+  it("current community の payout profile が未設定ならオンライン決済を fail-close にする", async () => {
+    createServerComponentSupabaseClient.mockResolvedValue({ from: jest.fn() });
+    requireNonEmptyCommunityWorkspaceForServerComponent.mockResolvedValue({
+      isCommunityEmptyState: false,
+      currentUser: {
+        id: "user-1",
+      },
+      currentCommunity: {
+        id: "community-1",
+        name: "ボドゲ会",
+      },
+    });
+    getDashboardConnectCtaStatus.mockResolvedValue("no_account");
+
+    const CreateEventPage = (await import("../../../../app/(app)/events/create/page")).default;
+    const ui = await CreateEventPage();
+
+    render(ui);
+
+    expect(screen.getByText("form:false:no_account:ボドゲ会")).toBeInTheDocument();
+  });
 });
