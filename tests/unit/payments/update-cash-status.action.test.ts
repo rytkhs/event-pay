@@ -42,7 +42,6 @@ jest.mock("@core/supabase/factory", () => {
       data: {
         id: "00000000-0000-0000-0000-000000000010",
         community_id: "community-1",
-        created_by: "user-1",
       },
       error: null,
     }),

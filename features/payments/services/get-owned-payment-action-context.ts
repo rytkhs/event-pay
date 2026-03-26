@@ -223,7 +223,7 @@ export async function getOwnedBulkPaymentActionContextForServerAction(
   );
   const { data: events, error: eventsError } = await supabase
     .from("events")
-    .select("id, community_id, created_by")
+    .select("id, community_id")
     .in("id", eventIds);
 
   if (eventsError) {

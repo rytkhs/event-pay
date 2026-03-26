@@ -6,12 +6,11 @@ import type { EventRow } from "@core/types/event";
 import type { AppSupabaseClient } from "@core/types/supabase";
 import { validateEventId } from "@core/validation/event-id";
 
-type OwnedEventContextRow = Pick<EventRow, "id" | "community_id" | "created_by">;
+type OwnedEventContextRow = Pick<EventRow, "id" | "community_id">;
 
 export type OwnedEventContext = {
   id: string;
   communityId: string;
-  createdBy: string;
 };
 
 export async function getOwnedEventContextForCurrentCommunity(
@@ -31,7 +30,7 @@ export async function getOwnedEventContextForCurrentCommunity(
 
   const { data: event, error } = await supabase
     .from("events")
-    .select("id, community_id, created_by")
+    .select("id, community_id")
     .eq("id", validation.data)
     .maybeSingle<OwnedEventContextRow>();
 
@@ -89,6 +88,5 @@ export async function getOwnedEventContextForCurrentCommunity(
   return okResult({
     id: event.id,
     communityId: event.community_id,
-    createdBy: event.created_by,
   });
 }

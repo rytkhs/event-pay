@@ -84,7 +84,6 @@ describe("EventEditPage", () => {
       data: {
         id: "00000000-0000-0000-0000-000000000001",
         communityId: "community-1",
-        createdBy: "user-1",
       },
     });
     getEventPayoutProfileReadiness.mockResolvedValue({ isReady: true });
