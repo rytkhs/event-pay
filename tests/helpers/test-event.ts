@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import { generateInviteToken } from "@core/utils/invite-token";
+import { resolveTestCommunityContext } from "@tests/helpers/test-payment-data";
 
 import type { Database } from "@/types/database";
 
@@ -16,6 +17,8 @@ export interface TestEvent {
   capacity: number | null;
   invite_token: string;
   created_by: string;
+  community_id: string;
+  payout_profile_id: string | null;
   payment_methods?: Database["public"]["Enums"]["payment_method_enum"][];
   participants?: Array<{ email: string; nickname: string }>;
 }
@@ -31,6 +34,8 @@ export interface CreateTestEventOptions {
   registration_deadline?: string | null;
   payment_deadline?: string | null;
   canceled_at?: string | null;
+  communityId?: string;
+  payoutProfileId?: string | null;
 }
 
 /**
@@ -69,7 +74,7 @@ export async function createTestEvent(
   const inviteToken = generateInviteToken();
 
   // デフォルト値を設定
-  const defaultOptions: Required<Omit<CreateTestEventOptions, "date">> & { date: string } = {
+  const defaultOptions = {
     title: "テスト用イベント",
     date: futureDateString,
     fee: 0, // デフォルトは無料
@@ -80,7 +85,7 @@ export async function createTestEvent(
     registration_deadline: defaultRegistrationDeadline,
     payment_deadline: null,
     canceled_at: null,
-  };
+  } satisfies Omit<CreateTestEventOptions, "date"> & { date: string };
 
   const eventOptions = { ...defaultOptions, ...options };
 
@@ -88,6 +93,19 @@ export async function createTestEvent(
   if (eventOptions.fee > 0 && eventOptions.payment_methods.length === 0) {
     eventOptions.payment_methods = ["stripe"];
   }
+
+  const { communityId, payoutProfileId } = await resolveTestCommunityContext(
+    adminClient,
+    createdBy,
+    {
+      communityId: options.communityId,
+      payoutProfileId: options.payoutProfileId,
+      autoCreateCommunityName: `Test Event Community (${createdBy})`,
+    }
+  );
+  const eventPayoutProfileId = eventOptions.payment_methods.includes("stripe")
+    ? payoutProfileId
+    : null;
 
   // イベントデータを構築
   const eventData: EventInsert = {
@@ -103,6 +121,8 @@ export async function createTestEvent(
     canceled_at: eventOptions.canceled_at ?? null,
     invite_token: inviteToken,
     created_by: createdBy,
+    community_id: communityId,
+    payout_profile_id: eventPayoutProfileId,
     created_at: new Date().toISOString(),
   };
 
@@ -132,6 +152,8 @@ export async function createTestEvent(
     capacity: createdEvent.capacity,
     invite_token: createdEvent.invite_token,
     created_by: createdEvent.created_by,
+    community_id: createdEvent.community_id,
+    payout_profile_id: createdEvent.payout_profile_id,
     payment_methods: createdEvent.payment_methods,
   };
 }

@@ -67,6 +67,8 @@ test.describe("イベント編集 V2（E2E）", () => {
       capacity: paid.capacity,
       invite_token: paid.invite_token,
       created_by: paid.created_by,
+      community_id: paid.community_id,
+      payout_profile_id: paid.payout_profile_id,
       payment_methods: paid.payment_methods,
     };
     createdEvents.push(event);
