@@ -240,7 +240,7 @@ for each field in form:
     - [evaluateEventEditViolations](cci:1://file:///home/tkhs/code/event-pay/core/domain/event-edit-restrictions/evaluate.ts:72:0-108:1)
   - **depends on** `@core/utils/derive-event-status` / `event-calculations` / `timezone` 等（effective値検証）
   - **depends on** `@core/validation/event`（`updateEventSchema`）
-  - **depends on** DBテーブル `payments/attendances/events/stripe_connect_accounts`
+  - **depends on** DBテーブル `payments/attendances/events/payout_profiles`
 
 ### 図式（コンポーネント/ドメイン/サーバの三層）
 ```mermaid

@@ -163,17 +163,35 @@ export async function POST(request: NextRequest) {
     // イベント情報を取得（Slack通知用）
     const { data: eventInfo, error: eventError } = await admin
       .from("events")
-      .select("title, created_by")
+      .select("title, community_id")
       .eq("id", eventId)
       .single();
 
     // Slack通知（管理者向け）
     if (!eventError && eventInfo) {
       try {
-        // 主催者名を取得
-        const { data: creatorName } = await admin.rpc("get_event_creator_name", {
-          p_creator_id: eventInfo.created_by,
-        });
+        let communityName = "不明なコミュニティ";
+
+        if (eventInfo.community_id) {
+          const { data: community, error: communityError } = await admin
+            .from("communities")
+            .select("name")
+            .eq("id", eventInfo.community_id)
+            .maybeSingle<{ name: string }>();
+
+          if (communityError) {
+            cancelLogger.warn("Event cancel worker failed to resolve community", {
+              action: "event_cancel_lookup_community_failed",
+              event_id: eventId,
+              community_id: eventInfo.community_id,
+              error_code: communityError.code,
+              error_message: communityError.message,
+              outcome: "failure",
+            });
+          } else if (community?.name) {
+            communityName = community.name;
+          }
+        }
 
         const timestamp = new Date().toISOString();
         const customMessageStr = message ? `\nカスタムメッセージ: ${message}` : "";
@@ -181,7 +199,7 @@ export async function POST(request: NextRequest) {
         const slackText = `[Event Cancel Alert]
 イベント名: ${eventInfo.title}
 イベントID: ${eventId}
-主催者: ${creatorName || "Unknown User"}
+コミュニティ: ${communityName}
 通知対象人数: ${emails.length}人
 キャンセル時刻: ${timestamp}${customMessageStr}`;
 
