@@ -9,12 +9,12 @@
 
 import { jest } from "@jest/globals";
 
+import { AppError } from "@core/errors/app-error";
+import { errResult, okResult } from "@core/errors/app-result";
+import { getCurrentCommunityServerActionContext } from "@core/community/current-community";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { createCommunityOwnedEventFixture } from "@tests/helpers/community-owner-fixtures";
-import {
-  getAuthenticatedTestClient,
-  setupAuthenticatedTestClient,
-} from "@tests/setup/authenticated-client-mock";
-import { setupNextCacheMocks, setupNextHeadersMocks } from "@tests/setup/common-mocks";
+import { setupNextCacheMocks } from "@tests/setup/common-mocks";
 import {
   createMultiUserTestSetup,
   createTestDataCleanupHelper,
@@ -24,38 +24,26 @@ import {
 import { getFutureDateTimeLocal } from "@/tests/helpers/test-datetime";
 import { buildFormData } from "@/tests/helpers/test-form-data";
 import { createPaidStripePayment, createTestAttendance } from "@/tests/helpers/test-payment-data";
-import { type TestUser } from "@/tests/helpers/test-user";
 
 // next/cache は副作用を持たないようにモック（共通関数を使用するため、モック化のみ宣言）
 jest.mock("next/cache", () => ({
   revalidatePath: jest.fn(),
 }));
 
-// next/headers はCSRF通過用のヘッダーを返す（共通関数を使用するため、モック化のみ宣言）
-jest.mock("next/headers", () => ({
-  headers: jest.fn(),
+jest.mock("@core/community/current-community", () => ({
+  getCurrentCommunityServerActionContext: jest.fn(),
 }));
 
-function setupAllowedHeaders() {
-  const mockHeaders = setupNextHeadersMocks({ "user-agent": "test-user-agent" });
-  const { headers } = require("next/headers");
-  (headers as jest.MockedFunction<typeof headers>).mockReturnValue(mockHeaders as any);
-}
+jest.mock("@core/supabase/factory", () => ({
+  createServerActionSupabaseClient: jest.fn(),
+}));
 
-// テスト内で createClient をモックする（DB操作はadmin clientを委譲し、auth.getUserのみテストユーザーを返す）
-async function mockSupabaseCreateClient(user: TestUser) {
-  jest.resetModules();
-  await setupAuthenticatedTestClient(user.email, user.password, user.id);
-  const authenticatedClient = getAuthenticatedTestClient();
-
-  if (!authenticatedClient) {
-    throw new Error("Authenticated test client is not initialized");
-  }
-
-  jest.doMock("@core/supabase/factory", () => ({
-    createServerActionSupabaseClient: () => authenticatedClient,
-  }));
-}
+const mockGetCurrentCommunityServerActionContext =
+  getCurrentCommunityServerActionContext as jest.MockedFunction<
+    typeof getCurrentCommunityServerActionContext
+  >;
+const mockCreateServerActionSupabaseClient =
+  createServerActionSupabaseClient as jest.MockedFunction<typeof createServerActionSupabaseClient>;
 
 describe("イベント編集 統合テスト", () => {
   let setup: MultiUserTestSetup;
@@ -65,8 +53,6 @@ describe("イベント編集 統合テスト", () => {
   const getUserB = () => setup.users[1];
 
   beforeAll(async () => {
-    setupAllowedHeaders();
-    // Next.js cacheモックを設定（共通関数を使用）
     setupNextCacheMocks();
     setup = await createMultiUserTestSetup({
       testName: `event-edit-test-${Date.now()}`,
@@ -123,10 +109,29 @@ describe("イベント編集 統合テスト", () => {
     return fixture;
   }
 
+  function mockUpdateActionContext(userId: string, currentCommunityId: string) {
+    mockCreateServerActionSupabaseClient.mockResolvedValue(setup.adminClient);
+    mockGetCurrentCommunityServerActionContext.mockResolvedValue(
+      okResult({
+        currentCommunity: {
+          id: currentCommunityId,
+          name: "Current Community",
+          slug: "current-community",
+          createdAt: new Date().toISOString(),
+        },
+        user: {
+          id: userId,
+          email: `${userId}@example.com`,
+          user_metadata: {},
+          app_metadata: {},
+        } as any,
+      })
+    );
+  }
+
   test("正常系: タイトル/場所/説明を更新できる", async () => {
     const fixture = await createTrackedEvent(getUserA().id, { fee: 0, payment_methods: [] });
-
-    await mockSupabaseCreateClient(getUserA());
+    mockUpdateActionContext(getUserA().id, fixture.communityId);
     const { updateEventAction } = await import("@/features/events/actions/update-event");
 
     const fd = buildFormData({
@@ -154,7 +159,7 @@ describe("イベント編集 統合テスト", () => {
       payment_deadline: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
     });
 
-    await mockSupabaseCreateClient(getUserA());
+    mockUpdateActionContext(getUserA().id, fixture.communityId);
     const { updateEventAction } = await import("@/features/events/actions/update-event");
 
     const fd = buildFormData({
@@ -182,7 +187,7 @@ describe("イベント編集 統合テスト", () => {
       registration_deadline: originalDeadline, // 1時間後
     });
 
-    await mockSupabaseCreateClient(getUserA());
+    mockUpdateActionContext(getUserA().id, fixture.communityId);
     const { updateEventAction } = await import("@/features/events/actions/update-event");
 
     // registration_deadline を空文字で送信（無視されるべき）
@@ -212,7 +217,7 @@ describe("イベント編集 統合テスト", () => {
       payment_deadline: new Date(Date.now() + 90 * 60 * 1000).toISOString(),
     });
 
-    await mockSupabaseCreateClient(getUserA());
+    mockUpdateActionContext(getUserA().id, fixture.communityId);
     const { updateEventAction } = await import("@/features/events/actions/update-event");
 
     const fd = buildFormData({ fee: "0" });
@@ -240,7 +245,7 @@ describe("イベント編集 統合テスト", () => {
     });
     cleanupHelper.trackPayment(payment.id);
 
-    await mockSupabaseCreateClient(getUserA());
+    mockUpdateActionContext(getUserA().id, fixture.communityId);
     const { updateEventAction } = await import("@/features/events/actions/update-event");
 
     // 参加費の変更は不可
@@ -263,7 +268,7 @@ describe("イベント編集 統合テスト", () => {
       payment_methods: ["cash"], // 初期は現金のみ
     });
 
-    await mockSupabaseCreateClient(getUserA());
+    mockUpdateActionContext(getUserA().id, fixture.communityId);
     const { updateEventAction } = await import("@/features/events/actions/update-event");
 
     // Stripeを追加するがpayment_deadlineを指定しない（エラーになるべき）
@@ -292,7 +297,7 @@ describe("イベント編集 統合テスト", () => {
       attachPayoutProfileToEvent: false,
     });
 
-    await mockSupabaseCreateClient(getUserA());
+    mockUpdateActionContext(getUserA().id, fixture.communityId);
     const { updateEventAction } = await import("@/features/events/actions/update-event");
 
     const res = await updateEventAction(
@@ -313,7 +318,7 @@ describe("イベント編集 統合テスト", () => {
   test("制約: 定員は現在の参加者数未満にできない", async () => {
     const fixture = await createTrackedEventWithParticipants(getUserA().id, { fee: 0 }, 2);
 
-    await mockSupabaseCreateClient(getUserA());
+    mockUpdateActionContext(getUserA().id, fixture.communityId);
     const { updateEventAction } = await import("@/features/events/actions/update-event");
 
     const res = await updateEventAction(fixture.event.id, buildFormData({ capacity: "1" }));
@@ -324,7 +329,7 @@ describe("イベント編集 統合テスト", () => {
   test("制約: 締切相関/上限のバリデーション（reg>date, pay<reg, pay>date+30d, grace超過）", async () => {
     const fixture = await createTrackedEvent(getUserA().id, { fee: 0, payment_methods: [] });
 
-    await mockSupabaseCreateClient(getUserA());
+    mockUpdateActionContext(getUserA().id, fixture.communityId);
     const { updateEventAction } = await import("@/features/events/actions/update-event");
 
     // 開催時刻を +48h に変更
@@ -385,7 +390,7 @@ describe("イベント編集 統合テスト", () => {
       date: new Date(Date.now() + 180 * 60 * 1000).toISOString(), // 3時間後（締切より後）
     });
 
-    await mockSupabaseCreateClient(getUserA());
+    mockUpdateActionContext(getUserA().id, fixture.communityId);
     const { updateEventAction } = await import("@/features/events/actions/update-event");
 
     // payment_deadline を registration_deadline より前に設定（エラーになるべき）
@@ -411,15 +416,13 @@ describe("イベント編集 統合テスト", () => {
 
   test("挙動: 未認証だと UNAUTHORIZED", async () => {
     const fixture = await createTrackedEvent(getUserA().id);
-
-    // 認証なしのモック
-    jest.resetModules();
-    jest.doMock("@core/supabase/factory", () => ({
-      createServerActionSupabaseClient: () => ({
-        auth: { getUser: async () => ({ data: { user: null }, error: null }) },
-        from: (table: string) => setup.adminClient.from(table),
-      }),
-    }));
+    mockGetCurrentCommunityServerActionContext.mockResolvedValueOnce(
+      errResult(
+        new AppError("UNAUTHORIZED", {
+          userMessage: "認証が必要です",
+        })
+      )
+    );
 
     const { updateEventAction } = await import("@/features/events/actions/update-event");
     const res = await updateEventAction(fixture.event.id, buildFormData({ title: "x" }));
@@ -427,30 +430,28 @@ describe("イベント編集 統合テスト", () => {
     if (!res.success) expect(res.error.code).toBe("UNAUTHORIZED");
   });
 
-  test("挙動: 作成者以外は FORBIDDEN", async () => {
+  test("挙動: current community 不一致は EVENT_ACCESS_DENIED", async () => {
     const fixture = await createTrackedEvent(getUserA().id);
 
-    await mockSupabaseCreateClient(getUserB());
+    mockUpdateActionContext(getUserB().id, "00000000-0000-0000-0000-0000000000bb");
     const { updateEventAction } = await import("@/features/events/actions/update-event");
     const res = await updateEventAction(fixture.event.id, buildFormData({ title: "他人が更新" }));
     expect(res.success).toBe(false);
-    if (!res.success) expect(res.error.code).toBe("FORBIDDEN");
+    if (!res.success) expect(res.error.code).toBe("EVENT_ACCESS_DENIED");
   });
 
-  test("挙動: 不正なIDは FORBIDDEN", async () => {
-    await mockSupabaseCreateClient(getUserA());
+  test("挙動: 存在しないIDは EVENT_NOT_FOUND", async () => {
+    mockUpdateActionContext(getUserA().id, "00000000-0000-0000-0000-0000000000aa");
     const { updateEventAction } = await import("@/features/events/actions/update-event");
     const res = await updateEventAction(
       "00000000-0000-0000-0000-0000000000aa",
       buildFormData({ title: "x" })
     );
     expect(res.success).toBe(false);
-    // 存在しないイベントはセキュリティ上の理由でFORBIDDENを返す
-    if (!res.success) expect(res.error.code).toBe("FORBIDDEN");
+    if (!res.success) expect(res.error.code).toBe("EVENT_NOT_FOUND");
   });
 
-  test("制約: registration_deadlineの空文字列は拒否される", async () => {
-    await mockSupabaseCreateClient(getUserA());
+  test("制約: registration_deadlineの空文字列は変更なしとして扱われる", async () => {
     const { updateEventAction } = await import("@/features/events/actions/update-event");
 
     // テスト用イベントを作成
@@ -462,11 +463,11 @@ describe("イベント編集 統合テスト", () => {
       registration_deadline: getFutureDateTimeLocal(60),
     });
 
+    mockUpdateActionContext(getUserA().id, fixture.communityId);
     const res = await updateEventAction(
       fixture.event.id,
       buildFormData({ registration_deadline: "" })
     );
-    // 空文字列はZodスキーマレベルでバリデーションエラーになるため、変更なしとして処理される
     expect(res.success).toBe(true);
     if (res.success) {
       expect(res.message).toBe("変更はありませんでした");
