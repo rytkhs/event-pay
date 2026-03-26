@@ -1,7 +1,7 @@
 # イベント作成フロー（Create Event）
 
 ## 概要
-本ドキュメントは、主催者がイベントを作成し、招待リンク（invite token）を共有可能な状態にするまでのフローを説明する。
+本ドキュメントは、community owner が現在選択中 community の文脈でイベントを作成し、招待リンク（invite token）を共有可能な状態にするまでのフローを説明する。
 スコープ: `/events/create` 表示 → 入力/検証 → DB保存 → 詳細ページ表示 → 招待リンク提示（RSVP/決済は別フロー）。
 
 ## Non-goals
@@ -9,21 +9,21 @@
 - 複数料金（役職別、オプション、早割など）は扱わない（1イベント=1参加費）。
 
 ## 前提
-- 主催者はログイン済みであること（未ログインなら `/login` へ誘導）。
+- community owner はログイン済みであること（未ログインなら `/login` へ誘導）。
 - DBは Supabase PostgreSQL で、RLSにより community owner のイベントが保護される前提。
 - イベント作成は、原則として現在選択中コミュニティの文脈で行う。
 - オンライン決済（Stripe）を許可する場合、現在選択中コミュニティの `current_payout_profile_id` が存在し、かつ ready 状態である必要がある。
 
 ## 正常系フロー
-1. 主催者が `/events/create` にアクセスする。
+1. community owner が `/events/create` にアクセスする。
 2. 未ログインならログインに誘導し、ログイン済みなら作成フォームを表示する。
 3. Server Component で current community を解決し、そのコミュニティに対する操作であることを画面上に表示する。
 4. UIは current community の payout profile 状態を参照し、「オンライン決済を選べるか」を事前に判断する（UX向上のための事前チェック）。
-5. 主催者がフォーム入力し、クライアント側で即時バリデーションを行う。
+5. owner がフォーム入力し、クライアント側で即時バリデーションを行う。
 6. 作成ボタン押下で Server Action（例: `createEventAction`）に送信し、サーバー側で再バリデーションを行う（改ざん対策）。
 7. Server Action でも current community を再解決し、`community_id` と `payout_profile_id = communities.current_payout_profile_id` を snapshot として確定する。
 8. 有料かつ `stripe` を含む場合、サーバー側で current community の payout profile 状態を再検証し、要件未達なら作成を拒否する。
-9. サーバー側で `invite_token` を生成し、`events` にINSERTする。
+9. サーバー側で `invite_token` を生成し、`events` に INSERT する。
 10. 作成成功後、イベント詳細ページ `/events/{eventId}` に遷移し、招待リンク（`/invite/{invite_token}`）を表示・コピー可能にする。
 
 ## 入力とバリデーション（要点）
@@ -35,8 +35,9 @@
 
 ## データ更新（最小まとめ）
 - `events`
-  - 主催者（`created_by`）に紐づくイベントを、現在選択中コミュニティ（`community_id`）配下に作成する。
+  - イベントは現在選択中コミュニティ（`community_id`）配下に作成する。
   - `payout_profile_id` には、作成時点の `communities.current_payout_profile_id` を snapshot として保存する。
+  - `created_by` は互換 / 監査用途として保持されうるが、イベント所属と主要認可の正本は `community_id`。
   - 招待用の `invite_token` を保存する。
 - `system_logs`（または同等の監査ログ）
   - `event.create` 等の操作ログを保存し、後から追跡できるようにする（カテゴリ/actor等の設計は logging の正を参照）。
@@ -95,7 +96,7 @@ sequenceDiagram
 
 ## 関連ドキュメント
 - 俯瞰: `../architecture.md`
-- データモデル: `../data-model.md`（events / invite_token / 制約）
-- ドメイン: `../domain.md`（用語・状態・不変条件）
+- データモデル: `../data-model.md`（community / event / payout snapshot / invite_token）
+- ドメイン: `../domain.md`（current community / payout profile / 不変条件）
 - セキュリティ: `../security.md`（RLS/脅威/運用）
 - ADR: `../decisions/`（Stripe/ホスティング/冪等性などの背景）
