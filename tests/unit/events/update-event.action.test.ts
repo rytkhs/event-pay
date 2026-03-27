@@ -1,6 +1,7 @@
 import { jest } from "@jest/globals";
 
 import { setupNextCacheMocks, setupNextHeadersMocks } from "../../setup/common-mocks";
+import { getFutureDateTimeLocal } from "../../helpers/test-datetime";
 
 // next/headers をモック（共通関数を使用するため、モック化のみ宣言）
 jest.mock("next/headers", () => ({
@@ -36,6 +37,11 @@ describe("updateEventAction", () => {
     attendancesData?: any[];
     updatedEvent?: any;
     currentCommunityId?: string;
+    currentCommunityPayoutProfileId?: string | null;
+    payoutProfileReadinessRow?: {
+      status: string;
+      payouts_enabled: boolean;
+    } | null;
   }) {
     const captured = { updateData: undefined as any };
 
@@ -74,6 +80,34 @@ describe("updateEventAction", () => {
       limit: jest.fn(() => Promise.resolve({ data: options.paymentsData ?? [], error: null })),
     };
 
+    const communitiesQuery: any = {
+      select: jest.fn(() => communitiesQuery),
+      eq: jest.fn(() => communitiesQuery),
+      maybeSingle: jest.fn(() =>
+        Promise.resolve({
+          data:
+            options.currentCommunityPayoutProfileId === undefined
+              ? { current_payout_profile_id: null }
+              : { current_payout_profile_id: options.currentCommunityPayoutProfileId },
+          error: null,
+        })
+      ),
+    };
+
+    const payoutProfilesQuery: any = {
+      select: jest.fn(() => payoutProfilesQuery),
+      eq: jest.fn(() => payoutProfilesQuery),
+      maybeSingle: jest.fn(() =>
+        Promise.resolve({
+          data:
+            options.payoutProfileReadinessRow === undefined
+              ? { status: "verified", payouts_enabled: true }
+              : options.payoutProfileReadinessRow,
+          error: null,
+        })
+      ),
+    };
+
     // SupabaseのQueryBuilderはPromiseライク（thenable）なので、awaitに対応させる
     const attendancesQuery: any = {
       select: jest.fn(() => attendancesQuery),
@@ -91,6 +125,8 @@ describe("updateEventAction", () => {
       from: jest.fn((table: string) => {
         if (table === "events") return eventsQuery;
         if (table === "payments") return paymentsQuery;
+        if (table === "communities") return communitiesQuery;
+        if (table === "payout_profiles") return payoutProfilesQuery;
         if (table === "attendances") return attendancesQuery;
         throw new Error(`Unexpected table: ${table}`);
       }),
@@ -220,5 +256,92 @@ describe("updateEventAction", () => {
     expect(res.success).toBe(false);
     if (res.success) return;
     expect(res.error.code).toBe("EVENT_ACCESS_DENIED");
+  });
+
+  it("payout_profile_id が null の event に Stripe を追加すると current community snapshot を補完する", async () => {
+    const existingEvent = {
+      id: "evt-4",
+      created_by: "00000000-0000-0000-0000-000000000001",
+      community_id: "community-1",
+      title: "t",
+      date: new Date(Date.now() + 3600_000).toISOString(),
+      registration_deadline: new Date(Date.now() + 600_000).toISOString(),
+      payment_deadline: null,
+      fee: 1000,
+      payment_methods: ["cash"],
+      payout_profile_id: null,
+      attendances: [],
+    };
+
+    const updatedEvent = {
+      ...existingEvent,
+      payment_methods: ["stripe", "cash"],
+      payment_deadline: new Date(Date.now() + 1_200_000).toISOString(),
+      payout_profile_id: "profile-current",
+    };
+
+    const { captured } = mockSupabaseWith({
+      existingEvent,
+      updatedEvent,
+      currentCommunityPayoutProfileId: "profile-current",
+    });
+
+    const form = new FormData();
+    form.append("payment_methods", "stripe");
+    form.append("payment_methods", "cash");
+    form.append("payment_deadline", getFutureDateTimeLocal(30));
+
+    const { updateEventAction: run } = await import("@/features/events/actions/update-event");
+    const res = await run("00000000-0000-0000-0000-000000000004", form);
+
+    expect(res.success).toBe(true);
+    expect(captured.updateData).toMatchObject({
+      payment_methods: ["stripe", "cash"],
+      payout_profile_id: "profile-current",
+    });
+  });
+
+  it("既存 snapshot がある event の Stripe 再追加では payout_profile_id を再束縛しない", async () => {
+    const existingEvent = {
+      id: "evt-5",
+      created_by: "00000000-0000-0000-0000-000000000001",
+      community_id: "community-1",
+      title: "t",
+      date: new Date(Date.now() + 3600_000).toISOString(),
+      registration_deadline: new Date(Date.now() + 600_000).toISOString(),
+      payment_deadline: null,
+      fee: 1000,
+      payment_methods: ["cash"],
+      payout_profile_id: "profile-existing",
+      attendances: [],
+    };
+
+    const updatedEvent = {
+      ...existingEvent,
+      payment_methods: ["stripe", "cash"],
+      payment_deadline: new Date(Date.now() + 1_200_000).toISOString(),
+    };
+
+    const { captured } = mockSupabaseWith({
+      existingEvent,
+      updatedEvent,
+      currentCommunityPayoutProfileId: "profile-current",
+    });
+
+    const form = new FormData();
+    form.append("payment_methods", "stripe");
+    form.append("payment_methods", "cash");
+    form.append("payment_deadline", getFutureDateTimeLocal(30));
+
+    const { updateEventAction: run } = await import("@/features/events/actions/update-event");
+    const res = await run("00000000-0000-0000-0000-000000000005", form);
+
+    expect(res.success).toBe(true);
+    expect(captured.updateData).toMatchObject({
+      payment_methods: ["stripe", "cash"],
+    });
+    expect(Object.prototype.hasOwnProperty.call(captured.updateData, "payout_profile_id")).toBe(
+      false
+    );
   });
 });

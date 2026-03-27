@@ -14,8 +14,8 @@ import { calculateAttendeeCount } from "@core/utils/event-calculations";
 
 import { SinglePageEventEditForm } from "@features/events";
 import {
-  getEventPayoutProfileReadiness,
   getOwnedEventContextForCurrentCommunity,
+  resolveEventStripePayoutProfile,
 } from "@features/events/server";
 
 import { updateEventAction } from "./actions";
@@ -144,8 +144,11 @@ export default async function EventEditPage(props: EventEditPageProps) {
     redirect(`/events/${eventId}/forbidden?reason=${computedStatus}`);
   }
 
-  const payoutReadiness = await getEventPayoutProfileReadiness(supabase, event.payout_profile_id);
-  const canUseOnlinePayments = payoutReadiness.isReady;
+  const payoutResolution = await resolveEventStripePayoutProfile(supabase, {
+    currentCommunityId: currentCommunity.id,
+    eventPayoutProfileId: event.payout_profile_id,
+  });
+  const canUseOnlinePayments = payoutResolution.isReady;
 
   return (
     <div className="min-h-screen bg-muted/30 py-8">

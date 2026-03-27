@@ -244,6 +244,9 @@ stateDiagram-v2
 
 ### 7.4 受取先 snapshot
 - event 作成時に `events.payout_profile_id` を固定する
+- `events.payout_profile_id` は non-null になった後は編集で変更しない
+- 例外として、`events.payout_profile_id` が `null` の event に `stripe` を初回追加する場合のみ、current community の `current_payout_profile_id` を補完して保存できる
+- `stripe` を外しても `events.payout_profile_id` は消さず、後で `stripe` を再追加しても既存 snapshot を使う
 - 決済時に `payments.payout_profile_id` を固定する
 - community の `current_payout_profile_id` 変更は過去 event / payment を書き換えない
 

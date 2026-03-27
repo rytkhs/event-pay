@@ -7,8 +7,8 @@ import "@testing-library/jest-dom";
 
 const requireNonEmptyCommunityWorkspaceForServerComponent = jest.fn();
 const createServerComponentSupabaseClient = jest.fn();
-const getEventPayoutProfileReadiness = jest.fn();
 const getOwnedEventContextForCurrentCommunity = jest.fn();
+const resolveEventStripePayoutProfile = jest.fn();
 
 jest.mock("@core/community/app-workspace", () => ({
   requireNonEmptyCommunityWorkspaceForServerComponent,
@@ -35,12 +35,14 @@ jest.mock("next/link", () => ({
 }));
 
 jest.mock("@features/events", () => ({
-  SinglePageEventEditForm: () => <div>edit-form</div>,
+  SinglePageEventEditForm: ({ canUseOnlinePayments }: { canUseOnlinePayments: boolean }) => (
+    <div>edit-form:{String(canUseOnlinePayments)}</div>
+  ),
 }));
 
 jest.mock("@features/events/server", () => ({
-  getEventPayoutProfileReadiness,
   getOwnedEventContextForCurrentCommunity,
+  resolveEventStripePayoutProfile,
 }));
 
 jest.mock("../../../../app/(app)/events/[id]/edit/actions", () => ({
@@ -86,7 +88,7 @@ describe("EventEditPage", () => {
         communityId: "community-1",
       },
     });
-    getEventPayoutProfileReadiness.mockResolvedValue({ isReady: true });
+    resolveEventStripePayoutProfile.mockResolvedValue({ isReady: true });
 
     const eventsQuery = {
       select: jest.fn(),
@@ -152,15 +154,103 @@ describe("EventEditPage", () => {
 
     render(ui);
 
-    expect(screen.getByText("edit-form")).toBeInTheDocument();
+    expect(screen.getByText("edit-form:true")).toBeInTheDocument();
     expect(getOwnedEventContextForCurrentCommunity).toHaveBeenCalledWith(
       expect.anything(),
       "00000000-0000-0000-0000-000000000001",
       "community-1"
     );
+    expect(resolveEventStripePayoutProfile).toHaveBeenCalledWith(expect.anything(), {
+      currentCommunityId: "community-1",
+      eventPayoutProfileId: "payout-1",
+    });
     expect(paymentsQuery.eq).toHaveBeenCalledWith(
       "attendances.event_id",
       "00000000-0000-0000-0000-000000000001"
     );
+  });
+
+  it("event の snapshot が null でも current community が ready ならオンライン決済を有効化する", async () => {
+    requireNonEmptyCommunityWorkspaceForServerComponent.mockResolvedValue({
+      currentCommunity: { id: "community-1", name: "A" },
+    });
+    getOwnedEventContextForCurrentCommunity.mockResolvedValue({
+      success: true,
+      data: {
+        id: "00000000-0000-0000-0000-000000000002",
+        communityId: "community-1",
+      },
+    });
+    resolveEventStripePayoutProfile.mockResolvedValue({ isReady: true });
+
+    const eventsQuery = {
+      select: jest.fn(),
+      eq: jest.fn(),
+      single: jest.fn(),
+      overrideTypes: jest.fn(),
+    } as any;
+    eventsQuery.select.mockReturnValue(eventsQuery);
+    eventsQuery.eq.mockReturnValue(eventsQuery);
+    eventsQuery.single.mockReturnValue(eventsQuery);
+    eventsQuery.overrideTypes.mockResolvedValue({
+      data: {
+        id: "00000000-0000-0000-0000-000000000002",
+        title: "春合宿",
+        description: "desc",
+        location: "Tokyo",
+        date: "2099-01-01T10:00:00.000Z",
+        fee: 3000,
+        capacity: 30,
+        payment_methods: ["cash"],
+        registration_deadline: "2098-12-25T10:00:00.000Z",
+        payment_deadline: null,
+        allow_payment_after_deadline: false,
+        grace_period_days: 0,
+        created_at: "2098-10-01T10:00:00.000Z",
+        updated_at: "2098-10-02T10:00:00.000Z",
+        created_by: "user-1",
+        community_id: "community-1",
+        payout_profile_id: null,
+        invite_token: "invite-token",
+        canceled_at: null,
+        attendances: [],
+      },
+      error: null,
+    });
+
+    const paymentsQuery = {
+      select: jest.fn(),
+      eq: jest.fn(),
+      in: jest.fn(),
+      limit: jest.fn(),
+    } as any;
+    paymentsQuery.select.mockReturnValue(paymentsQuery);
+    paymentsQuery.eq.mockReturnValue(paymentsQuery);
+    paymentsQuery.in.mockReturnValue(paymentsQuery);
+    paymentsQuery.limit.mockResolvedValue({
+      data: [],
+      error: null,
+    });
+
+    createServerComponentSupabaseClient.mockResolvedValue({
+      from: jest.fn((table: string) => {
+        if (table === "events") return eventsQuery;
+        if (table === "payments") return paymentsQuery;
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    });
+
+    const EventEditPage = (await import("../../../../app/(app)/events/[id]/edit/page")).default;
+    const ui = await EventEditPage({
+      params: Promise.resolve({ id: "00000000-0000-0000-0000-000000000002" }),
+    });
+
+    render(ui);
+
+    expect(screen.getByText("edit-form:true")).toBeInTheDocument();
+    expect(resolveEventStripePayoutProfile).toHaveBeenCalledWith(expect.anything(), {
+      currentCommunityId: "community-1",
+      eventPayoutProfileId: null,
+    });
   });
 });

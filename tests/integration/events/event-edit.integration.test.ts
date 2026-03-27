@@ -289,7 +289,7 @@ describe("イベント編集 統合テスト", () => {
     }
   });
 
-  test("制約: payout_profile_id が無いイベントでは Stripe 追加を fail-close する", async () => {
+  test("正常系: payout_profile_id が null のイベントでも current community が ready なら Stripe 追加時に snapshot を補完する", async () => {
     const fixture = await createTrackedEvent(getUserA().id, {
       fee: 1000,
       payment_methods: ["cash"],
@@ -308,10 +308,63 @@ describe("イベント編集 統合テスト", () => {
       })
     );
 
-    expect(res.success).toBe(false);
-    if (!res.success) {
-      expect(res.error.code).toBe("VALIDATION_ERROR");
-      expect(res.error.userMessage).toMatch(/受取先プロファイル|オンライン決済を有効化できません/);
+    expect(res.success).toBe(true);
+    if (res.success) {
+      expect(res.data.payment_methods).toEqual(["stripe", "cash"]);
+      expect(res.data.payout_profile_id).toBe(fixture.payoutProfileId);
+    }
+  });
+
+  test("正常系: Stripe を外してから再追加しても event snapshot は再束縛しない", async () => {
+    const fixture = await createTrackedEvent(getUserA().id, {
+      fee: 1000,
+      payment_methods: ["stripe", "cash"],
+      payment_deadline: getFutureDateTimeLocal(24),
+      withPayoutProfile: true,
+      attachPayoutProfileToEvent: true,
+    });
+
+    mockUpdateActionContext(getUserA().id, fixture.communityId);
+    const { updateEventAction } = await import("@/features/events/actions/update-event");
+
+    const originalPayoutProfileId = fixture.event.payout_profile_id;
+    expect(originalPayoutProfileId).toBeTruthy();
+
+    const removeStripeRes = await updateEventAction(
+      fixture.event.id,
+      buildFormData({
+        payment_methods: ["cash"],
+        payment_deadline: "",
+      })
+    );
+
+    expect(removeStripeRes.success).toBe(true);
+    if (removeStripeRes.success) {
+      expect(removeStripeRes.data.payment_methods).toEqual(["cash"]);
+      expect(removeStripeRes.data.payout_profile_id).toBe(originalPayoutProfileId);
+    }
+
+    const { error: communityUpdateError } = await setup.adminClient
+      .from("communities")
+      .update({
+        current_payout_profile_id: null,
+      })
+      .eq("id", fixture.communityId);
+
+    expect(communityUpdateError).toBeNull();
+
+    const reAddStripeRes = await updateEventAction(
+      fixture.event.id,
+      buildFormData({
+        payment_methods: ["stripe", "cash"],
+        payment_deadline: getFutureDateTimeLocal(48),
+      })
+    );
+
+    expect(reAddStripeRes.success).toBe(true);
+    if (reAddStripeRes.success) {
+      expect(reAddStripeRes.data.payment_methods).toEqual(["stripe", "cash"]);
+      expect(reAddStripeRes.data.payout_profile_id).toBe(originalPayoutProfileId);
     }
   });
 

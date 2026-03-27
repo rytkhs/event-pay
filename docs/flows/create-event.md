@@ -49,6 +49,8 @@
 ## 編集制限（作成後）
 イベント作成後は、参加状況や決済状況に応じて編集できない項目が発生する。
 制限は「フロントでの無効化（UX）＋サーバーでの拒否（正）」の二重防御にする。
+編集時の Stripe 有効化判定は、event が non-null の `payout_profile_id` を持つ場合はその snapshot を正とする。
+`payout_profile_id` が `null` の event では、`stripe` を初回追加する時だけ current community の payout profile を補完できる。
 具体的な制限ルールは `event-edit-restrictions` のドメイン実装/READMEを正とする。
 
 ## シーケンス図（概略）

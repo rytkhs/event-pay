@@ -26,7 +26,7 @@ import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 import { updateEventSchema, type UpdateEventFormData } from "@core/validation/event";
 
 import { getOwnedEventActionContextForServerAction } from "../services/get-owned-event-context-for-community";
-import { getEventPayoutProfileReadiness } from "../services/payout-profile-readiness";
+import { resolveEventStripePayoutProfile } from "../services/resolve-event-stripe-payout-profile";
 
 type UpdateEventResult = ActionResult<EventRow>;
 
@@ -209,24 +209,34 @@ export async function updateEventAction(
     }
 
     // Stripe Connect 準備状態チェック（"stripe" を新規に追加する場合のみ）
+    let stripePayoutResolution:
+      | Awaited<ReturnType<typeof resolveEventStripePayoutProfile>>
+      | undefined;
     {
       const hadStripe = (existingEvent.payment_methods || []).includes("stripe");
       const addingStripe = hasStripe && !hadStripe && effectiveFee > 0;
 
       if (addingStripe) {
-        const payoutReadiness = await getEventPayoutProfileReadiness(
-          supabase,
-          existingEvent.payout_profile_id
-        );
+        try {
+          stripePayoutResolution = await resolveEventStripePayoutProfile(supabase, {
+            currentCommunityId: accessContext.currentCommunityId,
+            eventPayoutProfileId: existingEvent.payout_profile_id,
+          });
+        } catch {
+          return fail("DATABASE_ERROR", {
+            userMessage: "受取先プロファイルの取得に失敗しました",
+            retryable: true,
+          });
+        }
 
-        if (!payoutReadiness.isReady) {
+        if (!stripePayoutResolution.isReady) {
           return fail("VALIDATION_ERROR", {
             userMessage:
-              payoutReadiness.userMessage ||
+              stripePayoutResolution.userMessage ||
               "オンライン決済を追加するには受取先プロファイルの設定完了が必要です",
             fieldErrors: {
               payment_methods: [
-                payoutReadiness.userMessage ||
+                stripePayoutResolution.userMessage ||
                   "受取先プロファイルの設定を完了してください（本人確認と入金有効化）",
               ],
             },
@@ -350,6 +360,13 @@ export async function updateEventAction(
 
     // 更新データの構築
     const updateData = buildUpdateData(validatedData, existingEvent);
+
+    if (
+      stripePayoutResolution?.shouldBackfillEventSnapshot &&
+      stripePayoutResolution.payoutProfileId
+    ) {
+      updateData.payout_profile_id = stripePayoutResolution.payoutProfileId;
+    }
 
     // 更新データが空の場合は既存データを返す（変更なし）
     if (Object.keys(updateData).length === 0) {
