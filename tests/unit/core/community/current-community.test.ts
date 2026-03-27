@@ -142,7 +142,6 @@ describe("core/community/current-community", () => {
     ).resolves.toEqual({
       success: true,
       data: {
-        cookieMutation: "none",
         currentCommunity: {
           createdAt: "2026-03-11T00:00:00.000Z",
           id: "community-2",
@@ -234,7 +233,6 @@ describe("core/community/current-community", () => {
     ).resolves.toMatchObject({
       success: true,
       data: {
-        cookieMutation: "set",
         currentCommunity: {
           id: "community-1",
         },
@@ -267,7 +265,6 @@ describe("core/community/current-community", () => {
     ).resolves.toMatchObject({
       success: true,
       data: {
-        cookieMutation: "set",
         currentCommunity: {
           id: "community-1",
         },
@@ -293,7 +290,6 @@ describe("core/community/current-community", () => {
     ).resolves.toEqual({
       success: true,
       data: {
-        cookieMutation: "clear",
         currentCommunity: null,
         ownedCommunities: [],
         requestedCommunityId: "community-1",

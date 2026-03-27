@@ -79,7 +79,6 @@ export async function setupEventCreationDataConversionTest(
 
   mockResolveCurrentCommunity.mockResolvedValue(
     okResult({
-      cookieMutation: "none",
       currentCommunity: {
         createdAt: new Date().toISOString(),
         id: ownedCommunity.community.id,
@@ -122,7 +121,6 @@ export function setupBeforeEach(context: EventCreationDataConversionTestContext)
   } as any);
   context.mockResolveCurrentCommunity.mockResolvedValue(
     okResult({
-      cookieMutation: "none",
       currentCommunity: {
         createdAt: new Date().toISOString(),
         id: context.currentCommunity.id,

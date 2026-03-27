@@ -77,7 +77,6 @@ describe("AppLayout", () => {
         currentCommunity: null,
         ownedCommunities: [],
         requestedCommunityId: null,
-        cookieMutation: "none",
         resolvedBy: "cookie",
       },
     };

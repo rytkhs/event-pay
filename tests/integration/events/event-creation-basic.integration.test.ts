@@ -131,7 +131,6 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
     } as any);
     mockResolveCurrentCommunity.mockResolvedValue(
       okResult({
-        cookieMutation: "none",
         currentCommunity: {
           createdAt: new Date().toISOString(),
           id: currentCommunityFixture.community.id,

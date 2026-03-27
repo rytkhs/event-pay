@@ -72,7 +72,6 @@ describe("ダッシュボード統計情報 統合テスト", () => {
         currentCommunity: summary,
         ownedCommunities: summary ? [summary] : [],
         requestedCommunityId: summary?.id ?? null,
-        cookieMutation: summary ? "none" : "clear",
         resolvedBy: summary ? "cookie" : "empty",
       })
     );

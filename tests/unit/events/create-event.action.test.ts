@@ -126,7 +126,6 @@ describe("createEventAction", () => {
     mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
     mockResolveCurrentCommunityForServerAction.mockResolvedValue(
       okResult({
-        cookieMutation: "none",
         currentCommunity: {
           createdAt: "2026-03-20T00:00:00.000Z",
           id: "community-1",

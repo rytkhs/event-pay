@@ -26,14 +26,12 @@ export type CurrentCommunitySummary = {
   createdAt: string;
 };
 
-export type CurrentCommunityCookieMutation = "clear" | "none" | "set";
 export type CurrentCommunityResolvedBy = "cookie" | "empty" | "oldest_fallback";
 
 export type CurrentCommunityResolution = {
   currentCommunity: CurrentCommunitySummary | null;
   ownedCommunities: CurrentCommunitySummary[];
   requestedCommunityId: string | null;
-  cookieMutation: CurrentCommunityCookieMutation;
   resolvedBy: CurrentCommunityResolvedBy;
 };
 
@@ -144,7 +142,6 @@ export async function resolveCurrentCommunityContext({
       currentCommunity: null,
       ownedCommunities,
       requestedCommunityId: normalizedRequestedCommunityId,
-      cookieMutation: "clear",
       resolvedBy: "empty",
     });
   }
@@ -160,7 +157,6 @@ export async function resolveCurrentCommunityContext({
       currentCommunity: resolvedFromCookie,
       ownedCommunities,
       requestedCommunityId: normalizedRequestedCommunityId,
-      cookieMutation: "none",
       resolvedBy: "cookie",
     });
   }
@@ -169,7 +165,6 @@ export async function resolveCurrentCommunityContext({
     currentCommunity: ownedCommunities[0] ?? null,
     ownedCommunities,
     requestedCommunityId: normalizedRequestedCommunityId,
-    cookieMutation: "set",
     resolvedBy: "oldest_fallback",
   });
 }

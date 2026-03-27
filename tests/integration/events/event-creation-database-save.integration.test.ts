@@ -126,7 +126,6 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
     } as any);
     mockResolveCurrentCommunity.mockResolvedValue(
       okResult({
-        cookieMutation: "none",
         currentCommunity: {
           createdAt: new Date().toISOString(),
           id: currentCommunityFixture.community.id,

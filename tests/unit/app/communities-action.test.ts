@@ -92,7 +92,6 @@ describe("app/(app)/actions/communities", () => {
           },
         ],
         requestedCommunityId: null,
-        cookieMutation: "set",
         resolvedBy: "oldest_fallback",
       })
     );
@@ -484,7 +483,6 @@ describe("app/(app)/actions/communities", () => {
           },
         ],
         requestedCommunityId: null,
-        cookieMutation: "set",
         resolvedBy: "oldest_fallback",
       })
     );
@@ -527,7 +525,6 @@ describe("app/(app)/actions/communities", () => {
         currentCommunity: null,
         ownedCommunities: [],
         requestedCommunityId: null,
-        cookieMutation: "clear",
         resolvedBy: "empty",
       })
     );

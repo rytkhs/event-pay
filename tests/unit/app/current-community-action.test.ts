@@ -128,7 +128,6 @@ describe("app/(app)/actions/current-community", () => {
         },
         ownedCommunities: [],
         requestedCommunityId: targetCommunityId,
-        cookieMutation: "none",
         resolvedBy: "cookie",
       })
     );
@@ -168,7 +167,6 @@ describe("app/(app)/actions/current-community", () => {
         },
         ownedCommunities: [],
         requestedCommunityId: targetCommunityId,
-        cookieMutation: "set",
         resolvedBy: "oldest_fallback",
       })
     );

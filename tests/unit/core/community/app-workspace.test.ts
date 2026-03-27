@@ -64,7 +64,6 @@ describe("core/community/app-workspace", () => {
         },
       ],
       requestedCommunityId: "community-1",
-      cookieMutation: "none",
       resolvedBy: "cookie",
     });
 
@@ -108,7 +107,6 @@ describe("core/community/app-workspace", () => {
           },
         ],
         requestedCommunityId: "community-1",
-        cookieMutation: "none",
         resolvedBy: "cookie",
       },
     });
@@ -124,7 +122,6 @@ describe("core/community/app-workspace", () => {
       currentCommunity: null,
       ownedCommunities: [],
       requestedCommunityId: null,
-      cookieMutation: "clear",
       resolvedBy: "empty",
     });
 
@@ -155,7 +152,6 @@ describe("core/community/app-workspace", () => {
       currentCommunity: null,
       ownedCommunities: [],
       requestedCommunityId: null,
-      cookieMutation: "clear",
       resolvedBy: "empty",
     });
 
@@ -189,7 +185,6 @@ describe("core/community/app-workspace", () => {
         },
       ],
       requestedCommunityId: "community-1",
-      cookieMutation: "none",
       resolvedBy: "cookie",
     });
 
