@@ -104,8 +104,8 @@ function getEventScenarios(
 ): EventInsert[] {
   // ヘルパー
   const day = (offset: number) => iso(addDays(now, offset));
-  // Stripe決済対応イベントには payout_profile_id をスナップショット
-  const ppForMethods = (methods: string[]) => (methods.includes("stripe") ? payoutProfileId : null);
+  // イベント作成時の snapshot として current community の payout_profile_id を保持
+  const ppForMethods = (_methods: string[]) => payoutProfileId;
 
   return [
     {
@@ -253,7 +253,8 @@ function getBookClubEventScenarios(
   payoutProfileId: string | null
 ): EventInsert[] {
   const day = (offset: number) => iso(addDays(now, offset));
-  const ppForMethods = (methods: string[]) => (methods.includes("stripe") ? payoutProfileId : null);
+  // イベント作成時の snapshot として current community の payout_profile_id を保持
+  const ppForMethods = (_methods: string[]) => payoutProfileId;
 
   return [
     {
