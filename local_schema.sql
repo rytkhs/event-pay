@@ -467,6 +467,16 @@ CREATE OR REPLACE FUNCTION "public"."can_access_event"("p_event_id" "uuid") RETU
 DECLARE
   guest_token_var text;
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.events e
+    JOIN public.communities c ON c.id = e.community_id
+    WHERE e.id = p_event_id
+      AND c.is_deleted = false
+  ) THEN
+    RETURN FALSE;
+  END IF;
+
   IF public.is_event_community_owner(p_event_id) THEN
     RETURN TRUE;
   END IF;
@@ -1123,6 +1133,7 @@ BEGIN
     JOIN public.communities c ON c.id = e.community_id
     WHERE a.id = p_attendance_id
       AND c.created_by = v_current_user_id
+      AND c.is_deleted = false
   );
 END;
 $$;
@@ -1153,6 +1164,7 @@ BEGIN
     FROM public.communities c
     WHERE c.id = p_community_id
       AND c.created_by = v_current_user_id
+      AND c.is_deleted = false
   );
 END;
 $$;
@@ -1184,6 +1196,7 @@ BEGIN
     JOIN public.communities c ON c.id = e.community_id
     WHERE e.id = p_event_id
       AND c.created_by = v_current_user_id
+      AND c.is_deleted = false
   );
 END;
 $$;
@@ -1217,6 +1230,7 @@ BEGIN
     JOIN public.communities c ON c.id = e.community_id
     WHERE p.id = p_payment_id
       AND c.created_by = v_current_user_id
+      AND c.is_deleted = false
   );
 END;
 $$;
@@ -3707,7 +3721,7 @@ CREATE POLICY "Owners can insert own payout profiles" ON "public"."payout_profil
 
 
 
-CREATE POLICY "Owners can update own communities" ON "public"."communities" FOR UPDATE TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "created_by") OR "public"."is_community_owner"("id"))) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "created_by"));
+CREATE POLICY "Owners can update own communities" ON "public"."communities" FOR UPDATE TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "created_by") AND ("is_deleted" = false))) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "created_by"));
 
 
 
@@ -3715,7 +3729,7 @@ CREATE POLICY "Owners can update own payout profiles" ON "public"."payout_profil
 
 
 
-CREATE POLICY "Owners can view own communities" ON "public"."communities" FOR SELECT TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "created_by") OR "public"."is_community_owner"("id")));
+CREATE POLICY "Owners can view own communities" ON "public"."communities" FOR SELECT TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "created_by") AND ("is_deleted" = false)));
 
 
 
