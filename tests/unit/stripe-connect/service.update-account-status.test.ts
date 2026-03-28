@@ -1,0 +1,320 @@
+import { StripeConnectService } from "@features/stripe-connect/services/service";
+import { StripeConnectError, StripeConnectErrorType } from "@features/stripe-connect/types";
+
+type MaybeSingleResult = {
+  data: unknown;
+  error: unknown;
+};
+
+type SelectResult = {
+  data: unknown;
+  error: unknown;
+};
+
+function createSupabaseMock(config: {
+  currentAccountResult: MaybeSingleResult;
+  updateResult?: SelectResult;
+  conflictCheckResult?: MaybeSingleResult;
+  upsertResult?: SelectResult;
+}) {
+  const calls = {
+    currentAccountLookups: [] as Array<{ column: string; value: string }>,
+    updatePayloads: [] as unknown[],
+    updateFilters: [] as Array<{ column: string; value: string }>,
+    conflictChecks: [] as Array<{ column: string; value: string }>,
+    upserts: [] as Array<{ payload: unknown; options: unknown }>,
+    communityUpdates: [] as Array<{
+      payload: unknown;
+      filters: Array<{ column: string; value: unknown }>;
+      or?: string;
+    }>,
+  };
+
+  const supabase = {
+    from: jest.fn((table: string) => {
+      if (table === "payout_profiles") {
+        return {
+          select: jest.fn((columns: string) => {
+            if (columns === "id, owner_user_id, status, stripe_account_id") {
+              return {
+                eq: jest.fn((column: string, value: string) => ({
+                  maybeSingle: jest.fn().mockImplementation(async () => {
+                    calls.currentAccountLookups.push({ column, value });
+                    return config.currentAccountResult;
+                  }),
+                })),
+              };
+            }
+
+            if (columns === "owner_user_id") {
+              return {
+                eq: jest.fn((column: string, value: string) => ({
+                  maybeSingle: jest.fn().mockImplementation(async () => {
+                    calls.conflictChecks.push({ column, value });
+                    return config.conflictCheckResult ?? { data: null, error: null };
+                  }),
+                })),
+              };
+            }
+
+            throw new Error(`unexpected payout_profiles select: ${columns}`);
+          }),
+          update: jest.fn((payload: unknown) => {
+            calls.updatePayloads.push(payload);
+
+            return {
+              eq: jest.fn((column: string, value: string) => {
+                calls.updateFilters.push({ column, value });
+
+                return {
+                  select: jest
+                    .fn()
+                    .mockResolvedValue(config.updateResult ?? { data: [], error: null }),
+                };
+              }),
+            };
+          }),
+          upsert: jest.fn((payload: unknown, options: unknown) => {
+            calls.upserts.push({ payload, options });
+
+            return {
+              select: jest
+                .fn()
+                .mockResolvedValue(
+                  config.upsertResult ?? {
+                    data: [{ id: "profile-inserted", owner_user_id: "user-1" }],
+                    error: null,
+                  }
+                ),
+            };
+          }),
+        };
+      }
+
+      if (table === "communities") {
+        return {
+          update: jest.fn((payload: unknown) => {
+            const communityUpdate = {
+              payload,
+              filters: [] as Array<{ column: string; value: unknown }>,
+              or: undefined as string | undefined,
+            };
+            calls.communityUpdates.push(communityUpdate);
+
+            return {
+              eq: jest.fn((column: string, value: unknown) => {
+                communityUpdate.filters.push({ column, value });
+
+                return {
+                  eq: jest.fn((nestedColumn: string, nestedValue: unknown) => {
+                    communityUpdate.filters.push({ column: nestedColumn, value: nestedValue });
+
+                    return {
+                      or: jest.fn().mockImplementation(async (expression: string) => {
+                        communityUpdate.or = expression;
+                        return { error: null };
+                      }),
+                    };
+                  }),
+                };
+              }),
+            };
+          }),
+        };
+      }
+
+      throw new Error(`unexpected table: ${table}`);
+    }),
+  };
+
+  return {
+    supabase,
+    calls,
+  };
+}
+
+function createErrorHandlerMock() {
+  return {
+    handleError: jest.fn(),
+    mapStripeError: jest.fn(),
+    mapDatabaseError: jest
+      .fn()
+      .mockImplementation(
+        (error: Error, context: string) => new Error(`${context}: ${error.message}`)
+      ),
+  } as any;
+}
+
+async function expectStripeConnectError(
+  promise: Promise<unknown>,
+  expectedType: StripeConnectErrorType
+) {
+  try {
+    await promise;
+    throw new Error("expected StripeConnectError to be thrown");
+  } catch (error) {
+    expect(error).toBeInstanceOf(StripeConnectError);
+    expect(error).toMatchObject({
+      type: expectedType,
+    });
+  }
+}
+
+describe("StripeConnectService.updateAccountStatus", () => {
+  it("fails closed when payoutProfileId resolves to a different stripeAccountId", async () => {
+    const { supabase, calls } = createSupabaseMock({
+      currentAccountResult: {
+        data: {
+          id: "profile-1",
+          owner_user_id: "550e8400-e29b-41d4-a716-446655440000",
+          status: "verified",
+          stripe_account_id: "acct_current",
+        },
+        error: null,
+      },
+    });
+    const service = new StripeConnectService(supabase as never, createErrorHandlerMock());
+
+    await expectStripeConnectError(
+      service.updateAccountStatus({
+        payoutProfileId: "profile-1",
+        userId: "550e8400-e29b-41d4-a716-446655440000",
+        stripeAccountId: "acct_other",
+        status: "verified",
+        chargesEnabled: true,
+        payoutsEnabled: true,
+      }),
+      StripeConnectErrorType.VALIDATION_ERROR
+    );
+
+    expect(calls.updatePayloads).toHaveLength(0);
+    expect(calls.upserts).toHaveLength(0);
+    expect(calls.communityUpdates).toHaveLength(0);
+  });
+
+  it("fails closed when stripeAccountId resolves to a different owner userId", async () => {
+    const { supabase, calls } = createSupabaseMock({
+      currentAccountResult: {
+        data: {
+          id: "profile-1",
+          owner_user_id: "660e8400-e29b-41d4-a716-446655440000",
+          status: "verified",
+          stripe_account_id: "acct_current",
+        },
+        error: null,
+      },
+    });
+    const service = new StripeConnectService(supabase as never, createErrorHandlerMock());
+
+    await expectStripeConnectError(
+      service.updateAccountStatus({
+        userId: "770e8400-e29b-41d4-a716-446655440000",
+        stripeAccountId: "acct_current",
+        status: "verified",
+        chargesEnabled: true,
+        payoutsEnabled: true,
+      }),
+      StripeConnectErrorType.VALIDATION_ERROR
+    );
+
+    expect(calls.updatePayloads).toHaveLength(0);
+    expect(calls.upserts).toHaveLength(0);
+    expect(calls.communityUpdates).toHaveLength(0);
+  });
+
+  it("does not upsert when an explicit payoutProfileId does not exist", async () => {
+    const { supabase, calls } = createSupabaseMock({
+      currentAccountResult: {
+        data: null,
+        error: null,
+      },
+    });
+    const service = new StripeConnectService(supabase as never, createErrorHandlerMock());
+
+    await expectStripeConnectError(
+      service.updateAccountStatus({
+        payoutProfileId: "0f2f36b2-29d9-4894-9d1a-d4cfdf793c5d",
+        userId: "8f0d2d8a-0a9d-452a-bf98-f15fc651c01c",
+        stripeAccountId: "acct_missing",
+        status: "unverified",
+        chargesEnabled: false,
+        payoutsEnabled: false,
+      }),
+      StripeConnectErrorType.ACCOUNT_NOT_FOUND
+    );
+
+    expect(calls.updatePayloads).toHaveLength(0);
+    expect(calls.upserts).toHaveLength(0);
+    expect(calls.communityUpdates).toHaveLength(0);
+  });
+
+  it("keeps the fail-safe upsert path for userId plus stripeAccountId without payoutProfileId", async () => {
+    const { supabase, calls } = createSupabaseMock({
+      currentAccountResult: {
+        data: null,
+        error: null,
+      },
+      updateResult: {
+        data: [],
+        error: null,
+      },
+      conflictCheckResult: {
+        data: null,
+        error: null,
+      },
+      upsertResult: {
+        data: [{ id: "profile-inserted", owner_user_id: "550e8400-e29b-41d4-a716-446655440000" }],
+        error: null,
+      },
+    });
+    const service = new StripeConnectService(supabase as never, createErrorHandlerMock());
+
+    await service.updateAccountStatus({
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      stripeAccountId: "acct_inserted",
+      status: "unverified",
+      chargesEnabled: false,
+      payoutsEnabled: false,
+    });
+
+    expect(calls.updatePayloads).toHaveLength(1);
+    expect(calls.updateFilters).toEqual([
+      { column: "id", value: "00000000-0000-0000-0000-000000000000" },
+    ]);
+    expect(calls.conflictChecks).toEqual([{ column: "stripe_account_id", value: "acct_inserted" }]);
+    expect(calls.upserts).toHaveLength(1);
+    expect(calls.communityUpdates).toHaveLength(1);
+  });
+
+  it("updates an existing payout profile when all identifiers are aligned", async () => {
+    const { supabase, calls } = createSupabaseMock({
+      currentAccountResult: {
+        data: {
+          id: "profile-1",
+          owner_user_id: "550e8400-e29b-41d4-a716-446655440000",
+          status: "verified",
+          stripe_account_id: "acct_aligned",
+        },
+        error: null,
+      },
+      updateResult: {
+        data: [{ id: "profile-1", owner_user_id: "550e8400-e29b-41d4-a716-446655440000" }],
+        error: null,
+      },
+    });
+    const service = new StripeConnectService(supabase as never, createErrorHandlerMock());
+
+    await service.updateAccountStatus({
+      payoutProfileId: "profile-1",
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      stripeAccountId: "acct_aligned",
+      status: "verified",
+      chargesEnabled: true,
+      payoutsEnabled: true,
+    });
+
+    expect(calls.updatePayloads).toHaveLength(1);
+    expect(calls.upserts).toHaveLength(0);
+    expect(calls.communityUpdates).toHaveLength(1);
+  });
+});

@@ -1,7 +1,9 @@
 import { jest } from "@jest/globals";
+import { AuthSessionMissingError } from "@supabase/supabase-js";
 
 const mockCreateServerActionSupabaseClient = jest.fn();
 const mockCreateServerComponentSupabaseClient = jest.fn();
+const mockHeaders = jest.fn();
 const mockHandleServerError = jest.fn();
 const mockRedirect = jest.fn((path: string) => {
   throw new Error(`NEXT_REDIRECT:${path}`);
@@ -20,11 +22,15 @@ jest.mock("next/navigation", () => ({
   redirect: mockRedirect,
 }));
 
+jest.mock("next/headers", () => ({
+  headers: mockHeaders,
+}));
+
 type AuthUtilsModule = typeof import("@core/auth/auth-utils");
 
 type MockLookupOptions = {
   authError?: unknown;
-  profile?: { name?: string | null } | null;
+  profile?: { email?: string | null; name?: string | null } | null;
   profileError?: unknown;
   user?: { id: string; email?: string | null } | null;
 };
@@ -83,11 +89,12 @@ async function loadAuthUtils(): Promise<AuthUtilsModule> {
 describe("core/auth/auth-utils", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockHeaders.mockResolvedValue(new Headers());
   });
 
   it("requireCurrentAppUserForServerComponent は profile の name を優先する", async () => {
     const { client } = createLookupClient({
-      profile: { name: "集金 太郎" },
+      profile: { name: "集金 太郎", email: "profile@example.com" },
     });
     mockCreateServerComponentSupabaseClient.mockResolvedValue(client);
 
@@ -95,7 +102,7 @@ describe("core/auth/auth-utils", () => {
 
     await expect(requireCurrentAppUserForServerComponent()).resolves.toEqual({
       id: "user_1",
-      email: "user@example.com",
+      email: "profile@example.com",
       name: "集金 太郎",
     });
   });
@@ -138,10 +145,15 @@ describe("core/auth/auth-utils", () => {
 
   it("セッション欠如時は requireCurrentUserForServerComponent が /login に redirect する", async () => {
     const { client } = createLookupClient({
-      authError: new Error("Auth session missing!"),
+      authError: new AuthSessionMissingError(),
       user: null,
     });
     mockCreateServerComponentSupabaseClient.mockResolvedValue(client);
+    mockHeaders.mockResolvedValue(
+      new Headers({
+        "x-pathname": "/settings/profile",
+      })
+    );
 
     const { requireCurrentUserForServerComponent } = await loadAuthUtils();
 
@@ -155,12 +167,30 @@ describe("core/auth/auth-utils", () => {
       user: null,
     });
     mockCreateServerComponentSupabaseClient.mockResolvedValue(client);
+    mockHeaders.mockResolvedValue(
+      new Headers({
+        "x-pathname": "/events/create",
+      })
+    );
 
     const { requireCurrentAppUserForServerComponent } = await loadAuthUtils();
 
     await expect(requireCurrentAppUserForServerComponent()).rejects.toThrow("NEXT_REDIRECT:/login");
     expect(mockRedirect).toHaveBeenCalledWith("/login");
     expect(mockHandleServerError).not.toHaveBeenCalled();
+  });
+
+  it("x-pathname が無い場合は /login に redirect する", async () => {
+    const { client } = createLookupClient({
+      user: null,
+    });
+    mockCreateServerComponentSupabaseClient.mockResolvedValue(client);
+    mockHeaders.mockResolvedValue(new Headers());
+
+    const { requireCurrentUserForServerComponent } = await loadAuthUtils();
+
+    await expect(requireCurrentUserForServerComponent()).rejects.toThrow("NEXT_REDIRECT:/login");
+    expect(mockRedirect).toHaveBeenCalledWith("/login");
   });
 
   it("requireCurrentUserForServerComponent は server component の user を返す", async () => {
@@ -180,7 +210,7 @@ describe("core/auth/auth-utils", () => {
 
   it("getOptionalCurrentUserForServerComponent はセッション欠如を null として扱う", async () => {
     const { client } = createLookupClient({
-      authError: new Error("Auth session missing!"),
+      authError: new AuthSessionMissingError(),
       user: null,
     });
     mockCreateServerComponentSupabaseClient.mockResolvedValue(client);
@@ -191,9 +221,9 @@ describe("core/auth/auth-utils", () => {
     expect(mockHandleServerError).not.toHaveBeenCalled();
   });
 
-  it("requireCurrentAppUserForServerComponent は users.name のみを問い合わせる", async () => {
+  it("requireCurrentAppUserForServerComponent は users.name,email を問い合わせる", async () => {
     const { client, spies } = createLookupClient({
-      profile: { name: "共有ユーザー" },
+      profile: { name: "共有ユーザー", email: "shared@example.com" },
     });
     mockCreateServerComponentSupabaseClient.mockResolvedValue(client);
 
@@ -204,7 +234,7 @@ describe("core/auth/auth-utils", () => {
     expect(mockCreateServerComponentSupabaseClient).toHaveBeenCalledTimes(1);
     expect(spies.authGetUser).toHaveBeenCalledTimes(1);
     expect(spies.from).toHaveBeenCalledWith("users");
-    expect(spies.select).toHaveBeenCalledWith("name");
+    expect(spies.select).toHaveBeenCalledWith("name, email");
     expect(spies.eq).toHaveBeenCalledWith("id", "user_1");
     expect(spies.maybeSingle).toHaveBeenCalledTimes(1);
   });

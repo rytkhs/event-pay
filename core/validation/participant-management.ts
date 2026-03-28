@@ -26,6 +26,7 @@ const SearchQuerySchema = z
 // 参加者一覧取得パラメータ（全件取得用 - フィルタ・ソート・ページネーションはクライアントサイドで処理）
 export const GetParticipantsParamsSchema = z.object({
   eventId: z.string().uuid(),
+  currentCommunityId: z.string().uuid(),
 });
 
 export type GetParticipantsParams = z.infer<typeof GetParticipantsParamsSchema>;

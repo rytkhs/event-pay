@@ -32,6 +32,8 @@ describe("Guest Token Access Control", () => {
       expect(result.attendance.id).toBe(setup.testAttendanceId);
       expect(result.attendance.nickname).toBe("Test Participant");
       expect(result.attendance.event.id).toBe(setup.testEventId);
+      expect(result.attendance.event.community.name).toBe("Test Community");
+      expect(result.attendance.event.community.legalSlug).toBe(setup.testCommunityLegalSlug);
     }
   });
 
@@ -54,6 +56,8 @@ describe("Guest Token Access Control", () => {
     if (result.attendance) {
       expect(result.attendance.event.id).toBe(setup.anotherEventId);
       expect(result.attendance.event.id).not.toBe(setup.testEventId);
+      expect(result.attendance.event.community.name).toBe("Another Community");
+      expect(result.attendance.event.community.legalSlug).toBe(setup.anotherCommunityLegalSlug);
     }
   });
 

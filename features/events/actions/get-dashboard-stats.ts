@@ -1,6 +1,12 @@
-import { getCurrentUserForServerComponent } from "@core/auth/auth-utils";
-import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
-import { createServerComponentSupabaseClient } from "@core/supabase/factory";
+import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
+import { resolveCurrentCommunityForServerAction } from "@core/community/current-community";
+import {
+  fail,
+  ok,
+  toActionResultFromAppResult,
+  type ActionResult,
+} from "@core/errors/adapters/server-actions";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import type { EventRow } from "@core/types/event";
 import type { AppSupabaseClient } from "@core/types/supabase";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
@@ -33,8 +39,13 @@ type EventForRecent = Pick<
 /**
  * ダッシュボード統計情報を取得する（RPC版）
  */
-export async function fetchDashboardStats(supabase: AppSupabaseClient): Promise<DashboardStats> {
-  const { data, error } = await supabase.rpc("get_dashboard_stats");
+export async function fetchDashboardStats(
+  supabase: AppSupabaseClient,
+  communityId: string
+): Promise<DashboardStats> {
+  const { data, error } = await supabase.rpc("get_dashboard_stats", {
+    p_community_id: communityId,
+  });
 
   if (error) {
     throw error;
@@ -56,13 +67,36 @@ export async function fetchDashboardStats(supabase: AppSupabaseClient): Promise<
 
 export async function getDashboardStatsAction(): Promise<ActionResult<DashboardStats>> {
   try {
-    const user = await getCurrentUserForServerComponent();
+    const user = await getCurrentUserForServerAction();
     if (!user) {
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
-    const supabase = await createServerComponentSupabaseClient();
-    return ok(await fetchDashboardStats(supabase));
+    const currentCommunityResolutionResult = await resolveCurrentCommunityForServerAction();
+
+    if (!currentCommunityResolutionResult.success) {
+      return toActionResultFromAppResult(currentCommunityResolutionResult, {
+        userMessage: "ダッシュボード統計の取得に失敗しました",
+      });
+    }
+
+    if (!currentCommunityResolutionResult.data) {
+      return fail("INTERNAL_ERROR", { userMessage: "ダッシュボード統計の取得に失敗しました" });
+    }
+
+    const currentCommunityResolution = currentCommunityResolutionResult.data;
+
+    if (!currentCommunityResolution.currentCommunity) {
+      return ok({
+        upcomingEventsCount: 0,
+        totalUpcomingParticipants: 0,
+        unpaidFeesTotal: 0,
+        stripeAccountBalance: 0,
+      });
+    }
+
+    const supabase = await createServerActionSupabaseClient();
+    return ok(await fetchDashboardStats(supabase, currentCommunityResolution.currentCommunity.id));
   } catch (error) {
     return fail("INTERNAL_ERROR", {
       userMessage: "ダッシュボード統計の取得に失敗しました",
@@ -75,8 +109,13 @@ export async function getDashboardStatsAction(): Promise<ActionResult<DashboardS
 /**
  * 最近のイベントを取得する
  */
-export async function fetchRecentEvents(supabase: AppSupabaseClient): Promise<RecentEvent[]> {
-  const { data, error } = await supabase.rpc("get_recent_events");
+export async function fetchRecentEvents(
+  supabase: AppSupabaseClient,
+  communityId: string
+): Promise<RecentEvent[]> {
+  const { data, error } = await supabase.rpc("get_recent_events", {
+    p_community_id: communityId,
+  });
 
   if (error) {
     throw error;
@@ -98,13 +137,31 @@ export async function fetchRecentEvents(supabase: AppSupabaseClient): Promise<Re
 
 export async function getRecentEventsAction(): Promise<ActionResult<RecentEvent[]>> {
   try {
-    const user = await getCurrentUserForServerComponent();
+    const user = await getCurrentUserForServerAction();
     if (!user) {
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
-    const supabase = await createServerComponentSupabaseClient();
-    return ok(await fetchRecentEvents(supabase));
+    const currentCommunityResolutionResult = await resolveCurrentCommunityForServerAction();
+
+    if (!currentCommunityResolutionResult.success) {
+      return toActionResultFromAppResult(currentCommunityResolutionResult, {
+        userMessage: "最近のイベント取得に失敗しました",
+      });
+    }
+
+    if (!currentCommunityResolutionResult.data) {
+      return fail("INTERNAL_ERROR", { userMessage: "最近のイベント取得に失敗しました" });
+    }
+
+    const currentCommunityResolution = currentCommunityResolutionResult.data;
+
+    if (!currentCommunityResolution.currentCommunity) {
+      return ok([]);
+    }
+
+    const supabase = await createServerActionSupabaseClient();
+    return ok(await fetchRecentEvents(supabase, currentCommunityResolution.currentCommunity.id));
   } catch (error) {
     return fail("INTERNAL_ERROR", {
       userMessage: "最近のイベント取得に失敗しました",

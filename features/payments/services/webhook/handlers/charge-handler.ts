@@ -16,6 +16,11 @@ import {
   StripeObjectFetchService,
 } from "../services/stripe-object-fetch-service";
 import type { WebhookProcessingResult } from "../types";
+import {
+  buildPaymentWebhookMeta,
+  getPaymentWebhookLogContext,
+  logStripeAccountSnapshotMismatch,
+} from "../webhook-payment-context";
 
 interface ChargeHandlerParams {
   paymentRepository: PaymentWebhookRepository;
@@ -114,10 +119,12 @@ export class ChargeHandler {
         return okResult();
       }
 
+      logStripeAccountSnapshotMismatch({ event, payment, logger: this.logger });
+
       if (!canPromoteStatus(payment.status as PaymentStatus, "paid")) {
         this.logger.info("Status promotion rule preventing update", {
           event_id: event.id,
-          payment_id: payment.id,
+          ...getPaymentWebhookLogContext(payment),
           current_status: payment.status,
           outcome: "success",
         });
@@ -179,6 +186,8 @@ export class ChargeHandler {
           reason: "charge_succeeded_update_failed",
           eventId: event.id,
           paymentId: payment.id,
+          payoutProfileId: payment.payout_profile_id,
+          stripeAccountId: payment.stripe_account_id,
           userMessage: "決済ステータス更新に失敗しました",
           dbError: updateError,
           details: {
@@ -203,13 +212,15 @@ export class ChargeHandler {
           amount: payment.amount,
           charge_id: charge.id,
           balance_transaction_id: balanceTxnId,
+          payout_profile_id: payment.payout_profile_id,
+          stripe_account_id: payment.stripe_account_id,
           stripe_event_id: event.id,
         },
       });
 
       this.logger.info("Charge succeeded processed", {
         event_id: event.id,
-        payment_id: payment.id,
+        ...getPaymentWebhookLogContext(payment),
         charge_id: charge.id,
         balance_transaction_id: balanceTxnId,
         transfer_id: transferId ?? undefined,
@@ -223,7 +234,7 @@ export class ChargeHandler {
         receiptUrl: charge.receipt_url ?? null,
       });
 
-      return okResult(undefined, { eventId: event.id, paymentId: payment.id });
+      return okResult(undefined, buildPaymentWebhookMeta({ eventId: event.id, payment }));
     } catch (error) {
       throw error instanceof Error ? error : new Error("Unknown error");
     }
@@ -250,10 +261,12 @@ export class ChargeHandler {
         return okResult();
       }
 
+      logStripeAccountSnapshotMismatch({ event, payment, logger: this.logger });
+
       if (!canPromoteStatus(payment.status as PaymentStatus, "failed")) {
         this.logger.info("Status promotion rule preventing update", {
           event_id: event.id,
-          payment_id: payment.id,
+          ...getPaymentWebhookLogContext(payment),
           current_status: payment.status,
           outcome: "success",
         });
@@ -282,6 +295,8 @@ export class ChargeHandler {
           reason: "charge_failed_update_failed",
           eventId: event.id,
           paymentId: payment.id,
+          payoutProfileId: payment.payout_profile_id,
+          stripeAccountId: payment.stripe_account_id,
           userMessage: "決済ステータス更新に失敗しました",
           dbError: updateError,
           details: {
@@ -294,11 +309,11 @@ export class ChargeHandler {
 
       this.logger.info("Charge failed processed", {
         event_id: event.id,
-        payment_id: payment.id,
+        ...getPaymentWebhookLogContext(payment),
         charge_id: charge.id,
         outcome: "success",
       });
-      return okResult(undefined, { eventId: event.id, paymentId: payment.id });
+      return okResult(undefined, buildPaymentWebhookMeta({ eventId: event.id, payment }));
     } catch (error) {
       throw error instanceof Error ? error : new Error("Unknown error");
     }

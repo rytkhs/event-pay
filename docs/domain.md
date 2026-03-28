@@ -3,36 +3,44 @@
 ## 1. 目的とスコープ
 
 ### 目的
-- クローズドコミュニティ向けのイベント出欠管理・集金ツールとして、参加確認から集金までを“リンク共有だけで完結”させる。
+- クローズドコミュニティ向けのイベント出欠管理・集金ツールとして、参加確認から集金までをリンク共有だけで完結させる。
+- community を運営単位、payout profile を受取先単位として扱い、公開ページと決済責務を分離する。
 
 ### スコープ（含む）
+- community 作成・切り替え・公開ページ管理
 - イベント作成・編集、招待リンク管理
 - 出欠登録（ゲストトークンによる匿名参加を含む）
 - 定員管理
-- 現金/Stripe決済
-- Stripe Connect連携（主催者の受け取り設定）
-- 精算レポート（売上/手数料/控除の集計スナップショット）
-- メール通知/リマインダー
+- 現金 / Stripe 決済
+- Stripe Connect 連携（community owner の受取設定）
+- 精算レポート（売上 / 手数料 / 控除の集計スナップショット）
+- メール通知 / リマインダー
 
 ### スコープ外（明示）
 - 継続課金
 - 複数イベント横断の高度な会計（会計年度・部門別など）
-- 返金の“自動実行”（記録は対応、実行はStripe側手動）
+- 返金の自動実行（記録は対応、実行はStripe側手動）
+- 共同管理者や owner 移譲
 
 ## 2. 用語集（ユビキタス言語）
 
 ### 2.1 推奨表記 / 禁止表記
 
-| 推奨表記（原則） | 例（コード/DB） | 禁止表記（混在防止） | 定義 |
-|---|---|---|---|
-| Event | `events` | - | 開催イベント。参加条件・期限・参加費などを持つ。 |
-| Attendance | `attendances` | RSVP, Registration（乱用） | 参加者の出欠（attending/not_attending/maybe）と、ゲスト識別情報を持つ。 |
-| Guest | `guest_token` | visitor, anonymous participant | アカウント不要で参加する匿名参加者（ゲストトークンで識別）。 |
-| Creator（≒主催者） | `events.created_by` | organizer, host（混在） | イベント作成者。主催者としてイベントを管理できる。 |
-| Payment | `payments` | transaction, billing | 支払いの単位（オンライン/現金を統一して扱う）。 |
-| Settlement | `settlements` | payout, transfer | 精算レポート（集計スナップショット）。実送金そのものとは区別する。 |
-| invite_token | `events.invite_token` | invitation code（混在） | 招待リンクで使うトークン。 |
-| guest_token | `attendances.guest_token` | guestKey（混在） | 匿名参加者の本人性を担保するトークン。 |
+| 推奨表記（原則） | 例（コード/DB） | 定義 |
+|---|---|---|
+| Community | `communities` | イベントを束ねる運営単位。公開ページと設定画面を持つ。 |
+| Current Community | `current_community_id` cookie | 管理画面で現在選択中の community。 |
+| Public Page | `/c/{slug}` | community の公開URL。Stripe 提出URLや説明導線に使う。 |
+| Legal Page | `/tokushoho/{legal_slug}` | community 基準の特商法ページ。 |
+| Payout Profile | `payout_profiles` | 受取先の論理モデル。MVP では Stripe Connect account のラッパ。 |
+| Representative Community | `representative_community_id` | Stripe `business_profile.url` に使う代表 community。 |
+| Event | `events` | community に属する開催イベント。 |
+| Attendance | `attendances` | 参加者の出欠とゲスト識別情報を持つ。 |
+| Guest | `guest_token` | アカウント不要で参加する匿名参加者。 |
+| Payment | `payments` | 支払いの単位。オンライン / 現金を統一して扱う。 |
+| Settlement | `settlements` | 精算レポート。実送金そのものとは区別する。 |
+| invite_token | `events.invite_token` | 招待リンクで使うトークン。 |
+| guest_token | `attendances.guest_token` | 匿名参加者の本人性を担保するトークン。 |
 
 ### 2.2 Enum（列挙型）定義
 - `attendance_status_enum`: `attending` / `not_attending` / `maybe`
@@ -43,97 +51,132 @@
 
 ## 3. ドメイン境界（Bounded Context）
 
+- コミュニティ運営コンテキスト（Community / Workspace）
+  - current community の切り替え、community 設定、削除、公開導線
+- 公開 community コンテキスト（Public Community）
+  - `/c/{slug}`、`/tokushoho/{legal_slug}`、community 問い合わせ
 - イベント管理コンテキスト（Event）
-  - イベント作成・編集・キャンセル、期限や参加条件の定義
+  - current community 配下でのイベント作成・編集・キャンセル、期限や参加条件の定義
 - 出欠管理コンテキスト（Attendance / Guest）
   - ゲストトークンによる匿名参加、出欠ステータス変更、定員チェック
 - 決済コンテキスト（Payment）
-  - Stripe/現金の支払い状態、冪等性、Webhook確定処理
+  - Stripe / cash の支払い状態、冪等性、Webhook 確定処理、payout snapshot
+- 受取設定コンテキスト（Payout / Connect）
+  - payout profile、representative community、Connect onboarding
 - 精算コンテキスト（Settlement）
-  - 売上/手数料/控除/純額の集計、レポート生成
+  - 売上 / 手数料 / 控除 / 純額の集計。CC-10 方針どおり今回の主更新対象外
 - 認証・権限コンテキスト（Auth / RLS）
-  - user/guest/service_role の権限境界
+  - user / guest / service_role の権限境界
 
 ## 4. 集約（Aggregate）と一貫性境界
 
-### 4.1 Event集約
-- **集約ルート**: Event
-- **含まれる概念（関連）**: Attendance / Payment / Settlement は Event に紐づくが、更新単位や整合性は個別ルールで守る。
-- **Event側で守りたい不変条件（例）**
-  - 締切や定員など、“イベント条件”の整合性
-  - 参加者/決済が発生した後の編集制限（構造的制限）
+### 4.1 Community集約
+- **集約ルート**: Community
+- **守ること**
+  - owner 固定
+  - current payout profile は owner の payout profile だけを参照できる
+  - 削除済み community は公開導線から外れる
 
-### 4.2 Attendance集約
+### 4.2 Event集約
+- **集約ルート**: Event
+- **守ること**
+  - event は必ず community に属する
+  - event 作成時に payout profile snapshot を固定する
+  - 締切や定員などイベント条件の整合性
+  - 参加者 / 決済が発生した後の編集制限
+
+### 4.3 Attendance集約
 - **集約ルート**: Attendance
 - **守ること**
-  - guest_token をキーに「本人のAttendanceだけ更新できる」こと
+  - `guest_token` をキーに本人の Attendance だけ更新できること
   - 出欠変更のルール（締切、定員、決済要否）
 
-### 4.3 Payment集約
+### 4.4 Payment集約
 - **集約ルート**: Payment
 - **守ること**
-  - ステータス整合性（paidはStripeのみ、receivedは現金のみ等）
-  - 冪等性（Checkout Session作成、Webhook重複）
-  - ロールバック禁止（必要なら status_rank などで保証）
+  - ステータス整合性（`paid` は Stripe のみ、`received` は cash のみ）
+  - `payments.payout_profile_id` により決済時点の受取先が固定されること
+  - 冪等性（Checkout Session 作成、Webhook 重複）
+  - ロールバック禁止
 
 ## 5. 主要エンティティ（責務・属性・不変条件）
 
-### 5.1 Event（events）
+### 5.1 Community（communities）
+- 責務: 運営単位の管理、公開ページ情報の保持、日常操作の文脈提供
+- 主な属性
+  - 基本: `name`, `description`
+  - 公開: `slug`, `legal_slug`
+  - 受取設定: `current_payout_profile_id`
+  - 状態: `is_deleted`, `deleted_at`
+- 不変条件
+  - owner は作成者固定
+  - `slug` と `legal_slug` は一意
+  - `current_payout_profile_id` は owner の payout profile に限る
+
+### 5.2 Payout Profile（payout_profiles）
+- 責務: 受取先情報と Stripe Connect 状態の保持
+- 主な属性
+  - 所有: `owner_user_id`
+  - Connect: `stripe_account_id`, `status`, `charges_enabled`, `payouts_enabled`
+  - 提出URL: `representative_community_id`
+- 不変条件
+  - MVP では 1 user = 1 payout profile
+  - representative community は owner 自身の未削除 community に限る
+
+### 5.3 Event（events）
 - 責務: イベント情報の管理、参加条件・期限の定義
-- 主な属性（カテゴリ）
-  - 基本: title, date, location, description
-  - 料金/支払い: fee, payment_methods
-  - 制限: capacity, registration_deadline, payment_deadline, grace_period_days
-  - 状態: canceled_at, canceled_by
-- 不変条件（例）
-  - registration_deadline ≤ date
-  - Stripe決済を含む場合、payment_deadline 必須
+- 主な属性
+  - 所属: `community_id`
+  - 受取: `payout_profile_id`
+  - 基本: `title`, `date`, `location`, `description`
+  - 料金 / 支払い: `fee`, `payment_methods`
+  - 制限: `capacity`, `registration_deadline`, `payment_deadline`, `grace_period_days`
+  - 状態: `canceled_at`, `canceled_by`
+- 不変条件
+  - `community_id` は必須
+  - `registration_deadline <= date`
+  - Stripe 決済を含む場合、`payment_deadline` 必須
+  - 有料かつ Stripe を含む場合、作成時の current community payout readiness が必要
+- 補足
+  - `created_by` は互換 / 監査用補助情報として残るが、主要な所属・認可・公開導線は `community_id` を正とする
 
-### 5.2 Attendance（attendances）
-- 責務: 出欠記録、ゲスト本人性（guest_token）を含む参加者情報の保持
-- 主な属性（カテゴリ）
-  - 参加者: nickname, email
-  - 出欠: status
-  - 本人性: guest_token
-- 不変条件（例）
-  - nickname は空でない
-  - email は妥当な形式
-  - guest_token は `gst_` プレフィックス + 32文字
+### 5.4 Attendance（attendances）
+- 責務: 出欠記録、ゲスト本人性（`guest_token`）を含む参加者情報の保持
+- 主な属性
+  - 参加者: `nickname`, `email`
+  - 出欠: `status`
+  - 本人性: `guest_token`
+- 不変条件
+  - `nickname` は空でない
+  - `email` は妥当な形式
+  - `guest_token` は推測困難
 
-### 5.3 Payment（payments）
-- 責務: 支払いの単位。オンライン/現金を統一して管理し、最終状態を保持する
-- 主な属性（カテゴリ）
-  - 金額/方法: method, amount
-  - 状態: status, paid_at
-  - Stripe連携: stripe_payment_intent_id, stripe_checkout_session_id, application_fee_amount 等
-  - 返金: refunded_amount, application_fee_refunded_amount
-  - 競合制御: version（楽観ロック）
-  - 冪等性: checkout_idempotency_key, checkout_key_revision 等
-- 不変条件（例）
+### 5.5 Payment（payments）
+- 責務: 支払いの単位。オンライン / 現金を統一して管理し、最終状態を保持する
+- 主な属性
+  - 金額 / 方法: `method`, `amount`
+  - 状態: `status`, `paid_at`
+  - 受取 snapshot: `payout_profile_id`
+  - Stripe連携: `stripe_payment_intent_id`, `stripe_checkout_session_id`, `application_fee_amount`
+  - 返金: `refunded_amount`, `application_fee_refunded_amount`
+  - 競合制御: `version`
+  - 冪等性: `checkout_idempotency_key`, `checkout_key_revision`
+- 不変条件
   - `paid` は Stripe のみ、`received` は現金のみ
-  - Stripe決済で非pending/canceledのとき、payment_intent_id 等が必須
+  - Stripe 決済で非 `pending` / `canceled` のとき、必要な Stripe 識別子が必須
+  - Stripe 決済は `payout_profile_id` 必須
 
-### 5.4 Settlement（settlements）
-- 責務: イベント単位の集計スナップショット（売上/手数料/控除/純額）
-- 主な属性（カテゴリ）
-  - total_stripe_sales, total_stripe_fee, platform_fee, net_payout_amount 等
+### 5.6 Settlement（settlements）
+- 責務: イベント単位の集計スナップショット
 - 注意
-  - Settlementは「支払いや送金の実行」ではなく、「集計レポート」であることを明示する
+  - Settlement は支払いや送金の実行ではなく集計レポート
 
-### 5.4.1 Overview KPI: 入金状況
-- 概要タブの `入金状況` は、会計上の売上ではなく主催者向けの運用KPIとする
+### 5.6.1 Overview KPI: 入金状況
+- 概要タブの `入金状況` は、会計上の売上ではなく community owner 向けの運用KPI
 - 対象は `attending` のうち `waived` を除いた参加者
 - 入金済みは `paid` / `received`
-- `pending` / `failed` / payment未作成（例: 無料→有料変更直後で `payment_status = null`）は未収として扱う
+- `pending` / `failed` / payment 未作成は未収として扱う
 - `waived` は入金ではなく免除として別集計する
-- `要確認` は、主催者が参加状態と金銭処理の扱いを追加判断する必要がある状態だけを指す
-- 例: `attending` の `refunded` / `canceled`、または `not_attending` / `maybe` なのに `paid` / `received` / `waived` / `refunded` が残っている状態
-- アプリ不整合の検知はこのKPIの責務ではなく、状態遷移の境界や監視で扱う
-
-### 5.5 StripeConnectAccount（stripe_connect_accounts）
-- 責務: 主催者のStripe Connectアカウント状態を管理し、決済可否判断に使う
-- 主な属性: stripe_account_id, status, charges_enabled, payouts_enabled
-- 不変条件: user_id はユニーク（1ユーザー1アカウント）
 
 ## 6. 状態遷移（State Machines）
 
@@ -158,7 +201,7 @@ stateDiagram-v2
   [*] --> pending: 決済レコード作成
 
   pending --> paid: Stripe決済成功（Webhook確定）
-  pending --> received: 現金受領（主催者操作）
+  pending --> received: 現金受領（owner操作）
   pending --> failed: Stripe決済失敗
   pending --> canceled: キャンセル
   pending --> waived: 免除
@@ -173,7 +216,7 @@ stateDiagram-v2
   canceled --> [*]
 ```
 
-### 6.3 Stripe Connect Account Status
+### 6.3 Payout Profile / Stripe Connect Status
 ```mermaid
 stateDiagram-v2
   [*] --> unverified: 未設定
@@ -184,59 +227,68 @@ stateDiagram-v2
   restricted --> verified: 制限解除
 ```
 
----
-
 ## 7. ビジネスルール（Invariants）
 
 ### 7.1 定員
-- `attending` への遷移時のみ定員チェック対象（not_attending/maybeは対象外）
-- 同時更新を考慮し、DB側で排他制御（例: `FOR UPDATE`）を行う
+- `attending` への遷移時のみ定員チェック対象
+- 同時更新を考慮し、DB 側で排他制御を行う
 
 ### 7.2 締切
 - 登録締切はイベント日時以前
-- 支払締切は登録締切以降、かつイベント日時（または+猶予）まで
-- 猶予期間（grace_period_days）がある場合、支払い許可の範囲を明示する
+- 支払締切は登録締切以降、かつイベント日時または猶予期間まで
 
-### 7.3 編集制限（Restriction）
+### 7.3 編集制限
 - 参加者がいる場合、参加費・決済方法・定員などは制限される
-- Stripe決済済みが存在する場合、参加費変更は原則不可（構造的制限）
-- フェイルクローズ方針（判定失敗時は“編集不可”側へ倒す）を採用する箇所があるなら明示する
+- Stripe 決済済みが存在する場合、参加費変更は原則不可
+- 判定失敗時に編集不可側へ倒す箇所は fail-close とする
 
-### 7.4 冪等性（Idempotency）
+### 7.4 受取先 snapshot
+- event 作成時に `events.payout_profile_id` を固定する
+- `events.payout_profile_id` は non-null になった後は編集で変更しない
+- 例外として、`events.payout_profile_id` が `null` の event に `stripe` を初回追加する場合のみ、current community の `current_payout_profile_id` を補完して保存できる
+- `stripe` を外しても `events.payout_profile_id` は消さず、後で `stripe` を再追加しても既存 snapshot を使う
+- 決済時に `payments.payout_profile_id` を固定する
+- community の `current_payout_profile_id` 変更は過去 event / payment を書き換えない
+
+### 7.5 冪等性
 - Checkout Session 作成は冪等キーで二重作成を防ぐ
-- Webhook処理はイベントID等で重複処理を防ぐ
-- Payment更新は楽観ロック（version）やロールバック禁止で整合性を守る
+- Webhook 処理は重複処理を防ぐ
+- Payment 更新は楽観ロックやロールバック禁止で整合性を守る
 
 ## 8. 権限モデル（Who can do what）
 
 ### アクター
-- user: 認証済みユーザー（主催者）
+- user: 認証済みユーザー（community owner）
 - guest: ゲストトークン保持者（匿名参加）
-- anonymous: トークンなし匿名（招待リンク閲覧のみ等、可能な範囲）
-- service_role/system/webhook: システム処理（バックグラウンド/確定処理）
+- anonymous: トークンなし匿名（公開ページ閲覧など）
+- service_role / system / webhook: システム処理
 
 ### 権限の原則
-- 主催者は「自分のイベント」に対して操作可能
-- ゲストは「自分のguest_tokenに紐づくAttendance/Payment」に限定して操作可能
-- 重要な更新は DB（RLS + SECURITY DEFINER関数等）でも守る
+- owner は自分が所有する community と、その current community 配下の event / attendance / payment を操作できる
+- guest は自分の `guest_token` に紐づく Attendance / Payment のみ操作できる
+- representative community や current payout profile の更新は owner だけが行える
+- 重要な更新は DB（RLS + SECURITY DEFINER 関数等）でも守る
 
 ## 9. 外部サービス境界（腐敗防止層）
 
-- Stripe（Payment/Connect）は外部の概念が強いため、ドメインを汚染しないように翻訳層（ACL）を設ける
-  - 例: “Stripeのイベント名/状態” → “PaymentStatus” へ変換する責務を境界に閉じ込める
+- Stripe（Payment / Connect）は外部の概念が強いため、ドメインを汚染しないように翻訳層（ACL）を設ける
+- Connect onboarding は representative community の公開URLを Stripe 側へ同期する
+- Checkout / Webhook は `event -> payout_profile -> stripe_account_id` を使うが、ドメイン側では payout snapshot を正とする
 
 ## 10. 例外・エッジケース（抜粋）
 
-- 定員ギリギリの同時参加登録（排他制御で先着順）
-- 決済ボタン連打によるCheckout Session重複（冪等性で防ぐ）
-- Webhook重複配信（重複排除）
-- Webhook到着と現金受領の競合（楽観ロック/優先順位で決める）
-- Connect未設定での決済試行（事前にUI/サーバで弾く or 明確なエラー）
+- 定員ギリギリの同時参加登録
+- 決済ボタン連打による Checkout Session 重複
+- Webhook 重複配信
+- Webhook 到着と現金受領の競合
+- current community cookie が無効な community を指している場合の oldest fallback
+- representative community 未設定での Connect onboarding / refresh
+- payout profile 未設定の community で Stripe 決済イベントを作ろうとするケース
 
 ## ドメイン変更時に更新すべき箇所
 
-- [ ] 用語集（推奨/禁止表記、Enum）
-- [ ] 状態遷移図（Attendance/Payment/Connect）
-- [ ] 不変条件（締切/定員/編集制限/冪等性）
-- [ ] 権限モデル（user/guest/service_role）
-- [ ] 関連するflowsとADR
+- [ ] 用語集（推奨 / 禁止表記、Enum）
+- [ ] 状態遷移図（Attendance / Payment / Connect）
+- [ ] 不変条件（締切 / 定員 / 編集制限 / snapshot / 冪等性）
+- [ ] 権限モデル（user / guest / service_role）
+- [ ] 関連する flows と ADR

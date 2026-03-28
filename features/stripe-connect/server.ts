@@ -1,6 +1,5 @@
 import "server-only";
 
-export { getDetailedAccountStatusAction } from "./actions/account-status-check";
 export {
   getConnectAccountStatusAction,
   handleOnboardingRefreshAction,

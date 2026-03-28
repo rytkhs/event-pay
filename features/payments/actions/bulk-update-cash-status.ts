@@ -1,9 +1,15 @@
-import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
+import {
+  type ActionResult,
+  fail,
+  ok,
+  toActionResultFromAppResult,
+} from "@core/errors/adapters/server-actions";
 import type { ErrorCode } from "@core/errors/types";
 import { enforceRateLimit, buildKey, POLICIES } from "@core/rate-limit";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 
+import { getOwnedBulkPaymentActionContextForServerAction } from "../services/get-owned-payment-action-context";
 import { PaymentValidator, bulkUpdateCashStatusActionInputSchema } from "../validation";
 
 type BulkUpdateResult = {
@@ -82,13 +88,20 @@ export async function bulkUpdateCashStatusAction(
     const { paymentIds, status, notes } = parsed.data;
 
     const supabase = await createServerActionSupabaseClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return fail("UNAUTHORIZED", { userMessage: "認証が必要です。" });
+    const accessResult = await getOwnedBulkPaymentActionContextForServerAction(
+      supabase,
+      paymentIds
+    );
+    if (!accessResult.success) {
+      return toActionResultFromAppResult(accessResult);
     }
+
+    const accessContext = accessResult.data;
+    if (!accessContext) {
+      return fail("INTERNAL_ERROR", { userMessage: "決済レコードの取得に失敗しました。" });
+    }
+
+    const { user, payments: paymentsWithEvent } = accessContext;
 
     // レート制限（ユーザー単位、一括更新用の制限）
     try {
@@ -108,60 +121,17 @@ export async function bulkUpdateCashStatusAction(
       // レート制限でのストア初期化失敗時はスキップ（安全側）
     }
 
-    // 対象決済の一括取得（主催者権限チェック用）
-    const { data: paymentsWithEvent, error: fetchError } = await supabase
-      .from("payments")
-      .select(
-        `
-        id,
-        method,
-        status,
-        version,
-        attendance_id,
-        attendances!inner (
-          id,
-          event_id,
-          events!inner (
-            id,
-            created_by
-          )
-        )
-      `
-      )
-      .in("id", paymentIds);
-
-    if (fetchError) {
-      return fail("DATABASE_ERROR", { userMessage: "決済レコードの取得に失敗しました。" });
-    }
-
-    if (!paymentsWithEvent || paymentsWithEvent.length === 0) {
-      return fail("NOT_FOUND", { userMessage: "決済レコードが見つかりません。" });
-    }
-
-    // 権限チェック：すべての決済が同じユーザーのイベントに属していることを確認
-    const unauthorizedPayments = paymentsWithEvent.filter((payment) => {
-      const attendance = Array.isArray(payment.attendances)
-        ? payment.attendances[0]
-        : payment.attendances;
-      const event = Array.isArray(attendance.events) ? attendance.events[0] : attendance.events;
-      return event.created_by !== user.id;
-    });
-
-    if (unauthorizedPayments.length > 0) {
-      return fail("FORBIDDEN", { userMessage: "この操作を実行する権限がありません。" });
-    }
-
     // 現金決済以外のフィルタリング
-    const nonCashPayments = paymentsWithEvent.filter((p) => p.method !== "cash");
+    const nonCashPayments = paymentsWithEvent.filter((payment) => payment.method !== "cash");
 
     // 部分成功を許容するため、非現金決済は failures に積むだけで処理続行
-    const initialFailures: BulkUpdateResult["failures"] = nonCashPayments.map((p) => ({
-      paymentId: p.id,
+    const initialFailures: BulkUpdateResult["failures"] = nonCashPayments.map((payment) => ({
+      paymentId: payment.paymentId,
       error: "現金決済以外は手動更新できません。",
     }));
 
     // 現金決済のみを抽出
-    const cashPayments = paymentsWithEvent.filter((p) => p.method === "cash");
+    const cashPayments = paymentsWithEvent.filter((payment) => payment.method === "cash");
 
     if (cashPayments.length === 0) {
       return ok({
@@ -174,15 +144,16 @@ export async function bulkUpdateCashStatusAction(
     // 基本的なバリデーション（RPC関数内でも再実行される）
     const validator = new PaymentValidator(supabase);
     for (const payment of cashPayments) {
+      await validator.validateAttendanceAccess(payment.attendanceId);
       await validator.validateUpdatePaymentStatusParams({
-        paymentId: payment.id,
+        paymentId: payment.paymentId,
         status,
       });
     }
 
     // 一括更新用のデータを構築（version情報を含める）
     const updateData = cashPayments.map((payment) => ({
-      payment_id: payment.id,
+      payment_id: payment.paymentId,
       expected_version: payment.version,
       new_status: status,
     }));

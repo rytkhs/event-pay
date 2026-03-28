@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { User, CreditCard, Shield, ArrowLeft } from "lucide-react";
+import { User, CreditCard, Shield, ArrowLeft, Building2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,16 +14,22 @@ interface SettingsLayoutProps {
 
 const settingsPages = [
   {
-    title: "プロフィール情報",
-    href: "/settings/profile",
-    icon: User,
-    description: "基本情報とアカウント設定",
+    title: "コミュニティ設定",
+    href: "/settings/community",
+    icon: Building2,
+    description: "選択中のコミュニティの公開情報と設定",
   },
   {
-    title: "決済設定",
+    title: "Stripe アカウント設定",
     href: "/settings/payments",
     icon: CreditCard,
-    description: "Stripe設定 と決済管理",
+    description: "Stripeアカウント設定とダッシュボード",
+  },
+  {
+    title: "アカウント設定",
+    href: "/settings/profile",
+    icon: User,
+    description: "アカウント情報の変更",
   },
   {
     title: "パスワード",
@@ -56,7 +62,7 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
         {/* ヘッダー */}
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold">設定</h1>
-          <p className="text-muted-foreground mt-1">アカウント情報とアプリケーション設定を管理</p>
+          <p className="text-muted-foreground mt-1">コミュニティとアカウントを管理</p>
         </div>
 
         {/* 設定メニューカード */}

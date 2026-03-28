@@ -12,18 +12,20 @@
 - Guest: 招待リンク（`invite_token`）経由でイベントを閲覧し、RSVP登録するユーザー（アカウント不要）。
 - System: Next.js（Server Actions / API Routes）+ Supabase（PostgreSQL + RLS）。
 - 前提データ: `events`, `attendances`, `payments` が主要な永続化対象。
+- 招待リンクで取得するイベント情報には、公開導線に必要な community 情報（少なくとも `community_name`, `community_legal_slug`）が含まれる。
 - 権限: ゲストは「自分の `guest_token` に紐づく Attendance/Payment」だけにアクセス可能という前提で設計する（詳細は `domain.md` / `data-model.md`）。
 
 ## 正常系フロー（初回登録）
 1. Guest が招待リンク（例: `/invite/{invite_token}`）にアクセスする。
-2. System は招待トークンの形式チェックと存在確認を行い、イベント情報を取得する。
+2. System は招待トークンの形式チェックと存在確認を行い、event とその所属 community の公開情報を取得する。
 3. System は登録可能かを判定する（キャンセル済み、締切超過、過去イベント等）。
 4. Guest は RSVP フォームに入力する（nickname / email / attendance status、必要なら payment method）。
 5. System は入力をバリデーションし、必要ならサニタイズする。
 6. `attending` の場合のみ定員チェックを実施し、レースを避けるため DB 側でも排他制御（例: `FOR UPDATE`）を行う。
 7. System は `guest_token` を発行し、DB に「参加（attendances）＋必要なら決済レコード（payments）」を作成する（原子的に作る場合は RPC を利用）。
 8. System は登録完了画面を返し、ゲストトークンURL（例: `/guest/{guest_token}`）を案内する。
-9. 可能なら登録完了通知メールを送信します（失敗しても登録自体は成功扱いにする、など運用方針に従う）。
+9. イベントに `community.legal_slug` がある場合、ゲスト画面から特商法ページ（`/tokushoho/{legal_slug}`）へ遷移できる。
+10. 可能なら登録完了通知メールを送信します（失敗しても登録自体は成功扱いにする、など運用方針に従う）。
 
 ### 初回登録のシーケンス図（概略）
 ```mermaid
@@ -35,8 +37,8 @@ sequenceDiagram
 
   G->>UI: /invite/{invite_token} アクセス
   UI->>App: 招待トークン検証・イベント取得
-  App->>DB: イベント参照（tokenで絞る）
-  DB-->>App: イベント情報
+  App->>DB: event + community 公開情報参照
+  DB-->>App: イベント情報 / community 情報
   App-->>UI: RSVPフォーム表示
 
   G->>UI: 入力（nickname/email/status/必要ならpayment method）
@@ -57,7 +59,7 @@ sequenceDiagram
 3. System は更新可能かを判定する（キャンセル済み、締切超過、過去イベント等）。
 4. Guest は `attending` / `maybe` / `not_attending` を変更し、必要なら決済方法も選択する。
 5. System はバリデーションし、`attending` へ変更する場合のみ定員チェックを行う。
-6. System は DB を更新する（RPC を使う場合は `update_guest_attendance_with_payment` のような関数に集約）。
+6. System は DB を更新する。Stripe 決済が必要な場合、後続の Checkout 作成では event の payout snapshot を使う（詳細は `online-payment.md`）。
 
 ## データ更新（最小まとめ）
 - `attendances`
@@ -65,6 +67,9 @@ sequenceDiagram
 - `payments`
   - 有料かつ `attending` の場合に `pending` 等で作成/更新する。
   - `attending` 以外へ変更した場合、未確定の支払い（例: `pending` / `failed`）はキャンセル扱いに寄せる、などの方針を取る（詳細は `domain.md` / `data-model.md`）。
+- `community` 公開情報
+  - 招待画面 / ゲスト画面では event 所属 community の公開名義を表示できる
+  - 削除済み community は公開 read model から返さない
 
 ## 代表的なエラーケース
 - 招待トークンが不正/存在しない → 404/エラー画面。
@@ -77,10 +82,11 @@ sequenceDiagram
 - トークンは推測困難であることを前提にしつつ、「形式チェック + DB存在確認」を必須とする。
 - 定員は競合しやすいので、アプリ層の事前チェックだけでなく DB 側で排他制御して整合性を担保する。
 - ゲスト更新は `guest_token` による本人性が中核なので、RLS もしくは SECURITY DEFINER + 追加検証など、多層で守る（詳細は `security.md` / `data-model.md`）。
+- 公開導線で露出する community 情報は最小限に絞り、削除済み community を返さない read model を正とする。
 
 ## 関連ドキュメント
 - アーキテクチャと主要フロー: `../architecture.md`（Flow 1: 招待→ゲスト出欠）
-- ドメイン（用語、状態遷移、不変条件、権限モデル）: `../domain.md`
-- データモデル（ERD、制約、RLS、冪等性）: `../data-model.md`
+- ドメイン（community / guest / payout profile の主語）: `../domain.md`
+- データモデル（ERD、制約、RLS、公開 read model の前提）: `../data-model.md`
 - セキュリティ（脅威モデル、RLS、Webhook等）: `../security.md`
 - ADR（ゲスト招待リンクやRLS方針の背景）: `../decisions/`

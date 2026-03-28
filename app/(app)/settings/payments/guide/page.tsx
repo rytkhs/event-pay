@@ -68,9 +68,7 @@ export default function OnboardingGuidePage() {
             <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-              設定に迷ったら
-            </h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">設定に迷ったら</h1>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
               Stripeアカウント作成時に入力する項目と設定の参考です。
               スムーズなオンボーディングのために、以下のガイドを参考にしてください。
@@ -249,7 +247,7 @@ export default function OnboardingGuidePage() {
               className="group flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
             >
               <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-              決済設定に戻る
+              Stripe アカウント設定に戻る
             </Link>
           </div>
         </div>

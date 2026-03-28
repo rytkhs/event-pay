@@ -17,13 +17,14 @@
 ## 2. System Overview
 
 ### ユーザー種別
-- **主催者**: イベント作成・管理、決済状況確認、Stripe Connect口座連携
+- **主催者**: community 作成・切り替え、イベント作成・管理、決済状況確認、Stripe Connect口座連携
 - **ゲスト（Guest）**: トークンベースで出欠回答・オンライン決済（アカウント不要）
 - **システム**: 自動リマインダー送信、定期的なプラットフォーム残高監視
 
 ### 提供価値
 - イベント出欠管理と集金を単一リンク共有で完結
-- Stripe Connectによる主催者口座への直接振込（プラットフォーム手数料徴収なし）
+- community 公開ページと特商法ページを、運営主体の説明面として提供
+- Stripe Connectによる payout profile への受取設定
 - 現金・オンライン決済のハイブリッド対応
 
 ### 重要な品質特性
@@ -66,7 +67,7 @@ flowchart TB
 
 ### 外部アクター
 - **主催者**: Supabase Auth（Google/LINE/Email）で認証、RLSで認可
-- **ゲスト**: 招待トークン（UUID v4 + HMAC署名）で認証、トークン有効性検証で認可
+- **ゲスト**: 招待トークン / ゲストトークンで本人性を確認し、トークン有効性検証で認可
 - **Cron**: `CRON_SECRET` Bearer認証でリマインダー送信トリガー
 
 ### 外部サービス（信頼境界）
@@ -77,13 +78,13 @@ flowchart TB
 
 ## 4. Containers
 
-### Web Application（Next.js 14 App Router）
+### Web Application（Next.js 15 App Router）
 - **ホスティング**: Cloudflare Workers + OpenNext
 - **責務**: SSR/SSG、Server Actions、API Routes、CSP nonce生成
 - **特性**: エッジコンピューティング、R2インクリメンタルキャッシュ
 
 ### Database（Supabase PostgreSQL）
-- **責務**: 永続化（events, attendances, payments, users）、RLS適用、監査ログ
+- **責務**: 永続化（communities, payout_profiles, events, attendances, payments, users）、RLS適用、監査ログ
 - **接続**: `@supabase/ssr` でCookie同期、Service Role Keyで管理者操作
 
 ### Auth（Supabase Auth）
@@ -93,7 +94,7 @@ flowchart TB
 
 ### Payment（Stripe）
 - **Checkout Session**: 決済UI、成功時にWebhook通知
-- **Connect Express**: 主催者口座への直接振込、onboarding flow
+- **Connect Express**: payout profile の onboarding flow、representative community の公開URL提出
 - **Webhook**: `payment_intent.succeeded`, `charge.refunded`, `account.updated` 等
 
 ### Mail（Resend）
@@ -159,11 +160,11 @@ flowchart TB
 
 ### Flow 1: 招待リンク → ゲスト出欠回答
 
-1. **主催者**: イベント作成 → 招待リンク生成
-2. **システム**: トークン生成 → DB保存（`attendances` テーブル）
-3. **ゲスト**: リンクアクセス → Middleware でトークン検証（有効期限・署名）
+1. **主催者**: current community 文脈でイベント作成 → 招待リンク生成
+2. **システム**: event を `community_id` / `payout_profile_id` snapshot 付きで保存
+3. **ゲスト**: リンクアクセス → 招待トークン検証と event + community 公開情報取得
 4. **ゲスト**: 出欠選択（attending/not_attending/maybe）→ Server Action実行
-5. **システム**: `updateGuestAttendanceAction` → RLS無しでDB更新（トークン検証済み）
+5. **システム**: `updateGuestAttendanceAction` → ゲストトークン検証済みでDB更新
 6. **システム**: 定員チェック（排他ロック `FOR UPDATE`）→ 超過時はエラー
 
 ### Flow 2: オンライン決済 → Webhook → 入金反映
@@ -179,6 +180,8 @@ sequenceDiagram
     participant DB as Supabase
 
     G->>App: 決済ボタンクリック
+    App->>DB: event.payout_profile_id 解決
+    DB-->>App: payout_profile_id / stripe_account_id
     App->>Stripe: createCheckoutSession<br/>(idempotency_key)
     Stripe-->>App: session.url
     App-->>G: Redirect to Stripe
@@ -190,8 +193,8 @@ sequenceDiagram
     WH->>Q: QStash Publish<br/>(deduplication_id: event.id)
     WH-->>Stripe: 204 No Content
     Q->>W: POST /api/workers/stripe-webhook
-    W->>DB: payments テーブル更新<br/>(status: paid)
-    W->>DB: attendances.payment_status 更新
+    W->>DB: payments テーブル更新<br/>(status: paid, payout snapshot維持)
+    W->>DB: 必要に応じて関連 read model / 後段処理を更新
     W-->>Q: 204/489/5xx
     Q-->>WH: Success
 ```
@@ -208,7 +211,7 @@ sequenceDiagram
 
 1. **主催者**: ダッシュボードで参加者一覧表示 → 現金徴収行を選択
 2. **主催者**: 「入金済みにする」ボタンクリック → Server Action実行
-3. **システム**: `updatePaymentStatusAction` → 主催者権限検証（RLS: `created_by = auth.uid()`）
+3. **システム**: `updatePaymentStatusAction` → current community と event.community_id の一致を検証
 4. **システム**: `payments` テーブル更新（`status = 'received'`, `method = 'cash'`）
 5. **システム**: 監査ログ記録（actor_type = 'user', category = 'payment'）
 6. **システム**: UI即時反映（楽観的更新 or revalidatePath）
@@ -226,9 +229,11 @@ sequenceDiagram
 ## 7. Data & State
 
 ### 主要エンティティ
-- **events**: 所有者（created_by）、定員（capacity）、期限（response_deadline, payment_deadline）
+- **communities**: owner（`created_by`）、公開URL（`slug`, `legal_slug`）、current payout profile
+- **payout_profiles**: 受取先、Connect 状態、representative community
+- **events**: 所属先（`community_id`）、payout snapshot（`payout_profile_id`）、定員、期限
 - **attendances**: ゲストトークン（guest_token, UNIQUE）、出欠状態（status: enum）
-- **payments**: 決済状態（status: enum）、Stripe ID（stripe_payment_intent_id）、冪等キー
+- **payments**: 決済状態（status: enum）、Stripe ID、payout snapshot、冪等キー
 - **users**: Supabase Auth連携（id = auth.users.id）、削除フラグ（deleted_at）
 
 ### 状態遷移（payments.status）
@@ -241,6 +246,8 @@ sequenceDiagram
 
 ### Source of Truth
 - **認証**: Supabase Auth（JWT Claims）
+- **運営文脈**: `current_community_id` cookie と server-side resolver
+- **公開名義**: community の `slug` / `legal_slug` / representative community
 - **決済**: Stripe（Webhook event.id が一意識別子）
 - **出欠**: attendances テーブル（ゲストトークンが一意キー）
 
@@ -257,9 +264,11 @@ sequenceDiagram
 - **Cron認証**: Bearer Token（`CRON_SECRET`、32文字以上）
 
 ### RLS（Row Level Security）方針
-- **events**: `created_by = auth.uid()` で主催者のみ編集可
+- **communities**: owner の自 community のみ参照 / 更新可
+- **payout_profiles**: owner の自 payout profile のみ参照 / 更新可
+- **events**: `event -> community owner` 基準で owner のみ編集可
 - **attendances**: ゲストトークン経由はRLS無効（Service Role使用）
-- **payments**: 主催者 or 参加者本人のみ閲覧可
+- **payments**: community owner または参加者本人のみ閲覧 / 更新可
 - **管理者操作**: `SecureSupabaseClientFactory` で監査ログ付きadmin client作成
 
 ### Webhook検証

@@ -361,6 +361,9 @@ export async function logStripeConnect(params: {
   action: string;
   message: string;
   user_id: string;
+  actor_type?: ActorType;
+  resource_type?: string;
+  resource_id?: string;
   outcome?: LogOutcome;
   stripe_request_id?: string;
   metadata?: unknown;
@@ -368,8 +371,8 @@ export async function logStripeConnect(params: {
 }): Promise<void> {
   await logToSystemLogs({
     log_category: "stripe_connect",
-    resource_type: "stripe_connect_account",
-    actor_type: "user",
+    resource_type: params.resource_type || "stripe_connect_account",
+    actor_type: params.actor_type || "user",
     ...params,
   });
 }

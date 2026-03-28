@@ -127,17 +127,14 @@ export interface IPaymentValidator {
    * @param params 検証対象のパラメータ
    * @throws PaymentError バリデーションに失敗した場合
    */
-  validateCreateStripeSessionParams(
-    params: CreateStripeSessionParams,
-    userId: string
-  ): Promise<void>;
+  validateCreateStripeSessionParams(params: CreateStripeSessionParams): Promise<void>;
 
   /**
    * 現金決済作成パラメータを検証する
    * @param params 検証対象のパラメータ
    * @throws PaymentError バリデーションに失敗した場合
    */
-  validateCreateCashPaymentParams(params: CreateCashPaymentParams, userId: string): Promise<void>;
+  validateCreateCashPaymentParams(params: CreateCashPaymentParams): Promise<void>;
 
   /**
    * 決済ステータス更新パラメータを検証する
@@ -147,12 +144,11 @@ export interface IPaymentValidator {
   validateUpdatePaymentStatusParams(params: ServiceUpdatePaymentStatusParams): Promise<void>;
 
   /**
-   * 参加記録の存在と権限を検証する
+   * 参加記録の存在と、現在の認証セッションで参照可能かを検証する
    * @param attendanceId 参加記録ID
-   * @param userId ユーザーID（権限チェック用）
    * @throws PaymentError 検証に失敗した場合
    */
-  validateAttendanceAccess(attendanceId: string, userId: string): Promise<void>;
+  validateAttendanceAccess(attendanceId: string): Promise<void>;
 
   /**
    * 決済金額の妥当性を検証する

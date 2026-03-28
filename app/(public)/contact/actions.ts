@@ -14,20 +14,16 @@ import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { waitUntil } from "@core/utils/cloudflare-ctx";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { getClientIPFromHeaders } from "@core/utils/ip-detection";
+import { maskEmail } from "@core/utils/mask";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatUtcToJst, formatDateToJstYmd } from "@core/utils/timezone";
 import { ContactInputSchema, type ContactInput } from "@core/validation/contact";
-
-/**
- * メールアドレスをマスクする（ログ用）
- */
-function maskEmail(email: string): string {
-  const parts = email.split("@");
-  if (parts.length !== 2) return "***";
-  const [local, domain] = parts;
-  if (local.length <= 2) return `${local[0]}***@${domain}`;
-  return `${local.slice(0, 1)}${"*".repeat(local.length - 1)}@${domain}`;
-}
+import {
+  canonicalizeContactMessageForFingerprint,
+  hasValidContactMessageContent,
+  hasValidContactNameContent,
+  normalizeContactMessageForStorage,
+} from "@core/validation/contact-message";
 
 /**
  * お問い合わせ送信
@@ -80,12 +76,28 @@ export async function submitContact(input: ContactInput) {
     });
   }
   const messageSanitized = sanitizeForEventPay(parsed.data.message);
-  const normalizedMessage = messageSanitized.trim().replace(/\s+/g, " ");
+  const messageForStorage = normalizeContactMessageForStorage(messageSanitized);
+  const messageForFingerprint = canonicalizeContactMessageForFingerprint(messageSanitized);
   const nameSanitized = sanitizeForEventPay(parsed.data.name).trim();
+
+  if (
+    !hasValidContactNameContent(nameSanitized) ||
+    !hasValidContactMessageContent(messageForStorage)
+  ) {
+    return fail("VALIDATION_ERROR", {
+      userMessage: "入力内容を確認してください",
+      fieldErrors: {
+        ...(!hasValidContactNameContent(nameSanitized) ? { name: ["氏名を入力してください"] } : {}),
+        ...(!hasValidContactMessageContent(messageForStorage)
+          ? { message: ["お問い合わせ内容は10文字以上で入力してください"] }
+          : {}),
+      },
+    });
+  }
 
   // 4. 指紋ハッシュ生成（同日・同内容の重複防止）
   const dayJst = formatDateToJstYmd(new Date()); // JST基準のYYYY-MM-DD
-  const fingerprintHash = hmacSha256Hex(`${email}|${normalizedMessage}|${dayJst}`);
+  const fingerprintHash = hmacSha256Hex(`${email}|${messageForFingerprint}|${dayJst}`);
 
   // 5. メタデータ収集
   const userAgent = h.get("user-agent") ?? null;
@@ -96,7 +108,7 @@ export async function submitContact(input: ContactInput) {
   const { error: insertError } = await supabase.from("contacts").insert({
     name: nameSanitized,
     email,
-    message: normalizedMessage,
+    message: messageForStorage,
     fingerprint_hash: fingerprintHash,
     user_agent: userAgent,
     ip_hash: ipHash,
@@ -145,7 +157,7 @@ export async function submitContact(input: ContactInput) {
   // 8. 非同期通知（メール + Slack）
   waitUntil(
     (async () => {
-      const excerpt = normalizedMessage.slice(0, 500);
+      const excerpt = messageForStorage.slice(0, 500);
       const receivedAt = new Date();
 
       // メール通知

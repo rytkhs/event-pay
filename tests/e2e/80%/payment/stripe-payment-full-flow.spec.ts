@@ -217,41 +217,113 @@ test.describe("Stripe決済 完全フロー", () => {
 
     console.log("✓ イベント作成完了:", eventId);
 
-    // === Stripe Connectアカウントをテストユーザーに設定 ===
+    // === event / current community が verified payout_profile を指す状態へ揃える ===
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // イベントからcreated_byを取得
+    // イベントから community / payout snapshot を取得
     const { data: eventData, error: eventError } = await supabase
       .from("events")
-      .select("created_by")
+      .select("created_by, community_id, payout_profile_id")
       .eq("id", eventId)
       .single();
 
     if (eventError || !eventData) {
-      throw new Error("Failed to fetch event creator");
+      throw new Error("Failed to fetch event payout context");
     }
 
     const testStripeAccountId = "acct_1SNbjmCtoNNhKnPZ";
+    let payoutProfileId = eventData.payout_profile_id;
 
-    const { error: upsertError } = await supabase.from("stripe_connect_accounts").upsert(
-      {
-        user_id: eventData.created_by,
-        stripe_account_id: testStripeAccountId,
-        status: "verified",
-        charges_enabled: true,
-        payouts_enabled: true,
-      },
-      {
-        onConflict: "user_id",
+    if (payoutProfileId) {
+      const { error: payoutUpdateError } = await supabase
+        .from("payout_profiles")
+        .update({
+          stripe_account_id: testStripeAccountId,
+          status: "verified",
+          charges_enabled: true,
+          payouts_enabled: true,
+          representative_community_id: eventData.community_id,
+        })
+        .eq("id", payoutProfileId);
+
+      if (payoutUpdateError) {
+        throw new Error(`Failed to update payout profile: ${payoutUpdateError.message}`);
       }
-    );
+    } else {
+      const { data: existingPayoutProfile, error: existingPayoutProfileError } = await supabase
+        .from("payout_profiles")
+        .select("id, representative_community_id")
+        .eq("owner_user_id", eventData.created_by)
+        .maybeSingle();
 
-    if (upsertError) {
-      throw new Error(`Failed to set stripe_connect_account: ${upsertError.message}`);
+      if (existingPayoutProfileError) {
+        throw new Error(
+          `Failed to fetch existing payout profile: ${existingPayoutProfileError.message}`
+        );
+      }
+
+      if (existingPayoutProfile) {
+        payoutProfileId = existingPayoutProfile.id;
+
+        const { error: payoutUpdateError } = await supabase
+          .from("payout_profiles")
+          .update({
+            stripe_account_id: testStripeAccountId,
+            status: "verified",
+            charges_enabled: true,
+            payouts_enabled: true,
+            representative_community_id:
+              existingPayoutProfile.representative_community_id ?? eventData.community_id,
+          })
+          .eq("id", existingPayoutProfile.id);
+
+        if (payoutUpdateError) {
+          throw new Error(`Failed to update payout profile: ${payoutUpdateError.message}`);
+        }
+      } else {
+        const { data: insertedPayoutProfile, error: payoutInsertError } = await supabase
+          .from("payout_profiles")
+          .insert({
+            owner_user_id: eventData.created_by,
+            stripe_account_id: testStripeAccountId,
+            status: "verified",
+            charges_enabled: true,
+            payouts_enabled: true,
+            representative_community_id: eventData.community_id,
+          })
+          .select("id")
+          .single();
+
+        if (payoutInsertError || !insertedPayoutProfile) {
+          throw new Error(`Failed to create payout profile: ${payoutInsertError?.message}`);
+        }
+
+        payoutProfileId = insertedPayoutProfile.id;
+      }
+
+      const { error: eventUpdateError } = await supabase
+        .from("events")
+        .update({ payout_profile_id: payoutProfileId })
+        .eq("id", eventId);
+
+      if (eventUpdateError) {
+        throw new Error(`Failed to attach payout profile to event: ${eventUpdateError.message}`);
+      }
     }
 
-    console.log("✓ Stripe Connectアカウント設定完了");
+    const { error: communityUpdateError } = await supabase
+      .from("communities")
+      .update({ current_payout_profile_id: payoutProfileId })
+      .eq("id", eventData.community_id);
+
+    if (communityUpdateError) {
+      throw new Error(
+        `Failed to attach payout profile to current community: ${communityUpdateError.message}`
+      );
+    }
+
+    console.log("✓ verified payout_profile 設定完了");
 
     // === 2. 招待リンクを取得 ===
     // 招待リンクが表示されていることを確認（新しいUIに対応）

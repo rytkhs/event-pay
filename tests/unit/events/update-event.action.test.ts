@@ -1,6 +1,7 @@
 import { jest } from "@jest/globals";
 
 import { setupNextCacheMocks, setupNextHeadersMocks } from "../../setup/common-mocks";
+import { getFutureDateTimeLocal } from "../../helpers/test-datetime";
 
 // next/headers をモック（共通関数を使用するため、モック化のみ宣言）
 jest.mock("next/headers", () => ({
@@ -31,9 +32,16 @@ describe("updateEventAction", () => {
 
   function mockSupabaseWith(options: {
     existingEvent: any;
+    accessEvent?: any;
     paymentsData?: any[];
     attendancesData?: any[];
     updatedEvent?: any;
+    currentCommunityId?: string;
+    currentCommunityPayoutProfileId?: string | null;
+    payoutProfileReadinessRow?: {
+      status: string;
+      payouts_enabled: boolean;
+    } | null;
   }) {
     const captured = { updateData: undefined as any };
 
@@ -45,9 +53,16 @@ describe("updateEventAction", () => {
         error: null,
       });
 
+    const accessEvent = options.accessEvent ?? {
+      id: options.existingEvent.id,
+      community_id: options.existingEvent.community_id ?? "community-1",
+      created_by: options.existingEvent.created_by ?? "00000000-0000-0000-0000-000000000001",
+    };
+
     const eventsQuery: any = {
       select: jest.fn(() => eventsQuery),
       eq: jest.fn(() => eventsQuery),
+      maybeSingle: jest.fn(() => Promise.resolve({ data: accessEvent, error: null })),
       single: jest.fn(() => {
         // single() が呼ばれた時にPromiseを返す
         return singleMock();
@@ -63,6 +78,34 @@ describe("updateEventAction", () => {
       eq: jest.fn(() => paymentsQuery),
       in: jest.fn(() => paymentsQuery),
       limit: jest.fn(() => Promise.resolve({ data: options.paymentsData ?? [], error: null })),
+    };
+
+    const communitiesQuery: any = {
+      select: jest.fn(() => communitiesQuery),
+      eq: jest.fn(() => communitiesQuery),
+      maybeSingle: jest.fn(() =>
+        Promise.resolve({
+          data:
+            options.currentCommunityPayoutProfileId === undefined
+              ? { current_payout_profile_id: null }
+              : { current_payout_profile_id: options.currentCommunityPayoutProfileId },
+          error: null,
+        })
+      ),
+    };
+
+    const payoutProfilesQuery: any = {
+      select: jest.fn(() => payoutProfilesQuery),
+      eq: jest.fn(() => payoutProfilesQuery),
+      maybeSingle: jest.fn(() =>
+        Promise.resolve({
+          data:
+            options.payoutProfileReadinessRow === undefined
+              ? { status: "verified", payouts_enabled: true }
+              : options.payoutProfileReadinessRow,
+          error: null,
+        })
+      ),
     };
 
     // SupabaseのQueryBuilderはPromiseライク（thenable）なので、awaitに対応させる
@@ -82,6 +125,8 @@ describe("updateEventAction", () => {
       from: jest.fn((table: string) => {
         if (table === "events") return eventsQuery;
         if (table === "payments") return paymentsQuery;
+        if (table === "communities") return communitiesQuery;
+        if (table === "payout_profiles") return payoutProfilesQuery;
         if (table === "attendances") return attendancesQuery;
         throw new Error(`Unexpected table: ${table}`);
       }),
@@ -89,6 +134,20 @@ describe("updateEventAction", () => {
 
     jest.doMock("@core/supabase/factory", () => ({
       createServerActionSupabaseClient: () => mockSupabase,
+    }));
+    jest.doMock("@core/community/current-community", () => ({
+      getCurrentCommunityServerActionContext: jest.fn().mockResolvedValue({
+        success: true,
+        data: {
+          user: { id: "00000000-0000-0000-0000-000000000001" },
+          currentCommunity: {
+            id: options.currentCommunityId ?? "community-1",
+            name: "Community A",
+            slug: "community-a",
+            createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        },
+      }),
     }));
 
     return { mockSupabase, captured };
@@ -98,6 +157,7 @@ describe("updateEventAction", () => {
     const existingEvent = {
       id: "evt-1",
       created_by: "00000000-0000-0000-0000-000000000001",
+      community_id: "community-1",
       title: "t",
       date: new Date(Date.now() + 3600_000).toISOString(),
       registration_deadline: new Date(Date.now() + 600_000).toISOString(),
@@ -126,6 +186,7 @@ describe("updateEventAction", () => {
     const existingEvent = {
       id: "evt-2",
       created_by: "00000000-0000-0000-0000-000000000001",
+      community_id: "community-1",
       title: "t",
       date: new Date(Date.now() + 3600_000).toISOString(),
       registration_deadline: new Date(Date.now() + 600_000).toISOString(),
@@ -166,6 +227,120 @@ describe("updateEventAction", () => {
     });
     // registration_deadline は含まれない（DB仕様: 非NULL）
     expect(Object.prototype.hasOwnProperty.call(captured.updateData, "registration_deadline")).toBe(
+      false
+    );
+  });
+
+  it("current community 不一致なら EVENT_ACCESS_DENIED を返す", async () => {
+    const existingEvent = {
+      id: "evt-3",
+      created_by: "00000000-0000-0000-0000-000000000001",
+      community_id: "community-1",
+      title: "t",
+      date: new Date(Date.now() + 3600_000).toISOString(),
+      registration_deadline: new Date(Date.now() + 600_000).toISOString(),
+      payment_deadline: null,
+      fee: 1000,
+      payment_methods: ["cash"],
+      attendances: [],
+    };
+
+    mockSupabaseWith({
+      existingEvent,
+      currentCommunityId: "community-2",
+    });
+
+    const { updateEventAction: run } = await import("@/features/events/actions/update-event");
+    const res = await run("00000000-0000-0000-0000-000000000003", new FormData());
+
+    expect(res.success).toBe(false);
+    if (res.success) return;
+    expect(res.error.code).toBe("EVENT_ACCESS_DENIED");
+  });
+
+  it("payout_profile_id が null の event に Stripe を追加すると current community snapshot を補完する", async () => {
+    const existingEvent = {
+      id: "evt-4",
+      created_by: "00000000-0000-0000-0000-000000000001",
+      community_id: "community-1",
+      title: "t",
+      date: new Date(Date.now() + 3600_000).toISOString(),
+      registration_deadline: new Date(Date.now() + 600_000).toISOString(),
+      payment_deadline: null,
+      fee: 1000,
+      payment_methods: ["cash"],
+      payout_profile_id: null,
+      attendances: [],
+    };
+
+    const updatedEvent = {
+      ...existingEvent,
+      payment_methods: ["stripe", "cash"],
+      payment_deadline: new Date(Date.now() + 1_200_000).toISOString(),
+      payout_profile_id: "profile-current",
+    };
+
+    const { captured } = mockSupabaseWith({
+      existingEvent,
+      updatedEvent,
+      currentCommunityPayoutProfileId: "profile-current",
+    });
+
+    const form = new FormData();
+    form.append("payment_methods", "stripe");
+    form.append("payment_methods", "cash");
+    form.append("payment_deadline", getFutureDateTimeLocal(30));
+
+    const { updateEventAction: run } = await import("@/features/events/actions/update-event");
+    const res = await run("00000000-0000-0000-0000-000000000004", form);
+
+    expect(res.success).toBe(true);
+    expect(captured.updateData).toMatchObject({
+      payment_methods: ["stripe", "cash"],
+      payout_profile_id: "profile-current",
+    });
+  });
+
+  it("既存 snapshot がある event の Stripe 再追加では payout_profile_id を再束縛しない", async () => {
+    const existingEvent = {
+      id: "evt-5",
+      created_by: "00000000-0000-0000-0000-000000000001",
+      community_id: "community-1",
+      title: "t",
+      date: new Date(Date.now() + 3600_000).toISOString(),
+      registration_deadline: new Date(Date.now() + 600_000).toISOString(),
+      payment_deadline: null,
+      fee: 1000,
+      payment_methods: ["cash"],
+      payout_profile_id: "profile-existing",
+      attendances: [],
+    };
+
+    const updatedEvent = {
+      ...existingEvent,
+      payment_methods: ["stripe", "cash"],
+      payment_deadline: new Date(Date.now() + 1_200_000).toISOString(),
+    };
+
+    const { captured } = mockSupabaseWith({
+      existingEvent,
+      updatedEvent,
+      currentCommunityPayoutProfileId: "profile-current",
+    });
+
+    const form = new FormData();
+    form.append("payment_methods", "stripe");
+    form.append("payment_methods", "cash");
+    form.append("payment_deadline", getFutureDateTimeLocal(30));
+
+    const { updateEventAction: run } = await import("@/features/events/actions/update-event");
+    const res = await run("00000000-0000-0000-0000-000000000005", form);
+
+    expect(res.success).toBe(true);
+    expect(captured.updateData).toMatchObject({
+      payment_methods: ["stripe", "cash"],
+    });
+    expect(Object.prototype.hasOwnProperty.call(captured.updateData, "payout_profile_id")).toBe(
       false
     );
   });

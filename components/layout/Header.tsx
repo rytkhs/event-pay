@@ -2,7 +2,10 @@
 
 import React from "react";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+import type { AppWorkspaceShellData } from "@core/community/app-workspace";
 
 import {
   Breadcrumb,
@@ -17,7 +20,11 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 
 import { navigationConfig } from "./GlobalHeader/navigation-config";
 
-export function Header() {
+type HeaderProps = {
+  workspace: AppWorkspaceShellData;
+};
+
+export function Header({ workspace }: HeaderProps) {
   const pathname = usePathname();
 
   // URLパスからブレッドクラム用のセグメントを生成
@@ -33,9 +40,11 @@ export function Header() {
     const commonLabels: Record<string, string> = {
       dashboard: "ダッシュボード",
       events: "イベント一覧",
+      communities: "コミュニティ",
+      community: "コミュニティ",
       settings: "設定",
       profile: "プロフィール設定",
-      payments: "決済設定",
+      payments: "Stripe アカウント設定",
       security: "パスワード設定",
       create: "新規作成",
       participants: "参加者管理",
@@ -79,6 +88,15 @@ export function Header() {
             })}
           </BreadcrumbList>
         </Breadcrumb>
+      </div>
+      <div className="ml-auto flex min-w-0 items-center gap-2">
+        <span className="hidden text-xs text-muted-foreground sm:inline">現在のコミュニティ</span>
+        <Link
+          href="/settings/community"
+          className="max-w-40 truncate rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted/80 transition-colors sm:max-w-56"
+        >
+          {workspace.currentCommunity?.name ?? "未設定"}
+        </Link>
       </div>
     </header>
   );

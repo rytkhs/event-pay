@@ -290,6 +290,12 @@ export const POLICIES: Record<string, RateLimitPolicy> = {
     window: "1 m",
     blockMs: 5 * 60 * 1000,
   },
+  "community.contact.submit": {
+    scope: "community.contact.submit",
+    limit: 5,
+    window: "1 m",
+    blockMs: 5 * 60 * 1000,
+  },
   "demo.create": {
     scope: "demo.create",
     limit: 10,

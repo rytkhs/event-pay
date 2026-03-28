@@ -214,6 +214,7 @@ export async function setupChargeRefundedTest(): Promise<ChargeRefundedTestSetup
       stripe_payment_intent_id: paymentIntentId,
       stripe_charge_id: chargeId,
       stripe_account_id: testUser.stripeConnectAccountId,
+      payout_profile_id: testUser.payoutProfileId,
       application_fee_amount: applicationFeeAmount,
       stripe_balance_transaction_fee: stripeBalanceTransactionFee,
       tax_included: false,

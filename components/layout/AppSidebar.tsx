@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useTransition } from "react";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { LogOut, ChevronsUpDown, CreditCard, Loader2 } from "lucide-react";
 
+import type { AppWorkspaceShellData } from "@core/community/app-workspace";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -32,6 +32,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+import { CommunitySwitcher } from "./CommunitySwitcher";
 import { navigationConfig, userMenuItems } from "./GlobalHeader/navigation-config";
 
 const LOGOUT_ERROR_MESSAGE = "ログアウトに失敗しました。再度お試しください。";
@@ -41,12 +42,14 @@ type AppSidebarProps = {
     name?: string | null;
     email?: string | null;
   } | null;
+  workspace: AppWorkspaceShellData;
   logoutAction: () => Promise<ActionResult>;
   createExpressDashboardLoginLinkAction: () => Promise<void>;
 } & React.ComponentProps<typeof Sidebar>;
 
 export function AppSidebar({
   user,
+  workspace,
   logoutAction,
   createExpressDashboardLoginLinkAction,
   ...props
@@ -102,21 +105,14 @@ export function AppSidebar({
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <Link href="/dashboard">
-                <Image src="/icon.svg" width={24} height={24} alt="Minshu" className="size-6" />
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold">みんなの集金</span>
-                </div>
-              </Link>
-            </SidebarMenuButton>
+            <CommunitySwitcher workspace={workspace} />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
+          <SidebarGroupLabel>メニュー</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationConfig.app.map((item) => {
@@ -143,6 +139,7 @@ export function AppSidebar({
         </SidebarGroup>
 
         <SidebarGroup className="mt-auto">
+          <SidebarGroupLabel>ツール</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>

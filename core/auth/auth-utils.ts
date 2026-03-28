@@ -138,7 +138,7 @@ const getCachedCurrentAppUserForServerComponent = cache(async (): Promise<Curren
 
   const { data: profile, error } = await result.supabase
     .from("users")
-    .select("name")
+    .select("name, email")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -154,8 +154,8 @@ const getCachedCurrentAppUserForServerComponent = cache(async (): Promise<Curren
 
   return {
     id: user.id,
-    email: user.email,
-    name: error ? (user.email ?? null) : (profile?.name ?? user.email ?? null),
+    email: error ? (user.email ?? null) : (profile?.email ?? user.email ?? null),
+    name: error ? (user.email ?? null) : (profile?.name ?? profile?.email ?? user.email ?? null),
   };
 });
 

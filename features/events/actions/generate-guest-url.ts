@@ -1,7 +1,12 @@
 import { ZodError } from "zod";
 
-import { verifyEventAccess } from "@core/auth/event-authorization";
-import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
+import {
+  type ActionResult,
+  fail,
+  ok,
+  toActionResultFromAppResult,
+  zodFail,
+} from "@core/errors/adapters/server-actions";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import type { AttendanceStatus } from "@core/types/statuses";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
@@ -11,6 +16,7 @@ import {
   type PaymentEligibilityEvent,
 } from "@core/validation/payment-eligibility";
 
+import { getOwnedEventActionContextForServerAction } from "../services/get-owned-event-context-for-community";
 import { generateGuestUrlInputSchema } from "../validation";
 
 type EventRelationRow = {
@@ -40,10 +46,19 @@ export async function generateGuestUrlAction(input: unknown): Promise<
   try {
     const { eventId, attendanceId } = generateGuestUrlInputSchema.parse(input);
 
-    // 主催者権限確認
-    await verifyEventAccess(eventId);
-
     const authenticatedClient = await createServerActionSupabaseClient();
+    const accessResult = await getOwnedEventActionContextForServerAction(
+      authenticatedClient,
+      eventId
+    );
+    if (!accessResult.success) {
+      return toActionResultFromAppResult(accessResult);
+    }
+
+    const accessContext = accessResult.data;
+    if (!accessContext) {
+      return fail("INTERNAL_ERROR", { userMessage: "イベント情報の取得に失敗しました" });
+    }
 
     // attendance と event を取得（guest_token, 決済可否判定用）
     const { data: attendance, error: attErr } = await authenticatedClient
@@ -52,7 +67,7 @@ export async function generateGuestUrlAction(input: unknown): Promise<
         "id, status, guest_token, event:events(id, date, fee, payment_deadline, allow_payment_after_deadline, grace_period_days, canceled_at)"
       )
       .eq("id", attendanceId)
-      .eq("event_id", eventId)
+      .eq("event_id", accessContext.id)
       .single();
 
     if (attErr || !attendance) {

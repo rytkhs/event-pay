@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { AppHeader } from "./AppHeader";
 import { GuestHeader } from "./GuestHeader";
 import { MarketingHeader } from "./MarketingHeader";
 import { GlobalHeaderProps, HeaderVariant } from "./types";
@@ -14,14 +13,11 @@ import { GlobalHeaderProps, HeaderVariant } from "./types";
  * variantが指定されている場合はそれを使用し（自動判定をスキップ）、
  * 指定されていない場合は認証状態とパスに基づいて自動判定します。
  *
- * @param user - 認証ユーザー情報
  * @param variant - ヘッダーの種類（指定時は自動判定をスキップ）
  * @param hideOnScroll - スクロール時の非表示制御
  * @param className - カスタムクラス名
  */
 export function GlobalHeader({
-  user,
-  logoutAction,
   variant,
   hideOnScroll: _hideOnScroll = false,
   className,
@@ -50,12 +46,6 @@ export function GlobalHeader({
         );
       case "guest":
         return <GuestHeader attendance={undefined} className={className} />;
-      case "app":
-        if (!user) {
-          // フォールバック（通常は発生しない）
-          return <MarketingHeader className={className} />;
-        }
-        return <AppHeader user={user} logoutAction={logoutAction} className={className} />;
       case "marketing":
         return <MarketingHeader className={className} />;
     }
@@ -77,16 +67,6 @@ export function GlobalHeader({
       pathname.startsWith("/verify-otp")
     ) {
       return "minimal";
-    }
-
-    // 認証済みユーザー向けページの判定
-    if (user) {
-      // プロテクトされたページかチェック
-      const protectedPaths = ["/dashboard", "/events", "/settings", "/profile"];
-
-      if (protectedPaths.some((path) => pathname.startsWith(path))) {
-        return "app";
-      }
     }
 
     // デフォルト（未認証のランディングページなど）
@@ -115,11 +95,6 @@ export function GlobalHeader({
   if (currentVariant === "guest") {
     // 招待ページやゲストページでは参加状況は表示しない（各ページのコンテンツで処理）
     return <GuestHeader attendance={undefined} className={className} />;
-  }
-
-  // アプリケーションヘッダー（認証済みユーザー）
-  if (currentVariant === "app" && user) {
-    return <AppHeader user={user} logoutAction={logoutAction} className={className} />;
   }
 
   // マーケティングヘッダー（デフォルト）

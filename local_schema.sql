@@ -212,13 +212,11 @@ CREATE OR REPLACE FUNCTION "public"."admin_add_attendance_with_capacity_check"("
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
-  v_attendance_id UUID;
-  v_capacity INTEGER;
-  v_current_count INTEGER;
-  v_event_creator_id UUID;
-  v_current_user_id UUID;
+  v_attendance_id uuid;
+  v_capacity integer;
+  v_current_count integer;
+  v_current_user_id uuid;
 BEGIN
-  -- 入力パラメータの検証
   IF p_event_id IS NULL THEN
     RAISE EXCEPTION 'Event ID cannot be null';
   END IF;
@@ -235,44 +233,41 @@ BEGIN
     RAISE EXCEPTION 'Guest token cannot be null or empty';
   END IF;
 
-  -- 現在のユーザーIDを取得
   BEGIN
-    v_current_user_id := NULL;
     v_current_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::uuid;
   EXCEPTION WHEN OTHERS THEN
     v_current_user_id := NULL;
   END;
+
   IF v_current_user_id IS NULL THEN
     RAISE EXCEPTION 'User must be authenticated' USING ERRCODE = '42501';
   END IF;
 
-  -- イベント情報を排他ロック付きで取得（レースコンディション対策）
-  SELECT capacity, created_by INTO v_capacity, v_event_creator_id
-  FROM public.events
-  WHERE id = p_event_id FOR UPDATE;
+  SELECT capacity
+    INTO v_capacity
+    FROM public.events
+   WHERE id = p_event_id
+   FOR UPDATE;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Event not found: %', p_event_id;
   END IF;
 
-  -- 主催者権限チェック
-  IF v_event_creator_id != v_current_user_id THEN
-    RAISE EXCEPTION 'Only event creator can add participants' USING ERRCODE = '42501';
+  IF NOT public.is_event_community_owner(p_event_id) THEN
+    RAISE EXCEPTION 'Only community owner can add participants' USING ERRCODE = '42501';
   END IF;
 
-  -- ゲストトークンの重複チェック
-  IF EXISTS(SELECT 1 FROM public.attendances WHERE guest_token = p_guest_token) THEN
+  IF EXISTS (SELECT 1 FROM public.attendances WHERE guest_token = p_guest_token) THEN
     RAISE EXCEPTION 'Guest token already exists: %', LEFT(p_guest_token, 8) || '...';
   END IF;
 
-  -- 定員チェック（attending追加時のみ、バイパスフラグがfalseの場合）
   IF p_status = 'attending' AND v_capacity IS NOT NULL AND NOT p_bypass_capacity THEN
-    -- 排他ロック取得済みのため、安全に参加者数をカウント
-    SELECT COUNT(*) INTO v_current_count
-    FROM public.attendances
-    WHERE event_id = p_event_id AND status = 'attending';
+    SELECT COUNT(*)
+      INTO v_current_count
+      FROM public.attendances
+     WHERE event_id = p_event_id
+       AND status = 'attending';
 
-    -- 定員超過チェック
     IF v_current_count >= v_capacity THEN
       RAISE EXCEPTION 'Event capacity (%) has been reached. Current attendees: %', v_capacity, v_current_count
         USING ERRCODE = 'P0001',
@@ -281,39 +276,9 @@ BEGIN
     END IF;
   END IF;
 
-  -- 参加記録を挿入
-  BEGIN
-    INSERT INTO public.attendances (event_id, nickname, email, status, guest_token)
-    VALUES (p_event_id, p_nickname, p_email, p_status, p_guest_token)
-    RETURNING id INTO v_attendance_id;
-
-    -- 挿入が成功したかを確認
-    IF v_attendance_id IS NULL THEN
-      RAISE EXCEPTION 'Failed to insert attendance record';
-    END IF;
-
-  EXCEPTION
-    WHEN unique_violation THEN
-      -- UNIQUE制約違反の適切な処理
-      DECLARE
-        v_constraint_name TEXT;
-      BEGIN
-        -- 違反した制約名を取得
-        GET STACKED DIAGNOSTICS v_constraint_name = CONSTRAINT_NAME;
-
-        -- 制約別のエラーメッセージ
-        IF v_constraint_name = 'attendances_guest_token_key' OR SQLERRM LIKE '%guest_token%' THEN
-          RAISE EXCEPTION 'Guest token already exists (concurrent request detected): %', LEFT(p_guest_token, 8) || '...'
-            USING ERRCODE = '23505',
-                  DETAIL = 'This may indicate a race condition or duplicate request';
-        ELSE
-          RAISE EXCEPTION 'Unique constraint violation: %', SQLERRM
-            USING ERRCODE = '23505';
-        END IF;
-      END;
-    WHEN OTHERS THEN
-      RAISE EXCEPTION 'Failed to insert attendance: %', SQLERRM;
-  END;
+  INSERT INTO public.attendances (event_id, nickname, email, status, guest_token)
+  VALUES (p_event_id, p_nickname, p_email, p_status, p_guest_token)
+  RETURNING id INTO v_attendance_id;
 
   RETURN v_attendance_id;
 END;
@@ -500,15 +465,21 @@ CREATE OR REPLACE FUNCTION "public"."can_access_event"("p_event_id" "uuid") RETU
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
-  current_user_id UUID;
-  guest_token_var TEXT;
+  guest_token_var text;
 BEGIN
-  BEGIN
-    current_user_id := NULL;
-    current_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::uuid;
-  EXCEPTION WHEN OTHERS THEN
-    current_user_id := NULL;
-  END;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.events e
+    JOIN public.communities c ON c.id = e.community_id
+    WHERE e.id = p_event_id
+      AND c.is_deleted = false
+  ) THEN
+    RETURN FALSE;
+  END IF;
+
+  IF public.is_event_community_owner(p_event_id) THEN
+    RETURN TRUE;
+  END IF;
 
   BEGIN
     guest_token_var := private._get_guest_token_from_header();
@@ -516,21 +487,12 @@ BEGIN
     guest_token_var := NULL;
   END;
 
-  IF current_user_id IS NOT NULL THEN
-    IF EXISTS (
-      SELECT 1 FROM events
-      WHERE id = p_event_id
-        AND created_by = current_user_id
-    ) THEN
-      RETURN TRUE;
-    END IF;
-  END IF;
-
   IF guest_token_var IS NOT NULL AND guest_token_var != '' THEN
     IF EXISTS (
-      SELECT 1 FROM attendances
-      WHERE event_id = p_event_id
-        AND attendances.guest_token = guest_token_var
+      SELECT 1
+      FROM public.attendances a
+      WHERE a.event_id = p_event_id
+        AND a.guest_token = guest_token_var
     ) THEN
       RETURN TRUE;
     END IF;
@@ -552,26 +514,8 @@ CREATE OR REPLACE FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
-DECLARE
-  current_user_id UUID;
 BEGIN
-  BEGIN
-    current_user_id := NULL;
-    current_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::uuid;
-  EXCEPTION WHEN OTHERS THEN
-    current_user_id := NULL;
-  END;
-
-  -- 認証済みユーザーの主催者権限のみ
-  IF current_user_id IS NOT NULL AND EXISTS (
-    SELECT 1 FROM events
-    WHERE id = p_event_id
-    AND created_by = current_user_id
-  ) THEN
-    RETURN TRUE;
-  END IF;
-
-  RETURN FALSE;
+  RETURN public.is_event_community_owner(p_event_id);
 END;
 $$;
 
@@ -620,6 +564,113 @@ $$;
 
 
 ALTER FUNCTION "public"."check_attendance_capacity_limit"() OWNER TO "app_definer";
+
+
+CREATE OR REPLACE FUNCTION "public"."enforce_community_mvp_invariants"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_owner_user_id uuid;
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.created_by IS DISTINCT FROM OLD.created_by THEN
+      RAISE EXCEPTION 'communities.created_by is immutable';
+    END IF;
+
+    IF NEW.slug IS DISTINCT FROM OLD.slug THEN
+      RAISE EXCEPTION 'communities.slug is immutable';
+    END IF;
+  END IF;
+
+  IF NEW.current_payout_profile_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT pp.owner_user_id
+    INTO v_owner_user_id
+    FROM public.payout_profiles pp
+   WHERE pp.id = NEW.current_payout_profile_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'current_payout_profile_id % does not exist', NEW.current_payout_profile_id;
+  END IF;
+
+  IF v_owner_user_id IS DISTINCT FROM NEW.created_by THEN
+    RAISE EXCEPTION 'current_payout_profile_id must belong to the community owner';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."enforce_community_mvp_invariants"() OWNER TO "app_definer";
+
+
+CREATE OR REPLACE FUNCTION "public"."enforce_event_mvp_invariants"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' AND NEW.created_by IS DISTINCT FROM OLD.created_by THEN
+    RAISE EXCEPTION 'events.created_by is immutable';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."enforce_event_mvp_invariants"() OWNER TO "app_definer";
+
+
+CREATE OR REPLACE FUNCTION "public"."enforce_payout_profile_mvp_invariants"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_community_owner uuid;
+BEGIN
+  IF TG_OP = 'UPDATE' AND NEW.owner_user_id IS DISTINCT FROM OLD.owner_user_id THEN
+    RAISE EXCEPTION 'payout_profiles.owner_user_id is immutable';
+  END IF;
+
+  IF NEW.representative_community_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT c.created_by
+    INTO v_community_owner
+    FROM public.communities c
+   WHERE c.id = NEW.representative_community_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION
+      'representative_community_id % does not exist',
+      NEW.representative_community_id;
+  END IF;
+
+  IF v_community_owner IS DISTINCT FROM NEW.owner_user_id THEN
+    RAISE EXCEPTION 'representative_community_id must belong to the payout profile owner';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."enforce_payout_profile_mvp_invariants"() OWNER TO "app_definer";
+
+
+CREATE OR REPLACE FUNCTION "public"."generate_community_slug"() RETURNS "text"
+    LANGUAGE "sql"
+    AS $$
+    SELECT translate(encode(gen_random_bytes(18), 'base64'), '+/', '-_');
+$$;
+
+
+ALTER FUNCTION "public"."generate_community_slug"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") RETURNS TABLE("report_id" "uuid", "already_exists" boolean, "returned_event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "created_by" "uuid", "stripe_account_id" character varying, "transfer_group" "text", "total_stripe_sales" integer, "total_stripe_fee" integer, "total_application_fee" integer, "net_payout_amount" integer, "payment_count" integer, "refunded_count" integer, "total_refunded_amount" integer, "dispute_count" integer, "total_disputed_amount" integer, "report_generated_at" timestamp with time zone, "report_updated_at" timestamp with time zone)
@@ -786,7 +837,7 @@ $$;
 ALTER FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") OWNER TO "app_definer";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_dashboard_stats"() RETURNS TABLE("upcoming_events_count" integer, "total_upcoming_participants" integer, "unpaid_fees_total" bigint)
+CREATE OR REPLACE FUNCTION "public"."get_dashboard_stats"("p_community_id" "uuid") RETURNS TABLE("upcoming_events_count" integer, "total_upcoming_participants" integer, "unpaid_fees_total" bigint)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
@@ -795,8 +846,7 @@ DECLARE
 BEGIN
   v_user_id := auth.uid();
 
-  -- 未ログイン時はゼロを返す
-  IF v_user_id IS NULL THEN
+  IF v_user_id IS NULL OR p_community_id IS NULL OR NOT public.is_community_owner(p_community_id) THEN
     RETURN QUERY SELECT 0, 0, 0::bigint;
     RETURN;
   END IF;
@@ -808,26 +858,28 @@ BEGIN
     COALESCE(SUM(
       CASE
         WHEN a.id IS NOT NULL AND e.fee > 0 AND NOT EXISTS (
-          SELECT 1 FROM payments p
+          SELECT 1 FROM public.payments p
           WHERE p.attendance_id = a.id
-          AND p.status IN ('paid', 'received')
+            AND p.status IN ('paid', 'received')
         ) THEN e.fee
         ELSE 0
       END
     ), 0)::bigint
-  FROM events e
-  LEFT JOIN attendances a ON e.id = a.event_id AND a.status = 'attending'
-  WHERE e.created_by = v_user_id
+  FROM public.events e
+  LEFT JOIN public.attendances a
+    ON e.id = a.event_id
+   AND a.status = 'attending'
+  WHERE e.community_id = p_community_id
     AND e.date > now()
     AND e.canceled_at IS NULL;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."get_dashboard_stats"() OWNER TO "postgres";
+ALTER FUNCTION "public"."get_dashboard_stats"("p_community_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."get_dashboard_stats"() IS 'ユーザーのダッシュボード統計を取得する関数';
+COMMENT ON FUNCTION "public"."get_dashboard_stats"("p_community_id" "uuid") IS '現在選択中コミュニティのダッシュボード統計を取得する関数';
 
 
 
@@ -895,34 +947,45 @@ COMMENT ON FUNCTION "public"."get_min_payout_amount"() IS '最小送金金額（
 
 
 
-CREATE OR REPLACE FUNCTION "public"."get_recent_events"() RETURNS TABLE("id" "uuid", "title" "text", "date" timestamp with time zone, "fee" integer, "capacity" integer, "canceled_at" timestamp with time zone, "location" "text", "attendances_count" bigint)
-    LANGUAGE "sql" STABLE SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."get_recent_events"("p_community_id" "uuid") RETURNS TABLE("id" "uuid", "title" "text", "date" timestamp with time zone, "fee" integer, "capacity" integer, "canceled_at" timestamp with time zone, "location" "text", "attendances_count" bigint)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
+DECLARE
+  v_user_id uuid;
+BEGIN
+  v_user_id := auth.uid();
+
+  IF v_user_id IS NULL OR p_community_id IS NULL OR NOT public.is_community_owner(p_community_id) THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
   SELECT
     e.id,
-    e.title,
+    e.title::text,
     e.date,
     e.fee,
     e.capacity,
     e.canceled_at,
-    e.location,
+    e.location::text,
     COUNT(a.id)::bigint AS attendances_count
-  FROM events e
-  LEFT JOIN attendances a
+  FROM public.events e
+  LEFT JOIN public.attendances a
     ON e.id = a.event_id
    AND a.status = 'attending'
-  WHERE e.created_by = auth.uid()
+  WHERE e.community_id = p_community_id
   GROUP BY e.id
   ORDER BY e.date DESC, e.id DESC
   LIMIT 5;
+END;
 $$;
 
 
-ALTER FUNCTION "public"."get_recent_events"() OWNER TO "postgres";
+ALTER FUNCTION "public"."get_recent_events"("p_community_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."get_recent_events"() IS 'ユーザーの最近のイベント一覧を参加予定人数付きで取得する関数';
+COMMENT ON FUNCTION "public"."get_recent_events"("p_community_id" "uuid") IS '現在選択中コミュニティの最近のイベント一覧を参加予定人数付きで取得する関数';
 
 
 
@@ -1046,6 +1109,188 @@ COMMENT ON FUNCTION "public"."hash_guest_token"("token" "text") IS 'ゲストト
 
 
 
+CREATE OR REPLACE FUNCTION "public"."is_attendance_community_owner"("p_attendance_id" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_current_user_id uuid;
+BEGIN
+  BEGIN
+    v_current_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::uuid;
+  EXCEPTION WHEN OTHERS THEN
+    v_current_user_id := NULL;
+  END;
+
+  IF v_current_user_id IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.attendances a
+    JOIN public.events e ON e.id = a.event_id
+    JOIN public.communities c ON c.id = e.community_id
+    WHERE a.id = p_attendance_id
+      AND c.created_by = v_current_user_id
+      AND c.is_deleted = false
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."is_attendance_community_owner"("p_attendance_id" "uuid") OWNER TO "app_definer";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_community_owner"("p_community_id" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_current_user_id uuid;
+BEGIN
+  BEGIN
+    v_current_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::uuid;
+  EXCEPTION WHEN OTHERS THEN
+    v_current_user_id := NULL;
+  END;
+
+  IF v_current_user_id IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.communities c
+    WHERE c.id = p_community_id
+      AND c.created_by = v_current_user_id
+      AND c.is_deleted = false
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."is_community_owner"("p_community_id" "uuid") OWNER TO "app_definer";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_event_community_owner"("p_event_id" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_current_user_id uuid;
+BEGIN
+  BEGIN
+    v_current_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::uuid;
+  EXCEPTION WHEN OTHERS THEN
+    v_current_user_id := NULL;
+  END;
+
+  IF v_current_user_id IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.events e
+    JOIN public.communities c ON c.id = e.community_id
+    WHERE e.id = p_event_id
+      AND c.created_by = v_current_user_id
+      AND c.is_deleted = false
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."is_event_community_owner"("p_event_id" "uuid") OWNER TO "app_definer";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_payment_community_owner"("p_payment_id" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_current_user_id uuid;
+BEGIN
+  BEGIN
+    v_current_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::uuid;
+  EXCEPTION WHEN OTHERS THEN
+    v_current_user_id := NULL;
+  END;
+
+  IF v_current_user_id IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.payments p
+    JOIN public.attendances a ON a.id = p.attendance_id
+    JOIN public.events e ON e.id = a.event_id
+    JOIN public.communities c ON c.id = e.community_id
+    WHERE p.id = p_payment_id
+      AND c.created_by = v_current_user_id
+      AND c.is_deleted = false
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."is_payment_community_owner"("p_payment_id" "uuid") OWNER TO "app_definer";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_payout_profile_owner"("p_payout_profile_id" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_current_user_id uuid;
+BEGIN
+  BEGIN
+    v_current_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::uuid;
+  EXCEPTION WHEN OTHERS THEN
+    v_current_user_id := NULL;
+  END;
+
+  IF v_current_user_id IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.payout_profiles pp
+    WHERE pp.id = p_payout_profile_id
+      AND pp.owner_user_id = v_current_user_id
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."is_payout_profile_owner"("p_payout_profile_id" "uuid") OWNER TO "app_definer";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_public_community"("p_community_id" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+      FROM public.communities c
+     WHERE c.id = p_community_id
+       AND c.is_deleted = false
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."is_public_community"("p_community_id" "uuid") OWNER TO "app_definer";
+
+
+COMMENT ON FUNCTION "public"."is_public_community"("p_community_id" "uuid") IS '公開問い合わせ/公開導線向けに、未削除 community かどうかを判定する';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."prevent_payment_status_rollback"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
@@ -1075,9 +1320,11 @@ CREATE OR REPLACE FUNCTION "public"."register_attendance_with_payment"("p_event_
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $_$
 DECLARE
-  v_attendance_id UUID;
+  v_attendance_id uuid;
+  v_payout_profile_id uuid;
+  v_stripe_account_id character varying;
+  v_payout_status text;
 BEGIN
-  -- 入力パラメータの検証
   IF p_event_id IS NULL THEN
     RAISE EXCEPTION 'Event ID cannot be null';
   END IF;
@@ -1094,42 +1341,32 @@ BEGIN
     RAISE EXCEPTION 'Status cannot be null';
   END IF;
 
-  -- ゲストトークンの検証
   IF p_guest_token IS NULL OR LENGTH(p_guest_token) != 36 THEN
     RAISE EXCEPTION 'Guest token must be exactly 36 characters long with gst_ prefix, got: %', COALESCE(LENGTH(p_guest_token), 0);
   END IF;
 
-  -- ゲストトークンの形式を検証
   IF NOT (p_guest_token ~ '^gst_[a-zA-Z0-9_-]{32}$') THEN
     RAISE EXCEPTION 'Guest token must have format gst_[32 alphanumeric chars], got: %', LEFT(p_guest_token, 8) || '...';
   END IF;
 
-  -- 【レースコンディション対策強化】イベント存在確認と定員チェック（attending状態の場合のみ）
   IF p_status = 'attending' THEN
     DECLARE
-      v_capacity INTEGER;
-      v_current_attendees INTEGER;
+      v_capacity integer;
+      v_current_attendees integer;
     BEGIN
-      -- 【重要】イベント情報を排他ロック付きで取得（レースコンディション対策）
-      -- 存在確認と定員取得を一度に実行
       SELECT capacity INTO v_capacity
       FROM public.events
       WHERE id = p_event_id FOR UPDATE;
 
-      -- イベントが存在しない場合、v_capacity は NULL になる
       IF v_capacity IS NULL AND NOT EXISTS(SELECT 1 FROM public.events WHERE id = p_event_id) THEN
         RAISE EXCEPTION 'Event with ID % does not exist', p_event_id;
       END IF;
 
-      -- 定員が設定されている場合のみチェック
       IF v_capacity IS NOT NULL THEN
-        -- 【重要】イベントが既にロックされているため、他のトランザクションは待機状態
-        -- この時点で安全に参加者数をカウントできる
         SELECT COUNT(*) INTO v_current_attendees
         FROM public.attendances
         WHERE event_id = p_event_id AND status = 'attending';
 
-        -- 定員超過チェック
         IF v_current_attendees >= v_capacity THEN
           RAISE EXCEPTION 'このイベントは定員（%名）に達しています', v_capacity
             USING ERRCODE = 'P0001',
@@ -1139,104 +1376,90 @@ BEGIN
       END IF;
     END;
   ELSE
-    -- 参加ステータスが 'attending' 以外の場合、イベントの存在確認のみ実行
     IF NOT EXISTS(SELECT 1 FROM public.events WHERE id = p_event_id) THEN
       RAISE EXCEPTION 'Event with ID % does not exist', p_event_id;
     END IF;
   END IF;
 
-  -- 負の金額の事前検証（セキュリティ強化）
   IF p_event_fee IS NOT NULL AND p_event_fee < 0 THEN
     RAISE EXCEPTION 'Event fee cannot be negative, got: %', p_event_fee;
   END IF;
 
-  -- ゲストトークンの重複チェック
   IF EXISTS(SELECT 1 FROM public.attendances WHERE guest_token = p_guest_token) THEN
     RAISE EXCEPTION 'Guest token % already exists (duplicate request)', LEFT(p_guest_token, 8) || '...'
       USING ERRCODE = '23505',
             DETAIL = 'This guest token is already in use';
   END IF;
 
-  -- 1. 参加記録を挿入
+  IF p_status = 'attending' AND p_event_fee > 0 AND p_payment_method = 'stripe' THEN
+    SELECT e.payout_profile_id, pp.stripe_account_id, pp.status
+      INTO v_payout_profile_id, v_stripe_account_id, v_payout_status
+    FROM public.events e
+    LEFT JOIN public.payout_profiles pp
+      ON pp.id = e.payout_profile_id
+    WHERE e.id = p_event_id;
+
+    IF v_payout_profile_id IS NULL
+       OR v_stripe_account_id IS NULL
+       OR v_payout_status != 'verified' THEN
+      RAISE EXCEPTION 'Online payment is not available for this event';
+    END IF;
+  ELSE
+    v_payout_profile_id := NULL;
+    v_stripe_account_id := NULL;
+  END IF;
+
   BEGIN
     INSERT INTO public.attendances (event_id, nickname, email, status, guest_token)
     VALUES (p_event_id, p_nickname, p_email, p_status, p_guest_token)
     RETURNING id INTO v_attendance_id;
 
-    -- 挿入が成功したかを確認
     IF v_attendance_id IS NULL THEN
       RAISE EXCEPTION 'Failed to insert attendance record';
     END IF;
-
   EXCEPTION
     WHEN unique_violation THEN
-      -- UNIQUE制約違反の適切な処理
       DECLARE
-        v_constraint_name TEXT;
+        v_constraint_name text;
       BEGIN
-        -- 違反した制約名を取得
         GET STACKED DIAGNOSTICS v_constraint_name = CONSTRAINT_NAME;
-
-        -- 制約別のエラーメッセージ
-        IF v_constraint_name = 'attendances_guest_token_key' OR SQLERRM LIKE '%guest_token%' THEN
+        IF v_constraint_name = 'attendances_event_email_unique' THEN
+          RAISE EXCEPTION 'このメールアドレスは既にこのイベントに登録されています'
+            USING ERRCODE = '23505',
+                  DETAIL = 'attendances_event_email_unique';
+        ELSIF v_constraint_name = 'attendances_guest_token_key' THEN
           RAISE EXCEPTION 'Guest token already exists (concurrent request detected): %', LEFT(p_guest_token, 8) || '...'
             USING ERRCODE = '23505',
                   DETAIL = 'This may indicate a race condition or duplicate request';
-        ELSE
-          RAISE EXCEPTION 'Unique constraint violation: %', SQLERRM
-            USING ERRCODE = '23505';
         END IF;
+        RAISE;
       END;
-    WHEN OTHERS THEN
-      RAISE EXCEPTION 'Failed to insert attendance: %', SQLERRM;
   END;
 
-  -- 2. 参加ステータスが'attending'で、イベントが有料の場合、paymentsテーブルに決済記録を挿入
-  -- 注意: この時点では負の値チェックが完了しており、p_event_fee >= 0 が保証されている
-  DECLARE
-    v_payment_id UUID;
   BEGIN
-    IF p_status = 'attending' AND p_event_fee IS NOT NULL AND p_event_fee > 0 AND p_payment_method IS NOT NULL THEN
-      BEGIN
-        INSERT INTO public.payments (attendance_id, amount, method, status)
-        VALUES (v_attendance_id, p_event_fee, p_payment_method, 'pending')
-        RETURNING id INTO v_payment_id;
-      EXCEPTION
-        WHEN OTHERS THEN
-          -- 決済記録の挿入に失敗した場合、参加記録も削除してロールバック
-          DELETE FROM public.attendances WHERE id = v_attendance_id;
-          RAISE EXCEPTION 'Failed to insert payment record: %', SQLERRM;
-      END;
+    IF p_status = 'attending' AND p_event_fee > 0 AND p_payment_method IS NOT NULL THEN
+      INSERT INTO public.payments (
+        attendance_id,
+        amount,
+        method,
+        status,
+        payout_profile_id,
+        stripe_account_id,
+        destination_account_id
+      ) VALUES (
+        v_attendance_id,
+        p_event_fee,
+        p_payment_method,
+        'pending',
+        v_payout_profile_id,
+        v_stripe_account_id,
+        v_stripe_account_id
+      );
     END IF;
-
-    -- 3. 監査ログ記録
-    INSERT INTO public.system_logs (
-      log_category,
-      action,
-      message,
-      actor_type,
-      resource_type,
-      resource_id,
-      outcome,
-      metadata
-    )
-    VALUES (
-      'attendance',
-      'attendance.register',
-      'Attendance registered',
-      (CASE WHEN p_guest_token IS NOT NULL THEN 'guest' ELSE 'system' END)::actor_type_enum,
-      'attendance',
-      v_attendance_id::text,
-      'success',
-      jsonb_build_object(
-        'event_id', p_event_id,
-        'status', p_status,
-        'has_payment', (v_payment_id IS NOT NULL),
-        'payment_method', p_payment_method,
-        -- PII削減: emailはハッシュ化して保存
-        'email_hash', encode(extensions.digest(convert_to(p_email, 'UTF8'), 'sha256'::text), 'hex')
-      )
-    );
+  EXCEPTION
+    WHEN OTHERS THEN
+      DELETE FROM public.attendances WHERE id = v_attendance_id;
+      RAISE;
   END;
 
   RETURN v_attendance_id;
@@ -1355,60 +1578,68 @@ COMMENT ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_up
 
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") RETURNS TABLE("attendance_id" "uuid", "nickname" character varying, "email" character varying, "status" "public"."attendance_status_enum", "guest_token" character varying, "attendance_created_at" timestamp with time zone, "attendance_updated_at" timestamp with time zone, "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "event_location" character varying, "event_fee" integer, "event_capacity" integer, "event_description" "text", "event_payment_methods" "public"."payment_method_enum"[], "event_allow_payment_after_deadline" boolean, "event_grace_period_days" smallint, "created_by" "uuid", "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "canceled_at" timestamp with time zone, "payment_id" "uuid", "payment_amount" integer, "payment_method" "public"."payment_method_enum", "payment_status" "public"."payment_status_enum", "payment_created_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") RETURNS TABLE("attendance_id" "uuid", "nickname" character varying, "email" character varying, "status" "public"."attendance_status_enum", "guest_token" character varying, "attendance_created_at" timestamp with time zone, "attendance_updated_at" timestamp with time zone, "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "event_location" character varying, "event_fee" integer, "event_capacity" integer, "event_description" "text", "event_payment_methods" "public"."payment_method_enum"[], "event_allow_payment_after_deadline" boolean, "event_grace_period_days" smallint, "community_name" character varying, "community_legal_slug" character varying, "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "canceled_at" timestamp with time zone, "payment_id" "uuid", "payment_amount" integer, "payment_method" "public"."payment_method_enum", "payment_status" "public"."payment_status_enum", "payment_created_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
-    v_token text;
+  v_token text;
 BEGIN
-    -- p_guest_token がNULLの場合はヘッダーから取得
-    v_token := COALESCE(p_guest_token, private._get_guest_token_from_header());
+  v_token := COALESCE(p_guest_token, private._get_guest_token_from_header());
 
-    RETURN QUERY
-    SELECT
-        a.id,
-        a.nickname,
-        a.email,
-        a.status,
-        a.guest_token,
-        a.created_at AS attendance_created_at,
-        a.updated_at AS attendance_updated_at,
-        e.id,
-        e.title,
-        e.date,
-        e.location,
-        e.fee,
-        e.capacity,
-        e.description,
-        e.payment_methods,
-        e.allow_payment_after_deadline,
-        e.grace_period_days,
-        e.created_by,
-        e.registration_deadline,
-        e.payment_deadline,
-        e.canceled_at,
-        lp.id AS payment_id,
-        lp.amount AS payment_amount,
-        lp.method AS payment_method,
-        lp.status AS payment_status,
-        lp.created_at AS payment_created_at
-    FROM public.attendances a
-    JOIN public.events e ON e.id = a.event_id
-    LEFT JOIN LATERAL (
-        SELECT p.id, p.amount, p.method, p.status, p.created_at, p.paid_at, p.updated_at
-        FROM public.payments p
-        WHERE p.attendance_id = a.id
-        ORDER BY p.paid_at DESC NULLS LAST, p.created_at DESC, p.updated_at DESC
-        LIMIT 1
-    ) lp ON TRUE
-    WHERE a.guest_token = v_token
-    LIMIT 1;
+  RETURN QUERY
+  SELECT
+    a.id,
+    a.nickname,
+    a.email,
+    a.status,
+    a.guest_token,
+    a.created_at AS attendance_created_at,
+    a.updated_at AS attendance_updated_at,
+    e.id,
+    e.title,
+    e.date,
+    e.location,
+    e.fee,
+    e.capacity,
+    e.description,
+    e.payment_methods,
+    e.allow_payment_after_deadline,
+    e.grace_period_days,
+    c.name AS community_name,
+    c.legal_slug AS community_legal_slug,
+    e.registration_deadline,
+    e.payment_deadline,
+    e.canceled_at,
+    lp.id AS payment_id,
+    lp.amount AS payment_amount,
+    lp.method AS payment_method,
+    lp.status AS payment_status,
+    lp.created_at AS payment_created_at
+  FROM public.attendances a
+  JOIN public.events e
+    ON e.id = a.event_id
+  JOIN public.communities c
+    ON c.id = e.community_id
+   AND c.is_deleted = false
+  LEFT JOIN LATERAL (
+    SELECT p.id, p.amount, p.method, p.status, p.created_at, p.paid_at, p.updated_at
+      FROM public.payments p
+     WHERE p.attendance_id = a.id
+     ORDER BY p.paid_at DESC NULLS LAST, p.created_at DESC, p.updated_at DESC
+     LIMIT 1
+  ) lp ON TRUE
+  WHERE a.guest_token = v_token
+  LIMIT 1;
 END;
 $$;
 
 
 ALTER FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") OWNER TO "app_definer";
+
+
+COMMENT ON FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") IS 'ゲストトークンから参加データを取得する公開RPC。community公開導線向け最小情報を含み、削除済みcommunityは返さない';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_latest_payment"("p_attendance_id" "uuid", "p_guest_token" "text") RETURNS integer
@@ -1506,58 +1737,113 @@ $$;
 ALTER FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "uuid", "p_email" "text", "p_invite_token" "text") OWNER TO "app_definer";
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") RETURNS TABLE("stripe_account_id" character varying, "payouts_enabled" boolean)
+CREATE OR REPLACE FUNCTION "public"."rpc_public_get_community_by_legal_slug"("p_legal_slug" "text") RETURNS TABLE("id" "uuid", "name" character varying, "description" "text", "slug" character varying, "legal_slug" character varying)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
-    IF NOT public.can_access_event(p_event_id) THEN
-        RAISE EXCEPTION 'not allowed';
-    END IF;
-
-    RETURN QUERY
-    SELECT s.stripe_account_id, s.payouts_enabled
-    FROM public.stripe_connect_accounts s
-    JOIN public.events e ON e.created_by = s.user_id
-    WHERE e.id = p_event_id
-      AND e.created_by = p_creator_id
-    LIMIT 1;
+  RETURN QUERY
+  SELECT c.id, c.name, c.description, c.slug, c.legal_slug
+    FROM public.communities c
+   WHERE c.legal_slug = p_legal_slug
+     AND c.is_deleted = false
+   LIMIT 1;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") OWNER TO "app_definer";
+ALTER FUNCTION "public"."rpc_public_get_community_by_legal_slug"("p_legal_slug" "text") OWNER TO "app_definer";
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") RETURNS TABLE("id" "uuid", "created_by" "uuid", "organizer_name" character varying, "title" character varying, "date" timestamp with time zone, "location" character varying, "description" "text", "fee" integer, "capacity" integer, "payment_methods" "public"."payment_method_enum"[], "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "invite_token" character varying, "canceled_at" timestamp with time zone, "attendances_count" integer)
+COMMENT ON FUNCTION "public"."rpc_public_get_community_by_legal_slug"("p_legal_slug" "text") IS '未削除 community の公開ページ向け最小情報を legal_slug から取得する';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."rpc_public_get_community_by_slug"("p_slug" "text") RETURNS TABLE("id" "uuid", "name" character varying, "description" "text", "slug" character varying, "legal_slug" character varying)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
-    RETURN QUERY
-    SELECT
-        e.id,
-        e.created_by,
-        COALESCE(u.name, '主催者') as organizer_name,
-        e.title,
-        e.date,
-        e.location,
-        e.description,
-        e.fee,
-        e.capacity,
-        e.payment_methods,
-        e.registration_deadline,
-        e.payment_deadline,
-        e.invite_token,
-        e.canceled_at,
-        (
-          SELECT COUNT(*)::int
-          FROM public.attendances a
-          WHERE a.event_id = e.id AND a.status = 'attending'
-        ) AS attendances_count
-    FROM public.events e
-    LEFT JOIN public.users u ON e.created_by = u.id
-    WHERE e.invite_token = p_invite_token;
+  RETURN QUERY
+  SELECT c.id, c.name, c.description, c.slug, c.legal_slug
+    FROM public.communities c
+   WHERE c.slug = p_slug
+     AND c.is_deleted = false
+   LIMIT 1;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_public_get_community_by_slug"("p_slug" "text") OWNER TO "app_definer";
+
+
+COMMENT ON FUNCTION "public"."rpc_public_get_community_by_slug"("p_slug" "text") IS '未削除 community の公開ページ向け最小情報を slug から取得する';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") RETURNS TABLE("payout_profile_id" "uuid", "stripe_account_id" character varying, "status" "text")
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+BEGIN
+  IF NOT public.can_access_event(p_event_id) THEN
+    RAISE EXCEPTION 'not allowed';
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    pp.id,
+    pp.stripe_account_id,
+    pp.status::text
+  FROM public.events e
+  JOIN public.payout_profiles pp
+    ON pp.id = e.payout_profile_id
+  WHERE e.id = p_event_id
+  LIMIT 1;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") OWNER TO "app_definer";
+
+
+COMMENT ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") IS '公開/ゲスト決済前段向けに、対象イベントの payout_profile から checkout に必要な最小 Connect 情報を取得する';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") RETURNS TABLE("id" "uuid", "community_name" character varying, "community_legal_slug" character varying, "title" character varying, "date" timestamp with time zone, "location" character varying, "description" "text", "fee" integer, "capacity" integer, "payment_methods" "public"."payment_method_enum"[], "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "invite_token" character varying, "canceled_at" timestamp with time zone, "attendances_count" integer)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    e.id,
+    c.name AS community_name,
+    c.legal_slug AS community_legal_slug,
+    e.title,
+    e.date,
+    e.location,
+    e.description,
+    e.fee,
+    e.capacity,
+    e.payment_methods,
+    e.registration_deadline,
+    e.payment_deadline,
+    e.invite_token,
+    e.canceled_at,
+    (
+      SELECT COUNT(*)::int
+        FROM public.attendances a
+       WHERE a.event_id = e.id
+         AND a.status = 'attending'
+    ) AS attendances_count
+  FROM public.events e
+  JOIN public.communities c
+    ON c.id = e.community_id
+   AND c.is_deleted = false
+  WHERE e.invite_token = p_invite_token
+  LIMIT 1;
 END;
 $$;
 
@@ -1565,7 +1851,7 @@ $$;
 ALTER FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") OWNER TO "app_definer";
 
 
-COMMENT ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") IS '招待トークンからイベント詳細を取得(公開RPC、主催者名・ID含む、ステータスフィルタなし)';
+COMMENT ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") IS '招待トークンからイベント詳細を取得する公開RPC。community公開導線向け最小情報を含み、削除済みcommunityは返さない';
 
 
 
@@ -1574,27 +1860,26 @@ CREATE OR REPLACE FUNCTION "public"."rpc_update_payment_status_safe"("p_payment_
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
-  v_updated_rows     integer;
-  v_payment_record   payments%ROWTYPE;
+  v_updated_rows integer;
+  v_payment_record payments%ROWTYPE;
   v_attendance_record attendances%ROWTYPE;
-  v_event_record     events%ROWTYPE;
-  v_result           json;
+  v_event_record events%ROWTYPE;
+  v_result json;
 BEGIN
-  -- 呼び出し元ユーザーの検証（引数p_user_idと照合）
-  IF (current_setting('request.jwt.claims', true) IS NULL) THEN
+  IF current_setting('request.jwt.claims', true) IS NULL THEN
     RAISE EXCEPTION 'missing jwt claims';
   END IF;
+
   IF ((current_setting('request.jwt.claims', true)::json->>'sub')::uuid IS DISTINCT FROM p_user_id) THEN
     RAISE EXCEPTION 'Unauthorized: caller does not match p_user_id' USING ERRCODE = 'P0001';
   END IF;
-  -- 個別にSELECTして各ROWTYPE変数へ格納（複数 INTO 禁止エラー回避）
+
   SELECT *
     INTO v_payment_record
-    FROM payments
+    FROM public.payments
    WHERE id = p_payment_id
    FOR UPDATE;
 
-  -- 決済レコードが存在しない場合は即座にエラー
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Payment record not found: %', p_payment_id
       USING ERRCODE = 'P0002';
@@ -1602,10 +1887,9 @@ BEGIN
 
   SELECT *
     INTO v_attendance_record
-    FROM attendances
+    FROM public.attendances
    WHERE id = v_payment_record.attendance_id;
 
-  -- 参加記録が存在しない場合（理論上起こらないが念のため）
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Attendance record not found: %', v_payment_record.attendance_id
       USING ERRCODE = 'P0005';
@@ -1613,61 +1897,52 @@ BEGIN
 
   SELECT *
     INTO v_event_record
-    FROM events
+    FROM public.events
    WHERE id = v_attendance_record.event_id;
 
-  -- イベントが存在しない場合（参照整合性欠如）
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Event record not found: %', v_attendance_record.event_id
       USING ERRCODE = 'P0006';
   END IF;
 
-  -- 主催者権限チェック
-  IF v_event_record.created_by != p_user_id THEN
-    RAISE EXCEPTION 'Unauthorized: User % is not the event creator', p_user_id
+  IF NOT public.is_event_community_owner(v_event_record.id) THEN
+    RAISE EXCEPTION 'Unauthorized: User % is not the community owner', p_user_id
       USING ERRCODE = 'P0001';
   END IF;
 
-  -- 現金決済でない場合はエラー
   IF v_payment_record.method != 'cash' THEN
     RAISE EXCEPTION 'Only cash payments can be manually updated'
       USING ERRCODE = 'P0003';
   END IF;
 
-  -- 2. 楽観的ロック付きステータス更新
-
-  -- キャンセル操作の場合はセッション変数を設定してトリガーをスキップ
   IF p_new_status = 'pending' AND v_payment_record.status IN ('received', 'waived') THEN
     PERFORM set_config('app.internal_rpc_bypass_c8f2a1b3', 'true', true);
   END IF;
 
-  UPDATE payments
-  SET status = p_new_status,
-      paid_at = CASE
-        WHEN p_new_status = 'received' THEN now()
-        WHEN p_new_status = 'waived' THEN paid_at  -- 免除時はpaid_atは変更しない
-        WHEN p_new_status = 'pending' THEN NULL    -- 未決済時はpaid_atをクリア
-        ELSE paid_at
-      END,
-      version = version + 1
-  WHERE id = p_payment_id
-    AND version = p_expected_version
-    AND method = 'cash';
+  UPDATE public.payments
+     SET status = p_new_status,
+         paid_at = CASE
+           WHEN p_new_status = 'received' THEN now()
+           WHEN p_new_status = 'waived' THEN paid_at
+           WHEN p_new_status = 'pending' THEN NULL
+           ELSE paid_at
+         END,
+         version = version + 1
+   WHERE id = p_payment_id
+     AND version = p_expected_version
+     AND method = 'cash';
 
-  -- セッション変数をクリア
   IF p_new_status = 'pending' THEN
     PERFORM set_config('app.internal_rpc_bypass_c8f2a1b3', 'false', true);
   END IF;
 
   GET DIAGNOSTICS v_updated_rows = ROW_COUNT;
 
-  -- バージョン競合検出
   IF v_updated_rows = 0 THEN
     RAISE EXCEPTION 'Concurrent update detected for payment %', p_payment_id
-      USING ERRCODE = '40001'; -- serialization_failure
+      USING ERRCODE = '40001';
   END IF;
 
-  -- 3. 監査ログ記録（新スキーマ対応）
   INSERT INTO public.system_logs (
     log_category,
     action,
@@ -1699,7 +1974,6 @@ BEGIN
     )
   );
 
-  -- 4. 結果返却
   v_result := jsonb_build_object(
     'payment_id', p_payment_id,
     'status', p_new_status,
@@ -1773,20 +2047,20 @@ CREATE OR REPLACE FUNCTION "public"."update_guest_attendance_with_payment"("p_at
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 DECLARE
-  v_event_id UUID;
-  v_payment_id UUID;
+  v_event_id uuid;
+  v_payment_id uuid;
   v_current_status public.attendance_status_enum;
-  v_capacity INTEGER;
-  v_current_attendees INTEGER;
+  v_capacity integer;
+  v_current_attendees integer;
   v_payment_status public.payment_status_enum;
   v_payment_method public.payment_method_enum;
-  -- Guards (updated)
-  v_canceled_at TIMESTAMPTZ;
-  v_reg_deadline TIMESTAMPTZ;
-  v_event_date TIMESTAMPTZ;
-
+  v_canceled_at timestamptz;
+  v_reg_deadline timestamptz;
+  v_event_date timestamptz;
+  v_payout_profile_id uuid;
+  v_stripe_account_id character varying;
+  v_payout_status text;
 BEGIN
-  -- 参加記録の存在確認と現在のステータス取得
   SELECT event_id, status INTO v_event_id, v_current_status
   FROM public.attendances
   WHERE id = p_attendance_id;
@@ -1795,10 +2069,10 @@ BEGIN
     RAISE EXCEPTION 'Attendance record not found';
   END IF;
 
-  -- ゲスト本人確認（引数で渡されたトークンを使用）
   IF p_guest_token IS NULL OR p_guest_token = '' THEN
     RAISE EXCEPTION 'Guest token is required';
   END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM public.attendances a
     WHERE a.id = p_attendance_id AND a.guest_token = p_guest_token
@@ -1806,7 +2080,6 @@ BEGIN
     RAISE EXCEPTION 'Unauthorized: guest does not own this attendance';
   END IF;
 
-  -- イベント締切・開始・キャンセルチェック
   SELECT canceled_at, registration_deadline, date
     INTO v_canceled_at, v_reg_deadline, v_event_date
   FROM public.events
@@ -1819,7 +2092,6 @@ BEGIN
     RAISE EXCEPTION 'Event is closed for modification';
   END IF;
 
-  -- 定員チェック（attendingに変更する場合のみ）
   IF p_status = 'attending' AND v_current_status != 'attending' THEN
     SELECT capacity INTO v_capacity FROM public.events WHERE id = v_event_id FOR UPDATE;
     IF v_capacity IS NOT NULL THEN
@@ -1833,14 +2105,30 @@ BEGIN
     END IF;
   END IF;
 
-  -- 参加ステータスを更新
+  IF p_status = 'attending' AND p_event_fee > 0 AND p_payment_method = 'stripe' THEN
+    SELECT e.payout_profile_id, pp.stripe_account_id, pp.status
+      INTO v_payout_profile_id, v_stripe_account_id, v_payout_status
+    FROM public.events e
+    LEFT JOIN public.payout_profiles pp
+      ON pp.id = e.payout_profile_id
+    WHERE e.id = v_event_id;
+
+    IF v_payout_profile_id IS NULL
+       OR v_stripe_account_id IS NULL
+       OR v_payout_status != 'verified' THEN
+      RAISE EXCEPTION 'Online payment is not available for this event';
+    END IF;
+  ELSE
+    v_payout_profile_id := NULL;
+    v_stripe_account_id := NULL;
+  END IF;
+
   UPDATE public.attendances
   SET status = p_status
   WHERE id = p_attendance_id;
 
-  -- 決済レコードの処理
   IF p_status = 'attending' AND p_event_fee > 0 AND p_payment_method IS NOT NULL THEN
-    SELECT id, status INTO v_payment_id, v_payment_status
+    SELECT id, status, method INTO v_payment_id, v_payment_status, v_payment_method
     FROM public.payments
     WHERE attendance_id = p_attendance_id
     ORDER BY paid_at DESC NULLS LAST, created_at DESC, updated_at DESC
@@ -1848,21 +2136,23 @@ BEGIN
 
     IF v_payment_id IS NOT NULL THEN
       IF v_payment_status IN ('paid', 'received', 'waived') THEN
-        -- 既に確定済みの有効な決済がある場合は再利用（何もしない）
-        -- 不参加→再参加の場合でも、既存の決済を維持する
-        NULL; -- 明示的に何もしないことを示す
+        NULL;
       ELSIF v_payment_status = 'refunded' THEN
-        -- 返金済み = 決済が無効化されているため、新規決済レコードが必要
         v_payment_id := NULL;
       ELSIF v_payment_status = 'canceled' THEN
-        -- キャンセル済みレコードは新規レコードを再作成するため再利用しない
         v_payment_id := NULL;
       ELSIF v_payment_status NOT IN ('paid', 'received', 'waived', 'refunded', 'canceled') THEN
-        -- pending, failed などの未確定状態は更新可能
         UPDATE public.payments
         SET method = p_payment_method,
             amount = p_event_fee,
-            status = 'pending'
+            status = 'pending',
+            payout_profile_id = v_payout_profile_id,
+            stripe_account_id = v_stripe_account_id,
+            destination_account_id = v_stripe_account_id,
+            stripe_checkout_session_id = NULL,
+            stripe_payment_intent_id = NULL,
+            checkout_idempotency_key = NULL,
+            checkout_key_revision = 0
         WHERE id = v_payment_id;
       END IF;
     END IF;
@@ -1872,12 +2162,18 @@ BEGIN
         attendance_id,
         amount,
         method,
-        status
+        status,
+        payout_profile_id,
+        stripe_account_id,
+        destination_account_id
       ) VALUES (
         p_attendance_id,
         p_event_fee,
         p_payment_method,
-        'pending'
+        'pending',
+        v_payout_profile_id,
+        v_stripe_account_id,
+        v_stripe_account_id
       );
     END IF;
   ELSIF p_status != 'attending' THEN
@@ -1896,18 +2192,9 @@ BEGIN
         WHERE id = v_payment_id
           AND status IN ('pending', 'failed');
 
-        -- 監査ログ記録（新スキーマ対応）
         INSERT INTO public.system_logs (
-          log_category,
-          action,
-          message,
-          actor_type,
-          resource_type,
-          resource_id,
-          outcome,
-          metadata
-        )
-        VALUES (
+          log_category, action, message, actor_type, resource_type, resource_id, outcome, metadata
+        ) VALUES (
           'payment',
           'payment.canceled',
           'Payment canceled due to attendance status change',
@@ -1923,21 +2210,12 @@ BEGIN
           )
         );
       ELSIF v_payment_status IN ('paid', 'received') THEN
-        -- 監査ログ記録（新スキーマ対応）
         INSERT INTO public.system_logs (
-          log_category,
-          action,
-          message,
-          actor_type,
-          resource_type,
-          resource_id,
-          outcome,
-          metadata
-        )
-        VALUES (
+          log_category, action, message, actor_type, resource_type, resource_id, outcome, metadata
+        ) VALUES (
           'payment',
-          'payment.status_maintained',
-          'Payment status maintained on attendance cancel (already paid)',
+          'payment.status_maintained_on_cancel',
+          'Payment status maintained on attendance cancel',
           'system',
           'payment',
           v_payment_id::text,
@@ -1949,89 +2227,9 @@ BEGIN
             'attendance_status', p_status
           )
         );
-      ELSIF v_payment_status = 'waived' THEN
-        -- 監査ログ記録（新スキーマ対応）
-        INSERT INTO public.system_logs (
-          log_category,
-          action,
-          message,
-          actor_type,
-          resource_type,
-          resource_id,
-          outcome,
-          metadata
-        )
-        VALUES (
-          'payment',
-          'payment.waived_kept',
-          'Waived payment kept on attendance cancel',
-          'system',
-          'payment',
-          v_payment_id::text,
-          'success',
-          jsonb_build_object(
-            'attendance_id', p_attendance_id,
-            'payment_status', v_payment_status,
-            'attendance_status', p_status
-          )
-        );
-      ELSIF v_payment_status = 'canceled' THEN
-        -- 監査ログ記録（新スキーマ対応）
-        INSERT INTO public.system_logs (
-          log_category,
-          action,
-          message,
-          actor_type,
-          resource_type,
-          resource_id,
-          outcome,
-          metadata
-        )
-        VALUES (
-          'payment',
-          'payment.canceled_duplicate',
-          'Payment already canceled (duplicate cancel attempt)',
-          'system',
-          'payment',
-          v_payment_id::text,
-          'success',
-          jsonb_build_object(
-            'attendance_id', p_attendance_id,
-            'payment_status', v_payment_status,
-            'attendance_status', p_status
-          )
-        );
-      ELSIF v_payment_status = 'refunded' THEN
-        -- 監査ログ記録（新スキーマ対応）
-        INSERT INTO public.system_logs (
-          log_category,
-          action,
-          message,
-          actor_type,
-          resource_type,
-          resource_id,
-          outcome,
-          metadata
-        )
-        VALUES (
-          'payment',
-          'payment.refund_maintained',
-          'Refund status maintained on attendance cancel',
-          'system',
-          'payment',
-          v_payment_id::text,
-          'success',
-          jsonb_build_object(
-            'attendance_id', p_attendance_id,
-            'payment_status', v_payment_status,
-            'attendance_status', p_status
-          )
-        );
       END IF;
     END IF;
   END IF;
-
-  RETURN;
 END;
 $$;
 
@@ -2168,6 +2366,65 @@ COMMENT ON COLUMN "public"."attendances"."guest_token" IS 'ゲストアクセス
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."communities" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "created_by" "uuid" NOT NULL,
+    "name" character varying(255) NOT NULL,
+    "slug" character varying(255) DEFAULT "public"."generate_community_slug"() NOT NULL,
+    "description" "text",
+    "current_payout_profile_id" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "is_deleted" boolean DEFAULT false NOT NULL,
+    "deleted_at" timestamp with time zone,
+    "legal_slug" character varying(255) DEFAULT "public"."generate_community_slug"() NOT NULL,
+    CONSTRAINT "communities_soft_delete_consistency" CHECK (("is_deleted" = ("deleted_at" IS NOT NULL)))
+);
+
+ALTER TABLE ONLY "public"."communities" FORCE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."communities" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."communities" IS 'コミュニティ情報';
+
+
+
+COMMENT ON COLUMN "public"."communities"."created_by" IS 'コミュニティ作成者ユーザーID';
+
+
+
+COMMENT ON COLUMN "public"."communities"."slug" IS '公開URL用slug。推測困難なランダム値を保存する';
+
+
+
+COMMENT ON COLUMN "public"."communities"."current_payout_profile_id" IS 'コミュニティの現在のデフォルト受取先。未設定時はNULL';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."community_contacts" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "community_id" "uuid" NOT NULL,
+    "name" "text" NOT NULL,
+    "email" "text" NOT NULL,
+    "message" "text" NOT NULL,
+    "fingerprint_hash" "text" NOT NULL,
+    "user_agent" "text",
+    "ip_hash" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+ALTER TABLE ONLY "public"."community_contacts" FORCE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."community_contacts" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."community_contacts" IS 'コミュニティ公開ページから主催者へ届く問い合わせ';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."contacts" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "name" "text" NOT NULL,
@@ -2202,6 +2459,8 @@ CREATE TABLE IF NOT EXISTS "public"."events" (
     "grace_period_days" smallint DEFAULT 0 NOT NULL,
     "canceled_at" timestamp with time zone,
     "canceled_by" "uuid",
+    "community_id" "uuid" NOT NULL,
+    "payout_profile_id" "uuid",
     CONSTRAINT "events_capacity_check" CHECK ((("capacity" IS NULL) OR ("capacity" > 0))),
     CONSTRAINT "events_date_after_creation" CHECK (("date" > "created_at")),
     CONSTRAINT "events_fee_check" CHECK ((("fee" = 0) OR (("fee" >= 100) AND ("fee" <= 1000000)))),
@@ -2224,6 +2483,14 @@ COMMENT ON TABLE "public"."events" IS 'イベント情報';
 
 
 COMMENT ON COLUMN "public"."events"."created_by" IS 'Event creator user ID. Automatically set to auth.uid() if not provided during insert.';
+
+
+
+COMMENT ON COLUMN "public"."events"."community_id" IS 'イベントが所属するコミュニティID';
+
+
+
+COMMENT ON COLUMN "public"."events"."payout_profile_id" IS 'イベント作成時点の受取先スナップショット';
 
 
 
@@ -2353,12 +2620,14 @@ CREATE TABLE IF NOT EXISTS "public"."payments" (
     "version" integer DEFAULT 1 NOT NULL,
     "checkout_idempotency_key" "text",
     "checkout_key_revision" integer DEFAULT 0 NOT NULL,
+    "payout_profile_id" "uuid",
     CONSTRAINT "chk_payments_application_fee_amount_non_negative" CHECK (("application_fee_amount" >= 0)),
     CONSTRAINT "chk_payments_application_fee_refunded_amount_non_negative" CHECK (("application_fee_refunded_amount" >= 0)),
     CONSTRAINT "chk_payments_refunded_amount_non_negative" CHECK (("refunded_amount" >= 0)),
     CONSTRAINT "payments_amount_check" CHECK (("amount" >= 0)),
     CONSTRAINT "payments_method_status_consistency" CHECK (((("status" <> 'paid'::"public"."payment_status_enum") OR ("method" = 'stripe'::"public"."payment_method_enum")) AND (("status" <> 'received'::"public"."payment_status_enum") OR ("method" = 'cash'::"public"."payment_method_enum")) AND (("status" <> 'failed'::"public"."payment_status_enum") OR ("method" = 'stripe'::"public"."payment_method_enum")))),
     CONSTRAINT "payments_paid_at_when_paid" CHECK (((("status" = ANY (ARRAY['paid'::"public"."payment_status_enum", 'received'::"public"."payment_status_enum"])) AND ("paid_at" IS NOT NULL)) OR ("status" <> ALL (ARRAY['paid'::"public"."payment_status_enum", 'received'::"public"."payment_status_enum"])))),
+    CONSTRAINT "payments_payout_profile_required_for_stripe" CHECK ((("method" <> 'stripe'::"public"."payment_method_enum") OR ("payout_profile_id" IS NOT NULL))),
     CONSTRAINT "payments_stripe_intent_required" CHECK (((("method" = 'stripe'::"public"."payment_method_enum") AND ("status" = 'pending'::"public"."payment_status_enum")) OR (("method" = 'stripe'::"public"."payment_method_enum") AND ("status" = 'canceled'::"public"."payment_status_enum")) OR (("method" = 'stripe'::"public"."payment_method_enum") AND ("status" <> ALL (ARRAY['pending'::"public"."payment_status_enum", 'canceled'::"public"."payment_status_enum"])) AND ("stripe_payment_intent_id" IS NOT NULL)) OR ("method" <> 'stripe'::"public"."payment_method_enum")))
 );
 
@@ -2440,7 +2709,41 @@ COMMENT ON COLUMN "public"."payments"."version" IS 'Optimistic lock version to p
 
 
 
+COMMENT ON COLUMN "public"."payments"."payout_profile_id" IS '決済時点の受取先スナップショット';
+
+
+
 COMMENT ON CONSTRAINT "payments_stripe_intent_required" ON "public"."payments" IS 'Ensures stripe_payment_intent_id is present for stripe payments except pending and canceled statuses. Canceled is a terminal state for unpaid transactions.';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."payout_profiles" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "owner_user_id" "uuid" NOT NULL,
+    "stripe_account_id" character varying(255) NOT NULL,
+    "status" "public"."stripe_account_status_enum" DEFAULT 'unverified'::"public"."stripe_account_status_enum" NOT NULL,
+    "charges_enabled" boolean DEFAULT false NOT NULL,
+    "payouts_enabled" boolean DEFAULT false NOT NULL,
+    "representative_community_id" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+ALTER TABLE ONLY "public"."payout_profiles" FORCE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."payout_profiles" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."payout_profiles" IS '受取先プロファイル。既存stripe_connect_accountsの移行先';
+
+
+
+COMMENT ON COLUMN "public"."payout_profiles"."owner_user_id" IS 'MVPでの受取先オーナーユーザーID。1ユーザー1受取先';
+
+
+
+COMMENT ON COLUMN "public"."payout_profiles"."representative_community_id" IS 'Stripe審査用URLの代表コミュニティ';
 
 
 
@@ -2788,6 +3091,26 @@ ALTER TABLE ONLY "public"."attendances"
 
 
 
+ALTER TABLE ONLY "public"."communities"
+    ADD CONSTRAINT "communities_legal_slug_key" UNIQUE ("legal_slug");
+
+
+
+ALTER TABLE ONLY "public"."communities"
+    ADD CONSTRAINT "communities_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."communities"
+    ADD CONSTRAINT "communities_slug_key" UNIQUE ("slug");
+
+
+
+ALTER TABLE ONLY "public"."community_contacts"
+    ADD CONSTRAINT "community_contacts_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."contacts"
     ADD CONSTRAINT "contacts_pkey" PRIMARY KEY ("id");
 
@@ -2835,6 +3158,21 @@ ALTER TABLE ONLY "public"."payments"
 
 ALTER TABLE ONLY "public"."payments"
     ADD CONSTRAINT "payments_stripe_payment_intent_id_key" UNIQUE ("stripe_payment_intent_id");
+
+
+
+ALTER TABLE ONLY "public"."payout_profiles"
+    ADD CONSTRAINT "payout_profiles_owner_user_id_key" UNIQUE ("owner_user_id");
+
+
+
+ALTER TABLE ONLY "public"."payout_profiles"
+    ADD CONSTRAINT "payout_profiles_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."payout_profiles"
+    ADD CONSTRAINT "payout_profiles_stripe_account_id_key" UNIQUE ("stripe_account_id");
 
 
 
@@ -2893,11 +3231,31 @@ CREATE INDEX "idx_attendances_event_status" ON "public"."attendances" USING "btr
 
 
 
+CREATE INDEX "idx_communities_created_by" ON "public"."communities" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "idx_communities_current_payout_profile_id" ON "public"."communities" USING "btree" ("current_payout_profile_id");
+
+
+
+CREATE INDEX "idx_community_contacts_community_id" ON "public"."community_contacts" USING "btree" ("community_id");
+
+
+
+CREATE INDEX "idx_community_contacts_created_at" ON "public"."community_contacts" USING "btree" ("created_at" DESC);
+
+
+
 CREATE INDEX "idx_contacts_created_at" ON "public"."contacts" USING "btree" ("created_at" DESC);
 
 
 
 CREATE INDEX "idx_events_canceled_at" ON "public"."events" USING "btree" ("canceled_at");
+
+
+
+CREATE INDEX "idx_events_community_id" ON "public"."events" USING "btree" ("community_id");
 
 
 
@@ -2918,6 +3276,10 @@ CREATE INDEX "idx_events_deadlines" ON "public"."events" USING "btree" ("registr
 
 
 CREATE INDEX "idx_events_invite_token" ON "public"."events" USING "btree" ("invite_token") WHERE ("invite_token" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_events_payout_profile_id" ON "public"."events" USING "btree" ("payout_profile_id");
 
 
 
@@ -2985,6 +3347,10 @@ CREATE INDEX "idx_payments_method_status_paid" ON "public"."payments" USING "btr
 
 
 
+CREATE INDEX "idx_payments_payout_profile_id" ON "public"."payments" USING "btree" ("payout_profile_id");
+
+
+
 CREATE INDEX "idx_payments_refunded_amount" ON "public"."payments" USING "btree" ("refunded_amount") WHERE ("refunded_amount" > 0);
 
 
@@ -3018,6 +3384,14 @@ CREATE INDEX "idx_payments_transfer_group" ON "public"."payments" USING "btree" 
 
 
 CREATE INDEX "idx_payments_webhook_event" ON "public"."payments" USING "btree" ("webhook_event_id");
+
+
+
+CREATE INDEX "idx_payout_profiles_owner_user_id" ON "public"."payout_profiles" USING "btree" ("owner_user_id");
+
+
+
+CREATE INDEX "idx_payout_profiles_representative_community_id" ON "public"."payout_profiles" USING "btree" ("representative_community_id");
 
 
 
@@ -3149,11 +3523,27 @@ CREATE UNIQUE INDEX "unique_open_payment_per_attendance" ON "public"."payments" 
 
 
 
+CREATE UNIQUE INDEX "ux_community_contacts_community_fingerprint" ON "public"."community_contacts" USING "btree" ("community_id", "fingerprint_hash");
+
+
+
 CREATE UNIQUE INDEX "ux_contacts_fingerprint" ON "public"."contacts" USING "btree" ("fingerprint_hash");
 
 
 
 CREATE OR REPLACE TRIGGER "check_attendance_capacity_before_insert_or_update" BEFORE INSERT OR UPDATE ON "public"."attendances" FOR EACH ROW EXECUTE FUNCTION "public"."check_attendance_capacity_limit"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_enforce_community_mvp_invariants" BEFORE INSERT OR UPDATE ON "public"."communities" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_community_mvp_invariants"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_enforce_event_mvp_invariants" BEFORE UPDATE ON "public"."events" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_event_mvp_invariants"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_enforce_payout_profile_mvp_invariants" BEFORE INSERT OR UPDATE ON "public"."payout_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_payout_profile_mvp_invariants"();
 
 
 
@@ -3169,11 +3559,19 @@ CREATE OR REPLACE TRIGGER "update_attendances_updated_at" BEFORE UPDATE ON "publ
 
 
 
+CREATE OR REPLACE TRIGGER "update_communities_updated_at" BEFORE UPDATE ON "public"."communities" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
 CREATE OR REPLACE TRIGGER "update_events_updated_at" BEFORE UPDATE ON "public"."events" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 
 CREATE OR REPLACE TRIGGER "update_payments_updated_at" BEFORE UPDATE ON "public"."payments" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_payout_profiles_updated_at" BEFORE UPDATE ON "public"."payout_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 
@@ -3194,6 +3592,21 @@ ALTER TABLE ONLY "public"."attendances"
 
 
 
+ALTER TABLE ONLY "public"."communities"
+    ADD CONSTRAINT "communities_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."communities"
+    ADD CONSTRAINT "communities_current_payout_profile_id_fkey" FOREIGN KEY ("current_payout_profile_id") REFERENCES "public"."payout_profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."community_contacts"
+    ADD CONSTRAINT "community_contacts_community_id_fkey" FOREIGN KEY ("community_id") REFERENCES "public"."communities"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."events"
     ADD CONSTRAINT "events_canceled_by_fkey" FOREIGN KEY ("canceled_by") REFERENCES "public"."users"("id") ON DELETE SET NULL;
 
@@ -3204,7 +3617,17 @@ COMMENT ON CONSTRAINT "events_canceled_by_fkey" ON "public"."events" IS 'Sets ca
 
 
 ALTER TABLE ONLY "public"."events"
+    ADD CONSTRAINT "events_community_id_fkey" FOREIGN KEY ("community_id") REFERENCES "public"."communities"("id");
+
+
+
+ALTER TABLE ONLY "public"."events"
     ADD CONSTRAINT "events_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."events"
+    ADD CONSTRAINT "events_payout_profile_id_fkey" FOREIGN KEY ("payout_profile_id") REFERENCES "public"."payout_profiles"("id");
 
 
 
@@ -3220,6 +3643,21 @@ ALTER TABLE ONLY "public"."payment_disputes"
 
 ALTER TABLE ONLY "public"."payments"
     ADD CONSTRAINT "payments_attendance_id_fkey" FOREIGN KEY ("attendance_id") REFERENCES "public"."attendances"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."payments"
+    ADD CONSTRAINT "payments_payout_profile_id_fkey" FOREIGN KEY ("payout_profile_id") REFERENCES "public"."payout_profiles"("id");
+
+
+
+ALTER TABLE ONLY "public"."payout_profiles"
+    ADD CONSTRAINT "payout_profiles_owner_user_id_fkey" FOREIGN KEY ("owner_user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."payout_profiles"
+    ADD CONSTRAINT "payout_profiles_representative_community_id_fkey" FOREIGN KEY ("representative_community_id") REFERENCES "public"."communities"("id") ON DELETE SET NULL;
 
 
 
@@ -3248,19 +3686,19 @@ ALTER TABLE ONLY "public"."users"
 
 
 
-CREATE POLICY "Creators can delete own events" ON "public"."events" FOR DELETE TO "authenticated" USING ((( SELECT "auth"."uid"() AS "uid") = "created_by"));
+CREATE POLICY "Creators can delete own events" ON "public"."events" FOR DELETE TO "authenticated" USING ("public"."is_event_community_owner"("id"));
 
 
 
-CREATE POLICY "Creators can insert own events" ON "public"."events" FOR INSERT TO "authenticated" WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "created_by"));
+CREATE POLICY "Creators can insert own events" ON "public"."events" FOR INSERT TO "authenticated" WITH CHECK (("public"."is_community_owner"("community_id") AND (( SELECT "auth"."uid"() AS "uid") = "created_by")));
 
 
 
-CREATE POLICY "Creators can update own events" ON "public"."events" FOR UPDATE TO "authenticated" USING ((( SELECT "auth"."uid"() AS "uid") = "created_by")) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "created_by"));
+CREATE POLICY "Creators can update own events" ON "public"."events" FOR UPDATE TO "authenticated" USING ("public"."is_event_community_owner"("id")) WITH CHECK ("public"."is_community_owner"("community_id"));
 
 
 
-CREATE POLICY "Event access policy" ON "public"."events" FOR SELECT TO "authenticated", "anon" USING ((("auth"."uid"() = "created_by") OR "public"."can_access_event"("id")));
+CREATE POLICY "Event access policy" ON "public"."events" FOR SELECT TO "authenticated", "anon" USING ("public"."can_access_event"("id"));
 
 
 
@@ -3275,11 +3713,55 @@ COMMENT ON POLICY "Guests can view event organizer stripe accounts" ON "public".
 
 
 
+CREATE POLICY "Owners can insert own communities" ON "public"."communities" FOR INSERT TO "authenticated" WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "created_by"));
+
+
+
+CREATE POLICY "Owners can insert own payout profiles" ON "public"."payout_profiles" FOR INSERT TO "authenticated" WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "owner_user_id"));
+
+
+
+CREATE POLICY "Owners can update own communities" ON "public"."communities" FOR UPDATE TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "created_by") AND ("is_deleted" = false))) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "created_by"));
+
+
+
+CREATE POLICY "Owners can update own payout profiles" ON "public"."payout_profiles" FOR UPDATE TO "authenticated" USING ("public"."is_payout_profile_owner"("id")) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "owner_user_id"));
+
+
+
+CREATE POLICY "Owners can view own communities" ON "public"."communities" FOR SELECT TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "created_by") AND ("is_deleted" = false)));
+
+
+
+CREATE POLICY "Owners can view own community contacts" ON "public"."community_contacts" FOR SELECT TO "authenticated" USING ("public"."is_community_owner"("community_id"));
+
+
+
+CREATE POLICY "Owners can view own payout profiles" ON "public"."payout_profiles" FOR SELECT TO "authenticated" USING ("public"."is_payout_profile_owner"("id"));
+
+
+
+CREATE POLICY "Public can insert community contacts" ON "public"."community_contacts" FOR INSERT TO "authenticated", "anon" WITH CHECK ("public"."is_public_community"("community_id"));
+
+
+
 CREATE POLICY "Service role can manage attendances" ON "public"."attendances" TO "service_role" USING (true) WITH CHECK (true);
 
 
 
+CREATE POLICY "Service role can manage communities" ON "public"."communities" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "Service role can manage community contacts" ON "public"."community_contacts" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
 CREATE POLICY "Service role can manage payments" ON "public"."payments" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "Service role can manage payout profiles" ON "public"."payout_profiles" TO "service_role" USING (true) WITH CHECK (true);
 
 
 
@@ -3310,6 +3792,12 @@ CREATE POLICY "Users can view own profile" ON "public"."users" FOR SELECT TO "au
 ALTER TABLE "public"."attendances" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."communities" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."community_contacts" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."contacts" ENABLE ROW LEVEL SECURITY;
 
 
@@ -3321,45 +3809,27 @@ CREATE POLICY "contacts_no_select" ON "public"."contacts" FOR SELECT USING (fals
 
 
 
-CREATE POLICY "dispute_select_event_owner" ON "public"."payment_disputes" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM (("public"."payments" "p"
-     JOIN "public"."attendances" "a" ON (("a"."id" = "p"."attendance_id")))
-     JOIN "public"."events" "e" ON (("e"."id" = "a"."event_id")))
-  WHERE (("p"."id" = "payment_disputes"."payment_id") AND ("e"."created_by" = ( SELECT "auth"."uid"() AS "uid"))))));
+CREATE POLICY "dispute_select_event_owner" ON "public"."payment_disputes" FOR SELECT TO "authenticated" USING ("public"."is_payment_community_owner"("payment_id"));
 
 
 
-CREATE POLICY "event_creators_can_insert_attendances" ON "public"."attendances" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."events" "e"
-  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = ( SELECT "auth"."uid"() AS "uid"))))));
+CREATE POLICY "event_creators_can_delete_attendances" ON "public"."attendances" FOR DELETE TO "authenticated" USING ("public"."is_attendance_community_owner"("id"));
 
 
 
-CREATE POLICY "event_creators_can_insert_payments" ON "public"."payments" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
-   FROM ("public"."attendances" "a"
-     JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
-  WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = ( SELECT "auth"."uid"() AS "uid"))))));
+CREATE POLICY "event_creators_can_insert_attendances" ON "public"."attendances" FOR INSERT TO "authenticated" WITH CHECK ("public"."is_event_community_owner"("event_id"));
 
 
 
-CREATE POLICY "event_creators_can_update_attendances" ON "public"."attendances" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."events" "e"
-  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = ( SELECT "auth"."uid"() AS "uid")))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."events" "e"
-  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = ( SELECT "auth"."uid"() AS "uid"))))));
+CREATE POLICY "event_creators_can_update_attendances" ON "public"."attendances" FOR UPDATE TO "authenticated" USING ("public"."is_attendance_community_owner"("id")) WITH CHECK ("public"."is_event_community_owner"("event_id"));
 
 
 
-CREATE POLICY "event_creators_can_view_attendances" ON "public"."attendances" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."events" "e"
-  WHERE (("e"."id" = "attendances"."event_id") AND ("e"."created_by" = ( SELECT "auth"."uid"() AS "uid"))))));
+CREATE POLICY "event_creators_can_view_attendances" ON "public"."attendances" FOR SELECT TO "authenticated" USING ("public"."is_attendance_community_owner"("id"));
 
 
 
-CREATE POLICY "event_creators_can_view_payments" ON "public"."payments" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM ("public"."attendances" "a"
-     JOIN "public"."events" "e" ON (("a"."event_id" = "e"."id")))
-  WHERE (("a"."id" = "payments"."attendance_id") AND ("e"."created_by" = ( SELECT "auth"."uid"() AS "uid"))))));
+CREATE POLICY "event_creators_can_view_payments" ON "public"."payments" FOR SELECT TO "authenticated" USING ("public"."is_payment_community_owner"("id"));
 
 
 
@@ -3394,6 +3864,9 @@ ALTER TABLE "public"."payment_disputes" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."payments" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."payout_profiles" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."settlements" ENABLE ROW LEVEL SECURITY;
@@ -3655,14 +4128,34 @@ GRANT ALL ON FUNCTION "public"."check_attendance_capacity_limit"() TO "service_r
 
 
 
+GRANT ALL ON FUNCTION "public"."enforce_community_mvp_invariants"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."enforce_community_mvp_invariants"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."enforce_event_mvp_invariants"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."enforce_event_mvp_invariants"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."enforce_payout_profile_mvp_invariants"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."enforce_payout_profile_mvp_invariants"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."generate_community_slug"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."generate_community_slug"() TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."generate_settlement_report"("input_event_id" "uuid", "input_created_by" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_dashboard_stats"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_dashboard_stats"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_dashboard_stats"("p_community_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_dashboard_stats"("p_community_id" "uuid") TO "service_role";
 
 
 
@@ -3687,8 +4180,8 @@ GRANT ALL ON FUNCTION "public"."get_min_payout_amount"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_recent_events"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_recent_events"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_recent_events"("p_community_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_recent_events"("p_community_id" "uuid") TO "service_role";
 
 
 
@@ -3714,6 +4207,39 @@ GRANT ALL ON FUNCTION "public"."hash_guest_token"("token" "text") TO "service_ro
 
 
 
+GRANT ALL ON FUNCTION "public"."is_attendance_community_owner"("p_attendance_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_attendance_community_owner"("p_attendance_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."is_community_owner"("p_community_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_community_owner"("p_community_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."is_event_community_owner"("p_event_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_event_community_owner"("p_event_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."is_event_community_owner"("p_event_id" "uuid") TO "anon";
+
+
+
+GRANT ALL ON FUNCTION "public"."is_payment_community_owner"("p_payment_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_payment_community_owner"("p_payment_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."is_payout_profile_owner"("p_payout_profile_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_payout_profile_owner"("p_payout_profile_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."is_public_community"("p_community_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."is_public_community"("p_community_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_public_community"("p_community_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."is_public_community"("p_community_id" "uuid") TO "anon";
+
+
+
 REVOKE ALL ON FUNCTION "public"."prevent_payment_status_rollback"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "service_role";
@@ -3734,9 +4260,9 @@ GRANT ALL ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_
 
 
 
-GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") TO "anon";
 
 
 
@@ -3758,9 +4284,23 @@ GRANT ALL ON FUNCTION "public"."rpc_public_check_duplicate_email"("p_event_id" "
 
 
 
-GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid", "p_creator_id" "uuid") TO "service_role";
+REVOKE ALL ON FUNCTION "public"."rpc_public_get_community_by_legal_slug"("p_legal_slug" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."rpc_public_get_community_by_legal_slug"("p_legal_slug" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_public_get_community_by_legal_slug"("p_legal_slug" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."rpc_public_get_community_by_legal_slug"("p_legal_slug" "text") TO "anon";
+
+
+
+REVOKE ALL ON FUNCTION "public"."rpc_public_get_community_by_slug"("p_slug" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."rpc_public_get_community_by_slug"("p_slug" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_public_get_community_by_slug"("p_slug" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."rpc_public_get_community_by_slug"("p_slug" "text") TO "anon";
+
+
+
+GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") TO "anon";
 
 
 
@@ -3841,6 +4381,19 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."attendances" TO "app_define
 
 
 
+GRANT ALL ON TABLE "public"."communities" TO "anon";
+GRANT ALL ON TABLE "public"."communities" TO "service_role";
+GRANT SELECT ON TABLE "public"."communities" TO "app_definer";
+GRANT SELECT,INSERT,UPDATE ON TABLE "public"."communities" TO "authenticated";
+
+
+
+GRANT ALL ON TABLE "public"."community_contacts" TO "anon";
+GRANT ALL ON TABLE "public"."community_contacts" TO "authenticated";
+GRANT ALL ON TABLE "public"."community_contacts" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."contacts" TO "anon";
 GRANT ALL ON TABLE "public"."contacts" TO "authenticated";
 GRANT ALL ON TABLE "public"."contacts" TO "service_role";
@@ -3878,6 +4431,13 @@ GRANT ALL ON TABLE "public"."payments" TO "anon";
 GRANT ALL ON TABLE "public"."payments" TO "service_role";
 GRANT SELECT,INSERT,UPDATE ON TABLE "public"."payments" TO "app_definer";
 GRANT SELECT ON TABLE "public"."payments" TO "authenticated";
+
+
+
+GRANT ALL ON TABLE "public"."payout_profiles" TO "anon";
+GRANT ALL ON TABLE "public"."payout_profiles" TO "service_role";
+GRANT SELECT ON TABLE "public"."payout_profiles" TO "app_definer";
+GRANT SELECT,INSERT,UPDATE ON TABLE "public"."payout_profiles" TO "authenticated";
 
 
 

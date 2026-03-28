@@ -1,4 +1,7 @@
-import { validateCreateExpressAccountParams } from "@features/stripe-connect/validation";
+import {
+  startOnboardingSchema,
+  validateCreateExpressAccountParams,
+} from "@features/stripe-connect/validation";
 
 describe("stripe-connect validation", () => {
   it("does not default businessType to individual", () => {
@@ -9,5 +12,18 @@ describe("stripe-connect validation", () => {
 
     expect(result.businessType).toBeUndefined();
     expect(result.country).toBe("JP");
+  });
+
+  it("validates representative community id for onboarding", () => {
+    const result = startOnboardingSchema.safeParse({
+      representativeCommunityId: "not-a-uuid",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.flatten().fieldErrors.representativeCommunityId).toEqual([
+        "代表公開ページに使うコミュニティを選択してください",
+      ]);
+    }
   });
 });

@@ -5,16 +5,18 @@ export const dynamic = "force-dynamic";
 
 import { ArrowLeft } from "lucide-react";
 
-import { requireCurrentUserForServerComponent } from "@core/auth/auth-utils";
+import { requireNonEmptyCommunityWorkspaceForServerComponent } from "@core/community/app-workspace";
 import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import type { Event, EventRow } from "@core/types/event";
 import type { AttendanceStatus } from "@core/types/statuses";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
-import { validateEventId } from "@core/validation/event-id";
 
 import { SinglePageEventEditForm } from "@features/events";
-import { getDetailedAccountStatusAction } from "@features/stripe-connect/server";
+import {
+  getOwnedEventContextForCurrentCommunity,
+  resolveEventStripePayoutProfile,
+} from "@features/events/server";
 
 import { updateEventAction } from "./actions";
 import { EventDangerZone } from "./components/EventDangerZone";
@@ -42,6 +44,8 @@ type EventEditQueryRow = Pick<
   | "created_at"
   | "updated_at"
   | "created_by"
+  | "community_id"
+  | "payout_profile_id"
   | "invite_token"
   | "canceled_at"
 > & {
@@ -50,16 +54,39 @@ type EventEditQueryRow = Pick<
 
 export default async function EventEditPage(props: EventEditPageProps) {
   const params = await props.params;
-  const supabase = await createServerComponentSupabaseClient();
-  const user = await requireCurrentUserForServerComponent();
-
-  // IDバリデーション（形式不正のみ404）
-  const validation = validateEventId(params.id);
-  if (!validation.success) {
+  const workspace = await requireNonEmptyCommunityWorkspaceForServerComponent();
+  const currentCommunity = workspace.currentCommunity;
+  if (!currentCommunity) {
     notFound();
   }
 
-  // イベントの取得（RLSで他人イベントは0件として見える）
+  const supabase = await createServerComponentSupabaseClient();
+
+  const accessResult = await getOwnedEventContextForCurrentCommunity(
+    supabase,
+    params.id,
+    currentCommunity.id
+  );
+
+  if (!accessResult.success) {
+    if (
+      accessResult.error.code === "EVENT_INVALID_ID" ||
+      accessResult.error.code === "EVENT_NOT_FOUND"
+    ) {
+      notFound();
+    }
+    if (accessResult.error.code === "EVENT_ACCESS_DENIED") {
+      redirect(`/events/${params.id}/forbidden`);
+    }
+    throw accessResult.error;
+  }
+
+  const accessContext = accessResult.data;
+  if (!accessContext) {
+    notFound();
+  }
+  const eventId = accessContext.id;
+
   const { data: eventData, error: eventError } = await supabase
     .from("events")
     .select(
@@ -79,25 +106,21 @@ export default async function EventEditPage(props: EventEditPageProps) {
       created_at,
       updated_at,
       created_by,
+      community_id,
+      payout_profile_id,
       invite_token,
       canceled_at,
       attendances(id, status)
     `
     )
-    .eq("id", params.id)
+    .eq("id", eventId)
     .single()
     .overrideTypes<EventEditQueryRow, { merge: false }>();
 
-  // アクセス拒否は403へ（PGRST301=RLS拒否 / PGRST116=0件）
-  if (eventError?.code === "PGRST301" || eventError?.code === "PGRST116" || !eventData) {
-    redirect(`/events/${params.id}/forbidden`);
+  if (eventError || !eventData) {
+    notFound();
   }
   const event = eventData;
-
-  // 編集権限チェック
-  if (event.created_by !== user.id) {
-    redirect(`/events/${params.id}/forbidden`);
-  }
 
   const attendeeCount = calculateAttendeeCount(event.attendances);
 
@@ -105,7 +128,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
   const { data: stripePaid, error: stripePaidError } = await supabase
     .from("payments")
     .select("id, attendances!inner(event_id)")
-    .eq("attendances.event_id", params.id)
+    .eq("attendances.event_id", eventId)
     .eq("method", "stripe")
     .in("status", ["paid", "refunded"])
     .limit(1);
@@ -118,22 +141,14 @@ export default async function EventEditPage(props: EventEditPageProps) {
 
   // 開催済み・キャンセル済みイベントの編集禁止チェック
   if (computedStatus === "past" || computedStatus === "canceled") {
-    redirect(`/events/${params.id}/forbidden?reason=${computedStatus}`);
+    redirect(`/events/${eventId}/forbidden?reason=${computedStatus}`);
   }
 
-  // Stripe Connectの詳細状態を取得し、オンライン決済可否を決定
-  const detailedStatus = await getDetailedAccountStatusAction();
-
-  /**
-   * オンライン決済可否の判定ロジック（編集時）
-   *
-   * getDetailedAccountStatusAction の仕様:
-   * - アカウント未作成/認証不備がある場合: status オブジェクトを返す（CTA表示用）
-   * - 全て正常で決済可能な場合: status を undefined で返す（CTA非表示）
-   *
-   * したがって、status === undefined が「ready」状態を意味する
-   */
-  const canUseOnlinePayments = detailedStatus.success && !detailedStatus.data?.status;
+  const payoutResolution = await resolveEventStripePayoutProfile(supabase, {
+    currentCommunityId: currentCommunity.id,
+    eventPayoutProfileId: event.payout_profile_id,
+  });
+  const canUseOnlinePayments = payoutResolution.isReady;
 
   return (
     <div className="min-h-screen bg-muted/30 py-8">
@@ -142,7 +157,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
           {/* 戻るリンク */}
           <div>
             <Link
-              href={`/events/${params.id}`}
+              href={`/events/${eventId}`}
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -161,7 +176,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
 
           {/* 危険な操作（削除・中止） */}
           <EventDangerZone
-            eventId={params.id}
+            eventId={eventId}
             eventTitle={event.title}
             eventStatus={computedStatus}
           />

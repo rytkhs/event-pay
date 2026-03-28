@@ -1,5 +1,6 @@
 import {
   buildAdminContactNoticeTemplate,
+  buildCommunityContactNoticeTemplate,
   buildEventStartReminderTemplate,
   buildParticipationRegisteredTemplate,
   buildResponseDeadlineReminderTemplate,
@@ -72,5 +73,19 @@ describe("core/notification/templates", () => {
 
     expect(template.text).toContain("受信日時: - (JST)");
     expect(template.html).toContain("- (JST)");
+  });
+
+  test("主催コミュニティ問い合わせテンプレートは community 名と replyTo を含む", () => {
+    const template = buildCommunityContactNoticeTemplate({
+      communityName: "テストコミュニティ",
+      senderName: "田中",
+      senderEmail: "tanaka@example.com",
+      messageExcerpt: "問い合わせ本文です",
+      receivedAt: new Date("2025-01-02T03:04:00.000Z"),
+    });
+
+    expect(template.subject).toContain("テストコミュニティ");
+    expect(template.text).toContain("コミュニティ: テストコミュニティ");
+    expect(template.replyTo).toBe("tanaka@example.com");
   });
 });

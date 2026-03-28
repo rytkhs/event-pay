@@ -229,13 +229,12 @@ export function GuestPageClient({
         <GuestSettingsArea onOpenModal={() => setIsModalOpen(true)} />
       </section>
 
-      {/* Footer is simpler in client or page? Mock had footer component. */}
       {/* Footer */}
       <footer className="py-8 text-center text-gray-400 text-xs space-y-3">
-        {attendance.event.created_by && process.env.NEXT_PUBLIC_IS_DEMO !== "true" && (
+        {attendance.event.community.legalSlug && process.env.NEXT_PUBLIC_IS_DEMO !== "true" && (
           <div className="flex justify-center gap-4">
             <Link
-              href={`/tokushoho/${attendance.event.created_by}`}
+              href={`/tokushoho/${attendance.event.community.legalSlug}`}
               prefetch={false}
               className="hover:text-gray-600 underline"
             >

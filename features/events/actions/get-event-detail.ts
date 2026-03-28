@@ -1,11 +1,14 @@
-import { redirect } from "next/navigation";
-
-import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
+import { getOwnedEventContextForCurrentCommunity } from "@core/community/get-owned-event-context-for-current-community";
+import {
+  type ActionResult,
+  fail,
+  ok,
+  toActionResultFromAppResult,
+} from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import type { EventDetail, EventRow } from "@core/types/event";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
-import { validateEventId } from "@core/validation/event-id";
 
 type EventDetailQueryRow = Pick<
   EventRow,
@@ -24,30 +27,47 @@ type EventDetailQueryRow = Pick<
   | "created_at"
   | "updated_at"
   | "created_by"
+  | "community_id"
   | "invite_token"
   | "canceled_at"
 >;
 
-export async function getEventDetailAction(eventId: string): Promise<ActionResult<EventDetail>> {
-  try {
-    // イベントIDのバリデーション
-    const validation = validateEventId(eventId);
-    if (!validation.success) {
-      return fail("EVENT_INVALID_ID", { userMessage: "無効なイベントID形式です" });
-    }
+type OwnerEventDetail = EventDetail & {
+  community_id: string;
+};
 
+export async function getEventDetailAction(
+  eventId: string,
+  currentCommunityId: string
+): Promise<ActionResult<OwnerEventDetail>> {
+  try {
     const supabase = await createServerComponentSupabaseClient();
 
-    // 認証確認
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
     if (authError || !user) {
-      redirect("/login");
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
-    // イベント詳細取得（RLSで自分のイベントのみ取得可能）
+    const accessResult = await getOwnedEventContextForCurrentCommunity(
+      supabase,
+      eventId,
+      currentCommunityId
+    );
+
+    if (!accessResult.success) {
+      return toActionResultFromAppResult(accessResult);
+    }
+
+    const accessContext = accessResult.data;
+    if (!accessContext) {
+      return fail("INTERNAL_ERROR", {
+        userMessage: "イベント情報の取得に失敗しました",
+      });
+    }
+
     const { data: eventDetail, error } = await supabase
       .from("events")
       .select(
@@ -67,20 +87,15 @@ export async function getEventDetailAction(eventId: string): Promise<ActionResul
         created_at,
         updated_at,
         created_by,
+        community_id,
         invite_token,
         canceled_at
       `
       )
-      .eq("id", validation.data as string)
-      .eq("created_by", user.id)
+      .eq("id", accessContext.id)
       .maybeSingle<EventDetailQueryRow>();
 
     if (error) {
-      if (error.code === "PGRST301") {
-        return fail("EVENT_ACCESS_DENIED", {
-          userMessage: "このイベントへのアクセス権限がありません",
-        });
-      }
       return fail("DATABASE_ERROR", { userMessage: "データベースエラーが発生しました" });
     }
 
@@ -130,7 +145,7 @@ export async function getEventDetailAction(eventId: string): Promise<ActionResul
 
     const computedStatus = deriveEventStatus(eventDetail.date, eventDetail.canceled_at);
 
-    const result: EventDetail = {
+    const result: OwnerEventDetail = {
       id: eventDetail.id,
       title: eventDetail.title,
       description: eventDetail.description,
@@ -147,6 +162,7 @@ export async function getEventDetailAction(eventId: string): Promise<ActionResul
       created_at: eventDetail.created_at,
       updated_at: eventDetail.updated_at,
       created_by: eventDetail.created_by,
+      community_id: eventDetail.community_id,
       invite_token: eventDetail.invite_token,
       canceled_at: eventDetail.canceled_at,
       creator_name: creatorName || "Unknown User",

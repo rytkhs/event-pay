@@ -12,6 +12,11 @@ import {
 } from "../repositories/payment-webhook-repository";
 import { SettlementRegenerationService } from "../services/settlement-regeneration-service";
 import type { WebhookProcessingResult } from "../types";
+import {
+  buildPaymentWebhookMeta,
+  getPaymentWebhookLogContext,
+  logStripeAccountSnapshotMismatch,
+} from "../webhook-payment-context";
 
 interface DisputeHandlerParams {
   paymentRepository: PaymentWebhookRepository;
@@ -97,6 +102,10 @@ export class DisputeHandler {
         chargeId,
       });
 
+      if (payment) {
+        logStripeAccountSnapshotMismatch({ event, payment, logger: this.logger });
+      }
+
       const upsertResult = await this.disputeRepository.upsertDisputeRecord({
         dispute,
         paymentId: payment?.id ?? null,
@@ -132,13 +141,20 @@ export class DisputeHandler {
         return okResult();
       }
 
+      this.logger.info("Dispute linked to payment snapshot", {
+        event_id: event.id,
+        dispute_id: dispute.id,
+        ...getPaymentWebhookLogContext(payment),
+        outcome: "success",
+      });
+
       await this.settlementRegenerationService.regenerateSettlementSnapshotFromPayment(payment, {
         action: "handleDisputeEvent",
         eventId: event.id,
         paymentId: payment.id,
       });
 
-      return okResult();
+      return okResult(undefined, buildPaymentWebhookMeta({ eventId: event.id, payment }));
     } catch (error) {
       if (isPaymentWebhookRepositoryError(error)) {
         throw error;

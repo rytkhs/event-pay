@@ -1,26 +1,31 @@
 export const dynamic = "force-dynamic";
 
+import { notFound } from "next/navigation";
+
+import { requireNonEmptyCommunityWorkspaceForServerComponent } from "@core/community/app-workspace";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
+
 import { SinglePageEventForm } from "@features/events";
-import { getDetailedAccountStatusAction } from "@features/stripe-connect/server";
+import { getDashboardConnectCtaStatus } from "@features/stripe-connect/server";
 
 import { createEventAction } from "./actions";
 
 export default async function CreateEventPage() {
-  // Stripe Connectの詳細状態を取得し、オンライン決済可否を決定
-  const detailedStatus = await getDetailedAccountStatusAction();
+  const workspace = await requireNonEmptyCommunityWorkspaceForServerComponent();
+  const currentCommunity = workspace.currentCommunity;
 
-  /**
-   * オンライン決済可否の判定ロジック
-   *
-   * getDetailedAccountStatusAction の仕様:
-   * - アカウント未作成/認証不備がある場合: status オブジェクトを返す（CTA表示用）
-   * - 全て正常で決済可能な場合: status を undefined で返す（CTA非表示）
-   *
-   * したがって、status === undefined が「ready」状態を意味する
-   *
-   */
-  const canUseOnlinePayments = detailedStatus.success && !detailedStatus.data?.status;
-  const connectStatus = detailedStatus.success ? detailedStatus.data?.status : undefined;
+  if (!currentCommunity) {
+    return notFound();
+  }
+
+  // current community の payout profile 状態から、オンライン決済可否を決定する
+  const supabase = await createServerComponentSupabaseClient();
+  const connectStatus = await getDashboardConnectCtaStatus(
+    supabase,
+    workspace.currentUser.id,
+    currentCommunity.id
+  );
+  const canUseOnlinePayments = !connectStatus;
 
   return (
     <div className="min-h-screen ">
@@ -28,6 +33,7 @@ export default async function CreateEventPage() {
         <SinglePageEventForm
           canUseOnlinePayments={canUseOnlinePayments}
           connectStatus={connectStatus}
+          currentCommunityName={currentCommunity.name}
           createEventAction={createEventAction}
         />
       </div>

@@ -10,11 +10,15 @@
  */
 
 import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
+import { resolveCurrentCommunityForServerAction } from "@core/community/current-community";
+import { okResult } from "@core/errors/app-result";
 import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import type { EventRow } from "@core/types/event";
 
 import { createEventAction } from "@/app/(app)/events/create/actions";
+import { createOwnedCommunityFixture } from "@/tests/helpers/community-owner-fixtures";
 import { getFutureDateTimeLocal } from "@/tests/helpers/test-datetime";
 import { createFormDataFromEvent } from "@/tests/helpers/test-form-data";
 import {
@@ -22,51 +26,45 @@ import {
   cleanupTestPaymentData,
 } from "@/tests/helpers/test-payment-data";
 import { deleteTestUser, type TestUser } from "@/tests/helpers/test-user";
+import {
+  getAuthenticatedTestClient,
+  setupAuthenticatedTestClient,
+} from "@/tests/setup/authenticated-client-mock";
+import { setupNextCacheMocks } from "@/tests/setup/common-mocks";
+import { createTestDataCleanupHelper } from "@/tests/setup/common-test-setup";
+
+jest.mock("@core/community/current-community", () => ({
+  resolveCurrentCommunityForServerAction: jest.fn(),
+}));
+
+jest.mock("@core/supabase/factory", () => ({
+  createServerActionSupabaseClient: jest.fn(),
+}));
+
+jest.mock("next/cache", () => ({
+  revalidatePath: jest.fn(),
+}));
 
 // モックのセットアップ
-const mockGetCurrentUser = getCurrentUserForServerAction as jest.MockedFunction<typeof getCurrentUserForServerAction>;
-
-// adminClientを格納する変数（トップレベルのlet）
-let sharedAdminClient: any = null;
-
-// SecureSupabaseClientFactoryをモック化
-// RLSをバイパスするためにadminClientを返す
-jest.mock("@core/security/secure-client-factory.impl", () => {
-  // 実際のモジュールを取得
-  const actual = jest.requireActual("@core/security/secure-client-factory.impl");
-
-  return {
-    ...actual,
-    SecureSupabaseClientFactory: {
-      ...actual.SecureSupabaseClientFactory,
-      create: () => ({
-        createAuthenticatedClient: () => {
-          // sharedAdminClientはテストのbeforeAllでセットアップされる
-          // ここで参照することでRLSをバイパス
-          if (!sharedAdminClient) {
-            throw new Error("sharedAdminClient is not initialized in beforeAll.");
-          }
-          return sharedAdminClient;
-        },
-        createAuditedAdminClient: async (reason: any, context: any, auditInfo: any) => {
-          const factory = new actual.SecureSupabaseClientFactory();
-          return factory.createAuditedAdminClient(reason, context, auditInfo);
-        },
-      }),
-    },
-  };
-});
-
-// sharedAdminClientをエクスポートするヘルパー
-export function setSharedAdminClient(client: any) {
-  sharedAdminClient = client;
-}
+const mockGetCurrentUser = getCurrentUserForServerAction as jest.MockedFunction<
+  typeof getCurrentUserForServerAction
+>;
+const mockResolveCurrentCommunity = resolveCurrentCommunityForServerAction as jest.MockedFunction<
+  typeof resolveCurrentCommunityForServerAction
+>;
+const mockCreateServerActionClient = createServerActionSupabaseClient as jest.MockedFunction<
+  typeof createServerActionSupabaseClient
+>;
 
 describe("イベント作成統合テスト - 基本的なイベント作成", () => {
   let testUser: TestUser;
+  let currentCommunityFixture: Awaited<ReturnType<typeof createOwnedCommunityFixture>>;
+  let cleanupHelper: ReturnType<typeof createTestDataCleanupHelper>;
   const createdEventIds: string[] = [];
 
   beforeAll(async () => {
+    setupNextCacheMocks();
+
     // Connect設定済みユーザーを作成（有料イベント作成に必要）
     testUser = await createTestUserWithConnect(
       `event-creation-basic-${Date.now()}@example.com`,
@@ -78,10 +76,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
       }
     );
 
-    // 実際のSecureSupabaseClientFactoryからadminClientを取得
-    const actualModule = jest.requireActual("@core/security/secure-client-factory.impl");
-    const factory = new actualModule.SecureSupabaseClientFactory();
-    const adminClient = await factory.createAuditedAdminClient(
+    const adminClient = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "event-creation-basic test setup",
       {
@@ -91,8 +86,14 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
       }
     );
 
-    // モックで使用するためにsharedAdminClientを設定
-    sharedAdminClient = adminClient;
+    cleanupHelper = createTestDataCleanupHelper(adminClient);
+    currentCommunityFixture = await createOwnedCommunityFixture(testUser.id, {
+      withPayoutProfile: true,
+    });
+    cleanupHelper.trackCommunity(currentCommunityFixture.community.id);
+    if (currentCommunityFixture.payoutProfileId) {
+      cleanupHelper.trackPayoutProfile(currentCommunityFixture.payoutProfileId);
+    }
   });
 
   afterAll(async () => {
@@ -105,13 +106,22 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
       });
     }
 
+    await cleanupHelper?.cleanup();
+
     // テストユーザーを削除
     if (testUser) {
       await deleteTestUser(testUser.email);
     }
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await setupAuthenticatedTestClient(testUser.email, testUser.password, testUser.id);
+    const authenticatedClient = getAuthenticatedTestClient();
+    if (!authenticatedClient) {
+      throw new Error("Authenticated test client is not initialized");
+    }
+    mockCreateServerActionClient.mockResolvedValue(authenticatedClient);
+
     // 各テストでユーザーを認証済み状態にする
     mockGetCurrentUser.mockResolvedValue({
       id: testUser.id,
@@ -119,10 +129,32 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
       user_metadata: {},
       app_metadata: {},
     } as any);
+    mockResolveCurrentCommunity.mockResolvedValue(
+      okResult({
+        currentCommunity: {
+          createdAt: new Date().toISOString(),
+          id: currentCommunityFixture.community.id,
+          name: currentCommunityFixture.community.name,
+          slug: currentCommunityFixture.community.slug,
+        },
+        ownedCommunities: [
+          {
+            createdAt: new Date().toISOString(),
+            id: currentCommunityFixture.community.id,
+            name: currentCommunityFixture.community.name,
+            slug: currentCommunityFixture.community.slug,
+          },
+        ],
+        requestedCommunityId: currentCommunityFixture.community.id,
+        resolvedBy: "cookie",
+      })
+    );
   });
 
   afterEach(() => {
     mockGetCurrentUser.mockReset();
+    mockResolveCurrentCommunity.mockReset();
+    mockCreateServerActionClient.mockReset();
   });
 
   /**
@@ -153,6 +185,8 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
     expect(event.description).toBe(expectedData.description ?? null);
     expect(event.capacity).toBe(expectedData.capacity ?? null);
     expect(event.created_by).toBe(testUser.id);
+    expect(event.community_id).toBe(currentCommunityFixture.community.id);
+    expect(event.payout_profile_id).toBe(currentCommunityFixture.payoutProfileId);
     expect(event.invite_token).toBeDefined();
     expect(event.invite_token).not.toBeNull();
     if (event.invite_token) {

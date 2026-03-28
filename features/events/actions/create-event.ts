@@ -1,22 +1,32 @@
 import { randomUUID } from "crypto";
 
+import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
 import { z } from "zod";
 
 import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
-import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
+import { resolveCurrentCommunityForServerAction } from "@core/community/current-community";
+import {
+  type ActionResult,
+  fail,
+  ok,
+  toActionResultFromAppResult,
+  zodFail,
+} from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { logEventManagement } from "@core/logging/system-logger";
 import { logSecurityEvent } from "@core/security/security-logger";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
-import type { EventRow } from "@core/types/event";
+import type { EventInsert, EventRow } from "@core/types/event";
 import type { PaymentMethod } from "@core/types/statuses";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { extractEventCreateFormData } from "@core/utils/form-data-extractors";
 import { generateInviteToken } from "@core/utils/invite-token";
 import { convertDatetimeLocalToUtc } from "@core/utils/timezone";
 import { createEventSchema, type CreateEventInput } from "@core/validation/event";
+
+import { getEventPayoutProfileReadiness } from "../services/payout-profile-readiness";
 
 type CreateEventResult = ActionResult<EventRow>;
 
@@ -32,6 +42,11 @@ type FormDataFields = {
   payment_deadline?: string;
   allow_payment_after_deadline?: boolean;
   grace_period_days?: number;
+};
+
+type CurrentCommunityPayoutSnapshotRow = {
+  current_payout_profile_id: string | null;
+  id: string;
 };
 
 export async function createEventAction(formData: FormData): Promise<CreateEventResult> {
@@ -103,45 +118,102 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
       return fail("VALIDATION_ERROR", { userMessage: "入力が不正です" });
     }
 
+    const currentCommunityResolutionResult = await resolveCurrentCommunityForServerAction();
+
+    if (!currentCommunityResolutionResult.success) {
+      return toActionResultFromAppResult(currentCommunityResolutionResult, {
+        userMessage: "イベントの作成に必要なコミュニティ情報を取得できませんでした",
+      });
+    }
+
+    if (!currentCommunityResolutionResult.data?.currentCommunity) {
+      return fail("NOT_FOUND", {
+        userMessage: "イベントを作成できるコミュニティが見つかりません",
+      });
+    }
+
+    const currentCommunity = currentCommunityResolutionResult.data.currentCommunity;
     const authenticatedClient = await createServerActionSupabaseClient();
 
-    // オンライン決済の準備状態（Stripe Connect）のサーバー側チェック
-    // - クライアント改ざん防止のため、"stripe"選択時は verified && payouts_enabled を必須とする
-    // - features間の直接依存は避け、DBのアカウント状態で軽量判定する
+    const { data: currentCommunitySnapshot, error: currentCommunityError } =
+      await authenticatedClient
+        .from("communities")
+        .select("id, current_payout_profile_id")
+        .eq("id", currentCommunity.id)
+        .eq("is_deleted", false)
+        .maybeSingle<CurrentCommunityPayoutSnapshotRow>();
+
+    if (currentCommunityError) {
+      handleServerError("DATABASE_ERROR", {
+        category: "event_management",
+        action: "create_event_load_current_community_failed",
+        userId: user.id,
+        additionalData: {
+          community_id: currentCommunity.id,
+          error_code: currentCommunityError.code,
+          error_message: currentCommunityError.message,
+          request_id: requestId,
+        },
+      });
+      return fail("DATABASE_ERROR", {
+        userMessage: "イベントの作成に必要なコミュニティ情報の取得に失敗しました",
+        retryable: true,
+      });
+    }
+
+    if (!currentCommunitySnapshot) {
+      return fail("NOT_FOUND", {
+        userMessage: "イベントを作成できるコミュニティが見つかりません",
+      });
+    }
+
+    const payoutProfileId = currentCommunitySnapshot.current_payout_profile_id ?? null;
+
+    // オンライン決済の準備状態を current community の payout snapshot 候補から判定する
     {
       const fee = Number(rawData.fee);
       const wantsStripe = rawData.payment_methods.includes("stripe");
 
       if (fee > 0 && wantsStripe) {
-        const { data: connectAccount, error: connectError } = await authenticatedClient
-          .from("stripe_connect_accounts")
-          .select("status, payouts_enabled")
-          .eq("user_id", user.id)
-          .maybeSingle();
+        const payoutReadiness = await getEventPayoutProfileReadiness(
+          authenticatedClient,
+          payoutProfileId
+        );
 
-        const isReady =
-          connectAccount?.status === "verified" && connectAccount?.payouts_enabled === true;
-
-        if (connectError || !isReady) {
-          actionLogger.warn("Stripe Connect not ready for paid event creation", {
-            user_id: user.id,
-            connect_error: connectError?.message,
-            connect_status: connectAccount?.status,
-            connect_payouts_enabled: connectAccount?.payouts_enabled,
-            outcome: "failure",
-          });
+        if (!payoutReadiness.isReady) {
+          actionLogger.warn(
+            "Current community payout profile is not ready for paid event creation",
+            {
+              user_id: user.id,
+              community_id: currentCommunity.id,
+              payout_profile_id: payoutProfileId,
+              outcome: "failure",
+            }
+          );
           return fail("VALIDATION_ERROR", {
-            userMessage: "オンライン決済を利用するにはStripe Connectの設定完了が必要です",
+            userMessage:
+              payoutReadiness.userMessage ||
+              "オンライン決済を利用するには受取先プロファイルの設定完了が必要です",
             fieldErrors: {
-              payment_methods: ["Stripe Connectの設定を完了してください（本人確認と入金有効化）"],
+              payment_methods: [
+                payoutReadiness.userMessage ||
+                  "受取先プロファイルの設定を完了してください（本人確認と入金有効化）",
+              ],
             },
           });
         }
       }
     }
 
+    const eventId = randomUUID();
     const inviteToken = generateInviteToken();
-    const eventData = buildEventData(validatedData, user.id, inviteToken);
+    const eventData = buildEventData(validatedData, {
+      communityId: currentCommunity.id,
+      eventId,
+      inviteToken,
+      payoutProfileId,
+      userId: user.id,
+    });
 
     // 認証済みクライアントを使用（RLSポリシーで自分のイベント作成を許可）
 
@@ -150,14 +222,12 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
       fee: eventData.fee,
       payment_methods: eventData.payment_methods,
       created_by: eventData.created_by,
+      community_id: eventData.community_id,
+      payout_profile_id: eventData.payout_profile_id,
       outcome: "success",
     });
 
-    const { data: createdEvent, error: dbError } = await authenticatedClient
-      .from("events")
-      .insert(eventData)
-      .select()
-      .single();
+    const { error: dbError } = await authenticatedClient.from("events").insert(eventData);
 
     if (dbError) {
       handleServerError("DATABASE_ERROR", {
@@ -175,6 +245,30 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
         userMessage: "イベントの作成に失敗しました",
         retryable: true,
         details: { dbError },
+      });
+    }
+
+    const { data: createdEvent, error: createdEventLoadError } = await authenticatedClient
+      .from("events")
+      .select("*")
+      .eq("id", eventId)
+      .single();
+
+    if (createdEventLoadError) {
+      handleServerError("DATABASE_ERROR", {
+        category: "event_management",
+        action: "create_event_load_created_event_fail",
+        userId: user.id,
+        additionalData: {
+          event_id: eventId,
+          error_code: createdEventLoadError.code,
+          error_message: createdEventLoadError.message,
+          request_id: requestId,
+        },
+      });
+      return fail("DATABASE_ERROR", {
+        userMessage: "イベント作成後の取得に失敗しました",
+        retryable: true,
       });
     }
 
@@ -205,11 +299,16 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
       resource_id: createdEvent.id,
       outcome: "success",
       metadata: {
+        community_id: currentCommunity.id,
         title: eventData.title,
         fee: eventData.fee,
         payment_methods: eventData.payment_methods,
+        payout_profile_id: eventData.payout_profile_id,
       },
     });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/events");
 
     return ok(createdEvent);
   } catch (error) {
@@ -284,26 +383,18 @@ function convertDatetimeLocalToIso(dateString: string): string {
 
 function buildEventData(
   validatedData: CreateEventInput,
-  userId: string,
-  inviteToken: string
-): {
-  title: string;
-  date: string;
-  fee: number;
-  payment_methods: PaymentMethod[] | [];
-  location: string | null;
-  description: string | null;
-  capacity: number | null;
-  registration_deadline: string;
-  payment_deadline: string | null;
-  allow_payment_after_deadline: boolean;
-  grace_period_days: number;
-  created_by: string;
-  invite_token: string;
-} {
+  params: {
+    communityId: string;
+    eventId: string;
+    inviteToken: string;
+    payoutProfileId: string | null;
+    userId: string;
+  }
+): EventInsert {
   const fee = Number(validatedData.fee);
 
   return {
+    id: params.eventId,
     title: validatedData.title,
     date: convertDatetimeLocalToIso(validatedData.date),
     fee,
@@ -324,7 +415,9 @@ function buildEventData(
     allow_payment_after_deadline:
       fee === 0 ? false : Boolean(validatedData.allow_payment_after_deadline),
     grace_period_days: fee === 0 ? 0 : Number(validatedData.grace_period_days ?? 0),
-    created_by: userId,
-    invite_token: inviteToken,
+    created_by: params.userId,
+    community_id: params.communityId,
+    payout_profile_id: params.payoutProfileId,
+    invite_token: params.inviteToken,
   };
 }

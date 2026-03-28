@@ -30,6 +30,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
     const pending = await createPendingTestPayment(attendance.id, {
       amount: 1500,
       stripeAccountId: activeUser.stripeConnectAccountId,
+      payoutProfileId: activeUser.payoutProfileId,
     });
 
     const evt = webhookEventFixtures.paymentIntentSucceeded();
@@ -83,6 +84,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
     const pending = await createPendingTestPayment(attendance.id, {
       amount: 2000,
       stripeAccountId: activeUser.stripeConnectAccountId,
+      payoutProfileId: activeUser.payoutProfileId,
     });
 
     const evt = webhookEventFixtures.paymentIntentSucceeded();
@@ -139,6 +141,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
     const pending = await createPendingTestPayment(attendance.id, {
       amount: 1500,
       stripeAccountId: activeUser.stripeConnectAccountId,
+      payoutProfileId: activeUser.payoutProfileId,
     });
 
     const evt = webhookEventFixtures.paymentIntentSucceeded();
@@ -175,6 +178,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
     const pending = await createPendingTestPayment(attendance.id, {
       amount: 1500,
       stripeAccountId: activeUser.stripeConnectAccountId,
+      payoutProfileId: activeUser.payoutProfileId,
     });
 
     const evt = webhookEventFixtures.paymentIntentSucceeded();
@@ -223,6 +227,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
     const pending = await createPendingTestPayment(attendance.id, {
       amount: 1500,
       stripeAccountId: activeUser.stripeConnectAccountId,
+      payoutProfileId: activeUser.payoutProfileId,
     });
 
     const evt = webhookEventFixtures.paymentIntentSucceeded();
@@ -273,6 +278,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
     const pending = await createPendingTestPayment(attendance.id, {
       amount: 1500,
       stripeAccountId: activeUser.stripeConnectAccountId,
+      payoutProfileId: activeUser.payoutProfileId,
     });
 
     const evt = webhookEventFixtures.paymentIntentSucceeded();
@@ -364,6 +370,7 @@ describe("/api/workers/stripe-webhook (worker)", () => {
     const pending = await createPendingTestPayment(attendance.id, {
       amount: 1500,
       stripeAccountId: activeUser.stripeConnectAccountId,
+      payoutProfileId: activeUser.payoutProfileId,
     });
 
     const evt = webhookEventFixtures.checkoutCompleted();

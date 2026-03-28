@@ -6,12 +6,9 @@ import type { Database } from "@/types/database";
 /**
  * Stripe Connectドメインの共有契約型
  */
-export type StripeConnectAccountRow =
-  Database["public"]["Tables"]["stripe_connect_accounts"]["Row"];
-export type StripeConnectAccountInsert =
-  Database["public"]["Tables"]["stripe_connect_accounts"]["Insert"];
-export type StripeConnectAccountUpdate =
-  Database["public"]["Tables"]["stripe_connect_accounts"]["Update"];
+export type StripeConnectAccountRow = Database["public"]["Tables"]["payout_profiles"]["Row"];
+export type StripeConnectAccountInsert = Database["public"]["Tables"]["payout_profiles"]["Insert"];
+export type StripeConnectAccountUpdate = Database["public"]["Tables"]["payout_profiles"]["Update"];
 
 export type StripeAccountStatus = StripeAccountStatusEnum;
 

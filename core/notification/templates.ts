@@ -615,3 +615,59 @@ export function buildAdminContactNoticeTemplate(params: {
 
   return { subject, html, text };
 }
+
+export function buildCommunityContactNoticeTemplate(params: {
+  communityName: string;
+  senderName: string;
+  senderEmail: string;
+  messageExcerpt: string;
+  receivedAt: Date;
+}): EmailTemplate {
+  const subject = `【${APP_NAME}】${params.communityName}に新しい問い合わせが届きました`;
+  const receivedAt = formatJstDate(params.receivedAt) + " (JST)";
+
+  const html = renderLayout({
+    preheader: `${params.communityName}に主催者向け問い合わせが届きました`,
+    contentHtml: `
+      <h1 style="margin:0 0 12px;font-size:24px;line-height:1.4;">コミュニティへの問い合わせ</h1>
+      <p style="margin:0 0 18px;color:#334155;line-height:1.7;">主催コミュニティに新しいお問い合わせが届きました。</p>
+      <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;margin-bottom:20px;">
+        ${renderKeyValueRows([
+          { label: "コミュニティ", value: escapeHtml(params.communityName) },
+          { label: "氏名", value: escapeHtml(params.senderName) },
+          {
+            label: "メールアドレス",
+            value: `<a href="mailto:${escapeAttr(params.senderEmail)}" style="color:#2563eb;text-decoration:underline;word-break:break-all;">${escapeHtml(params.senderEmail)}</a>`,
+          },
+          { label: "受信日時", value: escapeHtml(receivedAt) },
+        ])}
+      </table>
+      <h2 style="margin:0 0 10px;font-size:18px;line-height:1.4;">お問い合わせ本文</h2>
+      <div style="padding:14px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;color:#334155;line-height:1.8;">${nl2br(
+        params.messageExcerpt
+      )}</div>
+      <p style="margin:10px 0 0;font-size:12px;color:#64748b;">※ 本文は最大500文字まで表示されています。</p>
+    `,
+  });
+
+  const text = [
+    "主催コミュニティへの問い合わせ",
+    "",
+    `コミュニティ: ${params.communityName}`,
+    `氏名: ${params.senderName}`,
+    `メールアドレス: ${params.senderEmail}`,
+    `受信日時: ${receivedAt}`,
+    "",
+    "お問い合わせ本文:",
+    params.messageExcerpt,
+    "",
+    "※ 本文は最大500文字まで表示されています。",
+  ].join("\n");
+
+  return {
+    subject,
+    html,
+    text,
+    replyTo: params.senderEmail,
+  };
+}

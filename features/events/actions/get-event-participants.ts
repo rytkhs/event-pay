@@ -1,11 +1,16 @@
 import { z } from "zod";
 
-import { verifyEventAccess, handleDatabaseError } from "@core/auth/event-authorization";
-import { type ActionResult, ok, fail, zodFail } from "@core/errors/adapters/server-actions";
+import { getOwnedEventContextForCurrentCommunity } from "@core/community/get-owned-event-context-for-current-community";
+import {
+  type ActionResult,
+  ok,
+  fail,
+  toActionResultFromAppResult,
+  zodFail,
+} from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import { handleServerError } from "@core/utils/error-handler.server";
-import { isNextRedirectError } from "@core/utils/next";
 import {
   GetParticipantsParamsSchema,
   type GetParticipantsResponse,
@@ -30,19 +35,39 @@ export async function getEventParticipantsAction(
   params: unknown
 ): Promise<ActionResult<GetParticipantsResponse>> {
   try {
-    // パラメータバリデーション（eventIdのみ）
+    // パラメータバリデーション
     const parseResult = GetParticipantsParamsSchema.safeParse(params);
     if (!parseResult.success) {
       return zodFail(parseResult.error);
     }
-    const { eventId } = parseResult.data;
-
-    // 共通の認可・権限確認処理
-    const { user, eventId: validatedEventId } = await verifyEventAccess(eventId, {
-      context: "server_component",
-    });
+    const { eventId, currentCommunityId } = parseResult.data;
 
     const supabase = await createServerComponentSupabaseClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
+    }
+
+    const accessResult = await getOwnedEventContextForCurrentCommunity(
+      supabase,
+      eventId,
+      currentCommunityId
+    );
+
+    if (!accessResult.success) {
+      return toActionResultFromAppResult(accessResult);
+    }
+
+    const accessContext = accessResult.data;
+    if (!accessContext) {
+      return fail("INTERNAL_ERROR", {
+        userMessage: "イベント情報の取得に失敗しました",
+      });
+    }
 
     // シンプルな全件取得クエリ
     const selectColumns = `
@@ -66,7 +91,7 @@ export async function getEventParticipantsAction(
     const { data: attendances, error } = await supabase
       .from("attendances")
       .select(selectColumns)
-      .eq("event_id", validatedEventId)
+      .eq("event_id", accessContext.id)
       // 最新決済を取得: paid_at DESC NULLS LAST, created_at DESC, updated_at DESC
       .order("paid_at", PAYMENTS_ORDER_PAID_AT_DESC_NULLS_LAST)
       .order("created_at", PAYMENTS_ORDER_CREATED_AT_DESC)
@@ -76,7 +101,10 @@ export async function getEventParticipantsAction(
       .order("created_at", { ascending: false });
 
     if (error) {
-      handleDatabaseError(error, { eventId: validatedEventId, userId: user.id });
+      return fail("DATABASE_ERROR", {
+        userMessage: "参加者の取得に失敗しました",
+        retryable: true,
+      });
     }
 
     // 実際のSupabaseクエリ結果に合わせた型定義
@@ -127,7 +155,7 @@ export async function getEventParticipantsAction(
       category: "attendance",
       action: "get_event_participants",
       actor_type: "user",
-      event_id: validatedEventId,
+      event_id: accessContext.id,
       user_id: user.id,
       participant_count: participants.length,
       outcome: "success",
@@ -135,9 +163,6 @@ export async function getEventParticipantsAction(
 
     return ok({ participants });
   } catch (error) {
-    if (isNextRedirectError(error)) {
-      throw error;
-    }
     if (error instanceof z.ZodError) {
       return zodFail(error);
     }

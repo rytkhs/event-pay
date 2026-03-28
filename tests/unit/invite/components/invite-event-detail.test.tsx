@@ -35,8 +35,10 @@ jest.mock("@features/invite/components/SuccessView", () => ({
 describe("InviteEventDetail", () => {
   const mockEvent: InviteEventDetailType = {
     id: "evt_1",
-    created_by: "org_1",
-    organizer_name: "Organizer",
+    community: {
+      name: "Organizer Community",
+      legalSlug: "legal-1",
+    },
     title: "Test Event",
     date: "2099-01-01T12:00:00.000Z",
     location: null,
