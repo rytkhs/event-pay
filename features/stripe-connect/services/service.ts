@@ -607,6 +607,51 @@ export class StripeConnectService implements IStripeConnectService {
         );
       }
 
+      if (payoutProfileId && !currentAccount) {
+        throw new StripeConnectError(
+          StripeConnectErrorType.ACCOUNT_NOT_FOUND,
+          "指定された payout profile が見つかりません",
+          undefined,
+          {
+            payoutProfileId,
+            stripeAccountId,
+            userId,
+          }
+        );
+      }
+
+      if (currentAccount) {
+        if (userId && currentAccount.owner_user_id !== userId) {
+          throw new StripeConnectError(
+            StripeConnectErrorType.VALIDATION_ERROR,
+            "Connect Account更新対象の userId が既存の payout profile と一致しません",
+            undefined,
+            {
+              payoutProfileId,
+              stripeAccountId,
+              userId,
+              resolvedPayoutProfileId: currentAccount.id,
+              resolvedUserId: currentAccount.owner_user_id,
+            }
+          );
+        }
+
+        if (stripeAccountId && currentAccount.stripe_account_id !== stripeAccountId) {
+          throw new StripeConnectError(
+            StripeConnectErrorType.VALIDATION_ERROR,
+            "Connect Account更新対象の stripeAccountId が既存の payout profile と一致しません",
+            undefined,
+            {
+              payoutProfileId,
+              stripeAccountId,
+              userId,
+              resolvedPayoutProfileId: currentAccount.id,
+              resolvedStripeAccountId: currentAccount.stripe_account_id,
+            }
+          );
+        }
+      }
+
       const previousStatus = currentAccount?.status || null;
       const accountId = stripeAccountId || currentAccount?.stripe_account_id || "";
       const resolvedPayoutProfileId = currentAccount?.id || payoutProfileId || null;
