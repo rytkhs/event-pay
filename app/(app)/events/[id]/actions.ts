@@ -24,9 +24,9 @@ export async function getEventParticipantsAction(params: GetEventParticipantsPar
   return getEventParticipantsActionImpl(params);
 }
 
-export async function getEventStatsAction(eventId: string) {
+export async function getEventStatsAction(eventId: string, currentCommunityId: string) {
   ensureFeaturesRegistered();
-  return getEventStatsActionImpl(eventId);
+  return getEventStatsActionImpl(eventId, currentCommunityId);
 }
 
 export async function generateInviteTokenAction(

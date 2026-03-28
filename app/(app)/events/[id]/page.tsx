@@ -85,9 +85,12 @@ export default async function EventDetailPage(props: {
       Promise<ActionResult<{ attending_count: number; maybe_count: number }>>,
       Promise<ActionResult<GetParticipantsResponse>>,
     ] = [
-      cachedActions.getEventStats(params.id),
+      cachedActions.getEventStats(params.id, currentCommunity.id),
       // 常に全件取得（タブに関係なく）
-      cachedActions.getEventParticipants({ eventId: params.id }),
+      cachedActions.getEventParticipants({
+        eventId: params.id,
+        currentCommunityId: currentCommunity.id,
+      }),
     ];
 
     const [statsRes, participantsRes]: [
