@@ -147,7 +147,7 @@ export async function adminAddAttendanceAction(
 
         paymentId = result.paymentId;
       } catch (error) {
-        // 参加者レコードを削除してロールバック（RLSポリシーで制御）
+        // Attendance rollback intentionally uses the owner-scoped client and owner DELETE policy.
         await authenticatedClient.from("attendances").delete().eq("id", attendanceId);
 
         // PaymentErrorの場合は適切なエラーコードを返す

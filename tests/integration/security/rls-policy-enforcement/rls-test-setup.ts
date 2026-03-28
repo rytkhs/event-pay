@@ -10,6 +10,7 @@ import { AdminReason } from "@core/security/secure-client-factory.types";
 import { createMultiUserTestSetup, type MultiUserTestSetup } from "@tests/setup/common-test-setup";
 
 export interface RLSTestSetup {
+  adminClient: any;
   testEventId: string;
   testCommunityId: string;
   testCommunitySlug: string;
@@ -239,6 +240,7 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
   };
 
   return {
+    adminClient: setupClient,
     testEventId,
     testCommunityId: testCommunity.id,
     testCommunitySlug: testCommunity.slug,

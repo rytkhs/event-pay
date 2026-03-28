@@ -3703,7 +3703,15 @@ CREATE POLICY "Owners can insert own communities" ON "public"."communities" FOR 
 
 
 
+CREATE POLICY "Owners can insert own payout profiles" ON "public"."payout_profiles" FOR INSERT TO "authenticated" WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "owner_user_id"));
+
+
+
 CREATE POLICY "Owners can update own communities" ON "public"."communities" FOR UPDATE TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "created_by") OR "public"."is_community_owner"("id"))) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "created_by"));
+
+
+
+CREATE POLICY "Owners can update own payout profiles" ON "public"."payout_profiles" FOR UPDATE TO "authenticated" USING ("public"."is_payout_profile_owner"("id")) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "owner_user_id"));
 
 
 
@@ -3791,11 +3799,11 @@ CREATE POLICY "dispute_select_event_owner" ON "public"."payment_disputes" FOR SE
 
 
 
+CREATE POLICY "event_creators_can_delete_attendances" ON "public"."attendances" FOR DELETE TO "authenticated" USING ("public"."is_attendance_community_owner"("id"));
+
+
+
 CREATE POLICY "event_creators_can_insert_attendances" ON "public"."attendances" FOR INSERT TO "authenticated" WITH CHECK ("public"."is_event_community_owner"("event_id"));
-
-
-
-CREATE POLICY "event_creators_can_insert_payments" ON "public"."payments" FOR INSERT TO "authenticated" WITH CHECK ("public"."is_attendance_community_owner"("attendance_id"));
 
 
 
@@ -4415,7 +4423,7 @@ GRANT SELECT ON TABLE "public"."payments" TO "authenticated";
 GRANT ALL ON TABLE "public"."payout_profiles" TO "anon";
 GRANT ALL ON TABLE "public"."payout_profiles" TO "service_role";
 GRANT SELECT ON TABLE "public"."payout_profiles" TO "app_definer";
-GRANT SELECT ON TABLE "public"."payout_profiles" TO "authenticated";
+GRANT SELECT,INSERT,UPDATE ON TABLE "public"."payout_profiles" TO "authenticated";
 
 
 

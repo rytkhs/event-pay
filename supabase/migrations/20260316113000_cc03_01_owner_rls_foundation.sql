@@ -7,7 +7,7 @@ GRANT SELECT, INSERT, UPDATE ON TABLE public.communities TO authenticated;
 GRANT ALL ON TABLE public.communities TO service_role;
 
 REVOKE ALL ON TABLE public.payout_profiles FROM authenticated;
-GRANT SELECT ON TABLE public.payout_profiles TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.payout_profiles TO authenticated;
 GRANT ALL ON TABLE public.payout_profiles TO service_role;
 
 CREATE OR REPLACE FUNCTION public.is_community_owner(p_community_id uuid)
@@ -587,12 +587,29 @@ TO service_role
 USING (true)
 WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Owners can view own payout profiles" ON public.payout_profiles;
 CREATE POLICY "Owners can view own payout profiles"
 ON public.payout_profiles
 FOR SELECT
 TO authenticated
 USING (public.is_payout_profile_owner(id));
 
+DROP POLICY IF EXISTS "Owners can insert own payout profiles" ON public.payout_profiles;
+CREATE POLICY "Owners can insert own payout profiles"
+ON public.payout_profiles
+FOR INSERT
+TO authenticated
+WITH CHECK ((SELECT auth.uid()) = owner_user_id);
+
+DROP POLICY IF EXISTS "Owners can update own payout profiles" ON public.payout_profiles;
+CREATE POLICY "Owners can update own payout profiles"
+ON public.payout_profiles
+FOR UPDATE
+TO authenticated
+USING (public.is_payout_profile_owner(id))
+WITH CHECK ((SELECT auth.uid()) = owner_user_id);
+
+DROP POLICY IF EXISTS "Service role can manage payout profiles" ON public.payout_profiles;
 CREATE POLICY "Service role can manage payout profiles"
 ON public.payout_profiles
 FOR ALL
@@ -607,6 +624,7 @@ FOR SELECT
 TO authenticated
 USING (public.is_payment_community_owner(payment_id));
 
+-- Attendance rows remain owner-managed under authenticated user-scoped clients.
 DROP POLICY IF EXISTS "event_creators_can_insert_attendances" ON public.attendances;
 CREATE POLICY "event_creators_can_insert_attendances"
 ON public.attendances
@@ -614,12 +632,8 @@ FOR INSERT
 TO authenticated
 WITH CHECK (public.is_event_community_owner(event_id));
 
+-- Payment rows are read-only for authenticated clients; writes must go through admin/RPC paths.
 DROP POLICY IF EXISTS "event_creators_can_insert_payments" ON public.payments;
-CREATE POLICY "event_creators_can_insert_payments"
-ON public.payments
-FOR INSERT
-TO authenticated
-WITH CHECK (public.is_attendance_community_owner(attendance_id));
 
 DROP POLICY IF EXISTS "event_creators_can_update_attendances" ON public.attendances;
 CREATE POLICY "event_creators_can_update_attendances"
@@ -628,6 +642,13 @@ FOR UPDATE
 TO authenticated
 USING (public.is_attendance_community_owner(id))
 WITH CHECK (public.is_event_community_owner(event_id));
+
+DROP POLICY IF EXISTS "event_creators_can_delete_attendances" ON public.attendances;
+CREATE POLICY "event_creators_can_delete_attendances"
+ON public.attendances
+FOR DELETE
+TO authenticated
+USING (public.is_attendance_community_owner(id));
 
 DROP POLICY IF EXISTS "event_creators_can_view_attendances" ON public.attendances;
 CREATE POLICY "event_creators_can_view_attendances"
