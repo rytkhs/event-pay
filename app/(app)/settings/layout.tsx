@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { User, CreditCard, Shield, Building2 } from "lucide-react";
-
-import { Card, CardContent } from "@/components/ui/card";
+import { Building2, CreditCard, Shield, User } from "lucide-react";
 
 interface SettingsLayoutProps {
   children: React.ReactNode;
@@ -41,58 +39,43 @@ const settingsPages = [
 export default function SettingsLayout({ children }: SettingsLayoutProps) {
   const pathname = usePathname();
 
-  // 設定のルートページかどうか
   const isSettingsRoot = pathname === "/settings" || pathname === "/settings/";
 
   if (isSettingsRoot) {
-    // 設定メニュー画面
     return (
-      <div className="container mx-auto py-2 px-4 max-w-4xl">
+      <div className="container mx-auto max-w-4xl px-4 py-4">
         {/* ヘッダー */}
-        <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold">設定</h1>
-          <p className="text-muted-foreground mt-1">コミュニティとアカウントを管理</p>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold sm:text-3xl">設定</h1>
+          <p className="mt-1 text-sm text-muted-foreground">コミュニティとアカウントを管理</p>
         </div>
 
-        {/* 設定メニューカード */}
-        <div className="grid gap-4 sm:gap-6">
+        {/* 設定メニュー */}
+        <div className="grid gap-3">
           {settingsPages.map((page) => {
             const Icon = page.icon;
             return (
-              <Card key={page.href} className="hover:shadow-md transition-shadow cursor-pointer">
-                <Link href={page.href}>
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-start gap-4">
-                        <div className="p-2 rounded-lg bg-primary/10">
-                          <Icon className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="space-y-1">
-                          <h3 className="font-semibold text-base">{page.title}</h3>
-                          <p className="text-sm text-muted-foreground">{page.description}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="h-5 w-5 text-muted-foreground">
-                          <svg
-                            className="w-full h-full"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 5l7 7-7 7"
-                            />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Link>
-              </Card>
+              <Link key={page.href} href={page.href}>
+                <div className="group flex items-center gap-4 rounded-xl border border-border/60 bg-card p-4 shadow-sm transition-all duration-200 hover:border-primary/40 hover:bg-muted/30 hover:shadow-md">
+                  <div className="shrink-0 rounded-lg bg-primary/10 p-2.5 transition-colors duration-200 group-hover:bg-primary/15">
+                    <Icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold">{page.title}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{page.description}</p>
+                  </div>
+                  <div className="shrink-0 text-muted-foreground/40 transition-colors duration-200 group-hover:text-primary/60">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </Link>
             );
           })}
         </div>
@@ -104,17 +87,23 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
   const currentPage = settingsPages.find((page) => pathname === page.href);
 
   return (
-    <div className="container mx-auto py-4 px-2 max-w-4xl">
-      {/* ページタイトル */}
+    <div className="container mx-auto max-w-4xl px-4 py-4">
+      {/* ページヘッダー */}
       {currentPage && (
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-lg bg-primary/10">
+        <div className="mb-8 border-b border-border/60 pb-6">
+          <p className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-widest text-muted-foreground">
+            <span className="inline-block h-3.5 w-0.5 rounded-full bg-primary" aria-hidden="true" />
+            設定
+          </p>
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 rounded-lg bg-primary/10 p-2.5">
               <currentPage.icon className="h-5 w-5 text-primary" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold">{currentPage.title}</h1>
+            <div>
+              <h1 className="text-xl font-bold sm:text-2xl">{currentPage.title}</h1>
+              <p className="mt-0.5 text-xs text-muted-foreground">{currentPage.description}</p>
+            </div>
           </div>
-          <p className="text-muted-foreground text-sm">{currentPage.description}</p>
         </div>
       )}
 

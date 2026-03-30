@@ -21,7 +21,6 @@ import {
   createExpressDashboardLoginLinkAction,
   startOnboardingAction,
 } from "@/app/_actions/stripe-connect/actions";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
@@ -37,10 +36,8 @@ async function PaymentSettingsContent() {
     return null;
   }
 
-  // StripeConnectServiceを初期化
   const stripeConnectService = await createUserStripeConnectServiceForServerComponent();
 
-  // 既存のアカウントをチェック
   const existingAccount = await stripeConnectService.getConnectAccountForCommunity(
     workspace.currentUser.id,
     currentCommunity.id
@@ -58,30 +55,28 @@ async function PaymentSettingsContent() {
     publicPageUrl: getPublicUrl(`/c/${community.slug}`),
   }));
 
-  // リダイレクトURL設定
   const refreshUrl = CONNECT_REFRESH_PATH;
 
   return (
     <div className="space-y-6">
-      <div className="bg-muted/40 border border-muted/60 rounded-lg p-4 text-sm text-muted-foreground space-y-1">
-        <p className="text-muted-foreground">
-          オンライン集金を有効化するために、Stripe アカウントの設定を行います。
-        </p>
-        <p>
-          入力内容は Stripe に直接送信され、当サービスではカード情報や身分証の画像を保持しません。
-        </p>
+      {/* 説明バナー */}
+      <div className="rounded-xl border border-border/60 bg-muted/30 p-4 text-xs leading-relaxed text-muted-foreground space-y-1">
+        <p>オンライン集金を有効化するために、Stripe アカウントの設定を行います。</p>
+        <p>入力内容は Stripe に直接送信され、当サービスでは個人情報を保持しません。</p>
       </div>
 
       {representativeCommunity ? (
-        <div className="rounded-lg border border-border/70 bg-background p-4 text-sm">
-          <p className="font-medium text-foreground">Stripe 設定で使う代表コミュニティページ</p>
-          <div className="mt-2 flex flex-col gap-1">
-            <span className="text-muted-foreground">{representativeCommunity.name}</span>
+        <div className="rounded-xl border border-border/60 bg-card p-4 text-sm">
+          <p className="text-xs font-medium text-muted-foreground mb-2">
+            Stripe 設定で使う代表コミュニティページ
+          </p>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-semibold">{representativeCommunity.name}</span>
             <Link
               href={getPublicUrl(`/c/${representativeCommunity.slug}`)}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex w-fit items-center gap-1 text-primary hover:underline"
+              className="text-xs text-primary hover:underline truncate"
             >
               {getPublicUrl(`/c/${representativeCommunity.slug}`)}
             </Link>
@@ -135,17 +130,15 @@ async function PaymentSettingsContent() {
 function LoadingSkeleton() {
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Stripeアカウント</CardTitle>
-          <CardDescription>決済受け取りのためのStripeアカウントを管理します</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-3/4" />
-        </CardContent>
-      </Card>
+      <div className="rounded-xl border border-border/60 bg-muted/30 p-4 space-y-3">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-3/4" />
+      </div>
+      <div className="rounded-xl border border-border/60 bg-card p-6 space-y-4">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-3/4" />
+      </div>
     </div>
   );
 }
