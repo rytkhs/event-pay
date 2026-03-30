@@ -1,31 +1,17 @@
 export const dynamic = "force-dynamic";
 
-import Link from "next/link";
-
-import { ArrowLeft } from "lucide-react";
-
 import { resolveAppWorkspaceForServerComponent } from "@core/community/app-workspace";
 
 import { CreateCommunityForm } from "@features/communities";
 
 import { createCommunityAction } from "@/app/(app)/actions/communities";
-import { Button } from "@/components/ui/button";
 
 export default async function CreateCommunityPage() {
   const workspace = await resolveAppWorkspaceForServerComponent();
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <div className="mx-auto flex max-w-3xl flex-col gap-6">
-        <div>
-          <Button variant="ghost" size="sm" asChild className="px-0 text-muted-foreground">
-            <Link href="/dashboard">
-              <ArrowLeft className="h-4 w-4" />
-              ダッシュボードに戻る
-            </Link>
-          </Button>
-        </div>
-
+      <div className="mx-auto flex max-w-3xl flex-col gap-6 pt-4">
         <div className="space-y-10">
           <section className="space-y-4 text-center">
             <h1 className="text-2xl font-semibold tracking-tight sm:text-4xl">

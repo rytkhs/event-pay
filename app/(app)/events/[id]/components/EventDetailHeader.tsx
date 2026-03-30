@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { ArrowLeft, Calendar, MapPin, Pencil } from "lucide-react";
+import { Calendar, MapPin, Pencil } from "lucide-react";
 
 import { EVENT_STATUS_LABELS } from "@core/constants/status-labels";
 import type { Event } from "@core/types/event";
@@ -53,21 +53,6 @@ export function EventDetailHeader({ eventDetail }: EventDetailHeaderProps) {
 
   return (
     <div className="py-2 sm:py-4">
-      {/* 戻るボタン（設定画面のようなスタイル） */}
-      <div className="mb-2 sm:mb-4">
-        <Button
-          asChild
-          variant="ghost"
-          size="sm"
-          className="-ml-2 h-auto py-1 text-muted-foreground hover:text-foreground"
-        >
-          <Link href="/events" className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            <span className="font-medium">イベント一覧に戻る</span>
-          </Link>
-        </Button>
-      </div>
-
       <div className="flex items-start gap-3 sm:gap-4">
         {/* ステータスバー + コンテンツ */}
         <div className="flex min-w-0 flex-1 items-stretch gap-3">

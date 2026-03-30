@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { User, CreditCard, Shield, ArrowLeft, Building2 } from "lucide-react";
+import { User, CreditCard, Shield, Building2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface SettingsLayoutProps {
@@ -49,16 +48,6 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
     // 設定メニュー画面
     return (
       <div className="container mx-auto py-2 px-4 max-w-4xl">
-        {/* 戻るボタン（モバイル重視） */}
-        <div className="mb-4">
-          <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              ダッシュボードに戻る
-            </Link>
-          </Button>
-        </div>
-
         {/* ヘッダー */}
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold">設定</h1>

@@ -11,7 +11,6 @@ import {
   WalletIcon,
   CreditCardIcon,
   InfoIcon,
-  ChevronLeftIcon,
   ClockIcon,
   AlignLeftIcon,
 } from "lucide-react";
@@ -136,18 +135,9 @@ function SinglePageEventForm({
   );
 
   return (
-    <div className="w-full max-w-7xl mx-auto pb-32">
+    <div className="w-full max-w-7xl mx-auto p-4 mb-4">
       {/* Header */}
       <header className="mb-6">
-        <div className="flex items-center gap-2 mb-2">
-          <Link
-            href="/dashboard"
-            className="flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors"
-          >
-            <ChevronLeftIcon className="w-4 h-4 mr-1" />
-            ダッシュボードに戻る
-          </Link>
-        </div>
         <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
           新しいイベントを作成
         </h1>
@@ -672,7 +662,7 @@ function SinglePageEventForm({
           )}
 
           {/* Footer Actions */}
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-slate-200 z-50 md:left-[var(--sidebar-width)]">
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 z-50 md:left-[var(--sidebar-width)]">
             <div className="max-w-7xl mx-auto flex items-center justify-end gap-4">
               <Button
                 type="button"
