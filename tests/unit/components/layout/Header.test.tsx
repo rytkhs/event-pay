@@ -5,12 +5,6 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
-const mockUsePathname = jest.fn(() => "/events");
-
-jest.mock("next/navigation", () => ({
-  usePathname: mockUsePathname,
-}));
-
 jest.mock("next/link", () => ({
   __esModule: true,
   default: ({ children, href }: { children: React.ReactNode; href: string }) => (
@@ -28,17 +22,6 @@ jest.mock("@/components/ui/button", () => ({
   ),
 }));
 
-jest.mock("@/components/ui/breadcrumb", () => ({
-  Breadcrumb: ({ children }: { children: React.ReactNode }) => <nav>{children}</nav>,
-  BreadcrumbItem: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-  BreadcrumbLink: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
-  BreadcrumbList: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  BreadcrumbPage: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-  BreadcrumbSeparator: () => <span>/</span>,
-}));
-
 jest.mock("@/components/ui/separator", () => ({
   Separator: () => <span data-testid="separator" />,
 }));
@@ -50,7 +33,6 @@ jest.mock("@/components/ui/sidebar", () => ({
 describe("Header", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUsePathname.mockReturnValue("/events");
   });
 
   it("current community 名を表示する", async () => {
@@ -76,7 +58,6 @@ describe("Header", () => {
     const badge = screen.getByText("ボドゲ会");
     expect(badge).toBeInTheDocument();
     expect(badge.closest("a")).toHaveAttribute("href", "/settings/community");
-    expect(screen.getByText("イベント一覧")).toBeInTheDocument();
   });
 
   it("コミュニティ未作成時に『未設定』を表示する", async () => {
@@ -94,25 +75,5 @@ describe("Header", () => {
     );
 
     expect(screen.getByText("未設定")).toBeInTheDocument();
-  });
-
-  it("communities/create では breadcrumb にコミュニティ / 新規作成を表示する", async () => {
-    mockUsePathname.mockReturnValue("/communities/create");
-
-    const { Header } = await import("@/components/layout/Header");
-
-    render(
-      <Header
-        workspace={{
-          currentCommunity: null,
-          ownedCommunities: [],
-          hasOwnedCommunities: false,
-          isCommunityEmptyState: true,
-        }}
-      />
-    );
-
-    expect(screen.getByText("コミュニティ")).toBeInTheDocument();
-    expect(screen.getByText("新規作成")).toBeInTheDocument();
   });
 });
