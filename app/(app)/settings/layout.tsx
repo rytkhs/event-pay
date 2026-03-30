@@ -14,19 +14,19 @@ interface SettingsLayoutProps {
 
 const settingsPages = [
   {
-    title: "コミュニティ設定",
+    title: "コミュニティ",
     href: "/settings/community",
     icon: Building2,
-    description: "選択中のコミュニティの公開情報と設定",
+    description: "選択中のコミュニティの設定",
   },
   {
-    title: "Stripe アカウント設定",
+    title: "Stripe アカウント",
     href: "/settings/payments",
     icon: CreditCard,
     description: "Stripeアカウント設定とダッシュボード",
   },
   {
-    title: "アカウント設定",
+    title: "アカウント",
     href: "/settings/profile",
     icon: User,
     description: "アカウント情報の変更",
