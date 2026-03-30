@@ -56,11 +56,6 @@ export interface MarketingHeaderProps {
  * ゲストヘッダーのプロパティ
  */
 export interface GuestHeaderProps {
-  /** 参加状況情報 */
-  attendance?: {
-    status: "attending" | "not_attending" | "pending";
-    eventTitle?: string;
-  };
   /** カスタムクラス名 */
   className?: string;
 }

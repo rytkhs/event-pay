@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { GuestHeader } from "./GuestHeader";
 import { MarketingHeader } from "./MarketingHeader";
+import { PublicHeader } from "./PublicHeader";
 import { GlobalHeaderProps, HeaderVariant } from "./types";
 
 /**
@@ -45,13 +45,13 @@ export function GlobalHeader({
           </header>
         );
       case "guest":
-        return <GuestHeader attendance={undefined} className={className} />;
+        return <PublicHeader className={className} />;
       case "marketing":
         return <MarketingHeader className={className} />;
     }
   }
 
-  // variant未指定時のみ自動判定を実行（後方互換性のため）
+  // variant未指定時のみ自動判定を実行
 
   const currentVariant: HeaderVariant = (() => {
     // ゲスト関連ページの判定（招待・ゲストページ共通）
@@ -93,8 +93,7 @@ export function GlobalHeader({
 
   // ゲストヘッダー（招待・ゲストページ共通）
   if (currentVariant === "guest") {
-    // 招待ページやゲストページでは参加状況は表示しない（各ページのコンテンツで処理）
-    return <GuestHeader attendance={undefined} className={className} />;
+    return <PublicHeader className={className} />;
   }
 
   // マーケティングヘッダー（デフォルト）

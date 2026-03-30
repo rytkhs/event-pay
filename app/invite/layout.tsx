@@ -3,7 +3,7 @@ import type { ReactNode, JSX } from "react";
 import { DemoBanner } from "@features/demo";
 
 import { GlobalFooter } from "@components/layout/GlobalFooter";
-import { GlobalHeader } from "@components/layout/GlobalHeader/GlobalHeader";
+import { PublicHeader } from "@components/layout/GlobalHeader/PublicHeader";
 
 /**
  * 招待ページレイアウト
@@ -17,7 +17,7 @@ export default function InviteLayout({ children }: { children: ReactNode }): JSX
   return (
     <div className="flex flex-col min-h-screen">
       <DemoBanner />
-      <GlobalHeader variant="guest" />
+      <PublicHeader />
       <div className="flex-1 flex flex-col">{children}</div>
       <GlobalFooter />
     </div>

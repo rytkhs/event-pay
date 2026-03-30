@@ -53,7 +53,7 @@ export default async function CommunityContactPage({ params }: Props) {
   const community = result.data;
 
   return (
-    <div className="min-h-screen bg-muted/30 py-12">
+    <div className="min-h-screen bg-muted/30 pb-12">
       <div className="container mx-auto flex w-full max-w-2xl flex-col gap-8 px-4 pt-16 sm:px-6 lg:px-8">
         <div className="space-y-3 text-center">
           <h1 className="text-xl font-semibold text-primary">コミュニティへのお問い合わせ</h1>
