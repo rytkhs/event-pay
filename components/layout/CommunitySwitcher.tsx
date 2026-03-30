@@ -63,8 +63,7 @@ export function CommunitySwitcher({ workspace }: CommunitySwitcherProps) {
         >
           <Image src="/icon.svg" width={24} height={24} alt="Minshu" className="size-6" />
           <div className="grid flex-1 text-left text-sm leading-tight">
-            <span className="font-semibold">みんなの集金</span>
-            <span className="truncate text-xs text-muted-foreground">
+            <span className="truncate font-semibold">
               {workspace.hasOwnedCommunities ? name : "コミュニティ未作成"}
             </span>
           </div>
