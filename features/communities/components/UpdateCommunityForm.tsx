@@ -2,13 +2,12 @@
 
 import { useActionState } from "react";
 
-import { CheckCircle2, Loader2, Pencil } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,14 +51,8 @@ export function UpdateCommunityForm({
   const nameError = error?.fieldErrors?.name?.[0];
 
   return (
-    <Card className="border-border/70 bg-background/90 shadow-sm">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-xl">
-          <Pencil className="h-5 w-5" />
-          基本情報を編集
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <div className="rounded-xl border border-border/60 bg-card shadow-sm">
+      <div className="space-y-6 p-6">
         {!state.success && error?.userMessage ? (
           <Alert variant="destructive">
             <AlertTitle>更新できませんでした</AlertTitle>
@@ -68,31 +61,34 @@ export function UpdateCommunityForm({
         ) : null}
 
         {state.success && state.message ? (
-          <Alert>
+          <Alert className="border-primary/30 bg-primary/5 text-primary [&>svg]:text-primary">
             <CheckCircle2 className="h-4 w-4" />
             <AlertTitle>更新しました</AlertTitle>
-            <AlertDescription>{state.message}</AlertDescription>
+            <AlertDescription className="text-primary/80">{state.message}</AlertDescription>
           </Alert>
         ) : null}
 
-        <form action={formAction} className="space-y-6" noValidate>
+        <form action={formAction} className="space-y-5" noValidate>
           <div className="space-y-2">
-            <Label htmlFor="community-settings-name">コミュニティ名</Label>
+            <Label htmlFor="community-settings-name" className="text-sm font-medium">
+              コミュニティ名
+            </Label>
             <Input
               id="community-settings-name"
               name="name"
               defaultValue={defaultName}
               required
+              className="h-10"
               aria-invalid={nameError ? true : undefined}
               aria-describedby={nameError ? "community-settings-name-error" : undefined}
             />
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               招待ページや公開ページに表示される名前です。
             </p>
             {nameError ? (
               <p
                 id="community-settings-name-error"
-                className="text-sm font-medium text-destructive"
+                className="text-xs font-medium text-destructive"
                 role="alert"
               >
                 {nameError}
@@ -101,21 +97,24 @@ export function UpdateCommunityForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="community-settings-description">説明文</Label>
+            <Label htmlFor="community-settings-description" className="text-sm font-medium">
+              説明文
+              <span className="ml-2 text-xs font-normal text-muted-foreground">任意</span>
+            </Label>
             <Textarea
               id="community-settings-description"
               name="description"
               defaultValue={defaultDescription ?? ""}
               placeholder="活動内容や参加者への案内を書けます"
-              className="min-h-32"
+              className="min-h-28 resize-none"
             />
-            <p className="text-sm text-muted-foreground">
-              任意です。空欄で保存すると説明文は未設定になります。
+            <p className="text-xs text-muted-foreground">
+              空欄で保存すると説明文は未設定になります。
             </p>
           </div>
 
-          <div className="flex justify-end border-t pt-5">
-            <Button type="submit" disabled={isPending} className="min-w-36">
+          <div className="flex justify-end border-t border-border/60 pt-5">
+            <Button type="submit" disabled={isPending} className="min-w-32">
               {isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -127,7 +126,7 @@ export function UpdateCommunityForm({
             </Button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
