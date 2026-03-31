@@ -16,7 +16,7 @@ export function CommunityEmptyState() {
           <div className="space-y-2">
             <CardTitle>コミュニティをまだ作成していません</CardTitle>
             <CardDescription>
-              管理画面を使い始めるには、最初のコミュニティ作成が必要です。作成後はそのコミュニティが現在の作業対象になります。
+              管理画面を使い始めるには、最初のコミュニティ作成が必要です。
             </CardDescription>
           </div>
         </CardHeader>
@@ -24,10 +24,6 @@ export function CommunityEmptyState() {
           <Button asChild className="w-full sm:w-fit">
             <Link href="/communities/create">最初のコミュニティを作成</Link>
           </Button>
-          <p className="text-sm text-muted-foreground">
-            名前と説明文だけで作成できます。公開URL用の slug と current community
-            の切り替えは自動で処理されます。
-          </p>
         </CardContent>
       </Card>
     </div>

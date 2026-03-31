@@ -83,7 +83,7 @@ export function UpdateCommunityForm({
               aria-describedby={nameError ? "community-settings-name-error" : undefined}
             />
             <p className="text-xs text-muted-foreground">
-              招待ページや公開ページに表示される名前です。
+              公開ページに表示されます。招待ページや公開ページに表示されます。
             </p>
             {nameError ? (
               <p
@@ -98,14 +98,14 @@ export function UpdateCommunityForm({
 
           <div className="space-y-2">
             <Label htmlFor="community-settings-description" className="text-sm font-medium">
-              説明文
+              コミュニティの説明
               <span className="ml-2 text-xs font-normal text-muted-foreground">任意</span>
             </Label>
             <Textarea
               id="community-settings-description"
               name="description"
               defaultValue={defaultDescription ?? ""}
-              placeholder="活動内容や参加者への案内を書けます"
+              placeholder="活動内容や集金内容など"
               className="min-h-28 resize-none"
             />
             <p className="text-xs text-muted-foreground">

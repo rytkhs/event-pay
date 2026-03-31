@@ -51,6 +51,9 @@ export function CurrentCommunitySettingsOverview({
             <span className="inline-block h-3.5 w-0.5 rounded-full bg-primary" aria-hidden="true" />
             公開ページ
           </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Stripe アカウント作成に利用可能な公開ページです
+          </p>
         </div>
         <div className="rounded-xl border border-border/60 bg-card shadow-sm">
           <div className="divide-y divide-border/60">
@@ -68,7 +71,7 @@ export function CurrentCommunitySettingsOverview({
                 </Link>
               </Button>
             </div>
-            <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            {/* <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0 space-y-1">
                 <p className="text-xs font-medium text-muted-foreground">
                   特定商取引法に基づく表記 URL
@@ -83,7 +86,7 @@ export function CurrentCommunitySettingsOverview({
                   開く
                 </Link>
               </Button>
-            </div>
+            </div> */}
           </div>
         </div>
       </section>

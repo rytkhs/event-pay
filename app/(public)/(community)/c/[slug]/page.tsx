@@ -63,7 +63,7 @@ export default async function PublicCommunityPage({ params }: Props) {
           <p className="whitespace-pre-wrap">{community.description}</p>
         ) : (
           <p className="text-muted-foreground italic text-center mt-6">
-            説明文はまだ設定されていません。
+            説明はまだ設定されていません。
           </p>
         )}
       </div>

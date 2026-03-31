@@ -106,7 +106,7 @@ export function CreateCommunityForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="community-description">説明文</Label>
+            <Label htmlFor="community-description">コミュニティの説明</Label>
             <Textarea
               id="community-description"
               name="description"
