@@ -43,7 +43,7 @@ type StartOnboardingPayload = {
 type StartOnboardingActionResult = ActionResult<StartOnboardingPayload>;
 
 const CONNECT_BUSINESS_PROFILE_PRODUCT_DESCRIPTION =
-  "イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。";
+  "イベントを企画・運営しています。イベント管理プラットフォームの「みんなの集金」のシステムを利用して、イベント開催時の参加費や会費の事前決済を行います。";
 
 function getStringFormValue(formData: FormData, key: string): string | undefined {
   const value = formData.get(key);

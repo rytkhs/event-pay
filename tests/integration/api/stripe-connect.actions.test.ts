@@ -328,7 +328,7 @@ describe("Stripe Connect actions", () => {
         country: "JP",
         businessProfile: {
           productDescription:
-            "イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。",
+            "イベントを企画・運営しています。イベント管理プラットフォームの「みんなの集金」のシステムを利用して、イベント開催時の参加費や会費の事前決済を行います。",
           url: "http://localhost:3000/c/community-1",
         },
       });
