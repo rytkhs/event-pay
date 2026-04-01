@@ -348,7 +348,7 @@ describe("Stripe Connect actions", () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.fieldErrors?.representativeCommunityId).toEqual([
-          "代表公開ページに使うコミュニティを選択してください",
+          "代表コミュニティを選択してください",
         ]);
       }
     });

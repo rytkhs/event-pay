@@ -129,8 +129,8 @@ export function OnboardingForm({
             icon={<Globe className="h-8 w-8" />}
             iconColor="text-cyan-500"
             iconBg="bg-cyan-500/10"
-            title="公開ページ提出"
-            description="代表コミュニティの公開ページをStripeに提出"
+            title="コミュニティ情報提出"
+            description="代表コミュニティの情報をStripeに提出"
           />
         </div>
 
@@ -145,14 +145,12 @@ export function OnboardingForm({
           <div className="space-y-3 rounded-xl border bg-muted/20 p-4">
             <div className="space-y-1">
               <Label htmlFor="representative-community">
-                Stripe アカウント設定に使う公開ページ
+                Stripe アカウント設定に使うコミュニティ
               </Label>
               <p className="text-sm text-muted-foreground">
-                Stripe
-                アカウントの作成には、どのような集金を行うかを説明する、公開ページが必要です。
-                以下で Stripe アカウント設定で使うコミュニティの公開ページを選択してください。
+                Stripe アカウント設定で使う代表コミュニティを１つ選択してください。
                 <br />
-                アカウントを作成すると、作成に利用したコミュニティだけでなく、すべてのコミュニティに自動で紐づき、オンライン集金が有効化されます。
+                設定が完了すると、代表コミュニティだけでなくすべてのコミュニティに自動で紐づき、オンライン集金が有効化されます。
               </p>
             </div>
             <select
@@ -186,12 +184,12 @@ export function OnboardingForm({
               <div className="rounded-lg border bg-background/80 p-4 text-sm">
                 <div className="flex items-center gap-2 font-medium text-foreground">
                   <Link2 className="h-4 w-4 text-primary" />
-                  提出される公開ページ
+                  設定に使うコミュニティプロフィール URL
                 </div>
-                <p className="mt-2 text-muted-foreground">
+                {/* <p className="mt-2 text-muted-foreground">
                   <span className="font-medium text-foreground">{selectedCommunity.name}</span> の
-                  公開ページ URL を Stripe に提出します。
-                </p>
+                  コミュニティプロフィール URL を 使う。
+                </p> */}
                 <Link
                   href={selectedCommunity.publicPageUrl}
                   target="_blank"

@@ -41,25 +41,27 @@ export function CurrentCommunitySettingsOverview({
         />
       </section>
 
-      {/* 公開ページセクション */}
-      <section aria-labelledby="community-public-heading">
+      {/* コミュニティプロフィールセクション */}
+      <section aria-labelledby="community-profile-heading">
         <div className="mb-5">
           <h2
-            id="community-public-heading"
+            id="community-profile-heading"
             className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground"
           >
             <span className="inline-block h-3.5 w-0.5 rounded-full bg-primary" aria-hidden="true" />
-            公開ページ
+            コミュニティプロフィール
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Stripe アカウント作成に利用可能な公開ページです
+            Stripe アカウント作成に利用可能なコミュニティプロフィールです
           </p>
         </div>
         <div className="rounded-xl border border-border/60 bg-card shadow-sm">
           <div className="divide-y divide-border/60">
             <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0 space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">公開ページ URL</p>
+                <p className="text-xs font-medium text-muted-foreground">
+                  コミュニティプロフィール URL
+                </p>
                 <p className="truncate text-sm font-medium text-foreground">
                   {settings.publicPageUrl}
                 </p>

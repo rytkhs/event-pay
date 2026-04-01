@@ -2,7 +2,6 @@
 
 import { useActionState, useEffect } from "react";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { ArrowRight, Loader2 } from "lucide-react";
@@ -92,7 +91,7 @@ export function CreateCommunityForm({
               aria-describedby={nameError ? "community-name-error" : undefined}
             />
             <p className="text-sm text-muted-foreground">
-              招待ページや公開ページに表示される名前です。あとから変更できます。
+              招待ページやコミュニティプロフィールに表示される名前です。あとから変更できます。
             </p>
             {nameError ? (
               <p
@@ -110,33 +109,28 @@ export function CreateCommunityForm({
             <Textarea
               id="community-description"
               name="description"
-              placeholder="活動内容や雰囲気、参加者への案内を書けます"
+              placeholder="活動内容や集金内容など"
               className="min-h-32"
             />
             <p className="text-sm text-muted-foreground">
-              任意です。公開ページや設定画面の説明文として使います。
+              コミュニティプロフィールに表示される説明文です。
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col-reverse gap-2 sm:flex-row">
-              <Button type="button" variant="ghost" asChild>
-                <Link href="/dashboard">あとで戻る</Link>
-              </Button>
-              <Button type="submit" disabled={isPending} className="min-w-40">
-                {isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    作成中...
-                  </>
-                ) : (
-                  <>
-                    コミュニティを作成
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            </div>
+          <div className="flex justify-end border-t pt-5">
+            <Button type="submit" disabled={isPending} className="min-w-40">
+              {isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  作成中...
+                </>
+              ) : (
+                <>
+                  コミュニティを作成
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </Button>
           </div>
         </form>
       </CardContent>

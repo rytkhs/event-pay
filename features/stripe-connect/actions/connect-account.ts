@@ -332,9 +332,9 @@ export async function handleOnboardingReturnAction(): Promise<
     if (account && !account.representative_community_id) {
       return fail("RESOURCE_CONFLICT", {
         userMessage:
-          "代表公開ページが未設定のため、Stripeアカウント設定を完了できません。Stripeアカウント設定画面から代表コミュニティを選び直してください",
+          "Stripe アカウント設定に使うコミュニティが未設定のため、Stripeアカウント設定を完了できません。Stripeアカウント設定画面から代表コミュニティを選び直してください",
         redirectUrl: buildOnboardingErrorRedirectUrl(
-          "代表公開ページが未設定のため、Stripeアカウント設定画面から代表コミュニティを選び直してください"
+          "Stripe アカウント設定に使うコミュニティが未設定のため、Stripeアカウント設定画面から代表コミュニティを選び直してください"
         ),
       });
     }
@@ -486,7 +486,7 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
     if (!account?.representative_community_id) {
       redirect(
         buildOnboardingErrorRedirectUrl(
-          "代表公開ページが未設定です。決済設定画面からコミュニティを選び直して開始してください"
+          "Stripe アカウント設定に使うコミュニティが未設定です。決済設定画面からコミュニティを選び直して開始してください"
         )
       );
     }
@@ -500,7 +500,7 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
     if (!representativeCommunityResult.success || !representativeCommunityResult.data) {
       redirect(
         buildOnboardingErrorRedirectUrl(
-          "代表公開ページが見つからないため、決済設定画面からコミュニティを選び直してください"
+          "Stripe アカウント設定に使うコミュニティが見つからないため、決済設定画面からコミュニティを選び直してください"
         )
       );
     }
@@ -515,7 +515,7 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
       redirect(
         buildOnboardingErrorRedirectUrl(
           businessProfileUpdateResult.error.userMessage ||
-            "代表公開ページの同期に失敗しました。時間を置いて再度お試しください"
+            "代表コミュニティの同期に失敗しました。時間を置いて再度お試しください"
         )
       );
     }
@@ -589,7 +589,7 @@ export async function startOnboardingAction(
     });
     if (!parsedInput.success) {
       return zodFail(parsedInput.error, {
-        userMessage: "代表公開ページに使うコミュニティを選択してください",
+        userMessage: "Stripe アカウント設定に使うコミュニティを選択してください",
       });
     }
 
@@ -606,12 +606,12 @@ export async function startOnboardingAction(
     );
     if (!representativeCommunityResult.success) {
       return failFrom(representativeCommunityResult.error, {
-        userMessage: "代表公開ページに使うコミュニティを確認してください",
+        userMessage: "Stripe アカウント設定に使うコミュニティを確認してください",
       });
     }
     if (!representativeCommunityResult.data) {
       return fail("INTERNAL_ERROR", {
-        userMessage: "代表公開ページに使うコミュニティを確認してください",
+        userMessage: "Stripe アカウント設定に使うコミュニティを確認してください",
       });
     }
 
@@ -643,7 +643,7 @@ export async function startOnboardingAction(
     );
     if (!representativeUpdateResult.success) {
       return failFrom(representativeUpdateResult.error, {
-        userMessage: "代表公開ページの保存に失敗しました",
+        userMessage: "Stripe アカウント設定に使うコミュニティの保存に失敗しました",
       });
     }
 
@@ -655,7 +655,7 @@ export async function startOnboardingAction(
     });
     if (!businessProfileUpdateResult.success) {
       return failFrom(businessProfileUpdateResult.error, {
-        userMessage: "Stripe に提出する公開ページURLの更新に失敗しました",
+        userMessage: "Stripe に提出するコミュニティプロフィールのURLの更新に失敗しました",
       });
     }
 
@@ -683,7 +683,7 @@ export async function startOnboardingAction(
         redirectUrl: accountLink.url,
       },
       {
-        message: `${representativeCommunityResult.data.name} の公開ページを提出先として Stripe 設定を開始します`,
+        message: `${representativeCommunityResult.data.name} を Stripe アカウント設定に使うコミュニティとして設定しました`,
       }
     );
   } catch (error) {

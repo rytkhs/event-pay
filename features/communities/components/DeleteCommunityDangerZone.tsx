@@ -71,7 +71,7 @@ export function DeleteCommunityDangerZone({
           <div className="space-y-1.5">
             <p className="text-sm font-semibold text-destructive">「{communityName}」を削除</p>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              この操作は取り消せません。公開ページは非表示になり、ダッシュボードでの管理はできなくなります。
+              この操作は取り消せません。コミュニティプロフィールは非表示になり、ダッシュボードでの管理はできなくなります。
               代表コミュニティに設定されている場合は削除できません。
             </p>
           </div>

@@ -46,10 +46,10 @@ const createAccountLinkSchema = z.object({
 export const startOnboardingSchema = z.object({
   representativeCommunityId: z
     .string({
-      required_error: "代表公開ページに使うコミュニティを選択してください",
-      invalid_type_error: "代表公開ページに使うコミュニティを選択してください",
+      required_error: "Stripe アカウント設定に使うコミュニティを選択してください",
+      invalid_type_error: "Stripe アカウント設定に使うコミュニティを選択してください",
     })
-    .uuid("代表公開ページに使うコミュニティを選択してください"),
+    .uuid("Stripe アカウント設定に使うコミュニティを選択してください"),
 });
 
 /**

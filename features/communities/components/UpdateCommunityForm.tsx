@@ -83,7 +83,7 @@ export function UpdateCommunityForm({
               aria-describedby={nameError ? "community-settings-name-error" : undefined}
             />
             <p className="text-xs text-muted-foreground">
-              公開ページに表示されます。招待ページや公開ページに表示されます。
+              招待ページやコミュニティプロフィールに表示されます。
             </p>
             {nameError ? (
               <p

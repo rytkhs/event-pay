@@ -19,9 +19,9 @@ export type RepresentativeCommunitySelection = {
 };
 
 const REPRESENTATIVE_COMMUNITY_INVALID_MESSAGE =
-  "代表公開ページに使うコミュニティは、自分の未削除コミュニティから選択してください";
-const REPRESENTATIVE_COMMUNITY_LOOKUP_ERROR_MESSAGE = "代表公開ページの確認に失敗しました";
-const PAYOUT_PROFILE_UPDATE_ERROR_MESSAGE = "代表公開ページの保存に失敗しました";
+  "代表コミュニティは、自分の未削除コミュニティから選択してください";
+const REPRESENTATIVE_COMMUNITY_LOOKUP_ERROR_MESSAGE = "代表コミュニティの確認に失敗しました";
+const PAYOUT_PROFILE_UPDATE_ERROR_MESSAGE = "代表コミュニティの保存に失敗しました";
 const PAYOUT_PROFILE_NOT_FOUND_MESSAGE = "Stripe の受取設定が見つかりません";
 
 function invalidRepresentativeCommunityResult(): AppResult<never> {

@@ -22,7 +22,7 @@ describe("stripe-connect validation", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.flatten().fieldErrors.representativeCommunityId).toEqual([
-        "代表公開ページに使うコミュニティを選択してください",
+        "代表コミュニティを選択してください",
       ]);
     }
   });

@@ -49,7 +49,7 @@ describe("community_contacts RLS", () => {
       community_id: setup.testCommunityId,
       name: "Anon Contact",
       email: "anon-contact@example.com",
-      message: "公開ページからの問い合わせ本文です",
+      message: "コミュニティプロフィールからの問い合わせ本文です",
       fingerprint_hash: `fp-${Date.now()}-anon`,
       user_agent: "jest",
       ip_hash: "hash",
