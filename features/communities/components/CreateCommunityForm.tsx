@@ -31,6 +31,9 @@ type CreateCommunityFormProps = {
   hasOwnedCommunities: boolean;
 };
 
+const defaultCommunityDescription =
+  "本コミュニティでは、サークル・グループの活動やイベント等の企画・運営を行っています。イベント管理プラットフォーム「みんなの集金」を利用して、イベント開催時の参加費や会費の支払い受付を行っています。詳細な内容や料金、支払方法は各イベントの案内で確認できます。";
+
 const initialState: CreateCommunityFormState = {
   success: false,
   error: {
@@ -109,7 +112,7 @@ export function CreateCommunityForm({
             <Textarea
               id="community-description"
               name="description"
-              placeholder="活動内容や集金内容など"
+              defaultValue={defaultCommunityDescription}
               className="min-h-32"
             />
             <p className="text-sm text-muted-foreground">
