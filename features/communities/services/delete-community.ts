@@ -1,5 +1,8 @@
+import { logger } from "@core/logging/app-logger";
 import { AppError } from "@core/errors/app-error";
 import { errResult, okResult, type AppResult } from "@core/errors/app-result";
+import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 import type { AppSupabaseClient } from "@core/types/supabase";
 
 const DELETE_COMMUNITY_ERROR_MESSAGE = "コミュニティの削除に失敗しました";
@@ -7,18 +10,25 @@ const DELETE_COMMUNITY_NOT_FOUND_MESSAGE = "削除対象のコミュニティが
 const REPRESENTATIVE_COMMUNITY_IN_USE_MESSAGE =
   "代表コミュニティに設定されているため削除できません。付け替え後に削除してください";
 
-type DeletedCommunityRow = {
-  id: string;
-};
-
 export type DeleteCommunityResult = {
   communityId: string;
+};
+
+type ExistingCommunityRow = {
+  id: string;
 };
 
 function toDatabaseError(
   cause: unknown,
   details?: Record<string, string | number | boolean | null>
 ) {
+  logger.error(DELETE_COMMUNITY_ERROR_MESSAGE, {
+    category: "system",
+    action: details?.operation?.toString() || "delete_community_database_error",
+    error: cause,
+    ...details,
+  });
+
   return errResult(
     new AppError("DATABASE_ERROR", {
       cause,
@@ -48,6 +58,13 @@ async function ensureCommunityIsNotRepresentative(
   }
 
   if ((count ?? 0) > 0) {
+    logger.warn(REPRESENTATIVE_COMMUNITY_IN_USE_MESSAGE, {
+      category: "system",
+      action: "delete_representative_community_check",
+      outcome: "failure",
+      communityId,
+      ownerUserId,
+    });
     return errResult(
       new AppError("RESOURCE_CONFLICT", {
         details: {
@@ -78,26 +95,29 @@ export async function deleteCommunity(
     return representativeCheckResult;
   }
 
-  const { data, error } = await supabase
+  const { data: existingCommunity, error: existingCommunityError } = await supabase
     .from("communities")
-    .update({
-      is_deleted: true,
-      deleted_at: new Date().toISOString(),
-    })
+    .select("id")
     .eq("id", communityId)
     .eq("created_by", ownerUserId)
     .eq("is_deleted", false)
-    .select("id")
-    .maybeSingle<DeletedCommunityRow>();
+    .maybeSingle<ExistingCommunityRow>();
 
-  if (error) {
-    return toDatabaseError(error, {
+  if (existingCommunityError) {
+    return toDatabaseError(existingCommunityError, {
       communityId,
-      operation: "soft_delete_community",
+      operation: "get_delete_target_community",
     });
   }
 
-  if (!data) {
+  if (!existingCommunity) {
+    logger.warn(DELETE_COMMUNITY_NOT_FOUND_MESSAGE, {
+      category: "system",
+      action: "soft_delete_community",
+      outcome: "failure",
+      communityId,
+      ownerUserId,
+    });
     return errResult(
       new AppError("NOT_FOUND", {
         retryable: false,
@@ -106,7 +126,65 @@ export async function deleteCommunity(
     );
   }
 
+  const adminClient = await createAuditedAdminClient(
+    AdminReason.COMMUNITY_MANAGEMENT,
+    `Soft delete community: ${communityId}`,
+    {
+      userId: ownerUserId,
+      operationType: "UPDATE",
+      accessedTables: ["public.communities"],
+      additionalInfo: {
+        operation: "soft_delete_community",
+        communityId,
+      },
+    }
+  );
+
+  const { count, error } = await adminClient
+    .from("communities")
+    .update(
+      {
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+      },
+      { count: "exact" }
+    )
+    .eq("id", communityId)
+    .eq("created_by", ownerUserId)
+    .eq("is_deleted", false);
+
+  if (error) {
+    return toDatabaseError(error, {
+      communityId,
+      operation: "soft_delete_community",
+    });
+  }
+
+  if ((count ?? 0) === 0) {
+    logger.warn(DELETE_COMMUNITY_NOT_FOUND_MESSAGE, {
+      category: "system",
+      action: "soft_delete_community",
+      outcome: "failure",
+      communityId,
+      ownerUserId,
+    });
+    return errResult(
+      new AppError("NOT_FOUND", {
+        retryable: false,
+        userMessage: DELETE_COMMUNITY_NOT_FOUND_MESSAGE,
+      })
+    );
+  }
+
+  logger.info("コミュニティを削除しました", {
+    category: "system",
+    action: "delete_community_success",
+    outcome: "success",
+    communityId,
+    ownerUserId,
+  });
+
   return okResult({
-    communityId: data.id,
+    communityId,
   });
 }

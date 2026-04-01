@@ -1,3 +1,9 @@
+const mockCreateAuditedAdminClient = jest.fn();
+
+jest.mock("@core/security/secure-client-factory.impl", () => ({
+  createAuditedAdminClient: (...args: unknown[]) => mockCreateAuditedAdminClient(...args),
+}));
+
 import { deleteCommunity } from "@features/communities/services/delete-community";
 
 type CountQueryResponse = {
@@ -6,27 +12,51 @@ type CountQueryResponse = {
 };
 
 type UpdateQueryResponse = {
+  count?: number | null;
+  error: unknown;
+};
+
+type SelectQueryResponse = {
   data: unknown;
   error: unknown;
 };
 
 function createSupabaseMock({
   representativeUsage,
+  existingCommunityResponse,
   deleteResponse,
 }: {
   representativeUsage?: CountQueryResponse;
+  existingCommunityResponse: SelectQueryResponse;
   deleteResponse: UpdateQueryResponse;
 }) {
   const updatePayloads: unknown[] = [];
+  const updateOptions: unknown[] = [];
 
-  const communitiesMaybeSingle = jest.fn().mockResolvedValue(deleteResponse);
-  const communitiesSelect = jest.fn().mockReturnValue({ maybeSingle: communitiesMaybeSingle });
-  const communitiesEqIsDeleted = jest.fn().mockReturnValue({ select: communitiesSelect });
-  const communitiesEqCreatedBy = jest.fn().mockReturnValue({ eq: communitiesEqIsDeleted });
-  const communitiesEqId = jest.fn().mockReturnValue({ eq: communitiesEqCreatedBy });
-  const communitiesUpdate = jest.fn((payload: unknown) => {
+  const communitiesMaybeSingle = jest.fn().mockResolvedValue(existingCommunityResponse);
+  const communitiesSelectEqIsDeleted = jest
+    .fn()
+    .mockReturnValue({ maybeSingle: communitiesMaybeSingle });
+  const communitiesSelectEqCreatedBy = jest
+    .fn()
+    .mockReturnValue({ eq: communitiesSelectEqIsDeleted });
+  const communitiesSelectEqId = jest.fn().mockReturnValue({ eq: communitiesSelectEqCreatedBy });
+  const communitiesSelect = jest.fn().mockReturnValue({ eq: communitiesSelectEqId });
+
+  const adminCommunitiesUpdateEqIsDeleted = jest.fn().mockResolvedValue({
+    count: deleteResponse.count ?? null,
+    error: deleteResponse.error,
+  });
+  const adminCommunitiesUpdateEqCreatedBy = jest
+    .fn()
+    .mockReturnValue({ eq: adminCommunitiesUpdateEqIsDeleted });
+  const adminCommunitiesUpdateEqId = jest
+    .fn()
+    .mockReturnValue({ eq: adminCommunitiesUpdateEqCreatedBy });
+  const adminCommunitiesUpdate = jest.fn((payload: unknown, options?: unknown) => {
     updatePayloads.push(payload);
-    return { eq: communitiesEqId };
+    updateOptions.push(options);
+    return { eq: adminCommunitiesUpdateEqId };
   });
 
   const payoutProfilesEqRepresentativeCommunity = jest.fn().mockResolvedValue({
@@ -40,7 +70,7 @@ function createSupabaseMock({
 
   const from = jest.fn((table: string) => {
     if (table === "communities") {
-      return { update: communitiesUpdate };
+      return { select: communitiesSelect };
     }
 
     if (table === "payout_profiles") {
@@ -50,20 +80,36 @@ function createSupabaseMock({
     throw new Error(`Unexpected table: ${table}`);
   });
 
+  const adminFrom = jest.fn((table: string) => {
+    if (table === "communities") {
+      return { update: adminCommunitiesUpdate };
+    }
+
+    throw new Error(`Unexpected admin table: ${table}`);
+  });
+
+  const adminClient = { from: adminFrom } as never;
+  mockCreateAuditedAdminClient.mockResolvedValue(adminClient);
+
   return {
     supabase: { from } as never,
     spies: {
       from,
+      adminFrom,
       updatePayloads,
+      updateOptions,
       payoutProfilesSelect,
       payoutProfilesEqOwnerUserId,
       payoutProfilesEqRepresentativeCommunity,
-      communitiesUpdate,
-      communitiesEqId,
-      communitiesEqCreatedBy,
-      communitiesEqIsDeleted,
       communitiesSelect,
       communitiesMaybeSingle,
+      communitiesSelectEqId,
+      communitiesSelectEqCreatedBy,
+      communitiesSelectEqIsDeleted,
+      adminCommunitiesUpdate,
+      adminCommunitiesUpdateEqId,
+      adminCommunitiesUpdateEqCreatedBy,
+      adminCommunitiesUpdateEqIsDeleted,
     },
   };
 }
@@ -75,10 +121,14 @@ describe("features/communities/services/delete-community", () => {
 
   it("未使用の community を論理削除する", async () => {
     const { supabase, spies } = createSupabaseMock({
-      deleteResponse: {
+      existingCommunityResponse: {
         data: {
           id: "community-1",
         },
+        error: null,
+      },
+      deleteResponse: {
+        count: 1,
         error: null,
       },
     });
@@ -100,16 +150,30 @@ describe("features/communities/services/delete-community", () => {
       "community-1"
     );
     expect(spies.from).toHaveBeenCalledWith("communities");
+    expect(spies.communitiesSelect).toHaveBeenCalledWith("id");
+    expect(spies.communitiesSelectEqId).toHaveBeenCalledWith("id", "community-1");
+    expect(spies.communitiesSelectEqCreatedBy).toHaveBeenCalledWith("created_by", "user-1");
+    expect(spies.communitiesSelectEqIsDeleted).toHaveBeenCalledWith("is_deleted", false);
+    expect(mockCreateAuditedAdminClient).toHaveBeenCalledWith(
+      "community_management",
+      "Soft delete community: community-1",
+      expect.objectContaining({
+        userId: "user-1",
+        operationType: "UPDATE",
+        accessedTables: ["public.communities"],
+      })
+    );
+    expect(spies.adminFrom).toHaveBeenCalledWith("communities");
     expect(spies.updatePayloads).toEqual([
       {
         is_deleted: true,
         deleted_at: expect.any(String),
       },
     ]);
-    expect(spies.communitiesEqId).toHaveBeenCalledWith("id", "community-1");
-    expect(spies.communitiesEqCreatedBy).toHaveBeenCalledWith("created_by", "user-1");
-    expect(spies.communitiesEqIsDeleted).toHaveBeenCalledWith("is_deleted", false);
-    expect(spies.communitiesSelect).toHaveBeenCalledWith("id");
+    expect(spies.updateOptions).toEqual([{ count: "exact" }]);
+    expect(spies.adminCommunitiesUpdateEqId).toHaveBeenCalledWith("id", "community-1");
+    expect(spies.adminCommunitiesUpdateEqCreatedBy).toHaveBeenCalledWith("created_by", "user-1");
+    expect(spies.adminCommunitiesUpdateEqIsDeleted).toHaveBeenCalledWith("is_deleted", false);
   });
 
   it("representative community は RESOURCE_CONFLICT を返す", async () => {
@@ -117,8 +181,11 @@ describe("features/communities/services/delete-community", () => {
       representativeUsage: {
         count: 1,
       },
-      deleteResponse: {
+      existingCommunityResponse: {
         data: null,
+        error: null,
+      },
+      deleteResponse: {
         error: null,
       },
     });
@@ -134,13 +201,18 @@ describe("features/communities/services/delete-community", () => {
     expect(result.error.userMessage).toBe(
       "代表コミュニティに設定されているため削除できません。付け替え後に削除してください"
     );
-    expect(spies.communitiesUpdate).not.toHaveBeenCalled();
+    expect(spies.adminCommunitiesUpdate).not.toHaveBeenCalled();
+    expect(mockCreateAuditedAdminClient).not.toHaveBeenCalled();
   });
 
   it("削除対象が無ければ NOT_FOUND を返す", async () => {
     const { supabase } = createSupabaseMock({
-      deleteResponse: {
+      existingCommunityResponse: {
         data: null,
+        error: null,
+      },
+      deleteResponse: {
+        count: 0,
         error: null,
       },
     });
@@ -154,6 +226,7 @@ describe("features/communities/services/delete-community", () => {
 
     expect(result.error.code).toBe("NOT_FOUND");
     expect(result.error.userMessage).toBe("削除対象のコミュニティが見つかりません");
+    expect(mockCreateAuditedAdminClient).not.toHaveBeenCalled();
   });
 
   it("representative usage の取得失敗は DATABASE_ERROR を返す", async () => {
@@ -163,8 +236,12 @@ describe("features/communities/services/delete-community", () => {
           message: "database failed",
         },
       },
-      deleteResponse: {
+      existingCommunityResponse: {
         data: null,
+        error: null,
+      },
+      deleteResponse: {
+        count: 0,
         error: null,
       },
     });
@@ -182,8 +259,14 @@ describe("features/communities/services/delete-community", () => {
 
   it("論理削除 update の失敗は DATABASE_ERROR を返す", async () => {
     const { supabase } = createSupabaseMock({
+      existingCommunityResponse: {
+        data: {
+          id: "community-1",
+        },
+        error: null,
+      },
       deleteResponse: {
-        data: null,
+        count: null,
         error: {
           message: "database failed",
         },
@@ -199,5 +282,55 @@ describe("features/communities/services/delete-community", () => {
 
     expect(result.error.code).toBe("DATABASE_ERROR");
     expect(result.error.userMessage).toBe("コミュニティの削除に失敗しました");
+  });
+
+  it("削除対象取得の失敗は DATABASE_ERROR を返す", async () => {
+    const { supabase } = createSupabaseMock({
+      existingCommunityResponse: {
+        data: null,
+        error: {
+          message: "database failed",
+        },
+      },
+      deleteResponse: {
+        count: 0,
+        error: null,
+      },
+    });
+
+    const result = await deleteCommunity(supabase, "user-1", "community-1");
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error("expected failure");
+    }
+
+    expect(result.error.code).toBe("DATABASE_ERROR");
+    expect(result.error.userMessage).toBe("コミュニティの削除に失敗しました");
+  });
+
+  it("論理削除 update で count 0 は NOT_FOUND を返す", async () => {
+    const { supabase } = createSupabaseMock({
+      existingCommunityResponse: {
+        data: {
+          id: "community-1",
+        },
+        error: null,
+      },
+      deleteResponse: {
+        count: 0,
+        error: null,
+      },
+    });
+
+    const result = await deleteCommunity(supabase, "user-1", "community-1");
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error("expected failure");
+    }
+
+    expect(result.error.code).toBe("NOT_FOUND");
+    expect(result.error.userMessage).toBe("削除対象のコミュニティが見つかりません");
   });
 });
