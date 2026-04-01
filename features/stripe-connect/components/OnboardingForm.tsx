@@ -143,53 +143,59 @@ export function OnboardingForm({
 
         <form action={formAction} className="space-y-6" noValidate>
           <div className="space-y-3 rounded-xl border bg-muted/20 p-4">
-            <div className="space-y-1">
-              <Label htmlFor="representative-community">
-                Stripe アカウント設定に使うコミュニティ
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Stripe アカウント設定で使う代表コミュニティを１つ選択してください。
-                <br />
-                設定が完了すると、代表コミュニティだけでなくすべてのコミュニティに自動で紐づき、オンライン集金が有効化されます。
-              </p>
-            </div>
-            <select
-              id="representative-community"
-              name="representativeCommunityId"
-              className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              value={selectedCommunityId}
-              onChange={(event) => setSelectedCommunityId(event.target.value)}
-              aria-invalid={representativeCommunityError ? true : undefined}
-              aria-describedby={
-                representativeCommunityError ? "representative-community-error" : undefined
-              }
-            >
-              {communities.map((community) => (
-                <option key={community.id} value={community.id}>
-                  {community.name}
-                </option>
-              ))}
-            </select>
-            {representativeCommunityError ? (
-              <p
-                id="representative-community-error"
-                className="text-sm font-medium text-destructive"
-                role="alert"
-              >
-                {representativeCommunityError}
-              </p>
-            ) : null}
+            {communities.length === 1 ? (
+              <>
+                <input type="hidden" name="representativeCommunityId" value={communities[0].id} />
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-bold"> {communities[0].name} </span>をStripe
+                  アカウント設定に使用します。
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="space-y-1">
+                  <Label htmlFor="representative-community">代表コミュニティの選択</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Stripe アカウント設定で使う代表コミュニティを1つ選択してください。
+                    <br />
+                    設定が完了すると、ここで選択したコミュニティだけでなく、あなたが管理するすべてのコミュニティでオンライン集金が利用可能になります。
+                  </p>
+                </div>
+                <select
+                  id="representative-community"
+                  name="representativeCommunityId"
+                  className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={selectedCommunityId}
+                  onChange={(event) => setSelectedCommunityId(event.target.value)}
+                  aria-invalid={representativeCommunityError ? true : undefined}
+                  aria-describedby={
+                    representativeCommunityError ? "representative-community-error" : undefined
+                  }
+                >
+                  {communities.map((community) => (
+                    <option key={community.id} value={community.id}>
+                      {community.name}
+                    </option>
+                  ))}
+                </select>
+                {representativeCommunityError ? (
+                  <p
+                    id="representative-community-error"
+                    className="text-sm font-medium text-destructive"
+                    role="alert"
+                  >
+                    {representativeCommunityError}
+                  </p>
+                ) : null}
+              </>
+            )}
 
             {selectedCommunity ? (
               <div className="rounded-lg border bg-background/80 p-4 text-sm">
                 <div className="flex items-center gap-2 font-medium text-foreground">
                   <Link2 className="h-4 w-4 text-primary" />
-                  設定に使うコミュニティプロフィール URL
+                  コミュニティプロフィール URL
                 </div>
-                {/* <p className="mt-2 text-muted-foreground">
-                  <span className="font-medium text-foreground">{selectedCommunity.name}</span> の
-                  コミュニティプロフィール URL を 使う。
-                </p> */}
                 <Link
                   href={selectedCommunity.publicPageUrl}
                   target="_blank"
