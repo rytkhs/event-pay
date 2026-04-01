@@ -32,7 +32,7 @@ type CreateCommunityFormProps = {
 };
 
 const defaultCommunityDescription =
-  "本コミュニティでは、サークル・グループの活動やイベント等の企画・運営を行っています。イベント管理プラットフォーム「みんなの集金」を利用して、イベント開催時の参加費や会費の支払い受付を行っています。詳細な内容や料金、支払方法は各イベントの案内で確認できます。";
+  "本コミュニティでは、サークル・グループの活動やイベント等の企画・運営を行っています。\nイベント管理プラットフォーム「みんなの集金」を利用して、イベント開催時の参加費や会費の支払い受付を行っています。詳細な内容や料金、支払方法は各イベントの案内で確認できます。";
 
 const initialState: CreateCommunityFormState = {
   success: false,
@@ -116,7 +116,7 @@ export function CreateCommunityForm({
               className="min-h-32"
             />
             <p className="text-sm text-muted-foreground">
-              コミュニティプロフィールに表示される説明文です。
+              コミュニティプロフィールに表示される説明文です。自由に編集できます。
             </p>
           </div>
 

@@ -73,21 +73,18 @@ function RegisterForm() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>表示名</FormLabel>
+                        <FormLabel>ユーザーネーム</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
                             type="text"
-                            placeholder="例: 集金 太郎"
+                            placeholder="例: 集金 たろう"
                             disabled={isPending}
                             autoComplete="name"
                             required
                             data-testid="name-input"
                           />
                         </FormControl>
-                        <FormDescription className="text-xs sm:text-sm">
-                          イベント作成者として表示される名前です(変更可能)
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
