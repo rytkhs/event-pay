@@ -3,7 +3,7 @@ RETURNS text
 LANGUAGE sql
 VOLATILE
 AS $$
-    SELECT translate(encode(gen_random_bytes(18), 'base64'), '+/', '-_');
+    SELECT translate(encode(extensions.gen_random_bytes(18), 'base64'), '+/', '-_');
 $$;
 
 GRANT EXECUTE ON FUNCTION public.generate_community_slug() TO authenticated, service_role;
