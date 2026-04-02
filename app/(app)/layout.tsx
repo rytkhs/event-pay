@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { resolveCommunityAnnouncementForServerComponent } from "@core/announcements/community-announcement";
 import {
   resolveAppWorkspaceForServerComponent,
   toAppWorkspaceShellData,
@@ -12,6 +13,7 @@ import { Header } from "@components/layout/Header";
 
 import { logoutAction } from "@/app/(auth)/actions";
 import { createExpressDashboardLoginLinkAction } from "@/app/_actions/stripe-connect/actions";
+import { CommunityAnnouncementBanner } from "@/app/_components/CommunityAnnouncementBanner";
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
@@ -24,6 +26,9 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 export default async function AppLayout({ children }: { children: ReactNode }) {
   ensureFeaturesRegistered();
   const workspace = await resolveAppWorkspaceForServerComponent();
+  const communityAnnouncement = await resolveCommunityAnnouncementForServerComponent(
+    workspace.currentUser.id
+  );
   const workspaceShell = toAppWorkspaceShellData(workspace);
 
   return (
@@ -36,6 +41,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       />
       <SidebarInset>
         <DemoBanner />
+        {communityAnnouncement.shouldShow ? (
+          <CommunityAnnouncementBanner userName={workspace.currentUser.name} />
+        ) : null}
         <Header workspace={workspaceShell} />
         <main className="flex-1 flex flex-col p-2 sm:p-4 w-full max-w-7xl mx-auto">{children}</main>
       </SidebarInset>
