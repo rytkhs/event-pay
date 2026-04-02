@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -74,58 +73,80 @@ export function PasswordChangeForm({ changePasswordAction }: PasswordChangeFormP
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="space-y-4">
-          <FormField
-            control={form.control}
-            name="currentPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>現在のパスワード</FormLabel>
-                <FormControl>
-                  <PasswordInput placeholder="現在のパスワードを入力" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+    <div className="rounded-xl border border-border/60 bg-card shadow-sm">
+      <div className="p-6">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5" noValidate>
+            <FormField
+              control={form.control}
+              name="currentPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium">現在のパスワード</FormLabel>
+                  <FormControl>
+                    <PasswordInput
+                      className="h-10"
+                      placeholder="現在のパスワードを入力"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="newPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>新しいパスワード</FormLabel>
-                <FormControl>
-                  <PasswordInput placeholder="新しいパスワードを入力" {...field} />
-                </FormControl>
-                <FormDescription>8文字以上で入力してください</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="newPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium">新しいパスワード</FormLabel>
+                  <FormControl>
+                    <PasswordInput
+                      className="h-10"
+                      placeholder="新しいパスワードを入力"
+                      {...field}
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">8文字以上で入力してください</p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="confirmPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>確認用パスワード</FormLabel>
-                <FormControl>
-                  <PasswordInput placeholder="新しいパスワードを再入力" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium">確認用パスワード</FormLabel>
+                  <FormControl>
+                    <PasswordInput
+                      className="h-10"
+                      placeholder="新しいパスワードを再入力"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
-          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isPending ? "更新中..." : "パスワードを変更"}
-        </Button>
-      </form>
-    </Form>
+            <div className="flex justify-end border-t border-border/60 pt-5">
+              <Button type="submit" disabled={isPending} className="min-w-32">
+                {isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    更新中...
+                  </>
+                ) : (
+                  "パスワードを変更"
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </div>
+    </div>
   );
 }

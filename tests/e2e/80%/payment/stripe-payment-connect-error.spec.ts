@@ -37,13 +37,12 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
      * カバー率寄与: 8%
      *
      * 前提条件:
-     * - イベント作成者がStripe Connectを未設定
-     * - stripe_connect_accounts テーブルにレコードが存在しない
+     * - イベントが payout_profile を持たない
      *
      * 期待結果:
-     * - ゲスト管理ページで決済ボタンは表示される
+     * - ゲスト管理ページでオンライン決済ボタンは表示される
      * - 決済ボタンをクリックするとエラートーストが表示される
-     * - エラーメッセージ: "決済の準備ができません。主催者のお支払い受付設定に不備があります。現金決済をご利用いただくか、主催者にお問い合わせください。"
+     * - エラーメッセージ: "オンライン決済の準備ができていません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。"
      */
 
     console.log("=== ケース2-1-1: Connect未設定時の決済不可 ===");
@@ -64,31 +63,22 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // === 2. Stripe Connectアカウントを削除 ===
-    // イベント作成者のユーザーIDを取得
+    // === 2. event から payout profile snapshot を外す ===
+    await TestDataManager.setEventPayoutProfile(null);
+
     const { data: eventData, error: eventError } = await supabase
       .from("events")
-      .select("created_by")
+      .select("payout_profile_id")
       .eq("id", TEST_IDS.EVENT_ID)
       .single();
 
     if (eventError || !eventData) {
-      throw new Error("Failed to fetch event creator");
+      throw new Error("Failed to fetch event payout state");
     }
 
-    const testUserId = eventData.created_by;
+    expect(eventData.payout_profile_id).toBeNull();
 
-    // Stripe Connectアカウントを削除してConnect未設定状態を作成
-    const { error: deleteError } = await supabase
-      .from("stripe_connect_accounts")
-      .delete()
-      .eq("user_id", testUserId);
-
-    if (deleteError) {
-      throw new Error(`Failed to delete stripe_connect_account: ${deleteError.message}`);
-    }
-
-    console.log("✓ Stripe Connectアカウント削除完了（Connect未設定状態）");
+    console.log("✓ event の payout_profile_id を解除完了（Connect未設定相当）");
 
     // === 3. 参加者作成 ===
     const attendanceData = await TestDataManager.createAttendance({
@@ -106,7 +96,7 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
     console.log("✓ ゲストページに遷移");
 
     // === 5. 決済ボタンが表示されていることを確認 ===
-    const paymentButton = page.getByRole("button", { name: "決済を完了する" });
+    const paymentButton = page.getByRole("button", { name: "オンライン決済へ進む" });
     await expect(paymentButton).toBeVisible();
 
     console.log("✓ 決済ボタンが表示されている");
@@ -119,7 +109,7 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
 
     // エラートーストが表示されることを確認（タイムアウト時間を長めに設定）
     const errorToast = page.getByText(
-      /決済の準備ができません.*主催者のお支払い受付設定に不備があります/i
+      /オンライン決済の準備ができていません.*現金決済をご利用いただくか.*再度お試しください/i
     );
     await expect(errorToast).toBeVisible({ timeout: 5000 });
 
@@ -135,13 +125,13 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
      * カバー率寄与: 8%
      *
      * 前提条件:
-     * - Stripe Connectアカウントが存在
-     * - `payouts_enabled = false`（審査未完了）
+     * - payout_profile が存在する
+     * - payout_profile.status = onboarding（審査未完了）
      *
      * 期待結果:
-     * - ゲスト管理ページで決済ボタンは表示される
+     * - ゲスト管理ページでオンライン決済ボタンは表示される
      * - 決済ボタンをクリックするとエラートーストが表示される
-     * - エラーメッセージ: "主催者のお支払い受付が一時的に制限されています。現金決済をご利用いただくか、主催者にお問い合わせください。"
+     * - エラーメッセージ: "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。"
      */
 
     console.log("=== ケース2-1-2: payouts_enabled = false の場合の決済不可 ===");
@@ -162,31 +152,37 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // === 2. payouts_enabled を false に更新 ===
-    // イベント作成者のユーザーIDを取得
+    // === 2. payout_profile を審査未完了状態に更新 ===
+    await TestDataManager.setCurrentPayoutProfileState({
+      status: "onboarding",
+      payoutsEnabled: false,
+      chargesEnabled: true,
+    });
+
     const { data: eventData, error: eventError } = await supabase
       .from("events")
-      .select("created_by")
+      .select("payout_profile_id")
       .eq("id", TEST_IDS.EVENT_ID)
       .single();
 
-    if (eventError || !eventData) {
-      throw new Error("Failed to fetch event creator");
+    if (eventError || !eventData?.payout_profile_id) {
+      throw new Error("Failed to fetch event payout profile");
     }
 
-    const testUserId = eventData.created_by;
+    const { data: payoutProfile, error: payoutProfileError } = await supabase
+      .from("payout_profiles")
+      .select("status, payouts_enabled")
+      .eq("id", eventData.payout_profile_id)
+      .single();
 
-    // payouts_enabled を false に設定（審査未完了状態をシミュレート）
-    const { error: updateError } = await supabase
-      .from("stripe_connect_accounts")
-      .update({ payouts_enabled: false })
-      .eq("user_id", testUserId);
-
-    if (updateError) {
-      throw new Error(`Failed to update payouts_enabled: ${updateError.message}`);
+    if (payoutProfileError || !payoutProfile) {
+      throw new Error("Failed to fetch payout profile state");
     }
 
-    console.log("✓ payouts_enabled = false に設定完了（審査未完了状態）");
+    expect(payoutProfile.status).toBe("onboarding");
+    expect(payoutProfile.payouts_enabled).toBe(false);
+
+    console.log("✓ payout_profile を onboarding に設定完了（審査未完了状態）");
 
     // === 3. 参加者作成 ===
     const attendanceData = await TestDataManager.createAttendance({
@@ -204,7 +200,7 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
     console.log("✓ ゲストページに遷移");
 
     // === 5. 決済ボタンが表示されていることを確認 ===
-    const paymentButton = page.getByRole("button", { name: "決済を完了する" });
+    const paymentButton = page.getByRole("button", { name: "オンライン決済へ進む" });
     await expect(paymentButton).toBeVisible();
 
     console.log("✓ 決済ボタンが表示されている");
@@ -216,7 +212,9 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
     await paymentButton.click();
 
     // エラートーストが表示されることを確認（タイムアウト時間を長めに設定）
-    const errorToast = page.getByText(/主催者のお支払い受付が一時的に制限されています/i);
+    const errorToast = page.getByText(
+      /現在オンライン決済がご利用いただけません.*現金決済をご利用いただくか.*再度お試しください/i
+    );
     await expect(errorToast).toBeVisible({ timeout: 5000 });
 
     console.log("✓ エラーメッセージが表示された（payouts_enabled = false）");

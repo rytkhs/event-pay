@@ -4,7 +4,10 @@ import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
-import { getCurrentUserForServerComponent } from "@core/auth/auth-utils";
+import {
+  requireNonEmptyCommunityWorkspaceForServerComponent,
+  resolveAppWorkspaceForServerComponent,
+} from "@core/community/app-workspace";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { createCachedActions } from "@core/utils/cache-helpers";
 import { handleServerError } from "@core/utils/error-handler.server";
@@ -44,10 +47,18 @@ export default async function EventDetailPage(props: {
       notFound();
     }
 
-    // 基本データ（詳細）取得
-    const eventDetailResult = await cachedActions.getEventDetail(params.id);
+    const workspace = await requireNonEmptyCommunityWorkspaceForServerComponent();
+    const currentCommunity = workspace.currentCommunity;
+    if (!currentCommunity) {
+      notFound();
+    }
+
+    const eventDetailResult = await cachedActions.getEventDetail(params.id, currentCommunity.id);
 
     if (!eventDetailResult.success) {
+      if (eventDetailResult.error.code === "UNAUTHORIZED") {
+        redirect("/login");
+      }
       if (eventDetailResult.error.code === "EVENT_NOT_FOUND") {
         notFound();
       }
@@ -65,15 +76,6 @@ export default async function EventDetailPage(props: {
       throw new Error("イベント詳細の取得に失敗しました");
     }
 
-    // 現在のユーザーを取得して主催者かどうか判定
-    const currentUser = await getCurrentUserForServerComponent();
-    const isOrganizer = currentUser?.id === eventDetail.created_by;
-
-    if (!isOrganizer) {
-      // 主催者でない場合は権限エラーページへ（プレビューは /guest/... で行うため）
-      redirect(`/events/${params.id}/forbidden`);
-    }
-
     const query = parseEventManagementQuery(searchParams);
 
     // 必要なデータを並列取得
@@ -83,9 +85,12 @@ export default async function EventDetailPage(props: {
       Promise<ActionResult<{ attending_count: number; maybe_count: number }>>,
       Promise<ActionResult<GetParticipantsResponse>>,
     ] = [
-      cachedActions.getEventStats(params.id),
+      cachedActions.getEventStats(params.id, currentCommunity.id),
       // 常に全件取得（タブに関係なく）
-      cachedActions.getEventParticipants({ eventId: params.id }),
+      cachedActions.getEventParticipants({
+        eventId: params.id,
+        currentCommunityId: currentCommunity.id,
+      }),
     ];
 
     const [statsRes, participantsRes]: [
@@ -134,7 +139,27 @@ export default async function EventDetailPage(props: {
 export async function generateMetadata(props: EventDetailPageProps): Promise<Metadata> {
   const params = await props.params;
   try {
-    const eventDetailResult = await cachedActions.getEventDetail(params.id);
+    const workspace = await resolveAppWorkspaceForServerComponent();
+    const currentCommunityId = workspace.currentCommunity?.id ?? null;
+
+    if (!currentCommunityId) {
+      return {
+        title: "イベント詳細",
+        description: "イベントの詳細情報",
+        openGraph: {
+          title: "イベント詳細",
+          description: "イベントの詳細情報",
+          type: "website",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: "イベント詳細",
+          description: "イベントの詳細情報",
+        },
+      };
+    }
+
+    const eventDetailResult = await cachedActions.getEventDetail(params.id, currentCommunityId);
     if (!eventDetailResult.success) {
       return {
         title: "イベント詳細",

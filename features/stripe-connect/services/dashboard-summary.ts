@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { StripeConnectAccountRow } from "@core/types/stripe-connect";
+import type { PayoutProfileRow } from "@core/types/payout-profile";
 import type { AppSupabaseClient } from "@core/types/supabase";
 
 import { fetchStripeBalanceByAccountId } from "../actions/get-balance";
@@ -12,16 +12,22 @@ import {
 } from "../constants/detailed-account-status";
 import type { DetailedAccountStatus } from "../types";
 
-type DashboardConnectAccountRow = Pick<
-  StripeConnectAccountRow,
-  "status" | "payouts_enabled" | "stripe_account_id"
+import { resolveCurrentCommunityPayoutProfile } from "./payout-profile-resolver";
+
+type DashboardPayoutProfileRow = Pick<
+  PayoutProfileRow,
+  "representative_community_id" | "status" | "payouts_enabled" | "stripe_account_id"
 >;
 
 export function resolveDashboardConnectCtaStatus(
-  account: DashboardConnectAccountRow | null
+  account: DashboardPayoutProfileRow | null
 ): DetailedAccountStatus | undefined {
   if (!account) {
     return NO_ACCOUNT_STATUS;
+  }
+
+  if (!account.representative_community_id) {
+    return DASHBOARD_SETUP_INCOMPLETE_STATUS;
   }
 
   switch (account.status) {
@@ -37,36 +43,42 @@ export function resolveDashboardConnectCtaStatus(
   }
 }
 
-async function getDashboardConnectAccount(
+async function getDashboardPayoutProfile(
   supabase: AppSupabaseClient,
-  userId: string
-): Promise<DashboardConnectAccountRow | null> {
-  const { data, error } = await supabase
-    .from("stripe_connect_accounts")
-    .select("status, payouts_enabled, stripe_account_id")
-    .eq("user_id", userId)
-    .maybeSingle<DashboardConnectAccountRow>();
+  _userId: string,
+  communityId: string
+): Promise<DashboardPayoutProfileRow | null> {
+  const { payoutProfile } = await resolveCurrentCommunityPayoutProfile(supabase, {
+    communityId,
+  });
 
-  if (error) {
-    throw error;
+  if (!payoutProfile) {
+    return null;
   }
 
-  return data;
+  return {
+    representative_community_id: payoutProfile.representative_community_id,
+    payouts_enabled: payoutProfile.payouts_enabled,
+    status: payoutProfile.status,
+    stripe_account_id: payoutProfile.stripe_account_id,
+  };
 }
 
 export async function getDashboardConnectCtaStatus(
   supabase: AppSupabaseClient,
-  userId: string
+  userId: string,
+  communityId: string
 ): Promise<DetailedAccountStatus | undefined> {
-  const account = await getDashboardConnectAccount(supabase, userId);
+  const account = await getDashboardPayoutProfile(supabase, userId, communityId);
   return resolveDashboardConnectCtaStatus(account);
 }
 
 export async function getDashboardConnectBalance(
   supabase: AppSupabaseClient,
-  userId: string
+  userId: string,
+  communityId: string
 ): Promise<number | null> {
-  const account = await getDashboardConnectAccount(supabase, userId);
+  const account = await getDashboardPayoutProfile(supabase, userId, communityId);
 
   if (!account) {
     return null;

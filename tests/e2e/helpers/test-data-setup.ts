@@ -36,7 +36,13 @@ export const TEST_IDS = {
 } as const;
 
 // 動的に生成されるテストユーザーID
-let testUserId: string | null = null;
+type TestContext = {
+  userId: string;
+  communityId: string;
+  payoutProfileId: string | null;
+};
+
+let testContext: TestContext | null = null;
 
 export const FIXED_TIME = new Date("2026-01-01T12:00:00.000Z");
 
@@ -62,8 +68,15 @@ export class TestDataManager {
       chargesEnabled: true,
     });
 
-    // テストユーザーIDを保存
-    testUserId = testUser.id;
+    if (!testUser.communityId) {
+      throw new Error("Test user must have a community for E2E payment setup");
+    }
+
+    testContext = {
+      userId: testUser.id,
+      communityId: testUser.communityId,
+      payoutProfileId: testUser.payoutProfileId ?? null,
+    };
 
     // users テーブルからユーザー情報を取得（name を取得するため）
     const { data: userData, error: userError } = await supabaseAdmin
@@ -100,7 +113,7 @@ export class TestDataManager {
    * 有料イベントを作成
    */
   static async createPaidEvent() {
-    if (!testUserId) {
+    if (!testContext) {
       throw new Error("User must be created before creating event");
     }
 
@@ -116,7 +129,7 @@ export class TestDataManager {
     // テスト用イベントデータを組み立て
     const eventData: Database["public"]["Tables"]["events"]["Insert"] = {
       id: TEST_IDS.EVENT_ID,
-      created_by: testUserId,
+      created_by: testContext.userId,
       title: "E2Eテスト有料イベント",
       description: "E2Eテスト用に作成された有料イベントです。",
       location: "オンライン",
@@ -127,6 +140,8 @@ export class TestDataManager {
       payment_methods: ["stripe"],
       invite_token: inviteToken,
       canceled_at: null,
+      community_id: testContext.communityId,
+      payout_profile_id: testContext.payoutProfileId,
       created_at: now.toISOString(), // 現在時刻を使用（DB制約を満たすため）
       updated_at: now.toISOString(),
     };
@@ -190,6 +205,8 @@ export class TestDataManager {
           | "waived",
         method: "stripe" as const,
         stripe_payment_intent_id: `pi_${crypto.randomUUID()}`,
+        stripe_account_id: TEST_IDS.CONNECT_ACCOUNT_ID,
+        payout_profile_id: testContext?.payoutProfileId ?? null,
         // 新しいIdempotency関連カラムを明示的に設定（null許可だが統一性のため）
         checkout_idempotency_key: null,
         checkout_key_revision: 0,
@@ -211,6 +228,46 @@ export class TestDataManager {
     }
 
     return attendanceData;
+  }
+
+  static async setEventPayoutProfile(payoutProfileId: string | null) {
+    const { error } = await supabaseAdmin
+      .from("events")
+      .update({
+        payout_profile_id: payoutProfileId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", TEST_IDS.EVENT_ID);
+
+    if (error) {
+      throw new Error(`Event payout profile update failed: ${error.message}`);
+    }
+  }
+
+  static async setCurrentPayoutProfileState(options: {
+    status: Database["public"]["Enums"]["stripe_account_status_enum"];
+    payoutsEnabled?: boolean;
+    chargesEnabled?: boolean;
+    stripeAccountId?: string;
+  }) {
+    if (!testContext?.payoutProfileId) {
+      throw new Error("Payout profile must exist before updating its state");
+    }
+
+    const { error } = await supabaseAdmin
+      .from("payout_profiles")
+      .update({
+        status: options.status,
+        payouts_enabled: options.payoutsEnabled ?? true,
+        charges_enabled: options.chargesEnabled ?? true,
+        stripe_account_id: options.stripeAccountId ?? TEST_IDS.CONNECT_ACCOUNT_ID,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", testContext.payoutProfileId);
+
+    if (error) {
+      throw new Error(`Payout profile update failed: ${error.message}`);
+    }
   }
 
   /**
@@ -333,26 +390,45 @@ export class TestDataManager {
     ];
 
     // ユーザーIDが存在する場合のみクリーンアップ
-    if (testUserId) {
+    if (testContext) {
       cleanupPromises.push(
+        supabaseAdmin
+          .from("communities")
+          .update({ current_payout_profile_id: null })
+          .eq("created_by", testContext.userId)
+          .then(),
+        supabaseAdmin
+          .from("payout_profiles")
+          .update({ representative_community_id: null })
+          .eq("owner_user_id", testContext.userId)
+          .then(),
+        supabaseAdmin
+          .from("payout_profiles")
+          .delete()
+          .eq("owner_user_id", testContext.userId)
+          .then(),
+        supabaseAdmin.from("communities").delete().eq("created_by", testContext.userId).then(),
         // Connect アカウントデータ削除
-        supabaseAdmin.from("stripe_connect_accounts").delete().eq("user_id", testUserId).then(),
+        supabaseAdmin
+          .from("stripe_connect_accounts")
+          .delete()
+          .eq("user_id", testContext.userId)
+          .then(),
         // ユーザーデータ削除
-        supabaseAdmin.from("users").delete().eq("id", testUserId).then()
+        supabaseAdmin.from("users").delete().eq("id", testContext.userId).then()
       );
     }
 
     const results = await Promise.allSettled(cleanupPromises);
 
     // Authユーザーの削除
-    if (testUserId) {
+    if (testContext) {
       try {
-        await supabaseAdmin.auth.admin.deleteUser(testUserId);
+        await supabaseAdmin.auth.admin.deleteUser(testContext.userId);
       } catch (error) {
         console.warn("Auth user cleanup failed:", error);
       }
-      // testUserIdをリセット
-      testUserId = null;
+      testContext = null;
     }
 
     const errors = results

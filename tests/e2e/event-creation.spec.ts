@@ -33,12 +33,14 @@ async function fillDateTimePicker(
   // Popoverが開いていることを確認
   const calendarSlot = page.locator('[data-slot="calendar"]');
   await expect(calendarSlot).toBeVisible();
+  const dialog = page.getByRole("dialog").filter({ visible: true }).last();
+  await expect(dialog).toBeVisible();
+  const monthStatus = dialog.getByRole("status");
 
   // 目標の月まで移動（最大36回）
   for (let i = 0; i < 36; i++) {
-    // 現在表示されているキャプションを取得
-    const captionLabel = page.locator(".rdp-caption_label, [class*='caption_label']").first();
-    const headerText = await captionLabel.textContent();
+    // 現在表示されている月表示を取得
+    const headerText = (await monthStatus.textContent())?.trim();
 
     if (!headerText) break;
 
@@ -49,12 +51,12 @@ async function fillDateTimePicker(
     }
 
     // 次の月へ進むボタンをクリック
-    const nextButton = page.locator(
-      'button[class*="button_next"], button[name="next-month"], .rdp-button_next'
-    );
-    if ((await nextButton.count()) > 0) {
-      await nextButton.first().click();
-      await page.waitForTimeout(150);
+    const nextButton = dialog.getByRole("button", {
+      name: /Next Month|Go to the Next Month|次の月/,
+    });
+    if (await nextButton.isVisible()) {
+      await nextButton.click();
+      await expect(monthStatus).not.toHaveText(headerText, { timeout: 5000 });
     } else {
       break;
     }
@@ -84,7 +86,7 @@ async function fillDateTimePicker(
   await page.waitForTimeout(100);
 
   // 時間を選択 - Popover内のcomboboxを探す
-  const hourSelect = page.locator('button[role="combobox"]').first();
+  const hourSelect = dialog.locator('button[role="combobox"]').first();
   await hourSelect.scrollIntoViewIfNeeded();
 
   await hourSelect.click();
@@ -94,7 +96,7 @@ async function fillDateTimePicker(
   await page.waitForTimeout(100);
 
   // 分を選択
-  const minuteSelect = page.locator('button[role="combobox"]').nth(1);
+  const minuteSelect = dialog.locator('button[role="combobox"]').nth(1);
   await minuteSelect.click();
   await page.waitForTimeout(150);
   // 分は0, 15, 30, 45のみ選択可能なので、最も近いものを選択
@@ -105,7 +107,7 @@ async function fillDateTimePicker(
     .getByRole("option", { name: `${nearestMinute.toString().padStart(2, "0")}分` })
     .click();
 
-  await page.waitForTimeout(100);
+  await page.waitForTimeout(200);
 
   // 完了ボタンをクリック
   await page.getByRole("button", { name: "完了" }).click();
@@ -127,9 +129,9 @@ test.describe("イベント作成（E2E）", () => {
 
   test("正常系：有効な情報でイベントを作成し、詳細ページに遷移する", async ({ page }) => {
     // 将来の日時を生成（確実に未来になるよう十分な時間差を設定）
-    const futureDateString = "2027-12-25T15:00"; // 開催日：25日
-    const registrationDeadline = "2027-12-22T23:45"; // 申込締切：22日（余裕を持たせる）
-    const paymentDeadline = "2027-12-24T23:45"; // 決済締切：24日（申込締切の翌々日）
+    const futureDateString = "2026-12-25T15:00"; // 開催日：25日
+    const registrationDeadline = "2026-12-22T23:45"; // 申込締切：22日（余裕を持たせる）
+    const paymentDeadline = "2026-12-24T23:45"; // 決済締切：24日（申込締切の翌々日）
 
     // 基本情報セクション
     await page.getByPlaceholder("例：勉強会、夏合宿、会費の集金など").fill("テスト勉強会");
@@ -201,8 +203,8 @@ test.describe("イベント作成（E2E）", () => {
 
   test("正常系：無料イベントを作成し、決済方法の選択が不要であることを確認", async ({ page }) => {
     // 将来の日時を生成（確実に未来の日時）
-    const futureDateString = "2027-12-26T10:00";
-    const registrationDeadline = "2027-12-25T23:45"; // 申込締切
+    const futureDateString = "2026-12-26T10:00";
+    const registrationDeadline = "2026-12-25T23:45"; // 申込締切
 
     // 基本情報セクション
     await page.getByPlaceholder("例：勉強会、夏合宿、会費の集金など").fill("無料勉強会");

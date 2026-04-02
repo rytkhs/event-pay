@@ -18,8 +18,10 @@ export type InviteValidationErrorCode =
 
 export interface InviteEventDetail {
   id: string;
-  created_by: string;
-  organizer_name: string;
+  community: {
+    name: string;
+    legalSlug: string;
+  };
   title: string;
   date: string;
   location: string | null;

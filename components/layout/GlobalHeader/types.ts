@@ -2,7 +2,6 @@ import React from "react";
 
 import { type User as SupabaseUser } from "@supabase/supabase-js";
 
-import type { ActionResult } from "@core/errors/adapters/server-actions";
 /**
  * 拡張されたユーザー型（nameプロパティを含む）
  */
@@ -13,16 +12,12 @@ export interface User extends SupabaseUser {
 /**
  * ヘッダーバリアント定義
  */
-export type HeaderVariant = "marketing" | "app" | "guest" | "minimal";
+export type HeaderVariant = "marketing" | "guest" | "minimal";
 
 /**
  * グローバルヘッダーのプロパティ
  */
 export interface GlobalHeaderProps {
-  /** 認証ユーザー情報 */
-  user?: User | null;
-  /** ログアウトアクション */
-  logoutAction?: () => Promise<ActionResult>;
   /** ヘッダーの種類 */
   variant?: HeaderVariant;
   /** スクロール時の非表示制御 */
@@ -50,32 +45,6 @@ export interface NavLinkProps {
 }
 
 /**
- * ユーザーメニューのプロパティ
- */
-export interface UserMenuProps {
-  /** 認証ユーザー情報 */
-  user: User;
-  /** ログアウトアクション */
-  logoutAction?: () => Promise<ActionResult>;
-  /** カスタムクラス名 */
-  className?: string;
-}
-
-/**
- * モバイルメニューのプロパティ
- */
-export interface MobileMenuProps {
-  /** メニューの開閉状態 */
-  isOpen: boolean;
-  /** メニューを閉じる関数 */
-  onClose: () => void;
-  /** 認証ユーザー情報 */
-  user?: User | null;
-  /** ヘッダーの種類 */
-  variant: HeaderVariant;
-}
-
-/**
  * マーケティングヘッダーのプロパティ
  */
 export interface MarketingHeaderProps {
@@ -84,26 +53,9 @@ export interface MarketingHeaderProps {
 }
 
 /**
- * アプリケーションヘッダーのプロパティ
- */
-export interface AppHeaderProps {
-  /** 認証ユーザー情報 */
-  user: User;
-  /** ログアウトアクション */
-  logoutAction?: () => Promise<ActionResult>;
-  /** カスタムクラス名 */
-  className?: string;
-}
-
-/**
  * ゲストヘッダーのプロパティ
  */
 export interface GuestHeaderProps {
-  /** 参加状況情報 */
-  attendance?: {
-    status: "attending" | "not_attending" | "pending";
-    eventTitle?: string;
-  };
   /** カスタムクラス名 */
   className?: string;
 }

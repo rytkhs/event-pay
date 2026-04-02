@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 
+import { resolveAppWorkspaceForServerComponent } from "@core/community/app-workspace";
 import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { getStripe } from "@core/stripe/client";
@@ -65,24 +66,24 @@ export async function fetchStripeBalanceByAccountId(accountId: string): Promise<
  */
 export async function getStripeBalanceAction(): Promise<ActionResult<number>> {
   try {
-    const supabase = await createServerComponentSupabaseClient();
+    const workspace = await resolveAppWorkspaceForServerComponent();
+    const currentCommunity = workspace.currentCommunity;
 
-    // 認証確認
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
+    if (!currentCommunity) {
+      return ok(0);
     }
+
+    const supabase = await createServerComponentSupabaseClient();
 
     // Stripe Connectサービスを初期化
     const errorHandler = new StripeConnectErrorHandler();
     const stripeService = new StripeConnectService(supabase, errorHandler);
 
-    // ユーザーのStripe Connectアカウントを取得
-    const connectAccount = await stripeService.getConnectAccountByUser(user.id);
+    // 現在選択中コミュニティの Connect アカウントを取得
+    const connectAccount = await stripeService.getConnectAccountForCommunity(
+      workspace.currentUser.id,
+      currentCommunity.id
+    );
 
     if (!connectAccount) {
       // アカウントが設定されていない場合は0を返す

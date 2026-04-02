@@ -13,8 +13,8 @@
     "cf:deploy": "opennextjs-cloudflare deploy -- --keep-vars --outdir dist --upload-source-maps --var SENTRY_RELEASE:$(sentry-cli releases propose-version) && npm run sentry:sourcemaps",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "start": "next start",
-    "lint": "eslint app components core features types",
-    "lint:fix": "eslint app components core features types --fix",
+    "lint": "NODE_OPTIONS=\"--max-old-space-size=4096\" eslint app components core features types",
+    "lint:fix": "NODE_OPTIONS=\"--max-old-space-size=4096\" eslint app components core features types --fix",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "typecheck": "NODE_OPTIONS=\"--max-old-space-size=4096\" tsc --noEmit",
@@ -100,7 +100,7 @@
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
-      "eslint --fix",
+      "bash -lc 'NODE_OPTIONS=\"--max-old-space-size=4096\" eslint --fix \"$@\"' --",
       "prettier --write"
     ],
     "*.{json,md}": [

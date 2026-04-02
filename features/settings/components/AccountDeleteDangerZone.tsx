@@ -2,13 +2,12 @@
 
 import { useState, useTransition, type JSX } from "react";
 
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,46 +49,48 @@ export function AccountDeleteDangerZone({
   };
 
   return (
-    <Card className="border-destructive/40">
-      <CardHeader>
-        <CardTitle className="text-destructive flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5" /> アカウント削除
-        </CardTitle>
-        <CardDescription>
-          この操作は取り消せません。Stripe連携は無効化/解除されます。
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <div className="flex items-start gap-2">
+    <div className="rounded-xl border border-destructive/40 bg-destructive/[0.03] shadow-sm">
+      <div className="p-6 space-y-5">
+        <div className="space-y-1.5">
+          <p className="text-sm font-semibold text-destructive">アカウントを削除</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            この操作は取り消せません。Stripe連携は無効化/解除されます。
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-start gap-2.5">
             <Checkbox
               id="agreeIrreversible"
               checked={agreeIrreversible}
               onCheckedChange={(v) => setAgreeIrreversible(Boolean(v))}
+              className="mt-0.5"
             />
-            <Label htmlFor="agreeIrreversible" className="text-sm">
+            <Label htmlFor="agreeIrreversible" className="text-xs leading-relaxed cursor-pointer">
               不可逆な操作であることを理解しました
             </Label>
           </div>
 
-          <div className="flex items-start gap-2">
+          <div className="flex items-start gap-2.5">
             <Checkbox
               id="agreeStripeDisable"
               checked={agreeStripeDisable}
               onCheckedChange={(v) => setAgreeStripeDisable(Boolean(v))}
+              className="mt-0.5"
             />
-            <Label htmlFor="agreeStripeDisable" className="text-sm">
+            <Label htmlFor="agreeStripeDisable" className="text-xs leading-relaxed cursor-pointer">
               Stripe連携が無効化/解除されることを理解しました
             </Label>
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="confirmText" className="text-sm">
-            確認のため、次を入力してください：「削除します」
+          <Label htmlFor="confirmText" className="text-xs font-medium text-muted-foreground">
+            確認のため「削除します」と入力してください
           </Label>
           <Input
             id="confirmText"
+            className="h-10"
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             placeholder="削除します"
@@ -97,23 +98,25 @@ export function AccountDeleteDangerZone({
           />
         </div>
 
-        <div className="pt-2">
+        <div className="flex justify-end border-t border-destructive/20 pt-5">
           <Button
             variant="destructive"
+            size="sm"
             disabled={!canSubmit || isPending}
             onClick={onSubmit}
-            className="w-full sm:w-auto"
+            className="min-w-32"
           >
             {isPending ? (
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" /> 処理中...
-              </span>
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                処理中...
+              </>
             ) : (
               "アカウント削除"
             )}
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

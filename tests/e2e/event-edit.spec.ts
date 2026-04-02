@@ -39,12 +39,14 @@ test.describe("イベント編集（E2E）", () => {
     // 編集ページへ
     await page.goto(`/events/${event.id}/edit`);
 
-    // 見出しの表示を確認
-    await expect(page.getByRole("heading", { name: "イベント編集" })).toBeVisible();
+    // 現行UIではページ見出しの代わりに最初のセクション見出しが表示される
+    await expect(page.getByRole("heading", { name: "基本情報" })).toBeVisible();
 
     // 入力値を変更（場所・説明）
-    await page.getByLabel("場所").fill("新しい会場A");
-    await page.getByLabel("説明").fill("更新済みの説明テキストA");
+    await page.getByPlaceholder("例：〇〇会議室、〇〇居酒屋など").fill("新しい会場A");
+    await page
+      .getByRole("textbox", { name: "イベントの説明・詳細（任意）" })
+      .fill("更新済みの説明テキストA");
 
     // 変更を保存 → 確認ダイアログで確定
     await page.getByRole("button", { name: "変更を保存" }).click();
@@ -55,7 +57,7 @@ test.describe("イベント編集（E2E）", () => {
     await expect(page).toHaveURL(`/events/${event.id}`);
 
     // 変更が反映されていることを確認
-    await expect(page.getByText("新しい会場A")).toBeVisible(); // 開催場所
+    await expect(page.getByText("新しい会場A").first()).toBeVisible(); // 開催場所
     await expect(page.getByText("更新済みの説明テキストA")).toBeVisible(); // 詳細説明
   });
 });

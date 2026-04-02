@@ -4,7 +4,7 @@
 
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
-import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
+import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import { setupRLSTest, type RLSTestSetup } from "./rls-test-setup";
@@ -21,7 +21,8 @@ describe("RLS boundaries for fee_config/system_logs", () => {
   });
 
   test("fee_config: admin can UPDATE (read-only for normal roles)", async () => {
-    const admin = await createAuditedAdminClient(
+    const factory = getSecureClientFactory();
+    const admin = await factory.createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "update fee_config for test"
     );

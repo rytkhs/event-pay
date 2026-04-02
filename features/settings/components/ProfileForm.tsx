@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -73,30 +72,43 @@ export function ProfileForm({ currentName, updateProfileAction }: ProfileFormPro
   const isDirty = form.formState.isDirty;
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="space-y-4">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>表示名</FormLabel>
-                <FormControl>
-                  <Input placeholder="表示名を入力してください" {...field} />
-                </FormControl>
-                <FormDescription>イベントの作成者として表示される名前です</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+    <div className="rounded-xl border border-border/60 bg-card shadow-sm">
+      <div className="p-6">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5" noValidate>
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium">ユーザーネーム</FormLabel>
+                  <FormControl>
+                    <Input
+                      className="h-10"
+                      placeholder="ユーザーネームを入力してください"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <Button type="submit" disabled={isPending || !isDirty} className="w-full sm:w-auto">
-          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isPending ? "更新中..." : "プロフィールを更新"}
-        </Button>
-      </form>
-    </Form>
+            <div className="flex justify-end border-t border-border/60 pt-5">
+              <Button type="submit" disabled={isPending || !isDirty} className="min-w-32">
+                {isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    更新中...
+                  </>
+                ) : (
+                  "プロフィールを更新"
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </div>
+    </div>
   );
 }

@@ -23,6 +23,7 @@ const createMockStripeConnectService = (): jest.Mocked<IStripeConnectService> =>
     createExpressAccount: jest.fn(),
     createAccountLink: jest.fn(),
     getConnectAccountByUser: jest.fn(),
+    getConnectAccountForCommunity: jest.fn(),
     updateBusinessProfile: jest.fn(),
     isChargesEnabled: jest.fn(),
     isPayoutsEnabled: jest.fn(),

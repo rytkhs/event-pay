@@ -121,6 +121,27 @@ export function createGuestClient(token: string, options?: ClientCreationOptions
 }
 
 /**
+ * 匿名公開クライアントを作成
+ * 招待トークンなどの公開ヘッダーを付与した anon アクセスに使う。
+ */
+export function createPublicClient(options?: ClientCreationOptions) {
+  const supabaseUrl = getSupabaseUrl();
+  const anonKey = getAnonKey();
+
+  return createClient(supabaseUrl, anonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+    global: {
+      headers: {
+        ...options?.headers,
+      },
+    },
+  });
+}
+
+/**
  * 監査付き管理者クライアントを作成
  * 管理者権限の使用を記録し、適切な理由と共に監査ログに記録
  */
@@ -210,4 +231,12 @@ export async function createAuditedAdminClient(
       },
     },
   });
+}
+
+export function getSecureClientFactory() {
+  return {
+    createGuestClient,
+    createPublicClient,
+    createAuditedAdminClient,
+  };
 }

@@ -6,6 +6,7 @@ import { GuestErrorCode } from "./guest-token-errors";
 export enum AdminReason {
   TEST_DATA_SETUP = "test_data_setup",
   TEST_DATA_CLEANUP = "test_data_cleanup",
+  COMMUNITY_MANAGEMENT = "community_management",
   SYSTEM_MAINTENANCE = "system_maintenance",
   PAYMENT_PROCESSING = "payment_processing",
   REMINDER_PROCESSING = "reminder_processing",

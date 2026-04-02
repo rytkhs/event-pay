@@ -43,6 +43,15 @@ const createAccountLinkSchema = z.object({
     .optional(),
 });
 
+export const startOnboardingSchema = z.object({
+  representativeCommunityId: z
+    .string({
+      required_error: "Stripe アカウント設定に使うコミュニティを選択してください",
+      invalid_type_error: "Stripe アカウント設定に使うコミュニティを選択してください",
+    })
+    .uuid("Stripe アカウント設定に使うコミュニティを選択してください"),
+});
+
 /**
  * Express Account作成パラメータのバリデーション
  */
@@ -84,6 +93,31 @@ export const validateCreateAccountLinkParams = (params: unknown): CreateAccountL
     throw new StripeConnectError(
       StripeConnectErrorType.VALIDATION_ERROR,
       "Account Link生成パラメータの検証に失敗しました",
+      error as Error
+    );
+  }
+};
+
+export const validateStartOnboardingInput = (
+  params: unknown
+): {
+  representativeCommunityId: string;
+} => {
+  try {
+    return startOnboardingSchema.parse(params);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const message = error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ");
+      throw new StripeConnectError(
+        StripeConnectErrorType.VALIDATION_ERROR,
+        `オンボーディング開始パラメータが無効です: ${message}`,
+        error
+      );
+    }
+
+    throw new StripeConnectError(
+      StripeConnectErrorType.VALIDATION_ERROR,
+      "オンボーディング開始パラメータの検証に失敗しました",
       error as Error
     );
   }

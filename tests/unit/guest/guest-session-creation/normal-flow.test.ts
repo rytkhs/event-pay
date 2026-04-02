@@ -63,7 +63,10 @@ describe("仕様書通りの正常系フロー", () => {
           payment_methods: ["stripe"],
           allow_payment_after_deadline: false,
           grace_period_days: 0,
-          created_by: context.testUser.id,
+          community: {
+            name: "テストコミュニティ",
+            legalSlug: "test-community-legal",
+          },
           canceled_at: null,
         },
         payment: null,

@@ -23,6 +23,8 @@ type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
 export interface TestPaymentUser extends TestUser {
   hasStripeConnect: boolean;
   stripeConnectAccountId?: string;
+  payoutProfileId?: string;
+  communityId?: string;
   payoutsEnabled: boolean;
   chargesEnabled: boolean;
 }
@@ -35,6 +37,8 @@ export interface TestPaymentEvent {
   capacity: number | null;
   invite_token: string;
   created_by: string;
+  community_id: string;
+  payout_profile_id: string | null;
   payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
 }
 
@@ -47,6 +51,7 @@ export interface TestPaymentData {
   application_fee_amount: number;
   paid_at?: string | null;
   stripe_account_id?: string;
+  payout_profile_id?: string | null;
 }
 
 export interface TestAttendanceData {
@@ -58,6 +63,117 @@ export interface TestAttendanceData {
   guest_token: string;
 }
 
+type ResolvedTestCommunityContext = {
+  communityId: string;
+  payoutProfileId: string | null;
+};
+
+type ResolveTestCommunityContextOptions = {
+  communityId?: string;
+  payoutProfileId?: string | null;
+  autoCreateCommunityName?: string;
+};
+
+export async function resolveTestCommunityContext(
+  adminClient: SupabaseClient<Database>,
+  createdBy: string,
+  options: ResolveTestCommunityContextOptions = {}
+): Promise<ResolvedTestCommunityContext> {
+  const { communityId: requestedCommunityId, payoutProfileId: requestedPayoutProfileId } = options;
+
+  let community: { id: string; current_payout_profile_id: string | null } | null = null;
+
+  if (requestedCommunityId) {
+    const { data, error } = await adminClient
+      .from("communities")
+      .select("id, current_payout_profile_id")
+      .eq("id", requestedCommunityId)
+      .eq("created_by", createdBy)
+      .eq("is_deleted", false)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to resolve requested community: ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error(`Requested community is not available for user ${createdBy}`);
+    }
+
+    community = data;
+  } else {
+    const { data, error } = await adminClient
+      .from("communities")
+      .select("id, current_payout_profile_id")
+      .eq("created_by", createdBy)
+      .eq("is_deleted", false)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to resolve existing community: ${error.message}`);
+    }
+
+    community = data;
+  }
+
+  if (!community) {
+    const slug = `comm-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const { data, error } = await adminClient
+      .from("communities")
+      .insert({
+        created_by: createdBy,
+        name: options.autoCreateCommunityName ?? "Auto Created Community",
+        slug,
+        legal_slug: `legal-${slug}`,
+      })
+      .select("id, current_payout_profile_id")
+      .single();
+
+    if (error || !data) {
+      throw new Error(`Failed to auto-create community: ${error?.message}`);
+    }
+
+    community = data;
+  }
+
+  let payoutProfileId =
+    requestedPayoutProfileId !== undefined
+      ? requestedPayoutProfileId
+      : (community.current_payout_profile_id ?? null);
+
+  if (requestedPayoutProfileId === undefined && !payoutProfileId) {
+    const { data, error } = await adminClient
+      .from("payout_profiles")
+      .select("id")
+      .eq("owner_user_id", createdBy)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to resolve payout profile: ${error.message}`);
+    }
+
+    payoutProfileId = data?.id ?? null;
+
+    if (payoutProfileId && community.current_payout_profile_id !== payoutProfileId) {
+      const { error: updateError } = await adminClient
+        .from("communities")
+        .update({ current_payout_profile_id: payoutProfileId })
+        .eq("id", community.id);
+
+      if (updateError) {
+        throw new Error(`Failed to attach payout profile to community: ${updateError.message}`);
+      }
+    }
+  }
+
+  return {
+    communityId: community.id,
+    payoutProfileId,
+  };
+}
+
 /**
  * Connect未設定のテストユーザーを作成
  */
@@ -67,9 +183,37 @@ export async function createTestUserWithoutConnect(
 ): Promise<TestPaymentUser> {
   const user = await createTestUser(email, password);
 
+  const adminClient = await createAuditedAdminClient(
+    AdminReason.TEST_DATA_SETUP,
+    `Creating test community for user without connect: ${email}`,
+    {
+      operationType: "INSERT",
+      accessedTables: ["public.communities"],
+    }
+  );
+
+  const communitySlug = `test-comm-no-conn-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const { data: community, error: communityError } = await adminClient
+    .from("communities")
+    .insert({
+      created_by: user.id,
+      name: `Test Community (${email})`,
+      slug: communitySlug,
+      legal_slug: `legal-${communitySlug}`,
+    })
+    .select()
+    .single();
+
+  if (communityError || !community) {
+    throw new Error(
+      `Failed to create test community for no-connect user: ${communityError?.message}`
+    );
+  }
+
   return {
     ...user,
     hasStripeConnect: false,
+    communityId: community.id,
     payoutsEnabled: false,
     chargesEnabled: false,
   };
@@ -100,7 +244,11 @@ export async function createTestUserWithConnect(
     `Creating Stripe Connect account for test user: ${email}`,
     {
       operationType: "INSERT",
-      accessedTables: ["public.stripe_connect_accounts"],
+      accessedTables: [
+        "public.stripe_connect_accounts",
+        "public.payout_profiles",
+        "public.communities",
+      ],
       additionalInfo: {
         testContext: "payment-test-setup",
         userId: user.id,
@@ -109,7 +257,24 @@ export async function createTestUserWithConnect(
     }
   );
 
-  // Stripe Connect アカウントを作成
+  // 1. コミュニティを作成（代表URL用）
+  const communitySlug = `test-comm-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const { data: community, error: communityError } = await adminClient
+    .from("communities")
+    .insert({
+      created_by: user.id,
+      name: `Test Community (${email})`,
+      slug: communitySlug,
+      legal_slug: `legal-${communitySlug}`,
+    })
+    .select()
+    .single();
+
+  if (communityError || !community) {
+    throw new Error(`Failed to create test community: ${communityError?.message}`);
+  }
+
+  // 2. Stripe Connect アカウントを作成（互換性のため残す）
   const connectAccountData: StripeConnectAccountInsert = {
     user_id: user.id,
     stripe_account_id: stripeAccountId,
@@ -118,7 +283,6 @@ export async function createTestUserWithConnect(
     status: payoutsEnabled && chargesEnabled ? "verified" : "onboarding",
   };
 
-  // 重複回避：user_id での upsert（既存があれば更新）
   const { data: connectAccount, error } = await adminClient
     .from("stripe_connect_accounts")
     .upsert(connectAccountData, { onConflict: "user_id" })
@@ -129,6 +293,33 @@ export async function createTestUserWithConnect(
     throw new Error(`Failed to create Stripe Connect account: ${error.message}`);
   }
 
+  // 3. Payout Profile を作成（コミュニティを紐付け）
+  const { data: payoutProfile, error: payoutProfileError } = await adminClient
+    .from("payout_profiles")
+    .upsert(
+      {
+        owner_user_id: user.id,
+        stripe_account_id: stripeAccountId,
+        status: payoutsEnabled && chargesEnabled ? "verified" : "onboarding",
+        payouts_enabled: payoutsEnabled,
+        charges_enabled: chargesEnabled,
+        representative_community_id: community.id,
+      },
+      { onConflict: "owner_user_id" }
+    )
+    .select("id, stripe_account_id, payouts_enabled, charges_enabled")
+    .single();
+
+  if (payoutProfileError || !payoutProfile) {
+    throw new Error(`Failed to create payout profile: ${payoutProfileError?.message}`);
+  }
+
+  // 4. コミュニティを受取先に紐付け
+  await adminClient
+    .from("communities")
+    .update({ current_payout_profile_id: payoutProfile.id })
+    .eq("id", community.id);
+
   // eslint-disable-next-line no-console
   console.log(`✓ Created Stripe Connect account for user ${email}: ${stripeAccountId}`);
 
@@ -136,6 +327,8 @@ export async function createTestUserWithConnect(
     ...user,
     hasStripeConnect: true,
     stripeConnectAccountId: connectAccount.stripe_account_id,
+    payoutProfileId: payoutProfile.id,
+    communityId: community.id,
     payoutsEnabled: connectAccount.payouts_enabled,
     chargesEnabled: connectAccount.charges_enabled,
   };
@@ -164,6 +357,7 @@ export async function createPaidTestEvent(
     capacity?: number | null;
     title?: string;
     paymentMethods?: Database["public"]["Enums"]["payment_method_enum"][];
+    communityId?: string;
   } = {}
 ): Promise<TestPaymentEvent> {
   const {
@@ -194,6 +388,15 @@ export async function createPaidTestEvent(
   // 招待トークンを生成
   const inviteToken = generateInviteToken();
 
+  const { communityId, payoutProfileId } = await resolveTestCommunityContext(
+    adminClient,
+    createdBy,
+    {
+      communityId: options.communityId,
+    }
+  );
+  const eventPayoutProfileId = paymentMethods.includes("stripe") ? payoutProfileId : null;
+
   const eventData: EventInsert = {
     title,
     date: futureDateString,
@@ -207,6 +410,8 @@ export async function createPaidTestEvent(
     canceled_at: null,
     invite_token: inviteToken,
     created_by: createdBy,
+    community_id: communityId,
+    payout_profile_id: eventPayoutProfileId,
   };
 
   const { data: createdEvent, error } = await adminClient
@@ -230,6 +435,8 @@ export async function createPaidTestEvent(
     capacity: createdEvent.capacity,
     invite_token: createdEvent.invite_token || "",
     created_by: createdEvent.created_by,
+    community_id: createdEvent.community_id || "",
+    payout_profile_id: createdEvent.payout_profile_id ?? null,
     payment_methods: createdEvent.payment_methods || [],
   };
 }
@@ -308,6 +515,33 @@ export async function createTestAttendance(
   };
 }
 
+async function resolvePayoutProfileIdForAttendance(
+  adminClient: SupabaseClient<Database>,
+  attendanceId: string
+): Promise<string | null> {
+  const { data: attendance, error: attendanceError } = await adminClient
+    .from("attendances")
+    .select("event_id")
+    .eq("id", attendanceId)
+    .single();
+
+  if (attendanceError || !attendance) {
+    throw new Error(`Failed to resolve attendance for payout profile: ${attendanceError?.message}`);
+  }
+
+  const { data: event, error: eventError } = await adminClient
+    .from("events")
+    .select("payout_profile_id")
+    .eq("id", attendance.event_id)
+    .single();
+
+  if (eventError || !event) {
+    throw new Error(`Failed to resolve event for payout profile: ${eventError?.message}`);
+  }
+
+  return event.payout_profile_id ?? null;
+}
+
 /**
  * pending状態のテスト用決済を作成
  */
@@ -318,6 +552,7 @@ export async function createPendingTestPayment(
     method?: Database["public"]["Enums"]["payment_method_enum"];
     stripeAccountId?: string;
     applicationFeeAmount?: number;
+    payoutProfileId?: string;
   } = {}
 ): Promise<TestPaymentData> {
   const {
@@ -341,6 +576,12 @@ export async function createPendingTestPayment(
     }
   );
 
+  const resolvedPayoutProfileId =
+    method === "stripe"
+      ? (options.payoutProfileId ??
+        (await resolvePayoutProfileIdForAttendance(adminClient, attendanceId)))
+      : null;
+
   const paymentData: PaymentInsert = {
     attendance_id: attendanceId,
     amount,
@@ -348,6 +589,7 @@ export async function createPendingTestPayment(
     method,
     application_fee_amount: applicationFeeAmount,
     stripe_account_id: stripeAccountId,
+    payout_profile_id: resolvedPayoutProfileId,
     tax_included: false,
   };
 
@@ -384,6 +626,7 @@ export async function createPendingTestPayment(
     attendance_id: payment.attendance_id,
     application_fee_amount: payment.application_fee_amount,
     stripe_account_id: payment.stripe_account_id,
+    payout_profile_id: payment.payout_profile_id,
   };
 }
 
@@ -396,14 +639,16 @@ export async function createTestPaymentWithExistingAmount(
   options: {
     method?: Database["public"]["Enums"]["payment_method_enum"];
     stripeAccountId?: string;
+    payoutProfileId?: string;
   } = {}
 ): Promise<TestPaymentData> {
-  const { method = "stripe", stripeAccountId = undefined } = options;
+  const { method = "stripe", stripeAccountId = undefined, payoutProfileId = undefined } = options;
 
   return createPendingTestPayment(attendanceId, {
     amount: existingAmount,
     method,
     stripeAccountId,
+    payoutProfileId,
     applicationFeeAmount: Math.floor(existingAmount * 0.1),
   });
 }
@@ -462,9 +707,11 @@ export async function createCompleteTestScenario(scenarioName: string = "payment
     createPendingTestPayment(attendance.id, {
       amount: paidEvent.fee,
       stripeAccountId: userWithConnect.stripeConnectAccountId,
+      payoutProfileId: userWithConnect.payoutProfileId,
     }),
     createTestPaymentWithExistingAmount(attendanceForExistingAmount.id, 2000, {
       stripeAccountId: userWithConnect.stripeConnectAccountId,
+      payoutProfileId: userWithConnect.payoutProfileId,
     }),
   ]);
 
@@ -503,6 +750,8 @@ export async function cleanupTestPaymentData(dataIds: {
         "public.attendances",
         "public.events",
         "public.stripe_connect_accounts",
+        "public.payout_profiles",
+        "public.communities",
       ],
       additionalInfo: {
         testContext: "payment-test-cleanup",
@@ -533,11 +782,15 @@ export async function cleanupTestPaymentData(dataIds: {
       console.log(`✓ Deleted ${dataIds.eventIds.length} test events`);
     }
 
-    // Connect アカウントを削除
+    // Connect アカウント と コミュニティ を削除
     if (dataIds.userIds?.length) {
+      await adminClient.from("communities").delete().in("created_by", dataIds.userIds);
       await adminClient.from("stripe_connect_accounts").delete().in("user_id", dataIds.userIds);
+      await adminClient.from("payout_profiles").delete().in("owner_user_id", dataIds.userIds);
       // eslint-disable-next-line no-console
-      console.log(`✓ Deleted Stripe Connect accounts for ${dataIds.userIds.length} users`);
+      console.log(
+        `✓ Deleted Stripe Connect accounts and communities for ${dataIds.userIds.length} users`
+      );
     }
   } catch (error) {
     console.error("Error during test data cleanup:", error);
@@ -592,6 +845,7 @@ export async function createPaidStripePayment(
     stripeAccountId?: string;
     stripeBalanceTransactionFee?: number;
     paymentIntentId?: string;
+    payoutProfileId?: string;
   } = {}
 ): Promise<TestPaymentData> {
   const {
@@ -616,6 +870,10 @@ export async function createPaidStripePayment(
     }
   );
 
+  const resolvedPayoutProfileId =
+    options.payoutProfileId ??
+    (await resolvePayoutProfileIdForAttendance(adminClient, attendanceId));
+
   const paymentData: PaymentInsert = {
     attendance_id: attendanceId,
     method: "stripe",
@@ -629,6 +887,7 @@ export async function createPaidStripePayment(
     ...(stripeBalanceTransactionFee != null
       ? { stripe_balance_transaction_fee: stripeBalanceTransactionFee }
       : {}),
+    payout_profile_id: resolvedPayoutProfileId,
     tax_included: false,
   } as PaymentInsert;
 
@@ -650,6 +909,7 @@ export async function createPaidStripePayment(
     attendance_id: payment.attendance_id,
     application_fee_amount: payment.application_fee_amount,
     stripe_account_id: payment.stripe_account_id,
+    payout_profile_id: payment.payout_profile_id,
   };
 }
 
@@ -752,6 +1012,7 @@ export async function createTestPaymentWithStatus(
     status: Database["public"]["Enums"]["payment_status_enum"];
     method: Database["public"]["Enums"]["payment_method_enum"];
     stripePaymentIntentId?: string;
+    payoutProfileId?: string;
   }
 ): Promise<TestPaymentData> {
   const {
@@ -780,6 +1041,11 @@ export async function createTestPaymentWithStatus(
   );
 
   const paidAt = ["paid", "received"].includes(status) ? new Date().toISOString() : null;
+  const resolvedPayoutProfileId =
+    method === "stripe"
+      ? (options.payoutProfileId ??
+        (await resolvePayoutProfileIdForAttendance(adminClient, attendanceId)))
+      : null;
 
   const paymentData: PaymentInsert = {
     attendance_id: attendanceId,
@@ -788,6 +1054,7 @@ export async function createTestPaymentWithStatus(
     method,
     paid_at: paidAt,
     stripe_payment_intent_id: stripePaymentIntentId,
+    payout_profile_id: resolvedPayoutProfileId,
     tax_included: false,
   };
 
@@ -809,6 +1076,7 @@ export async function createTestPaymentWithStatus(
     attendance_id: payment.attendance_id,
     application_fee_amount: payment.application_fee_amount || 0,
     stripe_account_id: payment.stripe_account_id || undefined,
+    payout_profile_id: payment.payout_profile_id,
   };
 }
 
@@ -828,6 +1096,7 @@ export async function createRefundedStripePayment(
     stripeAccountId?: string;
     stripeBalanceTransactionFee?: number;
     paymentIntentId?: string;
+    payoutProfileId?: string;
   } = {}
 ): Promise<TestPaymentData> {
   const {
@@ -854,6 +1123,7 @@ export async function createRefundedStripePayment(
     ...(stripeBalanceTransactionFee != null
       ? { stripe_balance_transaction_fee: stripeBalanceTransactionFee }
       : {}),
+    payout_profile_id: options.payoutProfileId,
     tax_included: false,
   };
 
@@ -862,6 +1132,12 @@ export async function createRefundedStripePayment(
     "Create refunded payment for test",
     { accessedTables: ["public.payments"] }
   );
+
+  const resolvedPayoutProfileId =
+    options.payoutProfileId ??
+    (await resolvePayoutProfileIdForAttendance(adminClient, attendanceId));
+
+  paymentData.payout_profile_id = resolvedPayoutProfileId;
 
   const { data, error } = await adminClient
     .from("payments")
@@ -882,6 +1158,7 @@ export async function createRefundedStripePayment(
     attendance_id: paymentData.attendance_id,
     application_fee_amount: paymentData.application_fee_amount || 0,
     stripe_account_id: paymentData.stripe_account_id || undefined,
+    payout_profile_id: paymentData.payout_profile_id,
   };
 }
 
@@ -900,11 +1177,18 @@ export async function createEventForDashboardStats(
     date: string;
     fee: number;
     canceled_at?: string | null;
+    communityId?: string;
+    payoutProfileId?: string | null;
   }
 ): Promise<Database["public"]["Tables"]["events"]["Row"]> {
   const eventDate = new Date(options.date);
   const registrationDeadline = new Date(eventDate.getTime() - 12 * 60 * 60 * 1000);
   const paymentDeadline = new Date(eventDate.getTime() - 6 * 60 * 60 * 1000);
+  const communityId = options.communityId || (adminClient as any)._test_community_id;
+
+  if (!communityId) {
+    throw new Error("communityId is required for dashboard stats event fixtures");
+  }
 
   const { data: event, error } = await adminClient
     .from("events")
@@ -918,6 +1202,11 @@ export async function createEventForDashboardStats(
       payment_methods: options.fee > 0 ? ["stripe"] : [],
       canceled_at: options.canceled_at || null,
       invite_token: `test-token-${Date.now()}-${Math.random()}`,
+      community_id: communityId,
+      payout_profile_id:
+        options.fee > 0
+          ? (options.payoutProfileId ?? (adminClient as any)._test_payout_profile_id ?? null)
+          : null,
     })
     .select()
     .single();
@@ -987,7 +1276,8 @@ export async function createPaymentForDashboardStats(
   createdPaymentIds: string[],
   amount: number,
   status: "paid" | "received" | "pending" | "failed",
-  method: "stripe" | "cash"
+  method: "stripe" | "cash",
+  payoutProfileId?: string | null
 ): Promise<Database["public"]["Tables"]["payments"]["Row"]> {
   // statusが"paid"または"received"の場合はpaid_atを設定
   const paidAt = ["paid", "received"].includes(status) ? new Date().toISOString() : null;
@@ -995,6 +1285,14 @@ export async function createPaymentForDashboardStats(
   // Stripe決済の場合はstripe_payment_intent_idが必須
   const stripePaymentIntentId =
     method === "stripe" ? `pi_test_${Math.random().toString(36).substring(2, 15)}` : null;
+  const resolvedPayoutProfileId =
+    method === "stripe"
+      ? (payoutProfileId ?? (adminClient as any)._test_payout_profile_id ?? null)
+      : null;
+
+  if (method === "stripe" && !resolvedPayoutProfileId) {
+    throw new Error("payoutProfileId is required for stripe dashboard payment fixtures");
+  }
 
   const { data: payment, error } = await adminClient
     .from("payments")
@@ -1005,6 +1303,7 @@ export async function createPaymentForDashboardStats(
       method: method,
       paid_at: paidAt,
       stripe_payment_intent_id: stripePaymentIntentId,
+      payout_profile_id: resolvedPayoutProfileId,
     })
     .select()
     .single();

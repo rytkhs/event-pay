@@ -14,9 +14,9 @@ import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 type GenerateInviteTokenOptions = Parameters<typeof generateInviteTokenActionImpl>[1];
 export type GetEventParticipantsParams = Parameters<typeof getEventParticipantsActionImpl>[0];
 
-export async function getEventDetailAction(eventId: string) {
+export async function getEventDetailAction(eventId: string, currentCommunityId: string) {
   ensureFeaturesRegistered();
-  return getEventDetailActionImpl(eventId);
+  return getEventDetailActionImpl(eventId, currentCommunityId);
 }
 
 export async function getEventParticipantsAction(params: GetEventParticipantsParams) {
@@ -24,9 +24,9 @@ export async function getEventParticipantsAction(params: GetEventParticipantsPar
   return getEventParticipantsActionImpl(params);
 }
 
-export async function getEventStatsAction(eventId: string) {
+export async function getEventStatsAction(eventId: string, currentCommunityId: string) {
   ensureFeaturesRegistered();
-  return getEventStatsActionImpl(eventId);
+  return getEventStatsActionImpl(eventId, currentCommunityId);
 }
 
 export async function generateInviteTokenAction(

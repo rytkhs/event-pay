@@ -359,7 +359,10 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       grace_period_days: rpcRow.event_grace_period_days,
       registration_deadline: rpcRow.registration_deadline ?? null,
       payment_deadline: rpcRow.payment_deadline ?? null,
-      created_by: rpcRow.created_by,
+      community: {
+        name: rpcRow.community_name,
+        legalSlug: rpcRow.community_legal_slug,
+      },
       canceled_at: rpcRow.canceled_at ?? null,
     };
   }

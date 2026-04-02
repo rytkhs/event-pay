@@ -31,6 +31,8 @@ describe("Invite Token Access Control", () => {
     if (result.event) {
       expect(result.event.id).toBe(setup.testEventId);
       expect(result.event.title).toBe("Test Event for RLS");
+      expect(result.event.community.name).toBe("Test Community");
+      expect(result.event.community.legalSlug).toBe(setup.testCommunityLegalSlug);
     }
     expect(result.canRegister).toBe(true);
   });

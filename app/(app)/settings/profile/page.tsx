@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { AccountDeleteDangerZone, EmailChangeForm, ProfileForm } from "@features/settings";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 import { requestAccountDeletionAction, updateEmailAction, updateProfileAction } from "./actions";
 
@@ -12,31 +12,48 @@ export default async function ProfileSettingsPage() {
   const user = await requireCurrentAppUserForServerComponent();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       {/* 基本情報 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">基本情報</CardTitle>
-          <CardDescription>イベント作成時に表示される情報を設定します</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ProfileForm currentName={user.name || ""} updateProfileAction={updateProfileAction} />
-        </CardContent>
-      </Card>
+      <section aria-labelledby="profile-basic-heading">
+        <div className="mb-5">
+          <h2
+            id="profile-basic-heading"
+            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground"
+          >
+            <span className="inline-block h-3.5 w-0.5 rounded-full bg-primary" aria-hidden="true" />
+            基本情報
+          </h2>
+        </div>
+        <ProfileForm currentName={user.name || ""} updateProfileAction={updateProfileAction} />
+      </section>
 
-      {/* メールアドレス設定 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">メールアドレス</CardTitle>
-          <CardDescription>ログインとお知らせの受信に使用されます</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <EmailChangeForm currentEmail={user.email || ""} updateEmailAction={updateEmailAction} />
-        </CardContent>
-      </Card>
+      {/* メールアドレス */}
+      <section aria-labelledby="profile-email-heading">
+        <div className="mb-5">
+          <h2
+            id="profile-email-heading"
+            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground"
+          >
+            <span className="inline-block h-3.5 w-0.5 rounded-full bg-primary" aria-hidden="true" />
+            メールアドレス
+          </h2>
+        </div>
+        <EmailChangeForm currentEmail={user.email || ""} updateEmailAction={updateEmailAction} />
+      </section>
 
-      {/* アカウント削除（デンジャーゾーン） */}
-      <AccountDeleteDangerZone requestAccountDeletionAction={requestAccountDeletionAction} />
+      {/* 危険ゾーン区切り */}
+      <div className="flex items-center gap-4 pt-2">
+        <Separator className="flex-1" />
+        <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
+          危険な操作
+        </span>
+        <Separator className="flex-1" />
+      </div>
+
+      {/* アカウント削除 */}
+      <section aria-labelledby="profile-danger-heading" className="-mt-4">
+        <AccountDeleteDangerZone requestAccountDeletionAction={requestAccountDeletionAction} />
+      </section>
     </div>
   );
 }

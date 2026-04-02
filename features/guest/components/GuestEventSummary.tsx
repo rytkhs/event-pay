@@ -33,9 +33,12 @@ export const GuestEventSummary: React.FC<GuestEventSummaryProps> = ({ attendance
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       {/* Header / Always Visible */}
       <div className="p-5">
-        <h3 className="text-lg font-bold text-gray-900 mb-4 leading-snug">
-          {sanitizeForEventPay(event.title)}
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-lg font-bold text-gray-900 leading-snug">
+            {sanitizeForEventPay(event.title)}
+          </h1>
+          <p className="text-sm text-gray-500">作成: {sanitizeForEventPay(event.community.name)}</p>
+        </div>
 
         <div className="space-y-3">
           {/* Main Info */}

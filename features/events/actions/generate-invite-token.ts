@@ -1,8 +1,13 @@
-import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
-import { fail, ok, type ActionResult } from "@core/errors/adapters/server-actions";
+import {
+  fail,
+  ok,
+  toActionResultFromAppResult,
+  type ActionResult,
+} from "@core/errors/adapters/server-actions";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { generateInviteToken } from "@core/utils/invite-token";
 
+import { getOwnedEventActionContextForServerAction } from "../services/get-owned-event-context-for-community";
 import { generateInviteTokenEventIdSchema } from "../validation";
 
 interface GenerateInviteTokenOptions {
@@ -19,32 +24,32 @@ export async function generateInviteTokenAction(
   try {
     const validatedEventId = generateInviteTokenEventIdSchema.parse(eventId);
 
-    const user = await getCurrentUserForServerAction();
-    if (!user) {
-      return fail("UNAUTHORIZED", { userMessage: "Authentication required" });
+    const client = await createServerActionSupabaseClient();
+    const accessResult = await getOwnedEventActionContextForServerAction(client, validatedEventId);
+    if (!accessResult.success) {
+      return toActionResultFromAppResult(accessResult);
     }
 
-    const client = await createServerActionSupabaseClient();
+    const accessContext = accessResult.data;
+    if (!accessContext) {
+      return fail("INTERNAL_ERROR", { userMessage: "イベント情報の取得に失敗しました" });
+    }
 
     const { data: event, error: eventError } = await client
       .from("events")
-      .select("id, created_by")
-      .eq("id", validatedEventId)
+      .select("id")
+      .eq("id", accessContext.id)
       .single();
 
     if (eventError || !event) {
       return fail("NOT_FOUND", { userMessage: "Event not found" });
     }
 
-    if (event.created_by !== user.id) {
-      return fail("FORBIDDEN", { userMessage: "Permission denied" });
-    }
-
     if (!options.forceRegenerate) {
       const { data: existingToken } = await client
         .from("events")
         .select("invite_token")
-        .eq("id", validatedEventId)
+        .eq("id", accessContext.id)
         .single();
 
       if (existingToken?.invite_token) {
@@ -57,7 +62,7 @@ export async function generateInviteTokenAction(
     const { error: updateError } = await client
       .from("events")
       .update({ invite_token: newToken })
-      .eq("id", validatedEventId);
+      .eq("id", accessContext.id);
 
     if (updateError) {
       return fail("DATABASE_ERROR", { userMessage: "Failed to save invite token" });

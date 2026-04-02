@@ -4,7 +4,7 @@ export const NO_ACCOUNT_STATUS: DetailedAccountStatus = {
   statusType: "no_account",
   title: "決済機能を有効にしましょう",
   description:
-    "オンライン決済を有効化するために、Stripeアカウントの設定が必要です。設定は約3〜5分で完了します。",
+    "オンライン決済を有効化するには、Stripeアカウント設定が必要です。設定は約3〜5分で完了します。",
   actionText: "アカウント設定を開始",
   actionUrl: "/settings/payments",
   severity: "info",
@@ -43,7 +43,7 @@ export const DASHBOARD_SETUP_INCOMPLETE_STATUS: DetailedAccountStatus = {
   statusType: "requirements_due",
   title: "決済機能はまだ利用開始前です",
   description:
-    "Stripeアカウントの設定完了、またはStripeによる審査完了を待っている状態です。設定画面から状況を確認できます。",
+    "Stripeアカウントの設定、またはStripeによる審査完了を待っている状態です。設定画面から状況を確認できます。",
   actionText: "状況を確認",
   actionUrl: "/settings/payments",
   severity: "warning",

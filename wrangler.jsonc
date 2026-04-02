@@ -28,7 +28,7 @@
 			"pattern": "minnano-shukin.com",
 			"custom_domain": true
 		}
-  ],
+	],
 	"r2_buckets": [
 		{
 			"binding": "NEXT_INC_CACHE_R2_BUCKET",
@@ -61,9 +61,30 @@
 			"r2_buckets": [
 				{
 					"binding": "NEXT_INC_CACHE_R2_BUCKET",
-					"bucket_name": "cache",
+					"bucket_name": "cache-demo",
 				},
 			],
 		},
+		"stg": {
+			"name": "event-pay-stg",
+			"routes": [
+				{
+					"pattern": "stg.minnano-shukin.com",
+					"custom_domain": true
+				}
+			],
+			"services": [
+				{
+					"binding": "WORKER_SELF_REFERENCE",
+					"service": "event-pay-stg"
+				}
+			],
+			"r2_buckets": [
+				{
+					"binding": "NEXT_INC_CACHE_R2_BUCKET",
+					"bucket_name": "cache-stg"
+				}
+			]
+		}
 	},
 }

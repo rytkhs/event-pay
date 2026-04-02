@@ -4,7 +4,11 @@
 
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
-import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
+import {
+  getSecureClientFactory,
+  createGuestClient,
+} from "@core/security/secure-client-factory.impl";
+import { AdminReason } from "@core/security/secure-client-factory.types";
 
 import { setupRLSTest, type RLSTestSetup } from "./rls-test-setup";
 
@@ -77,5 +81,30 @@ describe("Data Isolation Verification", () => {
       expect(row.id).toBe(setup.testEventId);
       expect(row.title).toBe("Test Event for RLS");
     }
+  });
+
+  test("削除済み community に属する guest attendance は public RPC から取得できない", async () => {
+    const factory = getSecureClientFactory();
+    const admin = await factory.createAuditedAdminClient(
+      AdminReason.TEST_DATA_SETUP,
+      "soft delete community for guest attendance rpc test"
+    );
+    const guestClient = createGuestClient(setup.testGuestToken);
+
+    const { error: updateError } = await admin
+      .from("communities")
+      .update({
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+      })
+      .eq("id", setup.testCommunityId);
+
+    expect(updateError).toBeNull();
+
+    const { data: rpcRow } = await (guestClient as any)
+      .rpc("rpc_guest_get_attendance", { p_guest_token: setup.testGuestToken })
+      .single();
+
+    expect(rpcRow).toBeNull();
   });
 });

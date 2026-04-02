@@ -18,6 +18,11 @@ import { SettlementRegenerationService } from "../services/settlement-regenerati
 import { StripeObjectFetchService } from "../services/stripe-object-fetch-service";
 import type { WebhookProcessingResult } from "../types";
 import { getRefundFromWebhookEvent } from "../webhook-event-guards";
+import {
+  buildPaymentWebhookMeta,
+  getPaymentWebhookLogContext,
+  logStripeAccountSnapshotMismatch,
+} from "../webhook-payment-context";
 
 interface RefundHandlerParams {
   paymentRepository: PaymentWebhookRepository;
@@ -171,6 +176,8 @@ export class RefundHandler {
         return okResult();
       }
 
+      logStripeAccountSnapshotMismatch({ event, payment: applied.payment, logger: this.logger });
+
       if (applied.skippedByPromotionRule || !applied.targetStatus) {
         return okResult();
       }
@@ -191,6 +198,8 @@ export class RefundHandler {
           reason: "charge_refunded_update_failed",
           eventId: event.id,
           paymentId: applied.payment.id,
+          payoutProfileId: applied.payment.payout_profile_id,
+          stripeAccountId: applied.payment.stripe_account_id,
           userMessage: "返金ステータス更新に失敗しました",
           dbError: applied.updateError,
           details: {
@@ -203,7 +212,7 @@ export class RefundHandler {
 
       this.logger.info("Refund processed successfully", {
         event_id: event.id,
-        payment_id: applied.payment.id,
+        ...getPaymentWebhookLogContext(applied.payment),
         refunded_amount: applied.totalRefunded,
         application_fee_refunded_amount: applied.applicationFeeRefundedAmount,
         target_status: applied.targetStatus,
@@ -219,7 +228,10 @@ export class RefundHandler {
         }
       );
 
-      return okResult(undefined, { eventId: event.id, paymentId: applied.payment.id });
+      return okResult(
+        undefined,
+        buildPaymentWebhookMeta({ eventId: event.id, payment: applied.payment })
+      );
     } catch (error) {
       throw error instanceof Error ? error : new Error("Unknown error");
     }
@@ -260,7 +272,7 @@ export class RefundHandler {
     if (applied.payment && applied.targetStatus) {
       this.logger.info("Payment resynced from charge (refund)", {
         event_id: eventId,
-        payment_id: applied.payment.id,
+        ...getPaymentWebhookLogContext(applied.payment),
         total_refunded: applied.totalRefunded,
         target_status: applied.targetStatus,
         resync: true,
@@ -322,7 +334,7 @@ export class RefundHandler {
     if (enforcePromotion && !canPromoteStatus(payment.status as PaymentStatus, targetStatus)) {
       this.logger.info("Status promotion rule preventing update", {
         event_id: eventId,
-        payment_id: payment.id,
+        ...getPaymentWebhookLogContext(payment),
         current_status: payment.status,
         target_status: targetStatus,
         outcome: "success",

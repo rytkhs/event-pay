@@ -90,7 +90,7 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
       const isStripeAccountIdConflict =
         postgrestError.code === "23505" &&
         typeof postgrestError.details === "string" &&
-        (postgrestError.details.includes("stripe_connect_accounts_stripe_account_id_key") ||
+        (postgrestError.details.includes("payout_profiles_stripe_account_id_key") ||
           /stripe_account_id/i.test(postgrestError.details));
       if (isStripeAccountIdConflict) {
         errorType = StripeConnectErrorType.VALIDATION_ERROR;

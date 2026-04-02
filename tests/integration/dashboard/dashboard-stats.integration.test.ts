@@ -18,10 +18,11 @@
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-import { getCurrentUserForServerComponent } from "@core/auth/auth-utils";
-import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
-import { AdminReason } from "@core/security/secure-client-factory.types";
-import { createServerComponentSupabaseClient } from "@core/supabase/factory";
+import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
+import type { CurrentCommunitySummary } from "@core/community/current-community";
+import { resolveCurrentCommunityForServerAction } from "@core/community/current-community";
+import { okResult } from "@core/errors/app-result";
+import { createServerActionSupabaseClient } from "@core/supabase/factory";
 
 import {
   createCommonTestSetup,
@@ -30,6 +31,7 @@ import {
 } from "@tests/setup/common-test-setup";
 
 import { getDashboardStatsAction, getRecentEventsAction } from "@/app/(app)/events/actions";
+import { createOwnedCommunityFixture } from "@/tests/helpers/community-owner-fixtures";
 import { getFutureDateTime } from "@/tests/helpers/test-datetime";
 import {
   createEventForDashboardStats,
@@ -39,33 +41,88 @@ import {
 import { createTestUser, deleteTestUser } from "@/tests/helpers/test-user";
 
 jest.mock("@core/auth/auth-utils", () => ({
-  getCurrentUserForServerComponent: jest.fn(),
+  getCurrentUserForServerAction: jest.fn(),
 }));
 
-// createServerComponentSupabaseClientをモック
+jest.mock("@core/community/current-community", () => ({
+  resolveCurrentCommunityForServerAction: jest.fn(),
+}));
+
+// createServerActionSupabaseClientをモック
 jest.mock("@core/supabase/factory", () => ({
-  createServerComponentSupabaseClient: jest.fn(),
+  createServerActionSupabaseClient: jest.fn(),
 }));
 
 describe("ダッシュボード統計情報 統合テスト", () => {
   let setup: CommonTestSetup;
-  let mockGetCurrentUser: jest.MockedFunction<typeof getCurrentUserForServerComponent>;
-  let mockCreateServerComponentClient: jest.MockedFunction<
-    typeof createServerComponentSupabaseClient
+  let mockGetCurrentUser: jest.MockedFunction<typeof getCurrentUserForServerAction>;
+  let mockResolveCurrentCommunity: jest.MockedFunction<
+    typeof resolveCurrentCommunityForServerAction
   >;
+  let mockCreateServerActionClient: jest.MockedFunction<typeof createServerActionSupabaseClient>;
   let cleanupHelper: ReturnType<typeof createTestDataCleanupHelper>;
+  let currentCommunity: CurrentCommunitySummary | null;
+
+  function applyCurrentCommunity(summary: CurrentCommunitySummary | null) {
+    currentCommunity = summary;
+    (setup.adminClient as any)._test_community_id = summary?.id;
+
+    mockResolveCurrentCommunity.mockResolvedValue(
+      okResult({
+        currentCommunity: summary,
+        ownedCommunities: summary ? [summary] : [],
+        requestedCommunityId: summary?.id ?? null,
+        resolvedBy: summary ? "cookie" : "empty",
+      })
+    );
+  }
+
+  async function provisionCurrentCommunity(
+    options: {
+      withPayoutProfile?: boolean;
+      name?: string;
+    } = {}
+  ) {
+    const fixture = await createOwnedCommunityFixture(setup.testUser.id, options);
+
+    cleanupHelper.trackCommunity(fixture.community.id);
+
+    if (fixture.payoutProfileId) {
+      cleanupHelper.trackPayoutProfile(fixture.payoutProfileId);
+    }
+
+    (setup.adminClient as any)._test_payout_profile_id = fixture.payoutProfileId;
+
+    applyCurrentCommunity({
+      id: fixture.community.id,
+      name: fixture.community.name,
+      slug: fixture.community.slug,
+      createdAt: new Date().toISOString(),
+    });
+
+    return fixture;
+  }
 
   beforeAll(async () => {
     setup = await createCommonTestSetup({
       testName: `dashboard-stats-test-${Date.now()}`,
       withConnect: false,
-      accessedTables: ["public.payments", "public.attendances", "public.events"],
+      accessedTables: [
+        "public.payments",
+        "public.attendances",
+        "public.events",
+        "public.communities",
+        "public.payout_profiles",
+      ],
     });
-    mockGetCurrentUser = getCurrentUserForServerComponent as jest.MockedFunction<
-      typeof getCurrentUserForServerComponent
+    mockGetCurrentUser = getCurrentUserForServerAction as jest.MockedFunction<
+      typeof getCurrentUserForServerAction
     >;
-    mockCreateServerComponentClient = createServerComponentSupabaseClient as jest.MockedFunction<
-      typeof createServerComponentSupabaseClient
+    mockResolveCurrentCommunity = resolveCurrentCommunityForServerAction as jest.MockedFunction<
+      typeof resolveCurrentCommunityForServerAction
+    >;
+    mockCreateServerActionClient = createServerActionSupabaseClient as jest.MockedFunction<
+      typeof createServerActionSupabaseClient
     >;
 
     // createTestDataCleanupHelperを使用してクリーンアップ処理を標準化
@@ -73,12 +130,16 @@ describe("ダッシュボード統計情報 統合テスト", () => {
   });
 
   afterAll(async () => {
-    await setup.cleanup();
+    if (setup) {
+      await setup.cleanup();
+    }
   });
 
   // ...
 
   beforeEach(async () => {
+    currentCommunity = null;
+
     // 認証モックを再設定（共通モック設定を使用）
     mockGetCurrentUser.mockResolvedValue({
       id: setup.testUser.id,
@@ -104,20 +165,29 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       throw new Error(`Failed to sign in test user: ${error.message}`);
     }
 
-    // Server Componentがこのクライアントを使用する
-    mockCreateServerComponentClient.mockResolvedValue(authClient as any);
+    // Server Action がこのクライアントを使用する
+    mockCreateServerActionClient.mockResolvedValue(authClient as any);
+    await provisionCurrentCommunity();
   });
 
   afterEach(async () => {
-    mockGetCurrentUser.mockReset();
-    mockCreateServerComponentClient.mockReset();
+    mockGetCurrentUser?.mockReset();
+    mockResolveCurrentCommunity?.mockReset();
+    mockCreateServerActionClient?.mockReset();
+    if (setup?.adminClient) {
+      (setup.adminClient as any)._test_community_id = undefined;
+      (setup.adminClient as any)._test_payout_profile_id = undefined;
+    }
+    currentCommunity = null;
 
     // テスト間でのデータクリーンアップ（createTestDataCleanupHelperを使用）
-    try {
-      await cleanupHelper.cleanup();
-      cleanupHelper.reset();
-    } catch (error) {
-      console.warn("Inter-test cleanup failed:", error);
+    if (cleanupHelper) {
+      try {
+        await cleanupHelper.cleanup();
+        cleanupHelper.reset();
+      } catch (error) {
+        console.warn("Inter-test cleanup failed:", error);
+      }
     }
   });
 
@@ -299,6 +369,80 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data!.totalUpcomingParticipants).toBe(2);
+      }
+    });
+  });
+
+  describe("current community フィルタ", () => {
+    test("選択中コミュニティに属するイベントだけを集計する", async () => {
+      const primaryCommunity = currentCommunity;
+      const secondaryCommunity = await createOwnedCommunityFixture(setup.testUser.id, {
+        name: "secondary-community",
+      });
+
+      cleanupHelper.trackCommunity(secondaryCommunity.community.id);
+      if (secondaryCommunity.payoutProfileId) {
+        cleanupHelper.trackPayoutProfile(secondaryCommunity.payoutProfileId);
+      }
+
+      const primaryEvent = await createEventForDashboardStats(
+        setup.adminClient,
+        setup.testUser.id,
+        [],
+        {
+          title: "primary-event",
+          date: getFutureDateTime(48),
+          fee: 0,
+          communityId: primaryCommunity!.id,
+        }
+      );
+      cleanupHelper.trackEvent(primaryEvent.id);
+
+      const secondaryEvent = await createEventForDashboardStats(
+        setup.adminClient,
+        setup.testUser.id,
+        [],
+        {
+          title: "secondary-event",
+          date: getFutureDateTime(72),
+          fee: 0,
+          communityId: secondaryCommunity.community.id,
+        }
+      );
+      cleanupHelper.trackEvent(secondaryEvent.id);
+
+      const primaryAttendance = await createAttendanceForDashboardStats(
+        setup.adminClient,
+        primaryEvent.id,
+        [],
+        "attending",
+        "primary-attendee"
+      );
+      cleanupHelper.trackAttendance(primaryAttendance.id);
+
+      const secondaryAttendance = await createAttendanceForDashboardStats(
+        setup.adminClient,
+        secondaryEvent.id,
+        [],
+        "attending",
+        "secondary-attendee"
+      );
+      cleanupHelper.trackAttendance(secondaryAttendance.id);
+
+      const statsResult = await getDashboardStatsAction();
+      const recentResult = await getRecentEventsAction();
+
+      expect(statsResult.success).toBe(true);
+      expect(recentResult.success).toBe(true);
+
+      if (statsResult.success) {
+        expect(statsResult.data!.upcomingEventsCount).toBe(1);
+        expect(statsResult.data!.totalUpcomingParticipants).toBe(1);
+      }
+
+      if (recentResult.success) {
+        expect(recentResult.data!.map((event: any) => event.id)).toContain(primaryEvent.id);
+        expect(recentResult.data!.map((event: any) => event.id)).not.toContain(secondaryEvent.id);
       }
     });
   });
@@ -632,16 +776,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
           user_metadata: {},
           app_metadata: {},
         } as any);
-
-        // 新しいユーザー用のadminクライアントを設定
-        const newUserAdminClient = await createAuditedAdminClient(
-          AdminReason.TEST_DATA_SETUP,
-          "Mock Supabase client for new user test",
-          {
-            accessedTables: ["public.events", "public.attendances", "public.payments"],
-          }
-        );
-        mockCreateServerComponentClient.mockResolvedValue(newUserAdminClient as any);
+        applyCurrentCommunity(null);
 
         const statsResult = await getDashboardStatsAction();
         const recentResult = await getRecentEventsAction();
@@ -670,9 +805,6 @@ describe("ダッシュボード統計情報 統合テスト", () => {
           user_metadata: {},
           app_metadata: {},
         } as any);
-
-        // 元のadminクライアントに戻す
-        mockCreateServerComponentClient.mockResolvedValue(setup.adminClient as any);
       }
     });
 

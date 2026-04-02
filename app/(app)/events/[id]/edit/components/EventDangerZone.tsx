@@ -87,7 +87,7 @@ export function EventDangerZone({ eventId, eventTitle, eventStatus }: EventDange
       <CardHeader>
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-destructive" />
-          <CardTitle className="text-destructive">危険な操作</CardTitle>
+          <CardTitle className="text-destructive">イベントを中止する</CardTitle>
         </div>
         <CardDescription>
           以下の操作は取り消すことができません。慎重に実行してください。
@@ -141,7 +141,7 @@ export function EventDangerZone({ eventId, eventTitle, eventStatus }: EventDange
           <div className="flex-1">
             <h3 className="font-semibold text-sm mb-1">イベントを削除する</h3>
             <p className="text-sm text-muted-foreground">
-              イベントがデータベースから完全に削除されます。参加者や決済が存在するイベントは削除できません。
+              イベントがデータベースから完全に削除されます。すでに参加者や決済が存在するイベントは削除できません。
             </p>
           </div>
           <Dialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

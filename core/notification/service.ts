@@ -216,28 +216,19 @@ export class NotificationService implements INotificationService {
    */
   private async getUserInfo(userId: string): Promise<{ email: string; name?: string } | null> {
     try {
-      // usersテーブルからnameを取得
       const { data: userData, error: userError } = await this.supabase
         .from("users")
-        .select("name")
+        .select("name, email")
         .eq("id", userId)
         .single();
 
-      if (userError) {
-        return null;
-      }
-
-      // Supabase Authからemailを取得
-      const { data: authData, error: authError } =
-        await this.supabase.auth.admin.getUserById(userId);
-
-      if (authError || !authData.user?.email) {
+      if (userError || !userData?.email) {
         return null;
       }
 
       return {
-        email: authData.user.email,
-        name: userData?.name,
+        email: userData.email,
+        name: userData.name ?? undefined,
       };
     } catch (_error) {
       return null;

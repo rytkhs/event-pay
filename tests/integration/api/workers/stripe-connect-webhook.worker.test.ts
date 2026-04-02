@@ -1,3 +1,4 @@
+import { okResult } from "@core/errors";
 import { NextRequest } from "next/server";
 
 import { POST as ConnectWorkerPOST } from "../../../../app/api/workers/stripe-connect-webhook/route";
@@ -45,6 +46,7 @@ describe("/api/workers/stripe-connect-webhook (worker)", () => {
     process.env.QSTASH_NEXT_SIGNING_KEY = "test_next_key";
     mockVerify.mockResolvedValue(true);
     handleAccountUpdated.mockReset();
+    handleAccountUpdated.mockResolvedValue(okResult(undefined));
   });
 
   it("account.updated を処理してハンドラが呼ばれる", async () => {

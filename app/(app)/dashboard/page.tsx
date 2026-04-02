@@ -4,9 +4,12 @@ import Link from "next/link";
 
 import { Plus } from "lucide-react";
 
+import { resolveAppWorkspaceForServerComponent } from "@core/community/app-workspace";
+
 import { Button } from "@/components/ui/button";
 
 import { createDashboardDataResource } from "./_lib/dashboard-data";
+import { CommunityEmptyState } from "./components/CommunityEmptyState";
 import { ConnectAccountCtaWrapper } from "./components/ConnectAccountCtaWrapper";
 import { DashboardStatsCards } from "./components/DashboardStatsCards";
 import { RecentEventsList } from "./components/RecentEventsList";
@@ -19,7 +22,34 @@ import {
 import { StripeAccountCard } from "./components/StripeAccountCard";
 
 export default async function DashboardPage() {
-  const dashboardDataResource = createDashboardDataResource();
+  const workspace = await resolveAppWorkspaceForServerComponent();
+
+  if (workspace.isCommunityEmptyState) {
+    return (
+      <div className="min-h-screen bg-muted/30">
+        <div className="max-w-7xl mx-auto sm:py-6 lg:py-8 sm:px-4 lg:px-8 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] sm:pb-0">
+          <div className="flex flex-col gap-2 mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">ダッシュボード</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              コミュニティ作成後に、ここから運営状況を確認できます
+            </p>
+          </div>
+          <CommunityEmptyState />
+        </div>
+      </div>
+    );
+  }
+
+  const currentCommunity = workspace.currentCommunity;
+
+  if (!currentCommunity) {
+    return null;
+  }
+
+  const dashboardDataResource = createDashboardDataResource(
+    workspace.currentUser.id,
+    currentCommunity.id
+  );
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -29,15 +59,17 @@ export default async function DashboardPage() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">ダッシュボード</h1>
             <p className="text-muted-foreground text-sm sm:text-base">
-              イベント管理の概要を確認できます
+              {currentCommunity.name} の運営状況を確認できます
             </p>
           </div>
-          <Button asChild size="default" className="hidden sm:flex w-fit items-center gap-2">
-            <Link href="/events/create">
-              <Plus className="h-4 w-4" />
-              新しいイベント
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild size="default" className="hidden sm:flex w-fit items-center gap-2">
+              <Link href="/events/create">
+                <Plus className="h-4 w-4" />
+                新しいイベント
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* 統計カードセクション（4つのカード） */}

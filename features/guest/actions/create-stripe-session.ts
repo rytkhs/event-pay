@@ -14,8 +14,9 @@ import { guestStripeSessionInputSchema } from "../validation";
 type LatestPaymentAmount = number;
 
 type ConnectAccountRpcRow = {
+  payout_profile_id: string;
   stripe_account_id: string;
-  payouts_enabled: boolean;
+  status: string;
 };
 
 /**
@@ -163,12 +164,11 @@ export async function createGuestStripeSessionAction(
   const { data: connectAccount, error: connectError } = await guestClient
     .rpc("rpc_public_get_connect_account", {
       p_event_id: event.id,
-      p_creator_id: event.created_by,
     })
     .returns<ConnectAccountRpcRow[]>()
     .single();
 
-  if (connectError || !connectAccount) {
+  if (connectError || !connectAccount?.payout_profile_id) {
     return fail("CONNECT_ACCOUNT_NOT_FOUND", {
       userMessage:
         "オンライン決済の準備ができていません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。",
@@ -179,7 +179,7 @@ export async function createGuestStripeSessionAction(
     });
   }
 
-  if (!connectAccount.payouts_enabled) {
+  if (connectAccount.status !== "verified") {
     return fail("CONNECT_ACCOUNT_RESTRICTED", {
       userMessage:
         "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。",
@@ -201,6 +201,7 @@ export async function createGuestStripeSessionAction(
       attendanceId: attendance.id,
       amount: amountToCharge,
       eventId: event.id,
+      payoutProfileId: connectAccount.payout_profile_id,
       actorId: attendance.id,
       eventTitle: event.title,
       successUrl,

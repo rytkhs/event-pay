@@ -41,7 +41,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
           <span className="bg-primary/80 text-xs font-semibold px-2.5 py-1 rounded-full border border-primary-foreground/30">
             {statusLabel}
           </span>
-          <span className="text-primary-foreground/70 text-sm">作成者: {event.organizer_name}</span>
+          <span className="text-primary-foreground/70 text-sm">作成: {event.community.name}</span>
         </div>
         <h1 className="text-2xl font-bold leading-tight">{event.title}</h1>
       </div>

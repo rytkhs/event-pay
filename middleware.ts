@@ -9,7 +9,7 @@ import { buildCsp } from "@core/security/csp";
 import { createMiddlewareSupabaseClient } from "@core/supabase/middleware-client";
 
 const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
-const PROTECTED_PATH_PREFIXES = ["/dashboard", "/events", "/settings"] as const;
+const PROTECTED_PATH_PREFIXES = ["/dashboard", "/events", "/settings", "/communities"] as const;
 
 function getDemoAction(pathname: string): "redirect" | "allow" | "block" {
   if (DEMO_REDIRECT_PATHS.includes(pathname)) return "redirect";

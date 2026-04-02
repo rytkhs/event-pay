@@ -68,9 +68,7 @@ export default function OnboardingGuidePage() {
             <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-              設定に迷ったら
-            </h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">設定に迷ったら</h1>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
               Stripeアカウント作成時に入力する項目と設定の参考です。
               スムーズなオンボーディングのために、以下のガイドを参考にしてください。
@@ -160,21 +158,10 @@ export default function OnboardingGuidePage() {
                     ウェブサイト
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 text-sm text-muted-foreground">
-                  <div className="space-y-2">
-                    <p className="font-semibold text-foreground">ウェブサイトをお持ちの場合</p>
-                    <p>団体の公式サイトや活動内容を紹介するページのURLを入力してください。</p>
-                    <div className="bg-muted p-2 rounded flex items-center gap-2 group cursor-default">
-                      <code className="text-xs truncate">https://example.com</code>
-                    </div>
-                  </div>
-                  <div className="pt-2 space-y-2 border-t border-border/50">
-                    <p className="font-semibold text-foreground">お持ちでない場合</p>
-                    <p>SNSアカウント（X, Instagram, Facebook等）のURLで問題ありません。</p>
-                    <div className="bg-muted p-2 rounded flex items-center gap-2 group cursor-default">
-                      <code className="text-xs truncate">https://x.com/your_account</code>
-                    </div>
-                  </div>
+                <CardContent className="text-sm text-muted-foreground leading-relaxed">
+                  <p>
+                    みんなの集金で公開しているコミュニティプロフィールのURLが自動入力されているので、そのまま次の項目に進んでください。
+                  </p>
                 </CardContent>
               </Card>
 
@@ -188,10 +175,10 @@ export default function OnboardingGuidePage() {
                 <CardContent className="space-y-3 text-sm text-muted-foreground">
                   <p>どのようなイベントの参加費を受け取るのかを説明する項目です。</p>
                   <p className="p-3 bg-secondary/5 border border-secondary/20 rounded-lg italic leading-relaxed">
-                    「イベントを運営しています。イベントの参加者が参加費を支払う際、イベント管理プラットフォームのみんなの集金を使って参加費が決済されます。」
+                    「イベントを企画・運営しています。イベント管理プラットフォームの「みんなの集金」のシステムを利用して、イベント開催時の参加費や会費の事前決済を行います。」
                   </p>
                   <p className="text-xs">
-                    ※あらかじめ入力されていますが、ご自身の活動内容に合わせて自由に編集・追記して問題ありません。
+                    ※あらかじめ入力されていますが、ご自身の活動内容に合わせて自由に編集・追記してください。
                   </p>
                 </CardContent>
               </Card>
@@ -249,7 +236,7 @@ export default function OnboardingGuidePage() {
               className="group flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
             >
               <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-              決済設定に戻る
+              Stripe アカウント設定に戻る
             </Link>
           </div>
         </div>

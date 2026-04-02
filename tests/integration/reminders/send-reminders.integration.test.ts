@@ -49,7 +49,7 @@ describe("リマインダー送信 統合テスト", () => {
   beforeAll(async () => {
     setup = await createCommonTestSetup({
       testName: `send-reminders-test-${Date.now()}`,
-      withConnect: false,
+      withConnect: true,
       accessedTables: ["public.payments", "public.attendances", "public.events"],
     });
 

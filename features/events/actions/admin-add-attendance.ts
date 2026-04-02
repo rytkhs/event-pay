@@ -1,7 +1,12 @@
 import { z } from "zod";
 
-import { verifyEventAccess } from "@core/auth/event-authorization";
-import { type ActionResult, fail, ok, zodFail } from "@core/errors/adapters/server-actions";
+import {
+  type ActionResult,
+  fail,
+  ok,
+  toActionResultFromAppResult,
+  zodFail,
+} from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { logAttendance } from "@core/logging/system-logger";
 import { getPaymentPort } from "@core/ports/payments";
@@ -18,6 +23,8 @@ import {
   type PaymentEligibilityAttendance,
   type PaymentEligibilityEvent,
 } from "@core/validation/payment-eligibility";
+
+import { getOwnedEventActionContextForServerAction } from "../services/get-owned-event-context-for-community";
 
 /**
  * 主催者が手動で参加者を追加する（締切制約なし、定員は上書き可能）
@@ -38,24 +45,35 @@ export async function adminAddAttendanceAction(
     const { eventId, nickname, status, bypassCapacity, paymentMethod } =
       AdminAddAttendanceInputSchema.parse(input);
 
-    // 認証・主催者権限確認（イベント所有者）
-    const { user } = await verifyEventAccess(eventId);
-
     // 認証済みクライアント（RLSポリシーベースのアクセス制御）
     const authenticatedClient = await createServerActionSupabaseClient();
+    const accessResult = await getOwnedEventActionContextForServerAction(
+      authenticatedClient,
+      eventId
+    );
+    if (!accessResult.success) {
+      return toActionResultFromAppResult(accessResult);
+    }
+
+    const accessContext = accessResult.data;
+    if (!accessContext) {
+      return fail("INTERNAL_ERROR", { userMessage: "イベント情報の取得に失敗しました" });
+    }
+
+    const { user, id: validatedEventId } = accessContext;
 
     // ゲストトークン生成
     const guestToken = generateGuestToken();
 
     // プレースホルダーメール生成（MVP: emailは未収集）
-    const placeholderEmail = `noemail+${guestToken.substring(4, 12)}.${eventId.substring(0, 8)}@guest.eventpay.local`;
+    const placeholderEmail = `noemail+${guestToken.substring(4, 12)}.${validatedEventId.substring(0, 8)}@guest.eventpay.local`;
 
     // 専用RPC関数で参加者を追加（排他ロック付き定員チェック）
     let attendanceId: string;
     try {
       const { data: rpcResult, error: rpcError } = await authenticatedClient
         .rpc("admin_add_attendance_with_capacity_check", {
-          p_event_id: eventId,
+          p_event_id: validatedEventId,
           p_nickname: nickname,
           p_email: placeholderEmail,
           p_status: status,
@@ -100,9 +118,9 @@ export async function adminAddAttendanceAction(
     const { data: eventRow, error: eventErr } = await authenticatedClient
       .from("events")
       .select(
-        `id, created_by, date, fee, payment_deadline, allow_payment_after_deadline, grace_period_days, canceled_at`
+        `id, date, fee, payment_deadline, allow_payment_after_deadline, grace_period_days, canceled_at`
       )
-      .eq("id", eventId)
+      .eq("id", validatedEventId)
       .single();
 
     if (eventErr || !eventRow) {
@@ -129,7 +147,7 @@ export async function adminAddAttendanceAction(
 
         paymentId = result.paymentId;
       } catch (error) {
-        // 参加者レコードを削除してロールバック（RLSポリシーで制御）
+        // Attendance rollback intentionally uses the owner-scoped client and owner DELETE policy.
         await authenticatedClient.from("attendances").delete().eq("id", attendanceId);
 
         // PaymentErrorの場合は適切なエラーコードを返す
@@ -170,7 +188,7 @@ export async function adminAddAttendanceAction(
       category: "attendance",
       action: "admin_add",
       actor_type: "user",
-      event_id: eventId,
+      event_id: validatedEventId,
       attendance_id: attendanceId,
       actor_id: user.id,
       bypass_capacity: bypassCapacity,
@@ -191,7 +209,7 @@ export async function adminAddAttendanceAction(
       resource_id: attendanceId,
       outcome: "success",
       metadata: {
-        event_id: eventId,
+        event_id: validatedEventId,
         nickname,
         email: placeholderEmail.toLowerCase(),
         status,

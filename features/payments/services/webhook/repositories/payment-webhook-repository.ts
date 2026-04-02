@@ -91,6 +91,8 @@ const PAYMENT_WEBHOOK_READ_COLUMNS = [
   "status",
   "amount",
   "attendance_id",
+  "payout_profile_id",
+  "stripe_account_id",
   "stripe_payment_intent_id",
   "stripe_charge_id",
   "stripe_checkout_session_id",
