@@ -36,21 +36,15 @@ export const navigationConfig: NavigationConfig = {
    */
   app: [
     {
-      label: "ダッシュボード",
+      label: "ホーム",
       href: "/dashboard",
       icon: createElement(Home),
       exactMatch: false,
     },
     {
-      label: "イベント一覧",
+      label: "イベント",
       href: "/events",
       icon: createElement(Calendar),
-      exactMatch: false,
-    },
-    {
-      label: "設定",
-      href: "/settings",
-      icon: createElement(Settings),
       exactMatch: false,
     },
   ],
@@ -102,19 +96,3 @@ export const marketingCTA = {
   href: "/register",
   variant: "default" as const,
 };
-
-/**
- * ユーザーメニューの設定
- */
-export const userMenuItems = [
-  // {
-  //   label: "精算レポート",
-  //   href: "/dashboard/settlement-reports",
-  //   icon: createElement(FileText),
-  // },
-  {
-    label: "設定",
-    href: "/settings",
-    icon: createElement(Settings),
-  },
-] as const;

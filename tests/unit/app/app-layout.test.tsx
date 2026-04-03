@@ -28,11 +28,11 @@ jest.mock("@components/layout/AppSidebar", () => ({
 }));
 
 jest.mock("@components/layout/Header", () => ({
-  Header: ({ workspace }: { workspace: unknown }) => (
-    <div data-testid="header">
-      <span data-testid="header-workspace">{JSON.stringify(workspace)}</span>
-    </div>
-  ),
+  Header: () => <div data-testid="header" />,
+}));
+
+jest.mock("@components/layout/MobileAppChrome", () => ({
+  MobileAppChrome: () => <div data-testid="mobile-app-chrome" />,
 }));
 
 jest.mock("@/app/(auth)/actions", () => ({
@@ -57,7 +57,7 @@ describe("AppLayout", () => {
     jest.clearAllMocks();
   });
 
-  it("workspace loader を 1 回呼び、Header と AppSidebar に同じ shell data を渡す", async () => {
+  it("workspace loader を 1 回呼び、AppSidebar に shell data を渡す", async () => {
     const workspace = {
       currentUser: {
         id: "user-1",
@@ -104,6 +104,5 @@ describe("AppLayout", () => {
     expect(screen.getByTestId("app-sidebar-workspace")).toHaveTextContent(
       JSON.stringify(shellData)
     );
-    expect(screen.getByTestId("header-workspace")).toHaveTextContent(JSON.stringify(shellData));
   });
 });

@@ -1,25 +1,12 @@
 /** @jest-environment jsdom */
 
-import React from "react";
-
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { usePathname, useSearchParams } from "next/navigation";
 
-jest.mock("next/link", () => ({
-  __esModule: true,
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
-}));
-
-jest.mock("@/components/ui/button", () => ({
-  Button: ({
-    children,
-    asChild: _asChild,
-    ...props
-  }: React.ButtonHTMLAttributes<HTMLButtonElement> & { asChild?: boolean }) => (
-    <button {...props}>{children}</button>
-  ),
+jest.mock("next/navigation", () => ({
+  usePathname: jest.fn(),
+  useSearchParams: jest.fn(),
 }));
 
 jest.mock("@/components/ui/separator", () => ({
@@ -33,47 +20,23 @@ jest.mock("@/components/ui/sidebar", () => ({
 describe("Header", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (usePathname as jest.Mock).mockReturnValue("/settings/profile");
+    (useSearchParams as jest.Mock).mockReturnValue(new URLSearchParams());
   });
 
-  it("current community 名を表示する", async () => {
+  it("desktop header に現在ページタイトルを表示する", async () => {
     const { Header } = await import("@/components/layout/Header");
 
-    render(
-      <Header
-        workspace={{
-          currentCommunity: {
-            id: "community-1",
-            name: "ボドゲ会",
-            slug: "board-games",
-            createdAt: "2026-03-01T00:00:00.000Z",
-          },
-          ownedCommunities: [],
-          hasOwnedCommunities: true,
-          isCommunityEmptyState: false,
-        }}
-      />
-    );
+    render(<Header />);
 
-    expect(screen.getByText("現在のコミュニティ")).toBeInTheDocument();
-    const badge = screen.getByText("ボドゲ会");
-    expect(badge).toBeInTheDocument();
-    expect(badge.closest("a")).toHaveAttribute("href", "/settings/community");
+    expect(screen.getByRole("heading", { level: 1, name: "アカウント" })).toBeInTheDocument();
   });
 
-  it("コミュニティ未作成時に『未設定』を表示する", async () => {
+  it("sidebar toggle を表示する", async () => {
     const { Header } = await import("@/components/layout/Header");
 
-    render(
-      <Header
-        workspace={{
-          currentCommunity: null,
-          ownedCommunities: [],
-          hasOwnedCommunities: false,
-          isCommunityEmptyState: true,
-        }}
-      />
-    );
+    render(<Header />);
 
-    expect(screen.getByText("未設定")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "toggle" })).toBeInTheDocument();
   });
 });

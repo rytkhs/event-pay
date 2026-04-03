@@ -47,7 +47,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           {communityAnnouncement.shouldShow ? (
             <CommunityAnnouncementBanner userName={workspace.currentUser.name} />
           ) : null}
-          <Header workspace={workspaceShell} />
+          <Header />
           <MobileAppChrome
             user={workspace.currentUser}
             workspace={workspaceShell}
