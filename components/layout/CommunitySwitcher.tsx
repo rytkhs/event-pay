@@ -12,6 +12,7 @@ import type { AppWorkspaceShellData } from "@core/community/app-workspace";
 import { useToast } from "@core/contexts/toast-context";
 
 import { updateCurrentCommunityAction } from "@/app/(app)/actions/current-community";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,9 +25,10 @@ import { SidebarMenuButton } from "@/components/ui/sidebar";
 
 type CommunitySwitcherProps = {
   workspace: AppWorkspaceShellData;
+  variant?: "sidebar" | "compact";
 };
 
-export function CommunitySwitcher({ workspace }: CommunitySwitcherProps) {
+export function CommunitySwitcher({ workspace, variant = "sidebar" }: CommunitySwitcherProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -52,31 +54,49 @@ export function CommunitySwitcher({ workspace }: CommunitySwitcherProps) {
   };
 
   const name = workspace.currentCommunity?.name ?? "コミュニティを選択";
+  const isSidebarVariant = variant === "sidebar";
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <SidebarMenuButton
-          size="lg"
-          className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-          disabled={isPending}
-        >
-          <Image src="/icon.svg" width={24} height={24} alt="Minshu" className="size-6" />
-          <div className="grid flex-1 text-left text-sm leading-tight">
-            <span className="truncate font-semibold">
-              {workspace.hasOwnedCommunities ? name : "コミュニティ未作成"}
-            </span>
-          </div>
-          {isPending ? (
-            <Loader2 className="ml-auto size-4 animate-spin" />
-          ) : (
-            <ChevronsUpDown className="ml-auto size-4" />
-          )}
-        </SidebarMenuButton>
+        {isSidebarVariant ? (
+          <SidebarMenuButton
+            size="lg"
+            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            disabled={isPending}
+          >
+            <Image src="/icon.svg" width={24} height={24} alt="Minshu" className="size-6" />
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate font-semibold">
+                {workspace.hasOwnedCommunities ? name : "コミュニティ未作成"}
+              </span>
+            </div>
+            {isPending ? (
+              <Loader2 className="ml-auto size-4 animate-spin" />
+            ) : (
+              <ChevronsUpDown className="ml-auto size-4" />
+            )}
+          </SidebarMenuButton>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isPending}
+            className="h-9 max-w-[10rem] gap-2 rounded-full border-border/70 bg-background/80 px-3 text-xs font-medium shadow-sm"
+          >
+            <span className="truncate">{workspace.hasOwnedCommunities ? name : "未作成"}</span>
+            {isPending ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+            )}
+          </Button>
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-        align="start"
+        align={isSidebarVariant ? "start" : "end"}
         side="bottom"
         sideOffset={4}
       >

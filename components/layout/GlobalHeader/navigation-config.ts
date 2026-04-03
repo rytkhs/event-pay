@@ -56,14 +56,31 @@ export const navigationConfig: NavigationConfig = {
   ],
 
   /**
-   * モバイル専用ナビゲーション
-   * ハンバーガーメニューでのみ使用される追加項目
+   * モバイルの主要タブナビゲーション
    */
-  mobile: [
+  mobileTabs: [
     {
-      label: "新規イベント作成",
+      label: "ホーム",
+      href: "/dashboard",
+      icon: createElement(Home),
+      exactMatch: false,
+    },
+    {
+      label: "イベント",
+      href: "/events",
+      icon: createElement(Calendar),
+      exactMatch: false,
+    },
+    {
+      label: "作成",
       href: "/events/create",
       icon: createElement(Plus),
+      exactMatch: false,
+    },
+    {
+      label: "設定",
+      href: "/settings",
+      icon: createElement(Settings),
       exactMatch: false,
     },
   ],

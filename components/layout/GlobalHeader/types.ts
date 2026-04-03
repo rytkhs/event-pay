@@ -82,8 +82,8 @@ export interface NavigationConfig {
   marketing: NavItem[];
   /** アプリケーションナビゲーション */
   app: NavItem[];
-  /** モバイル専用ナビゲーション（ハンバーガーメニューのみ） */
-  mobile: NavItem[];
+  /** モバイルの主要タブナビゲーション */
+  mobileTabs: NavItem[];
   /** ゲストナビゲーション */
   guest: NavItem[];
 }

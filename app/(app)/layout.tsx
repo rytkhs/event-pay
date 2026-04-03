@@ -10,6 +10,8 @@ import { DemoBanner } from "@features/demo";
 
 import { AppSidebar } from "@components/layout/AppSidebar";
 import { Header } from "@components/layout/Header";
+import { MobileChromeProvider } from "@components/layout/mobile-chrome-context";
+import { MobileAppChrome } from "@components/layout/MobileAppChrome";
 
 import { logoutAction } from "@/app/(auth)/actions";
 import { createExpressDashboardLoginLinkAction } from "@/app/_actions/stripe-connect/actions";
@@ -33,20 +35,30 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
-      <AppSidebar
-        user={workspace.currentUser}
-        workspace={workspaceShell}
-        logoutAction={logoutAction}
-        createExpressDashboardLoginLinkAction={createExpressDashboardLoginLinkAction}
-      />
-      <SidebarInset>
-        <DemoBanner />
-        {communityAnnouncement.shouldShow ? (
-          <CommunityAnnouncementBanner userName={workspace.currentUser.name} />
-        ) : null}
-        <Header workspace={workspaceShell} />
-        <main className="flex-1 flex flex-col p-2 sm:p-4 w-full max-w-7xl mx-auto">{children}</main>
-      </SidebarInset>
+      <MobileChromeProvider>
+        <AppSidebar
+          user={workspace.currentUser}
+          workspace={workspaceShell}
+          logoutAction={logoutAction}
+          createExpressDashboardLoginLinkAction={createExpressDashboardLoginLinkAction}
+        />
+        <SidebarInset>
+          <DemoBanner />
+          {communityAnnouncement.shouldShow ? (
+            <CommunityAnnouncementBanner userName={workspace.currentUser.name} />
+          ) : null}
+          <Header workspace={workspaceShell} />
+          <MobileAppChrome
+            user={workspace.currentUser}
+            workspace={workspaceShell}
+            logoutAction={logoutAction}
+            createExpressDashboardLoginLinkAction={createExpressDashboardLoginLinkAction}
+          />
+          <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col p-2 pb-[calc(var(--app-mobile-tabbar-height)+env(safe-area-inset-bottom))] sm:p-4 md:pb-4">
+            {children}
+          </main>
+        </SidebarInset>
+      </MobileChromeProvider>
     </SidebarProvider>
   );
 }

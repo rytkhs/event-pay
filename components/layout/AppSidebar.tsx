@@ -100,6 +100,10 @@ export function AppSidebar({
   const userInitial = userName[0]?.toUpperCase() || "U";
   const userEmail = user?.email || "";
 
+  if (isMobile) {
+    return null;
+  }
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>

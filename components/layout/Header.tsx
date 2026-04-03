@@ -13,7 +13,7 @@ type HeaderProps = {
 
 export function Header({ workspace }: HeaderProps) {
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 bg-background z-20 sticky top-0">
+    <header className="sticky top-0 z-20 hidden h-12 shrink-0 items-center gap-2 border-b bg-background px-4 md:flex">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="h-4" />

@@ -2,6 +2,7 @@
 
 import { Check, Shield, X } from "lucide-react";
 
+import { useMobileBottomOverlay } from "@/components/layout/mobile-chrome-context";
 import { cn } from "@/components/ui/_lib/cn";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +23,8 @@ export function BulkActionBar({
   onClearSelection,
   isProcessing,
 }: BulkActionBarProps) {
+  useMobileBottomOverlay(selectedCount > 0);
+
   if (selectedCount === 0) {
     return null;
   }
