@@ -36,14 +36,14 @@
     --input: 217 32% 89%; /* 入力フィールド枠線 */
     --ring: 186 67% 43%; /* フォーカスリング（ターコイズティール） */
     --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 210 33% 98%;
+    --sidebar-foreground: 221 49% 18%;
+    --sidebar-primary: 186 67% 38%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 186 40% 94%;
+    --sidebar-accent-foreground: 186 67% 30%;
+    --sidebar-border: 210 30% 90%;
+    --sidebar-ring: 186 67% 43%;
     --app-mobile-header-height: 3.5rem;
     --app-mobile-tabbar-height: 5.5rem;
   }
@@ -68,14 +68,14 @@
     --border: 221 39% 25%; /* ダークモードの枠線 */
     --input: 221 39% 25%; /* ダークモードの入力フィールド */
     --ring: 186 67% 50%; /* フォーカスリング */
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 221 55% 9%;
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 186 67% 50%;
+    --sidebar-primary-foreground: 221 55% 9%;
+    --sidebar-accent: 221 45% 14%;
+    --sidebar-accent-foreground: 186 67% 60%;
+    --sidebar-border: 221 35% 18%;
+    --sidebar-ring: 186 67% 50%;
   }
 }
 

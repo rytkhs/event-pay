@@ -58,7 +58,8 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="border-b border-sidebar-border/70 px-2 pb-3 pt-3">
+      {/* ヘッダー: コミュニティスイッチャー */}
+      <SidebarHeader className="border-b border-sidebar-border/60 px-2 pb-3 pt-3">
         <SidebarMenu>
           <SidebarMenuItem>
             <CommunitySwitcher
@@ -71,10 +72,11 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent className="gap-5 px-2 py-4">
+      <SidebarContent className="px-2 py-4">
+        {/* メインナビゲーション */}
         <SidebarGroup className="py-0">
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-0.5">
               {navigationConfig.app.map((item) => {
                 const isActive =
                   pathname === item.href ||
@@ -85,9 +87,29 @@ export function AppSidebar({
 
                 return (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.label}
+                      className={[
+                        "relative h-9 rounded-lg text-[13px] font-medium transition-all duration-150",
+                        "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/60",
+                        "group-data-[collapsible=icon]:justify-center",
+                        isActive
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent font-semibold before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-4 before:w-0.5 before:rounded-full before:bg-sidebar-primary"
+                          : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
                       <Link href={item.href}>
-                        {item.icon}
+                        <span
+                          className={
+                            isActive ? "text-sidebar-primary" : "text-sidebar-foreground/50"
+                          }
+                        >
+                          {item.icon}
+                        </span>
                         <span>{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
@@ -98,6 +120,10 @@ export function AppSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
 
+        {/* 区切り線 */}
+        <div className="mx-1 my-3 h-px bg-sidebar-border/50 group-data-[collapsible=icon]:hidden" />
+
+        {/* イベント作成ボタン */}
         <SidebarGroup className="py-0">
           <SidebarGroupContent>
             <SidebarMenu>
@@ -106,10 +132,20 @@ export function AppSidebar({
                   asChild
                   isActive={pathname === "/events/create"}
                   tooltip="新しいイベントを作成"
-                  className="h-10 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/70 text-sidebar-foreground shadow-sm hover:bg-sidebar-accent hover:text-sidebar-foreground data-[active=true]:border-sidebar-primary/40 data-[active=true]:bg-sidebar-primary/12 data-[active=true]:text-sidebar-foreground"
+                  className={[
+                    "h-9 rounded-lg text-[13px] font-semibold transition-all duration-150",
+                    "border border-sidebar-primary/30 bg-gradient-to-r from-sidebar-primary/15 to-sidebar-primary/5",
+                    "text-sidebar-primary hover:from-sidebar-primary/25 hover:to-sidebar-primary/10 hover:border-sidebar-primary/50",
+                    "shadow-sm hover:shadow",
+                    pathname === "/events/create"
+                      ? "from-sidebar-primary/30 to-sidebar-primary/15 border-sidebar-primary/50"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                 >
                   <Link href="/events/create">
-                    <Plus />
+                    <Plus className="size-4" />
                     <span>新しいイベントを作成</span>
                   </Link>
                 </SidebarMenuButton>
