@@ -14,28 +14,38 @@ export function CommunityAnnouncementBanner({ userName }: CommunityAnnouncementB
 
   return (
     <section className="border-b bg-primary/5">
-      <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-2">
-        <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
-        <p className="min-w-0 flex-1 truncate text-sm text-foreground">
-          あなたのイベントは <span className="font-semibold">「{defaultCommunityName}」</span>{" "}
-          にまとめられました
-        </p>
-        <div className="flex shrink-0 items-center gap-1">
-          <Button asChild size="sm" variant="outline" className="h-7 text-xs">
-            <Link href="/settings/community">設定を確認</Link>
-          </Button>
-          <form action={dismissCommunityAnnouncementAction}>
-            <Button
-              size="icon"
-              type="submit"
-              variant="ghost"
-              className="h-7 w-7"
-              aria-label="閉じる"
-            >
-              <X className="h-3.5 w-3.5" />
+      <div className="mx-auto flex max-w-7xl items-start gap-3 px-4 py-3 sm:items-center sm:gap-4 sm:py-2.5">
+        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary sm:mt-0" aria-hidden="true" />
+
+        <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+          <div className="flex flex-col gap-1 sm:gap-0.5">
+            <p className="text-sm font-semibold text-foreground">
+              新機能「コミュニティ切り替え」が利用できます
+            </p>
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              あなたのイベントは{" "}
+              <span className="font-medium text-primary">「{defaultCommunityName}」</span>{" "}
+              にまとめられました。コミュニティ名は設定から変更できます。
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center">
+            <Button asChild size="sm" variant="outline" className="h-8 px-3 text-xs font-medium">
+              <Link href="/settings/community">設定を確認</Link>
             </Button>
-          </form>
+          </div>
         </div>
+
+        <form action={dismissCommunityAnnouncementAction} className="shrink-0">
+          <Button
+            size="icon"
+            type="submit"
+            variant="ghost"
+            className="-mr-1.5 h-7 w-7 text-muted-foreground hover:text-foreground"
+            aria-label="閉じる"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </form>
       </div>
     </section>
   );
