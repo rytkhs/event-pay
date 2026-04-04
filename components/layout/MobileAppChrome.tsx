@@ -13,7 +13,7 @@ import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { navigationConfig } from "@/components/layout/GlobalHeader/navigation-config";
 import { cn } from "@/components/ui/_lib/cn";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 import { useMobileChrome } from "./mobile-chrome-context";
 import { isMobileTabActive, resolveMobilePageConfig } from "./mobile-navigation";
@@ -147,9 +147,9 @@ export function MobileAppChrome({
           side="bottom"
           className="rounded-t-3xl border-border/70 px-0 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-6 md:hidden"
         >
-          {/* <SheetHeader className="px-5 text-left">
+          <SheetHeader className="sr-only">
             <SheetTitle>メニュー</SheetTitle>
-          </SheetHeader> */}
+          </SheetHeader>
 
           <div className="mt-5 space-y-5 px-5">
             <section className="space-y-2">
