@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Check, CreditCard, ExternalLink, Loader2, LogOut, Menu, Plus } from "lucide-react";
+import { Check, CreditCard, ExternalLink, Loader2, LogOut, SquareMenu, Plus } from "lucide-react";
 
 import type { AppWorkspaceShellData } from "@core/community/app-workspace";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
@@ -89,7 +89,7 @@ export function MobileAppChrome({
               aria-label="メニュー"
               onClick={() => setIsMoreOpen(true)}
             >
-              <Menu className="h-4 w-4" />
+              <SquareMenu className="h-4 w-4" />
             </Button>
           </div>
         </div>

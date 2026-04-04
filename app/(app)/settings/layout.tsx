@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Building2, ChevronLeft, CreditCard, Shield, User } from "lucide-react";
+import { Building2, CreditCard, Shield, User } from "lucide-react";
 
 interface SettingsLayoutProps {
   children: React.ReactNode;
@@ -88,17 +88,6 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-2">
-      {/* 戻るボタン */}
-      <div className="mb-5">
-        <Link
-          href="/settings"
-          className="group inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-          設定に戻る
-        </Link>
-      </div>
-
       {/* ページヘッダー */}
       {currentPage && (
         <div className="mb-8 border-b border-border/60 pb-6">
