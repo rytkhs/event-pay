@@ -56,7 +56,7 @@ export const EventList = memo(function EventList({ events, isFiltered = false }:
   }
 
   return (
-    <div data-testid="event-grid" className="divide-y divide-border/60">
+    <div data-testid="event-grid" className="divide-y divide-border/40 bg-background/50">
       {events.map((event) => (
         <EventCard key={event.id} event={event} />
       ))}
