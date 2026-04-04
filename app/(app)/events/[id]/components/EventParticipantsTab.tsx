@@ -77,7 +77,7 @@ export function EventParticipantsTab({
     <div className="max-w-7xl mx-auto px-2 py-2">
       <div className="flex flex-col gap-3">
         {/* スティッキーヘッダーグループ: アクションバー + ステータスタブ */}
-        <div className="sticky top-[calc(var(--app-mobile-header-height)+var(--event-management-tabbar-height))] z-10 -mx-2 flex flex-col gap-3 border-b border-border/40 bg-background/95 px-2 pb-3 pt-1 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="sticky top-[calc(var(--app-mobile-header-height)+var(--event-management-tabbar-height))] z-10 -mx-2 flex flex-col gap-3 border-b border-border/40 bg-background/95 px-2 pb-3 pt-1 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:top-[calc(3.5rem+var(--event-management-tabbar-height))]">
           {/* アクションバー + フィルターSheet */}
           <ParticipantsActionBarV2
             eventId={eventId}

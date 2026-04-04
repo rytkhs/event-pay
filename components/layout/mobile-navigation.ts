@@ -1,7 +1,3 @@
-import type { ReadonlyURLSearchParams } from "next/navigation";
-
-type SearchParamsLike = Pick<URLSearchParams, "get"> | ReadonlyURLSearchParams;
-
 export type MobilePrimaryNav = "dashboard" | "events" | "create" | "settings";
 
 export type MobilePageConfig = {
@@ -25,10 +21,7 @@ function createConfig(
   };
 }
 
-export function resolveMobilePageConfig(
-  pathname: string,
-  searchParams?: SearchParamsLike | null
-): MobilePageConfig {
+export function resolveMobilePageConfig(pathname: string): MobilePageConfig {
   if (pathname === "/dashboard") {
     return createConfig("ホーム", "dashboard");
   }
@@ -55,12 +48,7 @@ export function resolveMobilePageConfig(
   }
 
   if (/^\/events\/[^/]+$/.test(pathname)) {
-    const tab = searchParams?.get("tab");
-    return createConfig(
-      tab === "participants" ? "参加者管理" : "イベント詳細",
-      "events",
-      "/events"
-    );
+    return createConfig("イベント詳細", "events", "/events");
   }
 
   if (pathname === "/settings") {

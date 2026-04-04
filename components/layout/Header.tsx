@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -11,11 +11,7 @@ import { resolveMobilePageConfig } from "./mobile-navigation";
 
 export function Header() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const pageConfig = useMemo(
-    () => resolveMobilePageConfig(pathname, searchParams),
-    [pathname, searchParams]
-  );
+  const pageConfig = useMemo(() => resolveMobilePageConfig(pathname), [pathname]);
 
   return (
     <header className="sticky top-0 z-20 hidden h-14 shrink-0 items-center border-b border-border/50 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/90 md:flex">

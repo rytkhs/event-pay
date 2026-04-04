@@ -138,7 +138,7 @@ function SinglePageEventForm({
   );
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 mb-4">
+    <div className="w-full max-w-7xl mx-auto p-4 mb-32">
       {/* Header */}
       <header className="mb-6">
         <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">

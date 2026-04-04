@@ -73,12 +73,10 @@ export function useWorkspaceMenuActions({
   );
 
   const handleStripeDashboard = useCallback(() => {
-    closeMenu();
-
     startStripeTransition(async () => {
       await createExpressDashboardLoginLinkAction();
     });
-  }, [closeMenu, createExpressDashboardLoginLinkAction]);
+  }, [createExpressDashboardLoginLinkAction]);
 
   const handleLogout = useCallback(() => {
     resetLogoutError();

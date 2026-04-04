@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { Check, CreditCard, ExternalLink, Loader2, LogOut, Menu, Plus } from "lucide-react";
 
@@ -32,11 +32,7 @@ export function MobileAppChrome({
   createExpressDashboardLoginLinkAction,
 }: MobileAppChromeProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const pageConfig = useMemo(
-    () => resolveMobilePageConfig(pathname, searchParams),
-    [pathname, searchParams]
-  );
+  const pageConfig = useMemo(() => resolveMobilePageConfig(pathname), [pathname]);
   const isKeyboardOpen = useMobileKeyboardOpen();
   const { isBottomOverlayOpen } = useMobileChrome();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
