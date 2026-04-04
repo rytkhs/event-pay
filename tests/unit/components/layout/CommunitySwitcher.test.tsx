@@ -114,16 +114,10 @@ describe("CommunitySwitcher", () => {
     isCommunityEmptyState: false,
   };
 
-  const baseUser = {
-    name: "Taro",
-    email: "taro@example.com",
-  };
-
   const renderWithProvider = () =>
     render(
       <SidebarProvider>
         <CommunitySwitcher
-          user={baseUser}
           workspace={baseWorkspace}
           logoutAction={logoutAction}
           createExpressDashboardLoginLinkAction={createExpressDashboardLoginLinkAction}
@@ -142,14 +136,14 @@ describe("CommunitySwitcher", () => {
 
     const button = screen.getAllByRole("button")[0];
     expect(button).toHaveTextContent(/Community 1/i);
-    expect(button).toHaveTextContent(/設定・Stripe・ログアウト/i);
+    expect(button).toHaveTextContent(/コミュニティ/i);
   });
 
   test("shows workspace menu items", async () => {
     renderWithProvider();
 
-    expect(await screen.findByText("taro@example.com")).toBeInTheDocument();
-    expect(screen.getByText("Stripe ダッシュボード")).toBeInTheDocument();
+    expect(await screen.findByText("コミュニティを切り替える")).toBeInTheDocument();
+    expect(screen.getByText("Stripeダッシュボード")).toBeInTheDocument();
     expect(screen.getByText("設定")).toBeInTheDocument();
     expect(screen.getByText("ログアウト")).toBeInTheDocument();
   });

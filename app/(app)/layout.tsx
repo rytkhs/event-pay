@@ -37,7 +37,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <SidebarProvider>
       <MobileChromeProvider>
         <AppSidebar
-          user={workspace.currentUser}
           workspace={workspaceShell}
           logoutAction={logoutAction}
           createExpressDashboardLoginLinkAction={createExpressDashboardLoginLinkAction}
@@ -49,7 +48,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           ) : null}
           <Header />
           <MobileAppChrome
-            user={workspace.currentUser}
             workspace={workspaceShell}
             logoutAction={logoutAction}
             createExpressDashboardLoginLinkAction={createExpressDashboardLoginLinkAction}

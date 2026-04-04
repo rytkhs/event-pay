@@ -5,7 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { Check, CreditCard, Loader2, LogOut, Menu, Plus } from "lucide-react";
+import { Check, CreditCard, ExternalLink, Loader2, LogOut, Menu, Plus } from "lucide-react";
 
 import type { AppWorkspaceShellData } from "@core/community/app-workspace";
 import { useToast } from "@core/contexts/toast-context";
@@ -24,17 +24,12 @@ import { useMobileKeyboardOpen } from "./use-mobile-keyboard";
 const LOGOUT_ERROR_MESSAGE = "ログアウトに失敗しました。再度お試しください。";
 
 type MobileAppChromeProps = {
-  user: {
-    name?: string | null;
-    email?: string | null;
-  } | null;
   workspace: AppWorkspaceShellData;
   logoutAction: () => Promise<ActionResult>;
   createExpressDashboardLoginLinkAction: () => Promise<void>;
 };
 
 export function MobileAppChrome({
-  user,
   workspace,
   logoutAction,
   createExpressDashboardLoginLinkAction,
@@ -56,8 +51,6 @@ export function MobileAppChrome({
   const [logoutError, setLogoutError] = useState<string | null>(null);
 
   const shouldShowTabs = pageConfig.showTabs && !isKeyboardOpen && !isBottomOverlayOpen;
-  const userName = user?.name || user?.email || "ゲスト";
-  const userEmail = user?.email || "";
 
   const handleStripeDashboard = () => {
     setIsMoreOpen(false);
@@ -195,11 +188,6 @@ export function MobileAppChrome({
           </SheetHeader> */}
 
           <div className="mt-5 space-y-5 px-5">
-            <section className="rounded-2xl border border-border/60 bg-muted/20 p-4">
-              <p className="text-sm font-semibold">{userName}</p>
-              {userEmail ? <p className="mt-1 text-xs text-muted-foreground">{userEmail}</p> : null}
-            </section>
-
             <section className="space-y-2">
               <p className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 コミュニティを切り替える
@@ -261,7 +249,10 @@ export function MobileAppChrome({
                 ) : (
                   <CreditCard className="h-4 w-4 text-muted-foreground" />
                 )}
-                Stripeダッシュボード
+                <span className="flex-1">Stripeダッシュボード</span>
+                {!isStripePending && (
+                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/50" />
+                )}
               </button>
             </section>
 
@@ -269,6 +260,15 @@ export function MobileAppChrome({
               <p className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 アカウント
               </p>
+
+              {/* <Link
+                href="/settings"
+                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
+                onClick={() => setIsMoreOpen(false)}
+              >
+                <Settings className="h-4 w-4 text-muted-foreground" />
+                設定
+              </Link> */}
 
               <button
                 type="button"

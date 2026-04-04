@@ -18,7 +18,7 @@ export function Header() {
   );
 
   return (
-    <header className="sticky top-0 z-20 hidden h-14 shrink-0 items-center border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/90 md:flex">
+    <header className="sticky top-0 z-20 hidden h-14 shrink-0 items-center border-b border-border/50 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/90 md:flex">
       <div className="flex min-w-0 items-center gap-3">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="h-5" />

@@ -27,17 +27,12 @@ import { CommunitySwitcher } from "./CommunitySwitcher";
 import { navigationConfig } from "./GlobalHeader/navigation-config";
 
 type AppSidebarProps = {
-  user: {
-    name?: string | null;
-    email?: string | null;
-  } | null;
   workspace: AppWorkspaceShellData;
   logoutAction: () => Promise<ActionResult>;
   createExpressDashboardLoginLinkAction: () => Promise<void>;
 } & React.ComponentProps<typeof Sidebar>;
 
 export function AppSidebar({
-  user,
   workspace,
   logoutAction,
   createExpressDashboardLoginLinkAction,
@@ -59,11 +54,10 @@ export function AppSidebar({
   return (
     <Sidebar collapsible="icon" {...props}>
       {/* ヘッダー: コミュニティスイッチャー */}
-      <SidebarHeader className="border-b border-sidebar-border/60 px-2 pb-3 pt-3">
+      <SidebarHeader className="border-b border-sidebar-border/60 px-2.5 pb-2 pt-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <CommunitySwitcher
-              user={user}
               workspace={workspace}
               logoutAction={logoutAction}
               createExpressDashboardLoginLinkAction={createExpressDashboardLoginLinkAction}
@@ -72,11 +66,11 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent className="px-2 py-4">
+      <SidebarContent className="px-2.5 py-3">
         {/* メインナビゲーション */}
-        <SidebarGroup className="py-0">
+        <SidebarGroup className="py-0 group-data-[collapsible=icon]:px-0">
           <SidebarGroupContent>
-            <SidebarMenu className="gap-0.5">
+            <SidebarMenu className="gap-1">
               {navigationConfig.app.map((item) => {
                 const isActive =
                   pathname === item.href ||
@@ -92,11 +86,11 @@ export function AppSidebar({
                       isActive={isActive}
                       tooltip={item.label}
                       className={[
-                        "relative h-9 rounded-lg text-[13px] font-medium transition-all duration-150",
-                        "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/60",
+                        "relative h-10 rounded-xl px-3 text-[13px] font-medium transition-all duration-150",
+                        "text-sidebar-foreground/70 hover:bg-sidebar-accent/75 hover:text-sidebar-foreground",
                         "group-data-[collapsible=icon]:justify-center",
                         isActive
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent font-semibold before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-4 before:w-0.5 before:rounded-full before:bg-sidebar-primary"
+                          ? "bg-sidebar-accent/95 font-semibold text-sidebar-accent-foreground shadow-[inset_0_0_0_1px_hsl(var(--sidebar-primary)/0.12),0_8px_18px_-14px_hsl(var(--sidebar-primary)/0.65)] hover:bg-sidebar-accent"
                           : "",
                       ]
                         .filter(Boolean)
@@ -105,12 +99,14 @@ export function AppSidebar({
                       <Link href={item.href}>
                         <span
                           className={
-                            isActive ? "text-sidebar-primary" : "text-sidebar-foreground/50"
+                            isActive
+                              ? "text-sidebar-primary"
+                              : "text-sidebar-foreground/45 transition-colors group-hover/menu-item:text-sidebar-foreground/70"
                           }
                         >
                           {item.icon}
                         </span>
-                        <span>{item.label}</span>
+                        <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -121,10 +117,10 @@ export function AppSidebar({
         </SidebarGroup>
 
         {/* 区切り線 */}
-        <div className="mx-1 my-3 h-px bg-sidebar-border/50 group-data-[collapsible=icon]:hidden" />
+        <div className="mx-2 my-2.5 h-px bg-sidebar-border/60 group-data-[collapsible=icon]:hidden" />
 
         {/* イベント作成ボタン */}
-        <SidebarGroup className="py-0">
+        <SidebarGroup className="py-0 group-data-[collapsible=icon]:px-0">
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -133,12 +129,11 @@ export function AppSidebar({
                   isActive={pathname === "/events/create"}
                   tooltip="新しいイベントを作成"
                   className={[
-                    "h-9 rounded-lg text-[13px] font-semibold transition-all duration-150",
-                    "border border-sidebar-primary/30 bg-gradient-to-r from-sidebar-primary/15 to-sidebar-primary/5",
-                    "text-sidebar-primary hover:from-sidebar-primary/25 hover:to-sidebar-primary/10 hover:border-sidebar-primary/50",
-                    "shadow-sm hover:shadow",
+                    "h-10 rounded-xl border border-sidebar-primary/25 bg-gradient-to-r from-sidebar-primary/16 via-sidebar-primary/10 to-sidebar-primary/5 text-[13px] font-semibold text-sidebar-primary transition-all duration-150",
+                    "shadow-[inset_0_1px_0_hsl(var(--sidebar-primary-foreground)/0.4),0_10px_20px_-18px_hsl(var(--sidebar-primary)/0.9)] hover:border-sidebar-primary/45 hover:from-sidebar-primary/24 hover:via-sidebar-primary/16 hover:to-sidebar-primary/8 hover:shadow-[inset_0_1px_0_hsl(var(--sidebar-primary-foreground)/0.5),0_14px_26px_-18px_hsl(var(--sidebar-primary)/1)]",
+                    "group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center",
                     pathname === "/events/create"
-                      ? "from-sidebar-primary/30 to-sidebar-primary/15 border-sidebar-primary/50"
+                      ? "border-sidebar-primary/50 from-sidebar-primary/28 via-sidebar-primary/18 to-sidebar-primary/10"
                       : "",
                   ]
                     .filter(Boolean)
@@ -146,7 +141,9 @@ export function AppSidebar({
                 >
                   <Link href="/events/create">
                     <Plus className="size-4" />
-                    <span>新しいイベントを作成</span>
+                    <span className="group-data-[collapsible=icon]:hidden">
+                      新しいイベントを作成
+                    </span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
