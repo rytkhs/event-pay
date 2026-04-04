@@ -1,9 +1,10 @@
 import { Suspense } from "react";
 
+import { redirect } from "next/navigation";
+
 import { resolveAppWorkspaceForServerComponent } from "@core/community/app-workspace";
 
 import { createDashboardDataResource } from "./_lib/dashboard-data";
-import { CommunityEmptyState } from "./components/CommunityEmptyState";
 import { ConnectAccountCtaWrapper } from "./components/ConnectAccountCtaWrapper";
 import { DashboardStatsCards } from "./components/DashboardStatsCards";
 import { RecentEventsList } from "./components/RecentEventsList";
@@ -19,19 +20,7 @@ export default async function DashboardPage() {
   const workspace = await resolveAppWorkspaceForServerComponent();
 
   if (workspace.isCommunityEmptyState) {
-    return (
-      <div className="min-h-screen bg-muted/30">
-        <div className="max-w-7xl mx-auto sm:py-6 lg:py-8 sm:px-4 lg:px-8">
-          <div className="flex flex-col gap-2 mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">ホーム</h1>
-            <p className="text-muted-foreground text-sm sm:text-base">
-              コミュニティ作成後に、ここから運営状況を確認できます
-            </p>
-          </div>
-          <CommunityEmptyState />
-        </div>
-      </div>
-    );
+    redirect("/communities/create");
   }
 
   const currentCommunity = workspace.currentCommunity;
