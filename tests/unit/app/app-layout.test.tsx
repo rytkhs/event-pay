@@ -14,14 +14,19 @@ jest.mock("@core/community/app-workspace", () => ({
   toAppWorkspaceShellData,
 }));
 
+jest.mock("@core/announcements/community-announcement", () => ({
+  resolveCommunityAnnouncementForServerComponent: jest.fn().mockResolvedValue({
+    shouldShow: false,
+  }),
+}));
+
 jest.mock("@features/demo", () => ({
   DemoBanner: () => <div data-testid="demo-banner" />,
 }));
 
 jest.mock("@components/layout/AppSidebar", () => ({
-  AppSidebar: ({ user, workspace }: { user: { name: string | null }; workspace: unknown }) => (
+  AppSidebar: ({ workspace }: { workspace: unknown }) => (
     <div data-testid="app-sidebar">
-      {user.name}
       <span data-testid="app-sidebar-workspace">{JSON.stringify(workspace)}</span>
     </div>
   ),
