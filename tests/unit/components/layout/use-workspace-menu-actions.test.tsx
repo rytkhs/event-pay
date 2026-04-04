@@ -1,11 +1,13 @@
 /** @jest-environment jsdom */
 
+import { useRouter } from "next/navigation";
+
 import { act, renderHook, waitFor } from "@testing-library/react";
+
+import { useToast } from "@core/contexts/toast-context";
 
 import { updateCurrentCommunityAction } from "@/app/(app)/actions/current-community";
 import { useWorkspaceMenuActions } from "@/components/layout/use-workspace-menu-actions";
-import { useToast } from "@core/contexts/toast-context";
-import { useRouter } from "next/navigation";
 
 jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),
@@ -118,7 +120,7 @@ describe("useWorkspaceMenuActions", () => {
     expect(result.current.pendingCommunityId).toBeNull();
   });
 
-  test("closes menu before starting Stripe dashboard action", async () => {
+  test("shows loading state and calls action for Stripe dashboard", async () => {
     const deferred = createDeferred<void>();
     createExpressDashboardLoginLinkAction.mockReturnValue(deferred.promise);
 
@@ -128,7 +130,8 @@ describe("useWorkspaceMenuActions", () => {
       result.current.handleStripeDashboard();
     });
 
-    expect(onMenuClose).toHaveBeenCalledTimes(1);
+    expect(result.current.isStripePending).toBe(true);
+    expect(onMenuClose).not.toHaveBeenCalled();
 
     await waitFor(() => {
       expect(createExpressDashboardLoginLinkAction).toHaveBeenCalledTimes(1);
@@ -137,6 +140,10 @@ describe("useWorkspaceMenuActions", () => {
     await act(async () => {
       deferred.resolve();
       await deferred.promise;
+    });
+
+    await waitFor(() => {
+      expect(result.current.isStripePending).toBe(false);
     });
   });
 

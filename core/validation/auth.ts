@@ -13,10 +13,10 @@ export const registerInputSchema = z.object({
     .string()
     .transform((str) => str.trim())
     .refine((trimmed) => trimmed.length >= 1, {
-      message: "表示名を入力してください",
+      message: "ユーザーネームを入力してください",
     })
     .refine((trimmed) => trimmed.length <= 100, {
-      message: "名前は100文字以内で入力してください",
+      message: "ユーザーネームは100文字以内で入力してください",
     })
     .refine(
       (trimmed) => {

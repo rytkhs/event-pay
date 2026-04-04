@@ -78,7 +78,7 @@ function RegisterForm() {
                           <Input
                             {...field}
                             type="text"
-                            placeholder="例: 集金 たろう"
+                            placeholder="ユーザーネームを入力"
                             disabled={isPending}
                             autoComplete="name"
                             required
