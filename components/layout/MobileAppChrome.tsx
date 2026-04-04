@@ -144,28 +144,42 @@ export function MobileAppChrome({
       </header>
 
       {shouldShowTabs ? (
-        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90 md:hidden">
-          <div className="grid grid-cols-4 gap-1 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">
-            {navigationConfig.mobileTabs.map((item) => {
-              const isActive = isMobileTabActive(item.href, pageConfig.activeNav);
+        <nav className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-4 right-4 z-40 mx-auto max-w-lg md:hidden">
+          <div className="rounded-full border border-border/50 bg-background/80 px-2 py-2 shadow-2xl shadow-black/10 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
+            <div className="flex items-center justify-around">
+              {navigationConfig.mobileTabs.map((item) => {
+                const isActive = isMobileTabActive(item.href, pageConfig.activeNav);
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex min-h-[3.75rem] flex-col items-center justify-center gap-1 rounded-2xl px-2 text-[11px] font-medium transition-colors",
-                    isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
-                  )}
-                  aria-current={isActive ? "page" : undefined}
-                >
-                  <span className="flex h-5 items-center justify-center">{item.icon}</span>
-                  <span className="leading-none">{item.label}</span>
-                </Link>
-              );
-            })}
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "relative flex h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-1 transition-all duration-300",
+                      isActive
+                        ? "text-primary"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    )}
+                    aria-current={isActive ? "page" : undefined}
+                  >
+                    {isActive && (
+                      <div className="absolute inset-0 z-0 rounded-full bg-primary/10 transition-all duration-500" />
+                    )}
+                    <span
+                      className={cn(
+                        "relative z-10 flex h-5 items-center justify-center transition-transform duration-300",
+                        isActive && "scale-110"
+                      )}
+                    >
+                      {item.icon}
+                    </span>
+                    <span className="relative z-10 text-[10px] font-medium leading-none">
+                      {item.label}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </nav>
       ) : null}
