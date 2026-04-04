@@ -18,6 +18,7 @@ import {
 import { calculateNetAmount, formatCurrency } from "@core/utils/fee-calculator";
 import { getCurrentJstTime } from "@core/utils/timezone";
 
+import { useMobileBottomOverlay } from "@/components/layout/mobile-chrome-context";
 import { cn } from "@/components/ui/_lib/cn";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
@@ -95,6 +96,8 @@ function SinglePageEventForm({
   currentCommunityName,
   createEventAction,
 }: SinglePageEventFormProps): JSX.Element {
+  useMobileBottomOverlay(true);
+
   const { form, onSubmit, isPending, isFreeEvent } = useEventForm({ createEventAction });
 
   // 決済方法の選択状態
@@ -135,7 +138,7 @@ function SinglePageEventForm({
   );
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 mb-4">
+    <div className="w-full max-w-7xl mx-auto p-4 mb-32">
       {/* Header */}
       <header className="mb-6">
         <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
@@ -662,7 +665,7 @@ function SinglePageEventForm({
           )}
 
           {/* Footer Actions */}
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 z-50 md:left-[var(--sidebar-width)]">
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 md:left-[var(--sidebar-width)]">
             <div className="max-w-7xl mx-auto flex items-center justify-end gap-4">
               <Button
                 type="button"
@@ -689,9 +692,6 @@ function SinglePageEventForm({
               </Button>
             </div>
           </div>
-
-          {/* Spacer for fixed footer */}
-          <div className="h-16" />
         </form>
       </Form>
     </div>

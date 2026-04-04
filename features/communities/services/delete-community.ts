@@ -1,6 +1,6 @@
-import { logger } from "@core/logging/app-logger";
 import { AppError } from "@core/errors/app-error";
 import { errResult, okResult, type AppResult } from "@core/errors/app-result";
+import { logger } from "@core/logging/app-logger";
 import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 import type { AppSupabaseClient } from "@core/types/supabase";

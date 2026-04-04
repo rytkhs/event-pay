@@ -11,9 +11,6 @@ import Link from "next/link";
 import {
   Loader2,
   CreditCard,
-  Shield,
-  Zap,
-  Globe,
   BookOpen,
   ExternalLink,
   FileCheck,
@@ -110,30 +107,6 @@ export function OnboardingForm({
         </div>
       </CardHeader>
       <CardContent className="space-y-8">
-        <div className="grid gap-4 md:grid-cols-3">
-          <FeatureCard
-            icon={<Shield className="h-8 w-8" />}
-            iconColor="text-blue-500"
-            iconBg="bg-blue-500/10"
-            title="安全な決済"
-            description="Stripeの安全な決済システム"
-          />
-          <FeatureCard
-            icon={<Zap className="h-8 w-8" />}
-            iconColor="text-green-500"
-            iconBg="bg-green-500/10"
-            title="自動送金"
-            description="オンライン決済を自動受取"
-          />
-          <FeatureCard
-            icon={<Globe className="h-8 w-8" />}
-            iconColor="text-cyan-500"
-            iconBg="bg-cyan-500/10"
-            title="コミュニティ情報提出"
-            description="代表コミュニティの情報をStripeに提出"
-          />
-        </div>
-
         {!state.success && error?.userMessage ? (
           <Alert variant="destructive">
             <AlertTitle>設定を開始できませんでした</AlertTitle>
@@ -250,24 +223,6 @@ export function OnboardingForm({
         </form>
       </CardContent>
     </Card>
-  );
-}
-
-interface FeatureCardProps {
-  icon: ReactNode;
-  iconColor: string;
-  iconBg: string;
-  title: string;
-  description: string;
-}
-
-function FeatureCard({ icon, iconColor, iconBg, title, description }: FeatureCardProps) {
-  return (
-    <div className="group flex flex-col items-center text-center p-6 border rounded-xl bg-gradient-to-br from-card to-muted/20">
-      <div className={`p-3 rounded-xl ${iconBg} ${iconColor} mb-3`}>{icon}</div>
-      <h3 className="font-semibold mb-2">{title}</h3>
-      <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
-    </div>
   );
 }
 

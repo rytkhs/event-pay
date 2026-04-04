@@ -126,7 +126,7 @@ export function ErrorLayout({
 export function NotFoundLayout({
   title = "ページが見つかりません",
   message = "お探しのページは存在しないか、移動された可能性があります。",
-  description = "URLをご確認いただくか、ホームページに戻ってください。",
+  description = "URLをご確認いただくか、トップページに戻ってください。",
   showBack = true,
   ...props
 }: Partial<ErrorLayoutProps>) {

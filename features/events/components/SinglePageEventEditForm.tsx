@@ -18,6 +18,7 @@ import {
 import type { RestrictableField } from "@core/domain/event-edit-restrictions";
 import type { Event } from "@core/types/event";
 
+import { useMobileBottomOverlay } from "@/components/layout/mobile-chrome-context";
 import { cn } from "@/components/ui/_lib/cn";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -110,6 +111,8 @@ export function SinglePageEventEditForm({
   canUseOnlinePayments = false,
   updateEventAction,
 }: SinglePageEventEditFormProps): JSX.Element {
+  useMobileBottomOverlay(true);
+
   const { form, isPending, hasAttendees, changes, actions, restrictions, isFreeEvent } =
     useEventEditForm({
       event,
@@ -947,7 +950,7 @@ export function SinglePageEventEditForm({
             )}
 
             {/* Footer Actions */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 z-50 md:left-[var(--sidebar-width)]">
+            <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 md:left-[var(--sidebar-width)]">
               <div className="max-w-7xl mx-auto flex items-center justify-end gap-4">
                 <Button
                   type="button"
@@ -974,9 +977,6 @@ export function SinglePageEventEditForm({
                 </Button>
               </div>
             </div>
-
-            {/* Spacer for fixed footer */}
-            <div className="h-16" />
           </form>
         </Form>
       </div>

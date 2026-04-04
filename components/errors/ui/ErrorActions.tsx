@@ -101,7 +101,7 @@ export function ErrorActions({
     );
   }
 
-  // ホームボタン（最低優先）
+  // トップページボタン（最低優先）
   if (showHome) {
     const isOnlyAction = actions.length === 0;
     actions.push(
@@ -112,7 +112,7 @@ export function ErrorActions({
         className="w-full"
       >
         <Home className="h-4 w-4 mr-2" />
-        ホームに戻る
+        トップページに戻る
       </Button>
     );
   }

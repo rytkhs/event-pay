@@ -1,54 +1,38 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect } from "react";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { LogOut, ChevronsUpDown, CreditCard, Loader2 } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import type { AppWorkspaceShellData } from "@core/community/app-workspace";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarRail,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
 
 import { CommunitySwitcher } from "./CommunitySwitcher";
-import { navigationConfig, userMenuItems } from "./GlobalHeader/navigation-config";
-
-const LOGOUT_ERROR_MESSAGE = "ログアウトに失敗しました。再度お試しください。";
+import { navigationConfig } from "./GlobalHeader/navigation-config";
 
 type AppSidebarProps = {
-  user: {
-    name?: string | null;
-    email?: string | null;
-  } | null;
   workspace: AppWorkspaceShellData;
   logoutAction: () => Promise<ActionResult>;
   createExpressDashboardLoginLinkAction: () => Promise<void>;
 } & React.ComponentProps<typeof Sidebar>;
 
 export function AppSidebar({
-  user,
   workspace,
   logoutAction,
   createExpressDashboardLoginLinkAction,
@@ -57,64 +41,36 @@ export function AppSidebar({
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
 
-  const [isPending, startTransition] = useTransition();
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [logoutError, setLogoutError] = useState<string | null>(null);
-
-  // 画面遷移時にモバイル用サイドバーを自動的に閉じる
   useEffect(() => {
     if (isMobile) {
       setOpenMobile(false);
     }
   }, [pathname, isMobile, setOpenMobile]);
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
-    setLogoutError(null);
-
-    try {
-      const result = await logoutAction();
-      if (!result.success) {
-        setIsLoggingOut(false);
-        setLogoutError(result.error.userMessage || LOGOUT_ERROR_MESSAGE);
-        return;
-      }
-
-      const redirectUrl = result.redirectUrl || "/login";
-      window.location.href = redirectUrl;
-    } catch {
-      setIsLoggingOut(false);
-      setLogoutError(LOGOUT_ERROR_MESSAGE);
-    }
-  };
-
-  // クリック時のハンドラ
-  const handleStripeDashboard = () => {
-    startTransition(async () => {
-      await createExpressDashboardLoginLinkAction();
-    });
-  };
-
-  const userName = user?.name || user?.email || "Guest";
-  const userInitial = userName[0]?.toUpperCase() || "U";
-  const userEmail = user?.email || "";
+  if (isMobile) {
+    return null;
+  }
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
+      {/* ヘッダー: コミュニティスイッチャー */}
+      <SidebarHeader className="border-b border-sidebar-border/60 px-2.5 pb-2 pt-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <CommunitySwitcher workspace={workspace} />
+            <CommunitySwitcher
+              workspace={workspace}
+              logoutAction={logoutAction}
+              createExpressDashboardLoginLinkAction={createExpressDashboardLoginLinkAction}
+            />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>メニュー</SidebarGroupLabel>
+      <SidebarContent className="px-2.5 py-3">
+        {/* メインナビゲーション */}
+        <SidebarGroup className="py-0 group-data-[collapsible=icon]:px-0">
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-1">
               {navigationConfig.app.map((item) => {
                 const isActive =
                   pathname === item.href ||
@@ -125,10 +81,32 @@ export function AppSidebar({
 
                 return (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.label}
+                      className={[
+                        "relative h-10 rounded-xl px-3 text-[13px] font-medium transition-all duration-150",
+                        "text-sidebar-foreground/70 hover:bg-sidebar-accent/75 hover:text-sidebar-foreground",
+                        "group-data-[collapsible=icon]:justify-center",
+                        isActive
+                          ? "bg-sidebar-accent/95 font-semibold text-sidebar-accent-foreground shadow-[inset_0_0_0_1px_hsl(var(--sidebar-primary)/0.12),0_8px_18px_-14px_hsl(var(--sidebar-primary)/0.65)] hover:bg-sidebar-accent"
+                          : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
                       <Link href={item.href}>
-                        {item.icon}
-                        <span>{item.label}</span>
+                        <span
+                          className={
+                            isActive
+                              ? "text-sidebar-primary"
+                              : "text-sidebar-foreground/45 transition-colors group-hover/menu-item:text-sidebar-foreground/70"
+                          }
+                        >
+                          {item.icon}
+                        </span>
+                        <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -138,18 +116,35 @@ export function AppSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-auto">
-          <SidebarGroupLabel>ツール</SidebarGroupLabel>
+        {/* 区切り線 */}
+        <div className="mx-2 my-2.5 h-px bg-sidebar-border/60 group-data-[collapsible=icon]:hidden" />
+
+        {/* イベント作成ボタン */}
+        <SidebarGroup className="py-0 group-data-[collapsible=icon]:px-0">
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  onClick={handleStripeDashboard}
-                  disabled={isPending}
-                  tooltip="Stripeダッシュボード"
+                  asChild
+                  isActive={pathname === "/events/create"}
+                  tooltip="新しいイベントを作成"
+                  className={[
+                    "h-10 rounded-xl border border-sidebar-primary/25 bg-gradient-to-r from-sidebar-primary/16 via-sidebar-primary/10 to-sidebar-primary/5 text-[13px] font-semibold text-sidebar-primary transition-all duration-150",
+                    "shadow-[inset_0_1px_0_hsl(var(--sidebar-primary-foreground)/0.4),0_10px_20px_-18px_hsl(var(--sidebar-primary)/0.9)] hover:border-sidebar-primary/45 hover:from-sidebar-primary/24 hover:via-sidebar-primary/16 hover:to-sidebar-primary/8 hover:shadow-[inset_0_1px_0_hsl(var(--sidebar-primary-foreground)/0.5),0_14px_26px_-18px_hsl(var(--sidebar-primary)/1)]",
+                    "group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center",
+                    pathname === "/events/create"
+                      ? "border-sidebar-primary/50 from-sidebar-primary/28 via-sidebar-primary/18 to-sidebar-primary/10"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                 >
-                  {isPending ? <Loader2 className="animate-spin" /> : <CreditCard />}
-                  <span>Stripeダッシュボード</span>
+                  <Link href="/events/create">
+                    <Plus className="size-4" />
+                    <span className="group-data-[collapsible=icon]:hidden">
+                      新しいイベントを作成
+                    </span>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -157,85 +152,6 @@ export function AppSidebar({
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu
-              open={isUserMenuOpen}
-              onOpenChange={(open) => {
-                setIsUserMenuOpen(open);
-                if (!open) {
-                  setLogoutError(null);
-                }
-              }}
-            >
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                >
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarFallback className="rounded-lg">{userInitial}</AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">{userName}</span>
-                    <span className="truncate text-xs">{userEmail}</span>
-                  </div>
-                  <ChevronsUpDown className="ml-auto size-4" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-                side={isMobile ? "top" : "right"}
-                align="end"
-                sideOffset={4}
-              >
-                <DropdownMenuItem disabled className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{userName}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
-                  </div>
-                </DropdownMenuItem>
-
-                {userMenuItems.map((item) => (
-                  <DropdownMenuItem key={item.href} asChild>
-                    <Link href={item.href} className="w-full cursor-pointer">
-                      {item.icon && <span className="mr-2 h-4 w-4">{item.icon}</span>}
-                      {item.label}
-                    </Link>
-                  </DropdownMenuItem>
-                ))}
-
-                <DropdownMenuItem
-                  disabled={isLoggingOut}
-                  onSelect={(event) => {
-                    event.preventDefault();
-                    void handleLogout();
-                  }}
-                  className="text-destructive focus:text-destructive cursor-pointer"
-                >
-                  {isLoggingOut ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <LogOut className="mr-2 h-4 w-4" />
-                  )}
-                  {isLoggingOut ? "ログアウト中..." : "ログアウト"}
-                </DropdownMenuItem>
-
-                {logoutError && (
-                  <div
-                    className="mx-2 mt-2 rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-                    role="alert"
-                    aria-live="assertive"
-                  >
-                    {logoutError}
-                  </div>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );

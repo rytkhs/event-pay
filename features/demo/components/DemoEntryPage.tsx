@@ -74,7 +74,7 @@ export function DemoEntryPage({ startDemoSession }: DemoEntryPageProps) {
           <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
         </div>
         <h1 className="text-xl font-bold">デモ環境をセットアップ中...</h1>
-        <p className="mt-2 text-sm text-gray-500">自動的にダッシュボードへ移動します。</p>
+        <p className="mt-2 text-sm text-gray-500">自動的にホームへ移動します。</p>
       </div>
     </div>
   );

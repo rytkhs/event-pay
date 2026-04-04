@@ -36,34 +36,45 @@ export const navigationConfig: NavigationConfig = {
    */
   app: [
     {
-      label: "ダッシュボード",
+      label: "ホーム",
       href: "/dashboard",
       icon: createElement(Home),
       exactMatch: false,
     },
     {
-      label: "イベント一覧",
+      label: "イベント",
       href: "/events",
       icon: createElement(Calendar),
+      exactMatch: false,
+    },
+  ],
+
+  /**
+   * モバイルの主要タブナビゲーション
+   */
+  mobileTabs: [
+    {
+      label: "ホーム",
+      href: "/dashboard",
+      icon: createElement(Home),
+      exactMatch: false,
+    },
+    {
+      label: "イベント",
+      href: "/events",
+      icon: createElement(Calendar),
+      exactMatch: false,
+    },
+    {
+      label: "作成",
+      href: "/events/create",
+      icon: createElement(Plus),
       exactMatch: false,
     },
     {
       label: "設定",
       href: "/settings",
       icon: createElement(Settings),
-      exactMatch: false,
-    },
-  ],
-
-  /**
-   * モバイル専用ナビゲーション
-   * ハンバーガーメニューでのみ使用される追加項目
-   */
-  mobile: [
-    {
-      label: "新規イベント作成",
-      href: "/events/create",
-      icon: createElement(Plus),
       exactMatch: false,
     },
   ],
@@ -85,19 +96,3 @@ export const marketingCTA = {
   href: "/register",
   variant: "default" as const,
 };
-
-/**
- * ユーザーメニューの設定
- */
-export const userMenuItems = [
-  // {
-  //   label: "精算レポート",
-  //   href: "/dashboard/settlement-reports",
-  //   icon: createElement(FileText),
-  // },
-  {
-    label: "設定",
-    href: "/settings",
-    icon: createElement(Settings),
-  },
-] as const;

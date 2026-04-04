@@ -11,12 +11,10 @@ import {
   CheckCircle2Icon,
   LightbulbIcon,
   RefreshCwIcon,
-  ShieldAlertIcon,
-  AlertOctagonIcon,
   BanIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  AlertTriangleIcon,
+  LockIcon,
 } from "lucide-react";
 
 import {
@@ -58,35 +56,27 @@ export interface UnifiedRestrictionNoticeV2Props {
 
 const LEVEL_CONFIG = {
   structural: {
-    icon: ShieldAlertIcon,
-    bgClass: "bg-red-50 dark:bg-red-950/20",
-    borderClass: "border-red-200 dark:border-red-900/50",
-    textClass: "text-red-800 dark:text-red-200",
-    iconColorClass: "text-red-600 dark:text-red-400",
-    badgeVariant: "destructive" as const,
-    badgeClass: "bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-900/40 dark:text-red-300",
-    title: "編集制限",
+    icon: LockIcon,
+    bgClass: "bg-slate-50 dark:bg-slate-900/20",
+    borderClass: "border-slate-200 dark:border-slate-800/50",
+    textClass: "text-foreground",
+    iconColorClass: "text-slate-500 dark:text-slate-400",
+    title: "変更不可項目",
   },
   conditional: {
-    icon: AlertOctagonIcon,
-    bgClass: "bg-amber-50 dark:bg-amber-950/20",
-    borderClass: "border-amber-200 dark:border-amber-900/50",
-    textClass: "text-amber-800 dark:text-amber-200",
-    iconColorClass: "text-amber-600 dark:text-amber-400",
-    badgeVariant: "outline" as const,
-    badgeClass:
-      "border-amber-200 text-amber-700 bg-amber-100/50 hover:bg-amber-100/50 dark:border-amber-800 dark:text-amber-300 dark:bg-amber-900/20",
-    title: "条件付き制限",
+    icon: LockIcon,
+    bgClass: "bg-amber-50/30 dark:bg-amber-950/10",
+    borderClass: "border-amber-200/50 dark:border-amber-900/30",
+    textClass: "text-foreground",
+    iconColorClass: "text-amber-600 dark:text-amber-500",
+    title: "条件付き変更不可",
   },
   advisory: {
     icon: InfoIcon,
-    bgClass: "bg-blue-50 dark:bg-blue-950/20",
-    borderClass: "border-blue-200 dark:border-blue-900/50",
-    textClass: "text-blue-800 dark:text-blue-200",
+    bgClass: "bg-blue-50/30 dark:bg-blue-950/10",
+    borderClass: "border-blue-200/50 dark:border-blue-900/30",
+    textClass: "text-foreground",
     iconColorClass: "text-blue-600 dark:text-blue-400",
-    badgeVariant: "secondary" as const,
-    badgeClass:
-      "bg-blue-100/50 text-blue-700 hover:bg-blue-100/50 dark:bg-blue-900/20 dark:text-blue-300",
     title: "確認事項",
   },
 };
@@ -104,7 +94,7 @@ function RestrictionItem({
   isLast = false,
   compact = false,
 }: RestrictionItemProps) {
-  const { rule, evaluation } = restriction;
+  const { evaluation } = restriction;
   const config = LEVEL_CONFIG[level];
 
   return (
@@ -121,30 +111,19 @@ function RestrictionItem({
 
         <div className="flex-1 space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={cn("text-sm font-bold", config.textClass)}>{rule.name}</span>
-            <Badge
-              variant={config.badgeVariant}
-              className={cn(
-                "h-5 px-1.5 text-[10px] uppercase font-bold border-0 shadow-none",
-                config.badgeClass
-              )}
-            >
-              {rule.field}
-            </Badge>
+            <span className={cn("text-sm font-bold", config.textClass)}>{evaluation.message}</span>
           </div>
-
-          <p className="text-sm text-foreground/80 leading-snug">{evaluation.message}</p>
 
           {!compact && (
             <>
               {evaluation.details && (
-                <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
                   {evaluation.details}
                 </p>
               )}
 
               {evaluation.suggestedAction && (
-                <div className="flex items-center gap-2 mt-2 text-xs bg-amber-50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-400 p-2 rounded border border-amber-100 dark:border-amber-800/30">
+                <div className="flex items-center gap-2 mt-2 text-xs bg-slate-100 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 p-2 rounded border border-slate-200 dark:border-slate-700/50">
                   <LightbulbIcon className="h-3 w-3 shrink-0" />
                   <span className="font-medium">{evaluation.suggestedAction}</span>
                 </div>
@@ -243,10 +222,7 @@ function CombinedRestrictionsValidation({
       onOpenChange={setIsOpen}
       className={cn(
         "rounded-xl border bg-white dark:bg-card overflow-hidden shadow-sm transition-all",
-        // ヘッダーの色に応じたボーダー色
-        worstLevel === "structural" && "border-red-200 dark:border-red-900",
-        worstLevel === "conditional" && "border-amber-200 dark:border-amber-900",
-        worstLevel === "advisory" && "border-blue-200 dark:border-blue-900",
+        "border-border/60",
         className
       )}
     >
@@ -254,31 +230,25 @@ function CombinedRestrictionsValidation({
         <div
           className={cn(
             "flex items-center justify-between px-4 py-3 cursor-pointer select-none transition-colors",
-            // アクティブなレベルに応じた背景色
-            worstLevel === "structural" &&
-              "bg-red-50/50 hover:bg-red-50 dark:bg-red-950/20 dark:hover:bg-red-950/30",
-            worstLevel === "conditional" &&
-              "bg-amber-50/50 hover:bg-amber-50 dark:bg-amber-950/20 dark:hover:bg-amber-950/30",
-            worstLevel === "advisory" &&
-              "bg-blue-50/50 hover:bg-blue-50 dark:bg-blue-950/20 dark:hover:bg-blue-950/30"
+            "bg-slate-50/40 hover:bg-slate-50 dark:bg-slate-900/20 dark:hover:bg-slate-900/40"
           )}
         >
           <div className="flex items-center gap-3">
             <div
               className={cn(
-                "p-1.5 rounded-full bg-white/60 dark:bg-black/20",
+                "p-1.5 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200/50 dark:border-slate-700",
                 headerConfig.iconColorClass
               )}
             >
               {hasBlockingIssues ? (
-                <AlertTriangleIcon className="h-4 w-4" />
+                <LockIcon className="h-4 w-4" />
               ) : (
                 <InfoIcon className="h-4 w-4" />
               )}
             </div>
             <div className="flex flex-col text-left">
               <span className={cn("text-sm font-bold", headerConfig.textClass)}>
-                {hasBlockingIssues ? "編集制限・注意事項があります" : "確認事項があります"}
+                {hasBlockingIssues ? "一部変更できない設定があります" : "確認事項があります"}
               </span>
               {!isOpen && (
                 <span className="text-[10px] text-muted-foreground">

@@ -195,7 +195,7 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await expect(emailInput).toBeVisible();
   });
 
-  test("正常系：完全な登録フローでダッシュボードに到達", async ({ page }) => {
+  test("正常系：完全な登録フローでホームに到達", async ({ page }) => {
     // ユニークなメールアドレスを生成
     const timestamp = Date.now();
     const testEmail = `test-complete-flow-${timestamp}@example.com`;
@@ -235,11 +235,11 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     // 5. OTP送信
     await page.getByRole("button", { name: "認証する" }).click();
 
-    // 6. ダッシュボードへのリダイレクト確認
+    // 6. ホームへのリダイレクト確認
     await expect(page).toHaveURL("/dashboard", { timeout: 15000 });
 
-    // 7. ダッシュボードの基本要素を確認
-    await expect(page.getByRole("heading", { name: "ダッシュボード" })).toBeVisible({
+    // 7. ホームの基本要素を確認
+    await expect(page.getByRole("heading", { name: "ホーム" })).toBeVisible({
       timeout: 10000,
     });
   });
@@ -350,9 +350,9 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await otpInput.fill(newOtp);
     await page.getByRole("button", { name: "認証する" }).click();
 
-    // 5. ダッシュボードへのリダイレクト確認
+    // 5. ホームへのリダイレクト確認
     await expect(page).toHaveURL("/dashboard", { timeout: 15000 });
-    await expect(page.getByRole("heading", { name: "ダッシュボード" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "ホーム" })).toBeVisible({
       timeout: 10000,
     });
   });

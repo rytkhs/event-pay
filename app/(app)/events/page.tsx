@@ -1,9 +1,5 @@
 import React from "react";
 
-import Link from "next/link";
-
-import { Plus } from "lucide-react";
-
 export const dynamic = "force-dynamic";
 
 import { requireNonEmptyCommunityWorkspaceForServerComponent } from "@core/community/app-workspace";
@@ -20,7 +16,6 @@ import { EventListWithFilters } from "@features/events";
 import { listEventsForCommunity } from "@features/events/server";
 
 import { InlineErrorCard } from "@/components/errors/ui/ErrorCard";
-import { Button } from "@/components/ui/button";
 
 interface EventsContentProps {
   searchParams: { [key: string]: string | string[] | undefined };
@@ -107,32 +102,6 @@ export default async function EventsPage(props: EventsPageProps) {
 
   return (
     <div data-testid="events-page-container" className="container mx-auto max-w-7xl">
-      {/* ヘッダー - コンパクト化 */}
-      <div data-testid="events-page-header" className="mb-4 border-b border-border/40 pb-3">
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-              イベント一覧
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {currentCommunity.name} に属するイベントを表示しています
-            </p>
-          </div>
-          <Button
-            asChild
-            size="sm"
-            className="shadow-md transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 font-semibold whitespace-nowrap"
-            data-testid="create-event-button"
-          >
-            <Link href="/events/create" prefetch={false} className="inline-flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">新しいイベントを作成</span>
-              <span className="sm:hidden">作成</span>
-            </Link>
-          </Button>
-        </div>
-      </div>
-
       {result.success ? (
         <EventListWithFilters
           events={result.data?.items ?? []}

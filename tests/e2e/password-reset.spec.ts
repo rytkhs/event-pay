@@ -87,9 +87,9 @@ test.describe("パスワードリセットフロー（E2E）", () => {
     // Step 7: パスワード更新ボタンをクリック
     await page.getByRole("button", { name: "パスワード更新" }).click();
 
-    // Step 8: ダッシュボードへのリダイレクト確認
+    // Step 8: ホームへのリダイレクト確認
     await expect(page).toHaveURL("/dashboard", { timeout: 15000 });
-    await expect(page.getByRole("heading", { name: "ダッシュボード" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "ホーム" })).toBeVisible({
       timeout: 10000,
     });
 
@@ -104,7 +104,7 @@ test.describe("パスワードリセットフロー（E2E）", () => {
 
     // ログイン成功を確認
     await expect(page).toHaveURL("/dashboard", { timeout: 15000 });
-    await expect(page.getByRole("heading", { name: "ダッシュボード" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "ホーム" })).toBeVisible();
   });
 
   test("異常系：無効なメールアドレス", async ({ page }) => {

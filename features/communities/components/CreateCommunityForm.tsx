@@ -68,7 +68,7 @@ export function CreateCommunityForm({
             <CardDescription className="text-sm leading-6">
               {hasOwnedCommunities
                 ? "新しい運営単位を追加します。"
-                : "最初のコミュニティを作成すると、ダッシュボードやイベント管理を使い始められます。"}
+                : "最初のコミュニティを作成すると、ホームやイベント管理を使い始められます。"}
             </CardDescription>
           </div>
         </div>

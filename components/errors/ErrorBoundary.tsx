@@ -121,7 +121,7 @@ function DefaultErrorFallback({ error, resetError, level = "component" }: ErrorF
     global: {
       title: "アプリケーションエラー",
       message: "アプリケーション全体でエラーが発生しました",
-      description: "ページを再読み込みするか、ホームページに戻ってください。",
+      description: "ページを再読み込みするか、トップページに戻ってください。",
       severity: "critical" as const,
       showSupport: true,
       showRetry: false,

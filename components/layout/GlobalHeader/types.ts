@@ -36,8 +36,6 @@ export interface NavLinkProps {
   children: React.ReactNode;
   /** カスタムクラス名 */
   className?: string;
-  /** アクティブ時のクラス名 */
-  activeClassName?: string;
   /** 完全一致判定（デフォルト: false） */
   exactMatch?: boolean;
   /** アイコン要素 */
@@ -82,8 +80,8 @@ export interface NavigationConfig {
   marketing: NavItem[];
   /** アプリケーションナビゲーション */
   app: NavItem[];
-  /** モバイル専用ナビゲーション（ハンバーガーメニューのみ） */
-  mobile: NavItem[];
+  /** モバイルの主要タブナビゲーション */
+  mobileTabs: NavItem[];
   /** ゲストナビゲーション */
   guest: NavItem[];
 }

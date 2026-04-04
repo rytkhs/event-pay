@@ -61,7 +61,7 @@ export default async function ConfirmPage(props: ConfirmPageProps) {
             <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
               <li>受信したメールを開く</li>
               <li>メール内の確認リンクをクリック</li>
-              <li>自動的にダッシュボードに移動します</li>
+              <li>自動的にホームに移動します</li>
             </ol>
           </div>
 

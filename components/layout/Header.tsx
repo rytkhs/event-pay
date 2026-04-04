@@ -1,31 +1,24 @@
 "use client";
 
-import Link from "next/link";
+import { useMemo } from "react";
 
-import type { AppWorkspaceShellData } from "@core/community/app-workspace";
+import { usePathname } from "next/navigation";
 
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
-type HeaderProps = {
-  workspace: AppWorkspaceShellData;
-};
+import { resolveMobilePageConfig } from "./mobile-navigation";
 
-export function Header({ workspace }: HeaderProps) {
+export function Header() {
+  const pathname = usePathname();
+  const pageConfig = useMemo(() => resolveMobilePageConfig(pathname), [pathname]);
+
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 bg-background z-20 sticky top-0">
-      <div className="flex items-center gap-2">
+    <header className="sticky top-0 z-20 hidden h-14 shrink-0 items-center border-b border-border/50 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/90 md:flex">
+      <div className="flex min-w-0 items-center gap-3">
         <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="h-4" />
-      </div>
-      <div className="ml-auto flex min-w-0 items-center gap-2">
-        <span className="hidden text-xs text-muted-foreground sm:inline">現在のコミュニティ</span>
-        <Link
-          href="/settings/community"
-          className="max-w-40 truncate rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted/80 transition-colors sm:max-w-56"
-        >
-          {workspace.currentCommunity?.name ?? "未設定"}
-        </Link>
+        <Separator orientation="vertical" className="h-5" />
+        <h1 className="truncate text-sm font-medium text-foreground">{pageConfig.title}</h1>
       </div>
     </header>
   );

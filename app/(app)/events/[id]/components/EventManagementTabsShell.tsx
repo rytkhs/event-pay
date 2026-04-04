@@ -53,9 +53,13 @@ export function EventManagementTabsShell({
   };
 
   return (
-    <Tabs value={activeTab} onValueChange={handleTabChange} className="min-h-screen w-full">
+    <Tabs
+      value={activeTab}
+      onValueChange={handleTabChange}
+      className="min-h-screen w-full [--event-management-tabbar-height:3.25rem]"
+    >
       <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6">{headerContent}</div>
-      <div className="sticky top-12 z-20 border-b border-border/60 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
+      <div className="sticky top-[var(--app-mobile-header-height)] z-20 border-b border-border/60 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90 md:top-14">
         <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6">
           <div className="py-2">
             <TabsList
