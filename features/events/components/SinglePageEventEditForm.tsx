@@ -977,9 +977,6 @@ export function SinglePageEventEditForm({
                 </Button>
               </div>
             </div>
-
-            {/* Spacer for fixed footer */}
-            <div className="h-24" />
           </form>
         </Form>
       </div>

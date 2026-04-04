@@ -52,7 +52,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             logoutAction={logoutAction}
             createExpressDashboardLoginLinkAction={createExpressDashboardLoginLinkAction}
           />
-          <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col p-2 pb-[calc(var(--app-mobile-tabbar-height)+env(safe-area-inset-bottom))] sm:p-4 md:pb-4">
+          <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col p-2 pb-[calc(var(--app-mobile-tabbar-height)+env(safe-area-inset-bottom))] sm:p-4 sm:pb-[calc(var(--app-mobile-tabbar-height)+env(safe-area-inset-bottom))] md:pb-4">
             {children}
           </main>
         </SidebarInset>

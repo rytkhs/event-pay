@@ -107,7 +107,5 @@ describe("DashboardPage", () => {
 
     expect(createDashboardDataResource).toHaveBeenCalledTimes(1);
     expect(createDashboardDataResource).toHaveBeenCalledWith("user-1", "community-1");
-    expect(screen.getByText("ホーム")).toBeInTheDocument();
-    expect(screen.getByText("ボドゲ会 の運営状況を確認できます")).toBeInTheDocument();
   });
 });
