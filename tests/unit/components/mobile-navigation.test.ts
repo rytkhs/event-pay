@@ -19,11 +19,9 @@ describe("mobile navigation config", () => {
     });
   });
 
-  it("switches event detail title when participants tab is active", () => {
-    const searchParams = new URLSearchParams("tab=participants");
-
-    expect(resolveMobilePageConfig("/events/event_123", searchParams)).toEqual({
-      title: "参加者管理",
+  it("recognizes event detail page as an events tab page", () => {
+    expect(resolveMobilePageConfig("/events/event_123")).toEqual({
+      title: "イベント詳細",
       activeNav: "events",
       backHref: "/events",
       showTabs: true,
