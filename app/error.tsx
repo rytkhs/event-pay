@@ -32,7 +32,7 @@ export default function RootErrorPage({ error, reset }: ErrorPageProps) {
       severity="high"
       title="エラーが発生しました"
       message="申し訳ございません。予期しないエラーが発生しました"
-      description="ページを再読み込みするか、ホームページに戻ってください。問題が続く場合はサポートにお問い合わせください。"
+      description="ページを再読み込みするか、トップページに戻ってください。問題が続く場合はサポートにお問い合わせください。"
       showRetry={true}
       showHome={true}
       showSupport={true}

@@ -29,7 +29,7 @@ export default async function DashboardPage() {
       <div className="min-h-screen bg-muted/30">
         <div className="max-w-7xl mx-auto sm:py-6 lg:py-8 sm:px-4 lg:px-8">
           <div className="flex flex-col gap-2 mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">ダッシュボード</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">ホーム</h1>
             <p className="text-muted-foreground text-sm sm:text-base">
               コミュニティ作成後に、ここから運営状況を確認できます
             </p>
@@ -54,10 +54,10 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-muted/30">
       <div className="max-w-7xl mx-auto sm:py-6 lg:py-8 sm:px-4 lg:px-8">
-        {/* ダッシュボードヘッダー */}
+        {/* ホームヘッダー */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">ダッシュボード</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">ホーム</h1>
             <p className="text-muted-foreground text-sm sm:text-base">
               {currentCommunity.name} の運営状況を確認できます
             </p>

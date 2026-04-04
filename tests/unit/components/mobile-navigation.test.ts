@@ -3,7 +3,7 @@ import { isMobileTabActive, resolveMobilePageConfig } from "@/components/layout/
 describe("mobile navigation config", () => {
   it("resolves dashboard root as a primary tab page", () => {
     expect(resolveMobilePageConfig("/dashboard")).toEqual({
-      title: "ダッシュボード",
+      title: "ホーム",
       activeNav: "dashboard",
       backHref: null,
       showTabs: true,

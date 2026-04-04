@@ -20,7 +20,7 @@ const settingsPages = [
     title: "Stripe アカウント",
     href: "/settings/payments",
     icon: CreditCard,
-    description: "Stripeアカウント設定とダッシュボード",
+    description: "Stripeアカウント設定と入金状況の確認",
   },
   {
     title: "アカウント",

@@ -30,7 +30,7 @@ export function resolveMobilePageConfig(
   searchParams?: SearchParamsLike | null
 ): MobilePageConfig {
   if (pathname === "/dashboard") {
-    return createConfig("ダッシュボード", "dashboard");
+    return createConfig("ホーム", "dashboard");
   }
 
   if (pathname === "/dashboard/settlement-reports") {

@@ -22,7 +22,7 @@ export function FooterBranding({ className }: { className?: string }): JSX.Eleme
             "text-lg md:text-xl",
             "hover:text-primary"
           )}
-          aria-label="みんなの集金ホームページへ"
+          aria-label="みんなの集金トップページへ"
         >
           {footerConfig.brand.name}
         </Link>

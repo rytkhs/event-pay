@@ -63,7 +63,7 @@ function ErrorContent({ searchParams }: ErrorContentProps) {
               <Button asChild variant="outline" className="w-full">
                 <Link href="/dashboard">
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  ダッシュボードに戻る
+                  ホームに戻る
                 </Link>
               </Button>
             </div>

@@ -17,7 +17,7 @@ export default function DashboardLoading() {
       <div className="max-w-7xl mx-auto sm:py-6 lg:py-8 sm:px-4 lg:px-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">ダッシュボード</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">ホーム</h1>
             <p className="text-muted-foreground text-sm sm:text-base">
               イベント管理の概要を確認できます
             </p>
