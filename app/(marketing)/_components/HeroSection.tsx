@@ -25,7 +25,7 @@ export const HeroSection: React.FC = () => {
         <div className="flex flex-col md:flex-row items-center gap-12 lg:gap-20">
           {/* Text Content */}
           <div className="flex-1 text-center md:text-left">
-            <FadeIn delay={0.1}>
+            {/* <FadeIn delay={0.1}>
               <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-bold mb-6">
                 <span className="relative flex h-3 w-3" aria-hidden="true">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/40 opacity-75"></span>
@@ -33,7 +33,7 @@ export const HeroSection: React.FC = () => {
                 </span>
                 集金ストレスをゼロに
               </div>
-            </FadeIn>
+            </FadeIn> */}
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 leading-tight mb-6">
               イベントの集金
