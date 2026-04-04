@@ -36,7 +36,7 @@ export const registerInputSchema = z.object({
         return true;
       },
       {
-        message: "名前に無効な文字が含まれています",
+        message: "ユーザーネームに無効な文字が含まれています",
       }
     ),
   email: emailInputSchema,
