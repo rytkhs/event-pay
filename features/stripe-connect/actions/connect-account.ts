@@ -36,9 +36,7 @@ import {
 import { type ConnectAccountStatusPayload, StripeConnectError } from "../types";
 import { startOnboardingSchema } from "../validation";
 
-type StartOnboardingPayload = {
-  redirectUrl: string;
-};
+type StartOnboardingPayload = Record<string, never>;
 
 type StartOnboardingActionResult = ActionResult<StartOnboardingPayload>;
 
@@ -574,6 +572,7 @@ export async function startOnboardingAction(
   });
 
   let userId: string | undefined;
+  let onboardingRedirectUrl: string | undefined;
   try {
     const formData = resolveActionFormData(stateOrFormData, maybeFormData);
 
@@ -677,15 +676,7 @@ export async function startOnboardingAction(
       representative_community_id: representativeCommunityResult.data.id,
       outcome: "success",
     });
-
-    return ok(
-      {
-        redirectUrl: accountLink.url,
-      },
-      {
-        message: `${representativeCommunityResult.data.name} を Stripe アカウント設定に使うコミュニティとして設定しました`,
-      }
-    );
+    onboardingRedirectUrl = accountLink.url;
   } catch (error) {
     handleServerError(error, {
       category: "stripe_connect",
@@ -700,4 +691,13 @@ export async function startOnboardingAction(
           : "オンボーディング開始中にエラーが発生しました",
     });
   }
+
+  if (!onboardingRedirectUrl) {
+    return fail("INTERNAL_ERROR", {
+      userMessage: "オンボーディングURLの生成に失敗しました",
+    });
+  }
+
+  redirect(onboardingRedirectUrl);
+  return ok({});
 }

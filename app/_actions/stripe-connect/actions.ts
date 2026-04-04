@@ -9,9 +9,7 @@ import {
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
-type StartOnboardingPayload = {
-  redirectUrl: string;
-};
+type StartOnboardingPayload = Record<string, never>;
 
 type StartOnboardingActionResult = ActionResult<StartOnboardingPayload>;
 

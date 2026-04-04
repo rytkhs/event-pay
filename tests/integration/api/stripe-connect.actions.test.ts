@@ -285,7 +285,7 @@ describe("Stripe Connect actions", () => {
   });
 
   describe("startOnboardingAction", () => {
-    it("代表コミュニティを保存してオンボーディングURLを返す", async () => {
+    it("代表コミュニティを保存して Stripe オンボーディングへリダイレクトする", async () => {
       const { startOnboardingAction } = require("@features/stripe-connect/server");
       const formData = new FormData();
       formData.set("representativeCommunityId", representativeCommunityId);
@@ -293,9 +293,7 @@ describe("Stripe Connect actions", () => {
       const result = await startOnboardingAction(formData);
 
       expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.redirectUrl).toContain("https://connect.stripe.com");
-      }
+      expect(redirect).toHaveBeenCalledWith(expect.stringContaining("https://connect.stripe.com"));
       expect(mockResolveRepresentativeCommunitySelection).toHaveBeenCalledWith(
         mockSupabase,
         defaultUserId,
@@ -348,7 +346,7 @@ describe("Stripe Connect actions", () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.fieldErrors?.representativeCommunityId).toEqual([
-          "代表コミュニティを選択してください",
+          "Stripe アカウント設定に使うコミュニティを選択してください",
         ]);
       }
     });

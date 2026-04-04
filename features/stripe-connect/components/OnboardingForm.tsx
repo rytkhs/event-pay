@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useActionState, useEffect, useState, type ReactNode } from "react";
+import { useActionState, useState, type ReactNode } from "react";
 
 import Link from "next/link";
 
@@ -26,9 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 
-type StartOnboardingPayload = {
-  redirectUrl: string;
-};
+type StartOnboardingPayload = Record<string, never>;
 
 type StartOnboardingResult = ActionResult<StartOnboardingPayload>;
 
@@ -69,12 +67,6 @@ export function OnboardingForm({
 }: OnboardingFormProps) {
   const [selectedCommunityId, setSelectedCommunityId] = useState(defaultRepresentativeCommunityId);
   const [state, formAction, isPending] = useActionState(onStartOnboarding, initialState);
-
-  useEffect(() => {
-    if (state.success && state.data?.redirectUrl) {
-      window.location.assign(state.data.redirectUrl);
-    }
-  }, [state]);
 
   const error = state.success ? undefined : state.error;
   const representativeCommunityError = error?.fieldErrors?.representativeCommunityId?.[0];
