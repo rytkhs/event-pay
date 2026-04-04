@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 import {
   Check,
@@ -17,10 +16,8 @@ import {
 } from "lucide-react";
 
 import type { AppWorkspaceShellData } from "@core/community/app-workspace";
-import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
-import { updateCurrentCommunityAction } from "@/app/(app)/actions/current-community";
 import { cn } from "@/components/ui/_lib/cn";
 import {
   DropdownMenu,
@@ -30,7 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenuButton } from "@/components/ui/sidebar";
 
-const LOGOUT_ERROR_MESSAGE = "ログアウトに失敗しました。再度お試しください。";
+import { useWorkspaceMenuActions } from "./use-workspace-menu-actions";
 
 type CommunitySwitcherProps = {
   workspace: AppWorkspaceShellData;
@@ -66,83 +63,34 @@ export function CommunitySwitcher({
   logoutAction,
   createExpressDashboardLoginLinkAction,
 }: CommunitySwitcherProps) {
-  const router = useRouter();
-  const { toast } = useToast();
-
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [logoutError, setLogoutError] = useState<string | null>(null);
-  const [pendingCommunityId, setPendingCommunityId] = useState<string | null>(null);
-  const [isCommunityPending, startCommunityTransition] = useTransition();
-  const [isStripePending, startStripeTransition] = useTransition();
-  const [isLogoutPending, startLogoutTransition] = useTransition();
+  const {
+    handleCommunitySwitch,
+    handleStripeDashboard,
+    handleLogout,
+    pendingCommunityId,
+    isCommunityPending,
+    isStripePending,
+    isLogoutPending,
+    logoutError,
+    resetLogoutError,
+  } = useWorkspaceMenuActions({
+    currentCommunityId: workspace.currentCommunity?.id,
+    logoutAction,
+    createExpressDashboardLoginLinkAction,
+    onMenuClose: () => setIsMenuOpen(false),
+  });
 
   const currentCommunityName = workspace.currentCommunity?.name ?? "コミュニティ未作成";
   const communityInitial = getInitials(currentCommunityName);
   const communityGradient = getCommunityGradient(currentCommunityName);
-
-  const handleSwitch = (communityId: string) => {
-    if (communityId === workspace.currentCommunity?.id) {
-      return;
-    }
-
-    setPendingCommunityId(communityId);
-
-    startCommunityTransition(async () => {
-      const result = await updateCurrentCommunityAction(communityId);
-
-      if (!result.success) {
-        toast({
-          title: "通信に失敗しました",
-          description: result.error.userMessage,
-          variant: "destructive",
-        });
-        setPendingCommunityId(null);
-        return;
-      }
-
-      toast({
-        title: "コミュニティを切り替えました",
-      });
-      setPendingCommunityId(null);
-      setIsMenuOpen(false);
-      router.refresh();
-    });
-  };
-
-  const handleStripeDashboard = () => {
-    startStripeTransition(async () => {
-      await createExpressDashboardLoginLinkAction();
-      setIsMenuOpen(false);
-    });
-  };
-
-  const handleLogout = () => {
-    setLogoutError(null);
-
-    startLogoutTransition(async () => {
-      try {
-        const result = await logoutAction();
-
-        if (!result.success) {
-          setLogoutError(result.error.userMessage || LOGOUT_ERROR_MESSAGE);
-          return;
-        }
-
-        window.location.href = result.redirectUrl || "/login";
-      } catch {
-        setLogoutError(LOGOUT_ERROR_MESSAGE);
-      }
-    });
-  };
 
   return (
     <DropdownMenu
       open={isMenuOpen}
       onOpenChange={(open) => {
         setIsMenuOpen(open);
-        if (!open) {
-          setLogoutError(null);
-        }
+        resetLogoutError();
       }}
     >
       <DropdownMenuTrigger asChild>
@@ -194,9 +142,9 @@ export function CommunitySwitcher({
                     key={community.id}
                     onSelect={(event) => {
                       event.preventDefault();
-                      handleSwitch(community.id);
+                      handleCommunitySwitch(community.id);
                     }}
-                    disabled={isCurrent || isPendingRow}
+                    disabled={isCurrent || isCommunityPending}
                     className={cn(
                       "flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-sm transition-colors",
                       isCurrent ? "bg-primary/5 text-foreground" : "text-foreground",

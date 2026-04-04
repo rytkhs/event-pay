@@ -1,17 +1,15 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { Check, CreditCard, ExternalLink, Loader2, LogOut, Menu, Plus } from "lucide-react";
 
 import type { AppWorkspaceShellData } from "@core/community/app-workspace";
-import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
-import { updateCurrentCommunityAction } from "@/app/(app)/actions/current-community";
 import { navigationConfig } from "@/components/layout/GlobalHeader/navigation-config";
 import { cn } from "@/components/ui/_lib/cn";
 import { Button } from "@/components/ui/button";
@@ -20,8 +18,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useMobileChrome } from "./mobile-chrome-context";
 import { isMobileTabActive, resolveMobilePageConfig } from "./mobile-navigation";
 import { useMobileKeyboardOpen } from "./use-mobile-keyboard";
-
-const LOGOUT_ERROR_MESSAGE = "ログアウトに失敗しました。再度お試しください。";
+import { useWorkspaceMenuActions } from "./use-workspace-menu-actions";
 
 type MobileAppChromeProps = {
   workspace: AppWorkspaceShellData;
@@ -34,8 +31,6 @@ export function MobileAppChrome({
   logoutAction,
   createExpressDashboardLoginLinkAction,
 }: MobileAppChromeProps) {
-  const router = useRouter();
-  const { toast } = useToast();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const pageConfig = useMemo(
@@ -45,63 +40,24 @@ export function MobileAppChrome({
   const isKeyboardOpen = useMobileKeyboardOpen();
   const { isBottomOverlayOpen } = useMobileChrome();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const [isCommunityPending, startCommunityTransition] = useTransition();
-  const [isStripePending, startStripeTransition] = useTransition();
-  const [isLogoutPending, startLogoutTransition] = useTransition();
-  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const {
+    handleCommunitySwitch,
+    handleStripeDashboard,
+    handleLogout,
+    pendingCommunityId,
+    isCommunityPending,
+    isStripePending,
+    isLogoutPending,
+    logoutError,
+    resetLogoutError,
+  } = useWorkspaceMenuActions({
+    currentCommunityId: workspace.currentCommunity?.id,
+    logoutAction,
+    createExpressDashboardLoginLinkAction,
+    onMenuClose: () => setIsMoreOpen(false),
+  });
 
   const shouldShowTabs = pageConfig.showTabs && !isKeyboardOpen && !isBottomOverlayOpen;
-
-  const handleStripeDashboard = () => {
-    setIsMoreOpen(false);
-    startStripeTransition(async () => {
-      await createExpressDashboardLoginLinkAction();
-    });
-  };
-
-  const handleCommunitySwitch = (communityId: string) => {
-    if (communityId === workspace.currentCommunity?.id) {
-      return;
-    }
-
-    startCommunityTransition(async () => {
-      const result = await updateCurrentCommunityAction(communityId);
-
-      if (!result.success) {
-        toast({
-          title: "通信に失敗しました",
-          description: result.error.userMessage,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "コミュニティを切り替えました",
-      });
-      router.refresh();
-      setIsMoreOpen(false);
-    });
-  };
-
-  const handleLogout = () => {
-    setLogoutError(null);
-
-    startLogoutTransition(async () => {
-      try {
-        const result = await logoutAction();
-
-        if (!result.success) {
-          setLogoutError(result.error.userMessage || LOGOUT_ERROR_MESSAGE);
-          return;
-        }
-
-        window.location.href = result.redirectUrl || "/login";
-      } catch {
-        setLogoutError(LOGOUT_ERROR_MESSAGE);
-      }
-    });
-  };
 
   return (
     <>
@@ -188,9 +144,7 @@ export function MobileAppChrome({
         open={isMoreOpen}
         onOpenChange={(open) => {
           setIsMoreOpen(open);
-          if (open) {
-            setLogoutError(null);
-          }
+          resetLogoutError();
         }}
       >
         <SheetContent
@@ -209,6 +163,7 @@ export function MobileAppChrome({
               <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
                 {workspace.ownedCommunities.map((community) => {
                   const isCurrent = community.id === workspace.currentCommunity?.id;
+                  const isPendingRow = pendingCommunityId === community.id && isCommunityPending;
 
                   return (
                     <button
@@ -227,7 +182,7 @@ export function MobileAppChrome({
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">{community.name}</p>
                       </div>
-                      {isCommunityPending && !isCurrent ? (
+                      {isPendingRow ? (
                         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
                       ) : isCurrent ? (
                         <Check className="h-4 w-4 shrink-0 text-primary" />
