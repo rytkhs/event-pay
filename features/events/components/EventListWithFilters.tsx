@@ -19,7 +19,6 @@ import { EventListItem } from "../types";
 
 import { EventFilters } from "./EventFilters";
 import { EventList } from "./EventList";
-import { EventSort } from "./EventSort";
 import { Pagination } from "./Pagination";
 
 interface EventListWithFiltersProps {
@@ -47,17 +46,14 @@ export function EventListWithFilters({
   const [isPending] = useTransition();
   const [searchQuery, setSearchQuery] = useState("");
 
-  // ページネーション
   const { currentPage, pageSize, setPage } = usePagination({
     defaultPage: 1,
     defaultPageSize: 24,
   });
 
-  // サーバーサイドソート状態を管理
   const [sortBy, setSortBy] = useState<SortBy>(initialSortBy);
   const [sortOrder, setSortOrder] = useState<SortOrder>(initialSortOrder);
 
-  // URLパラメータ更新関数（レースコンディション対策）
   const updateUrlParams = useCallback(
     (updates: Record<string, string | undefined>) => {
       const params = new URLSearchParams(window.location.search);
@@ -75,7 +71,6 @@ export function EventListWithFilters({
     [router]
   );
 
-  // フィルター変更時にURLパラメータを更新（ページを1にリセット）
   const handleFiltersChange = useCallback(
     async (newFilters: Filters) => {
       updateUrlParams({
@@ -85,13 +80,12 @@ export function EventListWithFilters({
         dateEnd: newFilters.dateRange.end,
         sortBy,
         sortOrder,
-        page: "1", // フィルター変更時はページを1にリセット
+        page: "1",
       });
     },
     [updateUrlParams, sortBy, sortOrder]
   );
 
-  // ソート変更時にURLパラメータを更新（ページを1にリセット）
   const handleSortChange = useCallback(
     (newSortBy: SortBy, newSortOrder: SortOrder, currentFilters: Filters) => {
       setSortBy(newSortBy);
@@ -104,13 +98,12 @@ export function EventListWithFilters({
         payment: currentFilters.payment,
         dateStart: currentFilters.dateRange.start,
         dateEnd: currentFilters.dateRange.end,
-        page: "1", // ソート変更時もページを1にリセット
+        page: "1",
       });
     },
     [updateUrlParams]
   );
 
-  // フィルター適用（サーバーサイドのため状態管理のみ）
   const { filters, setStatusFilter, setPaymentFilter, setDateRangeFilter, clearFilters } =
     useEventFilter({
       events,
@@ -123,7 +116,6 @@ export function EventListWithFilters({
       },
     });
 
-  // ソート変更ハンドラー（Zodバリデーション付き）
   const customSetSortBy = useCallback(
     (newSortBy: SortBy) => {
       if (isValidSortBy(newSortBy)) {
@@ -142,14 +134,13 @@ export function EventListWithFilters({
     [handleSortChange, sortBy, filters]
   );
 
-  // フィルターが適用されているかどうかを判定
   const isFiltered =
     filters.status !== "all" ||
     filters.payment !== "all" ||
     !!filters.dateRange.start ||
-    !!filters.dateRange.end;
+    !!filters.dateRange.end ||
+    searchQuery.trim() !== "";
 
-  // 検索機能によるフィルタリング
   const displayEvents = useMemo(() => {
     if (!searchQuery.trim()) {
       return events;
@@ -164,65 +155,60 @@ export function EventListWithFilters({
     });
   }, [events, searchQuery]);
 
-  // ローディング状態
   const isDisplayLoading = isPending || initialLoading;
 
   return (
-    <div className="space-y-4" data-testid="event-list-with-filters">
-      {/* 検索・フィルターセクション */}
-      <div className="space-y-3">
-        <EventFilters
-          statusFilter={filters.status}
-          dateFilter={filters.dateRange}
-          paymentFilter={filters.payment}
-          onStatusFilterChange={setStatusFilter}
-          onDateFilterChange={setDateRangeFilter}
-          onPaymentFilterChange={setPaymentFilter}
-          onClearFilters={clearFilters}
-          isFiltered={isFiltered}
-          searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
-        />
+    <div className="space-y-6" data-testid="event-list-with-filters">
+      {/* Search & Filter Toolbar */}
+      <EventFilters
+        statusFilter={filters.status}
+        dateFilter={filters.dateRange}
+        paymentFilter={filters.payment}
+        onStatusFilterChange={setStatusFilter}
+        onDateFilterChange={setDateRangeFilter}
+        onPaymentFilterChange={setPaymentFilter}
+        onClearFilters={clearFilters}
+        onClearSearchQuery={() => setSearchQuery("")}
+        isFiltered={isFiltered}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSortChange={customSetSortBy}
+        onOrderChange={customSetSortOrder}
+      />
 
-        {/* 結果数・ソート */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-1">
-          <div className="text-sm text-muted-foreground">{totalCount}件のイベント</div>
-          <EventSort
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            onSortChange={customSetSortBy}
-            onOrderChange={customSetSortOrder}
-          />
+      {/* Main Content Area */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between px-1">
+          <div className="text-[10px] font-bold text-muted-foreground/60 tracking-[0.15em] uppercase">
+            {totalCount} EVENTS FOUND
+          </div>
         </div>
-      </div>
 
-      {/* メインコンテンツ */}
-      <div className="space-y-4">
-        {/* イベント一覧 */}
-        <EventList events={displayEvents} isLoading={isDisplayLoading} isFiltered={isFiltered} />
+        {/* Event List */}
+        <div className="pt-2 pb-4">
+          <EventList events={displayEvents} isLoading={isDisplayLoading} isFiltered={isFiltered} />
+        </div>
 
-        {/* ページネーション */}
-        {totalCount > pageSize && (
-          <div className="flex justify-center">
-            <Pagination
-              currentPage={currentPage}
-              totalCount={totalCount}
-              pageSize={pageSize}
-              onPageChange={setPage}
-            />
+        {/* Footer Area: Pagination & Count summary */}
+        {totalCount > 0 && (
+          <div className="flex flex-col items-center gap-4 pt-10 pb-20">
+            {totalCount > pageSize && (
+              <Pagination
+                currentPage={currentPage}
+                totalCount={totalCount}
+                pageSize={pageSize}
+                onPageChange={setPage}
+              />
+            )}
+
+            <div className="text-[10px] font-medium text-muted-foreground/45 tracking-wider uppercase">
+              SHOWING {Math.min((currentPage - 1) * pageSize + 1, totalCount)} –{" "}
+              {Math.min(currentPage * pageSize, totalCount)} OF {totalCount}
+            </div>
           </div>
         )}
-
-        {/* 結果件数表示 */}
-        <div className="text-sm text-muted-foreground text-center">
-          {totalCount > 0 && (
-            <>
-              {Math.min((currentPage - 1) * pageSize + 1, totalCount)}〜
-              {Math.min(currentPage * pageSize, totalCount)}件 / 全{totalCount}件を表示
-            </>
-          )}
-          {totalCount === 0 && "該当するイベントがありません"}
-        </div>
       </div>
     </div>
   );

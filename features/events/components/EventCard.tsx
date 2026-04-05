@@ -5,11 +5,10 @@ import { memo } from "react";
 import Link from "next/link";
 
 import { ja } from "date-fns/locale";
-import { Calendar, ChevronRight, CreditCard, MapPin, Users } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 import { cn } from "@/components/ui/_lib/cn";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { formatUtcToJst } from "@/core/utils/timezone";
 
 interface EventCardProps {
@@ -25,7 +24,6 @@ interface EventCardProps {
   };
 }
 
-// 日本語通貨フォーマット
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("ja-JP", {
     style: "currency",
@@ -33,170 +31,174 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-// ステータスごとの設定
 const statusConfig = {
   upcoming: {
     label: "予定",
-    badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    dotClass: "bg-emerald-500",
+    badgeClass: "text-primary border-primary/20 bg-primary/5",
   },
   ongoing: {
     label: "開催中",
-    badgeClass: "bg-blue-50 text-blue-700 border-blue-200",
-    dotClass: "bg-blue-500",
+    badgeClass: "text-blue-600 dark:text-blue-400 border-blue-500/30 bg-blue-500/5",
   },
   past: {
     label: "終了",
-    badgeClass: "bg-slate-100 text-slate-600 border-slate-200",
-    dotClass: "bg-slate-400",
+    badgeClass: "text-muted-foreground border-border/60 bg-muted/30",
   },
   canceled: {
     label: "中止",
-    badgeClass: "bg-red-50 text-red-600 border-red-200",
-    dotClass: "bg-red-500",
+    badgeClass: "text-destructive border-destructive/20 bg-destructive/5",
   },
 };
 
-// 整理されたステータスバッジ
 function getStatusBadge(status: string) {
-  const config = statusConfig[status as keyof typeof statusConfig] || {
-    label: status,
-    badgeClass: "bg-slate-100 text-slate-600 border-slate-200",
-    dotClass: "bg-slate-400",
-  };
-
+  const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.past;
   return (
     <Badge
       variant="outline"
       className={cn(
-        "text-[10px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5 font-medium border rounded-md flex items-center gap-1",
+        "px-1.5 py-0 font-bold tracking-[0.1em] text-[9px] leading-[1.3rem] rounded-[6px] shadow-none",
         config.badgeClass
       )}
     >
-      <span className={cn("h-1.5 w-1.5 rounded-full", config.dotClass)} />
       {config.label}
     </Badge>
   );
 }
 
 export const EventCard = memo(function EventCard({ event }: EventCardProps) {
-  // 日付フォーマット処理 (例: 12/15(金) 14:00)
-  const dateStr = formatUtcToJst(event.date, "M/d (E)", { locale: ja });
+  const monthStr = formatUtcToJst(event.date, "M月", { locale: ja });
+  const dayStr = formatUtcToJst(event.date, "d", { locale: ja });
+  const dayOfWeekStr = formatUtcToJst(event.date, "E", { locale: ja });
   const timeStr = formatUtcToJst(event.date, "HH:mm", { locale: ja });
 
-  // 参加率計算
   const capacity = event.capacity || 0;
   const attendanceCount = event.attendances_count || 0;
-  const occupancy =
-    capacity > 0 ? Math.min(Math.round((attendanceCount / capacity) * 100), 100) : 0;
+
+  const statusColor = (() => {
+    switch (event.status) {
+      case "upcoming":
+        return "bg-primary/5 text-primary ring-1 ring-inset ring-primary/20 group-hover:bg-primary/10 transition-colors";
+      case "ongoing":
+        return "bg-blue-500/5 text-blue-600 dark:text-blue-400 ring-1 ring-inset ring-blue-500/30 group-hover:bg-blue-500/10 transition-colors";
+      case "past":
+        return "bg-muted/30 text-muted-foreground ring-1 ring-inset ring-border/50 group-hover:bg-muted/50 transition-colors";
+      case "canceled":
+        return "bg-destructive/5 text-destructive ring-1 ring-inset ring-destructive/20 group-hover:bg-destructive/10 transition-colors";
+      default:
+        return "bg-muted text-muted-foreground ring-1 ring-inset ring-border/50";
+    }
+  })();
 
   return (
     <Link
       href={`/events/${event.id}`}
       prefetch={false}
       className={cn(
-        "group relative flex flex-col sm:flex-row sm:items-center",
-        "py-4 px-4 sm:px-6",
-        "hover:bg-muted/40 active:bg-muted/60",
-        "transition-all duration-200",
-        "outline-none focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
-        "lg:grid lg:grid-cols-[1fr_120px_160px_140px_auto] lg:gap-6"
+        "group flex items-center justify-between",
+        "py-3.5 px-4 sm:py-4 sm:px-5",
+        "transition-colors duration-200",
+        "hover:bg-sidebar-accent/50",
+        "outline-none focus-visible:bg-sidebar-accent/50"
       )}
     >
-      {/* 1. メイン情報 (Title & Status) */}
-      <div className="flex-1 min-w-0 space-y-2 sm:space-y-1">
-        <div className="flex items-center gap-2 sm:gap-3 flex-nowrap">
-          {getStatusBadge(event.status)}
-          <h3 className="font-bold text-sm sm:text-base text-foreground truncate group-hover:text-primary transition-colors flex-1 min-w-0">
-            {event.title}
-          </h3>
-        </div>
-
-        {/* モバイル時のサブ情報 */}
+      <div className="flex items-center gap-3.5 sm:gap-5 min-w-0 flex-1">
+        {/* Date Anchor */}
         <div
           className={cn(
-            "flex flex-wrap items-center gap-x-3 gap-y-1.5 text-muted-foreground",
-            "lg:hidden"
+            "flex-shrink-0 flex flex-col items-center justify-center rounded-[10px] w-12 h-12 sm:w-[52px] sm:h-[52px]",
+            statusColor
           )}
         >
-          <div className="flex items-center gap-1.5 whitespace-nowrap">
-            <Calendar className="h-3.5 w-3.5 text-muted-foreground/70" />
-            <span className="tabular-nums font-medium text-xs sm:text-sm">
-              {dateStr} <span className="text-muted-foreground/60">{timeStr}</span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5 whitespace-nowrap">
-            <Users className="h-3.5 w-3.5 text-muted-foreground/70" />
-            <span className="text-xs sm:text-sm">
-              <span className="font-semibold text-foreground">{attendanceCount}</span>
-              {event.capacity && (
-                <span className="text-muted-foreground/60">/{event.capacity}</span>
-              )}
-              <span className="ml-0.5">名</span>
-            </span>
-          </div>
-
-          {event.location && (
-            <div className="flex items-center gap-1.5 min-w-0 max-w-[150px] sm:max-w-[200px]">
-              <MapPin className="h-3.5 w-3.5 text-muted-foreground/70 flex-shrink-0" />
-              <span className="text-xs sm:text-sm truncate">{event.location}</span>
-            </div>
-          )}
-
-          {event.fee > 0 ? (
-            <div className="flex items-center gap-1.5 whitespace-nowrap">
-              <CreditCard className="h-3.5 w-3.5 text-muted-foreground/70" />
-              <span className="tabular-nums text-xs sm:text-sm font-medium">
-                {formatCurrency(event.fee)}
-              </span>
-            </div>
-          ) : (
-            <div className="text-xs text-muted-foreground/60">無料</div>
-          )}
-        </div>
-      </div>
-
-      {/* 2. 日時列 */}
-      <div className="hidden lg:flex flex-col justify-center">
-        <div className="text-sm font-bold tabular-nums">{dateStr}</div>
-        <div className="text-xs text-muted-foreground tabular-nums">{timeStr}</div>
-      </div>
-
-      {/* 3. 参加人数列 */}
-      <div className="hidden lg:flex flex-col justify-center gap-1.5">
-        <div className="flex items-center justify-between text-xs font-medium">
-          <span>参加状況</span>
-          <span>
-            <span className="text-foreground">{attendanceCount}</span>
-            {event.capacity && <span className="text-muted-foreground/60">/{event.capacity}</span>}
-            <span className="text-muted-foreground/60 ml-0.5">名</span>
+          <span className="text-[10px] sm:text-[11px] font-bold tracking-widest leading-none opacity-90">
+            {monthStr}
+          </span>
+          <span className="text-[18px] sm:text-[20px] font-black leading-none mt-[2px]">
+            {dayStr}
           </span>
         </div>
-        {event.capacity && <Progress value={occupancy} className="h-1.5 w-full bg-muted" />}
+
+        {/* Main Content */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-[14px] sm:text-[15px] leading-snug text-foreground truncate group-hover:text-primary transition-colors">
+              {event.title}
+            </h3>
+            {getStatusBadge(event.status)}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-y-1 text-muted-foreground/80">
+            <span className="text-[12px] font-semibold tracking-wide tabular-nums">{timeStr}</span>
+            <span className="text-muted-foreground/40 text-[10px] mx-1.5">•</span>
+            <span className="text-[12px] font-semibold">{dayOfWeekStr}曜日</span>
+
+            {event.location && (
+              <>
+                <span className="text-muted-foreground/40 text-[10px] mx-1.5">•</span>
+                <span className="text-[12px] font-medium truncate max-w-[120px] sm:max-w-[200px]">
+                  {event.location}
+                </span>
+              </>
+            )}
+
+            {/* Mobile metrics */}
+            <div className="flex sm:hidden items-center overflow-hidden w-full mt-1.5 gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
+                  参加
+                </span>
+                <span className="text-[12px] font-semibold tabular-nums text-foreground/80">
+                  {attendanceCount}
+                  {capacity > 0 && (
+                    <span className="text-muted-foreground/50 font-medium">/{capacity}</span>
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
+                  参加費
+                </span>
+                <span className="text-[12px] font-semibold tabular-nums text-foreground/80">
+                  {event.fee > 0 ? formatCurrency(event.fee) : "無料"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* 4. 場所・金額列 */}
-      <div className="hidden lg:flex flex-col justify-center gap-1">
-        {event.location && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
-            <MapPin className="h-3 w-3 flex-shrink-0" />
-            <span className="truncate">{event.location}</span>
-          </div>
-        )}
-        {event.fee > 0 ? (
-          <div className="flex items-center gap-1.5 text-xs font-semibold">
-            <CreditCard className="h-3 w-3" />
-            <span>{formatCurrency(event.fee)}</span>
-          </div>
-        ) : (
-          <div className="text-xs text-muted-foreground/60">無料</div>
-        )}
+      {/* Desktop Metrics */}
+      <div className="hidden sm:flex items-center gap-6 ml-4 lg:gap-10 lg:ml-8">
+        <div className="flex flex-col items-end justify-center w-[70px]">
+          <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/50 mb-[3px]">
+            参加者
+          </span>
+          <span className="text-[14px] font-bold tabular-nums leading-none">
+            <span className="text-foreground/80">{attendanceCount}</span>
+            {capacity > 0 && (
+              <span className="text-muted-foreground/50 font-semibold text-[11px] ml-[1px]">
+                /{capacity}
+              </span>
+            )}
+          </span>
+        </div>
+
+        <div className="flex flex-col items-end justify-center w-[80px]">
+          <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/50 mb-[3px]">
+            参加費
+          </span>
+          <span className="text-[13px] font-bold text-foreground/80 tabular-nums leading-none">
+            {event.fee > 0 ? formatCurrency(event.fee) : "無料"}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-center text-muted-foreground/30 group-hover:text-primary transition-colors pl-2">
+          <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+        </div>
       </div>
 
-      {/* 5. アクションインジケーター */}
-      <div className="absolute right-4 top-1/2 -translate-y-1/2 sm:relative sm:right-0 sm:top-0 sm:translate-y-0 sm:flex sm:items-center text-muted-foreground/30 group-hover:text-primary transition-colors sm:pl-4">
-        <ChevronRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+      {/* Mobile Chevron */}
+      <div className="flex sm:hidden items-center justify-center text-muted-foreground/30 group-hover:text-primary transition-colors pl-3 border-l border-transparent ml-auto h-full">
+        <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
       </div>
     </Link>
   );
