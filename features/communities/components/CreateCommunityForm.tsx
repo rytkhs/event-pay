@@ -1,16 +1,26 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useCallback, useEffect, useState, useTransition } from "react";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { ArrowRight, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CalendarDays,
+  Link2,
+  Loader2,
+  LogOut,
+  Users,
+  Wallet,
+} from "lucide-react";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
+import { cn } from "@/components/ui/_lib/cn";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,11 +38,9 @@ type CreateCommunityFormAction = (
 
 type CreateCommunityFormProps = {
   createCommunityAction: CreateCommunityFormAction;
+  logoutAction: () => Promise<ActionResult>;
   hasOwnedCommunities: boolean;
 };
-
-const defaultCommunityDescription =
-  "本コミュニティでは、サークル・グループの活動やイベント等の企画・運営を行っています。\nイベント管理プラットフォーム「みんなの集金」を利用して、イベント開催時の参加費や会費の支払い受付を行っています。詳細な内容や料金、支払方法は各イベントの案内で確認できます。";
 
 const initialState: CreateCommunityFormState = {
   success: false,
@@ -44,8 +52,34 @@ const initialState: CreateCommunityFormState = {
   },
 };
 
+const features = [
+  {
+    icon: CalendarDays,
+    title: "イベント管理",
+    description: "開催予定・終了イベントを一覧で把握",
+  },
+  // {
+  //   icon: Users,
+  //   title: "参加者管理",
+  //   description: "招待リンクで手軽に出欠確認",
+  // },
+  {
+    icon: Wallet,
+    title: "オンライン集金",
+    description: "Stripeで安全に参加費を受け取る",
+  },
+  {
+    icon: Link2,
+    title: "招待リンク発行",
+    description: "参加者がリンク1つで申し込み完了",
+  },
+];
+
+const LOGOUT_ERROR_MESSAGE = "ログアウトに失敗しました。再度お試しください。";
+
 export function CreateCommunityForm({
   createCommunityAction,
+  logoutAction,
   hasOwnedCommunities,
 }: CreateCommunityFormProps) {
   const router = useRouter();
@@ -53,90 +87,339 @@ export function CreateCommunityForm({
   const error = state.success ? undefined : state.error;
   const nameError = error?.fieldErrors?.name?.[0];
 
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [isLogoutPending, startLogoutTransition] = useTransition();
+
   useEffect(() => {
     if (state.success && state.redirectUrl) {
       router.push(state.redirectUrl);
     }
   }, [router, state]);
 
-  return (
-    <Card className="border-border/70 shadow-sm">
-      <CardHeader className="space-y-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-2">
-            <CardTitle className="text-2xl">コミュニティを作成</CardTitle>
-            <CardDescription className="text-sm leading-6">
-              {hasOwnedCommunities
-                ? "新しい運営単位を追加します。"
-                : "最初のコミュニティを作成すると、ホームやイベント管理を使い始められます。"}
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
+  const handleLogout = useCallback(async () => {
+    setLogoutError(null);
+    startLogoutTransition(async () => {
+      try {
+        const result = await logoutAction();
+        if (!result.success) {
+          setLogoutError(result.error.userMessage || LOGOUT_ERROR_MESSAGE);
+          return;
+        }
 
-      <CardContent className="space-y-6">
-        {!state.success && error?.userMessage ? (
-          <Alert variant="destructive">
-            <AlertTitle>作成できませんでした</AlertTitle>
-            <AlertDescription>{error.userMessage}</AlertDescription>
-          </Alert>
-        ) : null}
+        window.location.href = result.redirectUrl || "/login";
+      } catch (e) {
+        console.error("Logout error:", e);
+        setLogoutError(LOGOUT_ERROR_MESSAGE);
+      }
+    });
+  }, [logoutAction]);
 
-        <form action={formAction} className="space-y-6" noValidate>
-          <div className="space-y-2">
-            <Label htmlFor="community-name">コミュニティ名</Label>
-            <Input
-              id="community-name"
-              name="name"
-              placeholder="例: ボドゲ会、読書会、テニスサークル"
-              required
-              aria-invalid={nameError ? true : undefined}
-              aria-describedby={nameError ? "community-name-error" : undefined}
-            />
-            <p className="text-sm text-muted-foreground">
-              招待ページやコミュニティプロフィールに表示される名前です。あとから変更できます。
-            </p>
+  const formElement = (
+    <form action={formAction} className="flex flex-col gap-10" noValidate>
+      {/* 基本情報セクション */}
+      <section className="space-y-6">
+        <div className="space-y-6">
+          {/* コミュニティ名 */}
+          <div className="group flex flex-col gap-2">
+            <Label
+              htmlFor="community-name"
+              className="text-[13px] font-semibold text-foreground/80"
+            >
+              コミュニティ名
+              <span className="ml-1 text-destructive" aria-hidden="true">
+                *
+              </span>
+            </Label>
+            <div className="relative">
+              <Users className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50 transition-colors group-focus-within:text-primary/70" />
+              <Input
+                id="community-name"
+                name="name"
+                placeholder="例: ボドゲ会、読書会、テニスサークル"
+                required
+                className="h-11 rounded-xl border-border/60 pl-10 shadow-sm transition-all focus-visible:ring-primary/20"
+                aria-invalid={nameError ? true : undefined}
+                aria-describedby={nameError ? "community-name-error" : "community-name-hint"}
+              />
+            </div>
             {nameError ? (
               <p
                 id="community-name-error"
-                className="text-sm font-medium text-destructive"
+                className="text-[11px] font-medium text-destructive animate-in fade-in slide-in-from-top-1"
                 role="alert"
               >
                 {nameError}
               </p>
-            ) : null}
+            ) : (
+              <p id="community-name-hint" className="text-[11px] text-muted-foreground/75">
+                サークル、団体、一時的なグループの名前などを入力してください。あとから変更できます。
+              </p>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="community-description">コミュニティの説明</Label>
+          {/* 説明 */}
+          <div className="group flex flex-col gap-2">
+            <Label
+              htmlFor="community-description"
+              className="text-[13px] font-semibold text-foreground/80"
+            >
+              コミュニティの説明{" "}
+              <span className="ml-0.5 font-normal text-muted-foreground">(任意)</span>
+            </Label>
             <Textarea
               id="community-description"
               name="description"
-              defaultValue={defaultCommunityDescription}
-              className="min-h-32"
+              placeholder="例: サークル・グループの活動やイベント等の企画・運営を行っています..."
+              className="min-h-44 resize-none rounded-xl border-border/60 shadow-sm transition-all focus-visible:ring-primary/20"
+              aria-describedby="community-description-hint"
             />
-            <p className="text-sm text-muted-foreground">
-              コミュニティプロフィールに表示される説明文です。自由に編集できます。
+            <p id="community-description-hint" className="text-[11px] text-muted-foreground/75">
+              コミュニティプロフィールに表示されます。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 送信ボタン */}
+      <Button
+        type="submit"
+        disabled={isPending}
+        className={cn(
+          "relative h-12 w-full rounded-xl text-sm font-bold transition-all duration-200",
+          "bg-gradient-to-r from-primary via-primary/90 to-primary/80",
+          "shadow-[0_10px_20px_-10px_hsl(var(--primary)/0.5),inset_0_1px_0_rgba(255,255,255,0.2)]",
+          "hover:shadow-[0_12px_24px_-10px_hsl(var(--primary)/0.6),inset_0_1px_0_rgba(255,255,255,0.3)]",
+          "active:scale-[0.98]",
+          "disabled:opacity-70"
+        )}
+      >
+        {isPending ? (
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>作成中...</span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center gap-1.5">
+            <span>コミュニティを作成</span>
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </div>
+        )}
+      </Button>
+    </form>
+  );
+
+  // 既存ユーザー向け：シンプルな1カラムレイアウト
+  if (hasOwnedCommunities) {
+    return (
+      <div className="flex min-h-screen flex-col bg-stone-50/50">
+        <header className="relative z-10 flex h-20 shrink-0 items-center px-4 sm:px-8">
+          <Button
+            variant="ghost"
+            className="h-10 rounded-xl text-[13px] font-medium text-muted-foreground transition-all hover:bg-white hover:text-foreground hover:shadow-sm"
+            asChild
+          >
+            <Link href="/dashboard">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              戻る
+            </Link>
+          </Button>
+        </header>
+
+        <main className="flex flex-1 items-center justify-center p-6 sm:p-10">
+          <div className="w-full max-w-md">
+            <div className="mb-10 text-center">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                コミュニティを追加
+              </h1>
+              <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+                運営単位となる新しいコミュニティを作成します。
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] border border-border/50 bg-white/70 p-8 shadow-2xl shadow-stone-200/50 backdrop-blur-sm sm:p-10">
+              {!state.success && error?.userMessage ? (
+                <Alert
+                  variant="destructive"
+                  className="mb-8 rounded-2xl border-destructive/20 bg-destructive/5"
+                >
+                  <AlertTitle className="text-sm font-bold">作成できませんでした</AlertTitle>
+                  <AlertDescription className="text-xs opacity-90">
+                    {error.userMessage}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+
+              {formElement}
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // 新規ユーザー向け：2カラムレイアウト（モバイル時はブランド部分をミニバージョンとして上部に表示）
+  return (
+    <div className="flex min-h-screen flex-col bg-background lg:grid lg:grid-cols-[5fr_7fr]">
+      {/* ── 左/上パネル: ブランド & PR ───────────────────── */}
+      <div
+        className="relative flex shrink-0 flex-col justify-center overflow-hidden px-6 py-8 sm:px-10 lg:justify-between lg:px-12 lg:py-14"
+        style={{
+          background:
+            "linear-gradient(150deg, hsl(186,67%,36%) 0%, hsl(186,67%,28%) 55%, hsl(210,70%,22%) 100%)",
+        }}
+      >
+        {/* 背景装飾 */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div
+            className="absolute -right-24 -top-24 h-80 w-80 rounded-full opacity-[0.12]"
+            style={{ background: "hsl(186,67%,75%)" }}
+          />
+          <div
+            className="absolute -bottom-16 -left-16 h-64 w-64 rounded-full opacity-[0.10]"
+            style={{ background: "hsl(210,70%,65%)" }}
+          />
+          <svg
+            className="absolute inset-0 h-full w-full opacity-[0.035]"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <defs>
+              <pattern id="cc-grid" width="36" height="36" patternUnits="userSpaceOnUse">
+                <path d="M 36 0 L 0 0 0 36" fill="none" stroke="white" strokeWidth="1" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#cc-grid)" />
+          </svg>
+        </div>
+
+        {/* ヘッダーエリア (ロゴ & ログアウト) */}
+        <div className="relative z-10 flex items-center justify-between lg:block">
+          <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/80 lg:text-white/50">
+            みんなの集金
+          </span>
+          {/* モバイル用ログアウトラベル */}
+          <div className="lg:hidden">
+            <form action={handleLogout}>
+              <Button
+                variant="ghost"
+                size="sm"
+                type="submit"
+                disabled={isLogoutPending}
+                className="h-8 rounded-lg px-3 text-[11px] font-bold text-white/80 transition-all hover:bg-white/10 hover:text-white"
+              >
+                {isLogoutPending ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                ログアウト
+              </Button>
+              {logoutError && (
+                <p className="mt-1 px-1 text-right text-[10px] font-medium text-destructive-foreground animate-in fade-in slide-in-from-top-1">
+                  {logoutError}
+                </p>
+              )}
+            </form>
+          </div>
+        </div>
+
+        {/* lg用ログアウトラベル */}
+        <div className="absolute right-12 top-12 z-20 hidden lg:block">
+          <form action={handleLogout}>
+            <Button
+              variant="ghost"
+              size="sm"
+              type="submit"
+              disabled={isLogoutPending}
+              className="h-10 rounded-xl px-4 text-[11px] font-bold text-white/50 transition-all hover:bg-white/10 hover:text-white"
+            >
+              {isLogoutPending ? (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <LogOut className="mr-2 h-3.5 w-3.5" />
+              )}
+              ログアウト
+            </Button>
+            {logoutError && (
+              <p className="mt-1 px-1 text-right text-[10px] font-medium text-destructive-foreground animate-in fade-in slide-in-from-top-1">
+                {logoutError}
+              </p>
+            )}
+          </form>
+        </div>
+
+        {/* メインコピー */}
+        <div className="relative z-10 mt-8 mb-2 lg:my-10">
+          <h2 className="text-2xl font-bold leading-snug tracking-tight text-white sm:text-3xl xl:text-4xl">
+            集金 · 出欠管理を
+            <br className="hidden lg:block" />
+            もっとラクに
+          </h2>
+          <p className="mt-3 text-[13px] leading-relaxed text-white/80 lg:mt-4 lg:text-sm lg:text-white/65">
+            イベント・集金はコミュニティやグループごとに束ねて管理することができます。
+            <br />
+            まずは最初のコミュニティを作成しましょう。
+          </p>
+
+          {/* 機能一覧 (lg以上のみ表示) */}
+          <div className="mt-12 hidden space-y-6 lg:block">
+            {features.map((f) => {
+              const Icon = f.icon;
+              return (
+                <div key={f.title} className="group flex items-start gap-5">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white shadow-lg backdrop-blur-md transition-transform group-hover:scale-110">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="mb-1.5 text-sm font-bold text-white">{f.title}</h3>
+                    <p className="text-[13px] leading-snug text-white/50">{f.description}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* フッター (lg以上のみ表示) */}
+        <div className="relative z-10 hidden lg:block">
+          <div className="mb-6 h-px w-16 bg-white/20" />
+          <p className="text-[11px] font-medium uppercase tracking-wide text-white/40">
+            Start creating your first community today
+          </p>
+        </div>
+      </div>
+
+      {/* ── 右/下パネル: フォーム ───────────────────────── */}
+      <div className="flex flex-1 items-center justify-center px-6 py-12 sm:px-10 lg:overflow-y-auto lg:py-16">
+        <div className="w-full max-w-sm">
+          {/* ヘッダー */}
+          <div className="mb-12">
+            <p className="mt-4 text-xl font-semibold">
+              まずは管理の土台となる
+              <br />
+              最初のコミュニティを作成してください。
             </p>
           </div>
 
-          <div className="flex justify-end border-t pt-5">
-            <Button type="submit" disabled={isPending} className="min-w-40">
-              {isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  作成中...
-                </>
-              ) : (
-                <>
-                  コミュニティを作成
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </Button>
+          {/* エラー */}
+          {!state.success && error?.userMessage ? (
+            <Alert
+              variant="destructive"
+              className="mb-8 rounded-2xl border-destructive/20 bg-destructive/5"
+            >
+              <AlertTitle className="text-sm font-bold">エラーが発生しました</AlertTitle>
+              <AlertDescription className="text-xs opacity-90">
+                {error.userMessage}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          {/* フォーム */}
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {formElement}
           </div>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+    </div>
   );
 }
