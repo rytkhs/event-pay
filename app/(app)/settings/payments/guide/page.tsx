@@ -236,7 +236,7 @@ export default function OnboardingGuidePage() {
               className="group flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
             >
               <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-              Stripe アカウント設定に戻る
+              オンライン集金設定に戻る
             </Link>
           </div>
         </div>

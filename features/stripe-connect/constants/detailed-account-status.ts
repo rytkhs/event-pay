@@ -2,19 +2,19 @@ import type { DetailedAccountStatus } from "../types";
 
 export const NO_ACCOUNT_STATUS: DetailedAccountStatus = {
   statusType: "no_account",
-  title: "決済機能を有効にしましょう",
+  title: "オンライン集金を有効にしましょう",
   description:
-    "オンライン決済を有効化するには、Stripeアカウント設定が必要です。設定は約3〜5分で完了します。",
-  actionText: "アカウント設定を開始",
+    "オンライン集金を有効化するには、Stripeアカウント設定が必要です。設定は約3〜5分で完了します。",
+  actionText: "設定を開始",
   actionUrl: "/settings/payments",
   severity: "info",
 };
 
 export const UNVERIFIED_STATUS: DetailedAccountStatus = {
   statusType: "unverified",
-  title: "アカウント設定を完了してください",
+  title: "オンライン集金の設定を完了してください",
   description:
-    "Stripeアカウントの設定が完了していません。設定を完了することでオンライン決済を有効化できます。",
+    "Stripeアカウントの設定が完了していません。設定を完了することでオンライン集金を有効化できます。",
   actionText: "設定を完了する",
   actionUrl: "/settings/payments?action=complete",
   severity: "warning",
@@ -41,7 +41,7 @@ export const RESTRICTED_STATUS: DetailedAccountStatus = {
 
 export const DASHBOARD_SETUP_INCOMPLETE_STATUS: DetailedAccountStatus = {
   statusType: "requirements_due",
-  title: "決済機能はまだ利用開始前です",
+  title: "オンライン集金はまだ利用開始前です",
   description:
     "Stripeアカウントの設定、またはStripeによる審査完了を待っている状態です。設定画面から状況を確認できます。",
   actionText: "状況を確認",

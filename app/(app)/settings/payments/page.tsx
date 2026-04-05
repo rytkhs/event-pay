@@ -24,7 +24,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
-  title: "Stripe アカウント設定",
+  title: "オンライン集金設定",
   description: "Stripeで売上の受け取り方法を設定します",
 };
 
