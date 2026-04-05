@@ -185,7 +185,7 @@ export function EventListWithFilters({
         </div>
 
         {/* Event List */}
-        <div className="border-t border-border/40">
+        <div className="pt-2 pb-4">
           <EventList events={displayEvents} isLoading={isDisplayLoading} isFiltered={isFiltered} />
         </div>
 
