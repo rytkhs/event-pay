@@ -138,7 +138,8 @@ export function EventListWithFilters({
     filters.status !== "all" ||
     filters.payment !== "all" ||
     !!filters.dateRange.start ||
-    !!filters.dateRange.end;
+    !!filters.dateRange.end ||
+    searchQuery.trim() !== "";
 
   const displayEvents = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -167,6 +168,7 @@ export function EventListWithFilters({
         onDateFilterChange={setDateRangeFilter}
         onPaymentFilterChange={setPaymentFilter}
         onClearFilters={clearFilters}
+        onClearSearchQuery={() => setSearchQuery("")}
         isFiltered={isFiltered}
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}

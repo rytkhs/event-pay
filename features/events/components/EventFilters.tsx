@@ -55,6 +55,7 @@ interface EventFiltersProps {
   isFiltered?: boolean;
   searchQuery?: string;
   onSearchQueryChange?: (query: string) => void;
+  onClearSearchQuery?: () => void;
   sortBy: SortBy;
   sortOrder: SortOrder;
   onSortChange: (sortBy: SortBy) => void;
@@ -72,6 +73,7 @@ export function EventFilters({
   isFiltered = false,
   searchQuery = "",
   onSearchQueryChange,
+  onClearSearchQuery,
   sortBy,
   sortOrder,
   onSortChange,
@@ -335,10 +337,22 @@ export function EventFilters({
               {dateFilter.start || "..."} — {dateFilter.end || "..."}
             </Badge>
           )}
+          {searchQuery.trim() && (
+            <Badge
+              variant="outline"
+              className="h-7 rounded-full border-primary/20 bg-primary/5 text-primary text-[10px] font-bold py-0 px-3"
+            >
+              <span className="opacity-60 mr-1.5 uppercase tracking-tighter">Search:</span>
+              {searchQuery.trim()}
+            </Badge>
+          )}
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleClearFilters}
+            onClick={() => {
+              handleClearFilters();
+              onClearSearchQuery?.();
+            }}
             className="h-7 px-3 text-[10px] font-bold text-muted-foreground/60 hover:text-destructive hover:bg-destructive/5 transition-colors rounded-full"
           >
             CLEAR ALL <X className="ml-1.5 h-3 w-3" />
