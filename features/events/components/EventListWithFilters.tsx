@@ -209,12 +209,6 @@ export function EventListWithFilters({
             </div>
           </div>
         )}
-
-        {totalCount === 0 && !isDisplayLoading && (
-          <div className="text-sm text-muted-foreground text-center py-20 border-t border-border/40">
-            該当するイベントがありません
-          </div>
-        )}
       </div>
     </div>
   );
