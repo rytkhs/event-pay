@@ -152,7 +152,7 @@ export function CreateCommunityForm({
               </p>
             ) : (
               <p id="community-name-hint" className="text-[11px] text-muted-foreground/75">
-                招待ページ等に表示されます。あとから変更できます。
+                サークル、団体、一時的なグループの名前などを入力してください。あとから変更できます。
               </p>
             )}
           </div>
@@ -225,7 +225,7 @@ export function CreateCommunityForm({
           </Button>
         </header>
 
-        <main className="flex flex-1 items-center justify-center p-6 sm:p-10 -mt-16">
+        <main className="flex flex-1 items-center justify-center p-6 sm:p-10">
           <div className="w-full max-w-md">
             <div className="mb-10 text-center">
               <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
