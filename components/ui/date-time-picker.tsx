@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { format } from "date-fns";
+import { format, isBefore, isSameDay, startOfDay } from "date-fns";
 import { ja } from "date-fns/locale";
 import { Calendar as CalendarIcon, Clock } from "lucide-react";
 
@@ -21,6 +21,101 @@ interface DateTimePickerProps {
   className?: string;
 }
 
+const TIME_MINUTES = [0, 15, 30, 45];
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+function normalizeDateTime(date: Date): Date {
+  const normalized = new Date(date);
+  normalized.setSeconds(0, 0);
+  return normalized;
+}
+
+function getLastSelectableSlot(date: Date): Date {
+  const lastSlot = new Date(date);
+  lastSlot.setHours(23, 45, 0, 0);
+  return lastSlot;
+}
+
+function roundUpToSelectableTime(date: Date): Date {
+  const rounded = normalizeDateTime(date);
+  const nextMinute = TIME_MINUTES.find((minute) => minute >= rounded.getMinutes());
+
+  if (nextMinute !== undefined) {
+    rounded.setMinutes(nextMinute, 0, 0);
+    return rounded;
+  }
+
+  rounded.setHours(rounded.getHours() + 1, 0, 0, 0);
+  return rounded;
+}
+
+function isDateDisabled(date: Date, minDate?: Date): boolean {
+  if (!minDate) return false;
+
+  const calendarDate = startOfDay(date);
+  const minCalendarDate = startOfDay(minDate);
+
+  if (isBefore(calendarDate, minCalendarDate)) {
+    return true;
+  }
+
+  if (!isSameDay(calendarDate, minCalendarDate)) {
+    return false;
+  }
+
+  return isBefore(getLastSelectableSlot(calendarDate), normalizeDateTime(minDate));
+}
+
+function getValidHours(date: Date | undefined, minDate?: Date): number[] {
+  if (!date || !minDate || !isSameDay(date, minDate)) {
+    return HOURS;
+  }
+
+  return HOURS.filter((hour) =>
+    TIME_MINUTES.some((minute) => {
+      const candidate = new Date(date);
+      candidate.setHours(hour, minute, 0, 0);
+      return !isBefore(candidate, normalizeDateTime(minDate));
+    })
+  );
+}
+
+function getValidMinutes(date: Date | undefined, minDate?: Date): number[] {
+  if (!date) return TIME_MINUTES;
+  if (!minDate || !isSameDay(date, minDate)) {
+    return TIME_MINUTES;
+  }
+
+  return TIME_MINUTES.filter((minute) => {
+    const candidate = new Date(date);
+    candidate.setMinutes(minute, 0, 0);
+    return !isBefore(candidate, normalizeDateTime(minDate));
+  });
+}
+
+function ensureSelectedOption(options: number[], selectedValue: number | undefined): number[] {
+  if (selectedValue === undefined || options.includes(selectedValue)) {
+    return options;
+  }
+
+  return [...options, selectedValue].sort((a, b) => a - b);
+}
+
+function clampToMinDate(date: Date, minDate?: Date): Date {
+  const normalized = normalizeDateTime(date);
+
+  if (!minDate) {
+    return normalized;
+  }
+
+  const normalizedMinDate = normalizeDateTime(minDate);
+  if (!isBefore(normalized, normalizedMinDate)) {
+    return normalized;
+  }
+
+  return roundUpToSelectableTime(normalizedMinDate);
+}
+
 export function DateTimePicker({
   value,
   onChange,
@@ -33,13 +128,17 @@ export function DateTimePicker({
   const [isOpen, setIsOpen] = React.useState(false);
 
   React.useEffect(() => {
-    setSelectedDate(value);
-  }, [value]);
+    setSelectedDate(value ? clampToMinDate(value, minDate) : undefined);
+  }, [value, minDate]);
 
-  // 時間の選択肢を生成（0-23時）
-  const hours = Array.from({ length: 24 }, (_, i) => i);
-  // 分の選択肢を生成（0, 15, 30, 45）
-  const minutes = [0, 15, 30, 45];
+  const hourOptions = ensureSelectedOption(
+    getValidHours(selectedDate, minDate),
+    selectedDate?.getHours()
+  );
+  const minuteOptions = ensureSelectedOption(
+    getValidMinutes(selectedDate, minDate),
+    selectedDate?.getMinutes()
+  );
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) {
@@ -58,21 +157,23 @@ export function DateTimePicker({
       newDate.setMinutes(0);
     }
 
-    setSelectedDate(newDate);
-    onChange?.(newDate);
+    const clampedDate = clampToMinDate(newDate, minDate);
+    setSelectedDate(clampedDate);
+    onChange?.(clampedDate);
   };
 
-  const handleTimeChange = (type: "hour" | "minute", value: string) => {
+  const handleTimeChange = (type: "hour" | "minute", nextValue: string) => {
     const newDate = selectedDate ? new Date(selectedDate) : new Date();
 
     if (type === "hour") {
-      newDate.setHours(parseInt(value));
+      newDate.setHours(parseInt(nextValue));
     } else {
-      newDate.setMinutes(parseInt(value));
+      newDate.setMinutes(parseInt(nextValue));
     }
 
-    setSelectedDate(newDate);
-    onChange?.(newDate);
+    const clampedDate = clampToMinDate(newDate, minDate);
+    setSelectedDate(clampedDate);
+    onChange?.(clampedDate);
   };
 
   const formatDisplayDate = (date: Date) => {
@@ -101,12 +202,7 @@ export function DateTimePicker({
               mode="single"
               selected={selectedDate}
               onSelect={handleDateSelect}
-              disabled={(date) => {
-                if (minDate) {
-                  return date < minDate;
-                }
-                return false;
-              }}
+              disabled={(date) => isDateDisabled(date, minDate)}
               locale={ja}
               initialFocus
             />
@@ -125,7 +221,7 @@ export function DateTimePicker({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {hours.map((hour) => (
+                    {hourOptions.map((hour) => (
                       <SelectItem key={hour} value={hour.toString()}>
                         {hour.toString().padStart(2, "0")}時
                       </SelectItem>
@@ -141,7 +237,7 @@ export function DateTimePicker({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {minutes.map((minute) => (
+                    {minuteOptions.map((minute) => (
                       <SelectItem key={minute} value={minute.toString()}>
                         {minute.toString().padStart(2, "0")}分
                       </SelectItem>
