@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useCallback, useEffect, useState, useTransition } from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -75,6 +75,8 @@ const features = [
   },
 ];
 
+const LOGOUT_ERROR_MESSAGE = "ログアウトに失敗しました。再度お試しください。";
+
 export function CreateCommunityForm({
   createCommunityAction,
   logoutAction,
@@ -85,20 +87,32 @@ export function CreateCommunityForm({
   const error = state.success ? undefined : state.error;
   const nameError = error?.fieldErrors?.name?.[0];
 
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [isLogoutPending, startLogoutTransition] = useTransition();
+
   useEffect(() => {
     if (state.success && state.redirectUrl) {
       router.push(state.redirectUrl);
     }
   }, [router, state]);
 
-  const handleLogout = async () => {
-    const result = await logoutAction();
-    if (result.redirectUrl) {
-      window.location.href = result.redirectUrl;
-    } else {
-      window.location.href = "/login";
-    }
-  };
+  const handleLogout = useCallback(async () => {
+    setLogoutError(null);
+    startLogoutTransition(async () => {
+      try {
+        const result = await logoutAction();
+        if (!result.success) {
+          setLogoutError(result.error.userMessage || LOGOUT_ERROR_MESSAGE);
+          return;
+        }
+
+        window.location.href = result.redirectUrl || "/login";
+      } catch (e) {
+        console.error("Logout error:", e);
+        setLogoutError(LOGOUT_ERROR_MESSAGE);
+      }
+    });
+  }, [logoutAction]);
 
   const formElement = (
     <form action={formAction} className="flex flex-col gap-10" noValidate>
@@ -290,11 +304,21 @@ export function CreateCommunityForm({
                 variant="ghost"
                 size="sm"
                 type="submit"
+                disabled={isLogoutPending}
                 className="h-8 rounded-lg px-3 text-[11px] font-bold text-white/80 transition-all hover:bg-white/10 hover:text-white"
               >
-                <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                {isLogoutPending ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                )}
                 ログアウト
               </Button>
+              {logoutError && (
+                <p className="mt-1 px-1 text-right text-[10px] font-medium text-destructive-foreground animate-in fade-in slide-in-from-top-1">
+                  {logoutError}
+                </p>
+              )}
             </form>
           </div>
         </div>
@@ -306,11 +330,21 @@ export function CreateCommunityForm({
               variant="ghost"
               size="sm"
               type="submit"
+              disabled={isLogoutPending}
               className="h-10 rounded-xl px-4 text-[11px] font-bold text-white/50 transition-all hover:bg-white/10 hover:text-white"
             >
-              <LogOut className="mr-2 h-3.5 w-3.5" />
+              {isLogoutPending ? (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <LogOut className="mr-2 h-3.5 w-3.5" />
+              )}
               ログアウト
             </Button>
+            {logoutError && (
+              <p className="mt-1 px-1 text-right text-[10px] font-medium text-destructive-foreground animate-in fade-in slide-in-from-top-1">
+                {logoutError}
+              </p>
+            )}
           </form>
         </div>
 
