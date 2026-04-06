@@ -2,28 +2,26 @@ import type { DetailedAccountStatus } from "../types";
 
 export const NO_ACCOUNT_STATUS: DetailedAccountStatus = {
   statusType: "no_account",
-  title: "オンライン集金を有効にしましょう",
-  description:
-    "オンライン集金を有効化するには、Stripeアカウント設定が必要です。設定は約3〜5分で完了します。",
-  actionText: "設定を開始",
+  title: "オンライン集金を有効にする",
+  description: "参加費・会費をオンラインで受け取れます。約3分で設定完了。",
+  actionText: "設定を始める",
   actionUrl: "/settings/payments",
   severity: "info",
 };
 
 export const UNVERIFIED_STATUS: DetailedAccountStatus = {
   statusType: "unverified",
-  title: "オンライン集金の設定を完了してください",
-  description:
-    "Stripeアカウントの設定が完了していません。設定を完了することでオンライン集金を有効化できます。",
-  actionText: "設定を完了する",
-  actionUrl: "/settings/payments?action=complete",
+  title: "オンライン集金の設定が未完了です",
+  description: "設定を再開してオンライン集金を有効にしてください。",
+  actionText: "設定を再開する",
+  actionUrl: "/settings/payments",
   severity: "warning",
 };
 
 export const PENDING_REVIEW_STATUS: DetailedAccountStatus = {
   statusType: "pending_review",
-  title: "Stripeが審査中です",
-  description: "提出いただいた情報をStripeが確認しています。審査完了までしばらくお待ちください。",
+  title: "Stripeが情報を審査中です",
+  description: "通常1〜2営業日で完了します。審査が終わると自動的に有効になります。",
   actionText: "提出内容を確認",
   actionUrl: "/settings/payments",
   severity: "info",
@@ -41,9 +39,9 @@ export const RESTRICTED_STATUS: DetailedAccountStatus = {
 
 export const DASHBOARD_SETUP_INCOMPLETE_STATUS: DetailedAccountStatus = {
   statusType: "requirements_due",
-  title: "オンライン集金はまだ利用開始前です",
+  title: "オンライン集金を設定中です",
   description:
-    "Stripeアカウントの設定、またはStripeによる審査完了を待っている状態です。設定画面から状況を確認できます。",
+    "設定が未完了、またはStripeによる審査を待っている状態です。設定画面から状況を確認できます。",
   actionText: "状況を確認",
   actionUrl: "/settings/payments",
   severity: "warning",
@@ -56,15 +54,15 @@ export function buildRequirementsDueStatus(input: {
   return {
     statusType: "requirements_due",
     title: input.hasPastDue
-      ? "⚠️ 至急：アカウント情報の更新が必要です"
-      : "アカウント情報の更新をお願いします",
+      ? "至急：アカウント情報の更新が必要です"
+      : "アカウント情報の追加が必要です",
     description: input.hasPastDue
-      ? "期限を過ぎた必要書類があります。決済機能が制限される場合があります。"
+      ? "期限超過の書類があります。早急に対応しないと決済機能が停止される可能性があります。"
       : input.hasCurrentlyDue
         ? "決済を継続するために追加の情報提供が必要です。"
-        : "将来的に必要となる情報があります。早めの対応をお勧めします。",
+        : "将来的に必要な情報があります。早めの対応をお勧めします。",
     actionText: "情報を更新する",
-    actionUrl: "/settings/payments?action=update",
+    actionUrl: "/settings/payments",
     severity: input.hasPastDue ? "error" : input.hasCurrentlyDue ? "warning" : "info",
   };
 }
