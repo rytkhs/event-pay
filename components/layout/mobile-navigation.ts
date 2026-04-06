@@ -60,7 +60,7 @@ export function resolveMobilePageConfig(pathname: string): MobilePageConfig {
   }
 
   if (pathname === "/settings/payments") {
-    return createConfig("Stripe アカウント", "settings", "/settings");
+    return createConfig("オンライン集金", "settings", "/settings");
   }
 
   if (pathname === "/settings/payments/guide") {

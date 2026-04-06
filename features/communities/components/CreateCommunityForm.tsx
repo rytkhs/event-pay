@@ -5,16 +5,7 @@ import { useActionState, useCallback, useEffect, useState, useTransition } from 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import {
-  ArrowLeft,
-  ArrowRight,
-  CalendarDays,
-  Link2,
-  Loader2,
-  LogOut,
-  Users,
-  Wallet,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, Link2, Loader2, LogOut, Wallet } from "lucide-react";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
@@ -131,13 +122,12 @@ export function CreateCommunityForm({
               </span>
             </Label>
             <div className="relative">
-              <Users className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50 transition-colors group-focus-within:text-primary/70" />
               <Input
                 id="community-name"
                 name="name"
                 placeholder="例: ボドゲ会、読書会、テニスサークル"
                 required
-                className="h-11 rounded-xl border-border/60 pl-10 shadow-sm transition-all focus-visible:ring-primary/20"
+                className="h-11 rounded-xl border-border/60 shadow-sm transition-all focus-visible:ring-primary/20"
                 aria-invalid={nameError ? true : undefined}
                 aria-describedby={nameError ? "community-name-error" : "community-name-hint"}
               />

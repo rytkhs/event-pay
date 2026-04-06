@@ -1,7 +1,5 @@
 import { Suspense } from "react";
 
-import Link from "next/link";
-
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +22,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
-  title: "Stripe アカウント設定",
+  title: "オンライン集金設定",
   description: "Stripeで売上の受け取り方法を設定します",
 };
 
@@ -57,88 +55,67 @@ async function PaymentSettingsContent() {
 
   const refreshUrl = CONNECT_REFRESH_PATH;
 
+  if (requiresRepresentativeSelection) {
+    return (
+      <OnboardingForm
+        communities={representativeCommunityOptions}
+        defaultRepresentativeCommunityId={currentCommunity.id}
+        hasExistingAccount={!!existingAccount}
+        onStartOnboarding={startOnboardingAction}
+      />
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      {/* 説明バナー */}
-      <div className="rounded-xl border border-border/60 bg-muted/30 p-4 text-xs leading-relaxed text-muted-foreground space-y-1">
-        <p>オンライン集金を有効化するために、Stripe アカウントの設定を行います。</p>
-        <p>入力内容は Stripe に直接送信され、当サービスでは個人情報を保持しません。</p>
-      </div>
+    <AccountStatus
+      refreshUrl={refreshUrl}
+      status={await (async () => {
+        const r = await getConnectAccountStatusAction();
 
-      {representativeCommunity ? (
-        <div className="rounded-xl border border-border/60 bg-card p-4 text-sm">
-          <p className="text-xs font-medium text-muted-foreground mb-2">
-            Stripe 設定で使う代表コミュニティページ
-          </p>
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-semibold">{representativeCommunity.name}</span>
-            <Link
-              href={getPublicUrl(`/c/${representativeCommunity.slug}`)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-primary hover:underline truncate"
-            >
-              {getPublicUrl(`/c/${representativeCommunity.slug}`)}
-            </Link>
-          </div>
-        </div>
-      ) : null}
+        if (!r.success) {
+          const cachedStatus = buildConnectAccountStatusPayloadFromCachedAccount(existingAccount);
+          return {
+            ...cachedStatus,
+            expressDashboardAvailable: false,
+          };
+        }
 
-      {requiresRepresentativeSelection ? (
-        <OnboardingForm
-          communities={representativeCommunityOptions}
-          defaultRepresentativeCommunityId={currentCommunity.id}
-          hasExistingAccount={!!existingAccount}
-          onStartOnboarding={startOnboardingAction}
-        />
-      ) : (
-        <AccountStatus
-          refreshUrl={refreshUrl}
-          status={await (async () => {
-            const r = await getConnectAccountStatusAction();
+        const expressAccess = await checkExpressDashboardAccessAction();
 
-            if (!r.success) {
-              const cachedStatus =
-                buildConnectAccountStatusPayloadFromCachedAccount(existingAccount);
-              return {
-                ...cachedStatus,
-                expressDashboardAvailable: false,
-              };
-            }
-
-            const expressAccess = await checkExpressDashboardAccessAction();
-
-            return {
-              hasAccount: true,
-              accountId: r.data?.accountId,
-              dbStatus: r.data?.dbStatus,
-              uiStatus: r.data?.uiStatus ?? "no_account",
-              chargesEnabled: r.data?.chargesEnabled ?? false,
-              payoutsEnabled: r.data?.payoutsEnabled ?? false,
-              requirements: r.data?.requirements,
-              capabilities: r.data?.capabilities,
-              expressDashboardAvailable: expressAccess.success && !!expressAccess.data?.hasAccount,
-            };
-          })()}
-          expressDashboardAction={createExpressDashboardLoginLinkAction}
-        />
-      )}
-    </div>
+        return {
+          hasAccount: true,
+          accountId: r.data?.accountId,
+          dbStatus: r.data?.dbStatus,
+          uiStatus: r.data?.uiStatus ?? "no_account",
+          chargesEnabled: r.data?.chargesEnabled ?? false,
+          payoutsEnabled: r.data?.payoutsEnabled ?? false,
+          requirements: r.data?.requirements,
+          capabilities: r.data?.capabilities,
+          expressDashboardAvailable: expressAccess.success && !!expressAccess.data?.hasAccount,
+        };
+      })()}
+      expressDashboardAction={createExpressDashboardLoginLinkAction}
+    />
   );
 }
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="rounded-xl border border-border/60 bg-muted/30 p-4 space-y-3">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
+    <div className="w-full max-w-2xl mx-auto space-y-8">
+      {/* ヒーロー部分 */}
+      <div className="flex flex-col items-center gap-3">
+        <Skeleton className="h-14 w-14 rounded-2xl" />
+        <Skeleton className="h-7 w-64" />
+        <Skeleton className="h-4 w-48" />
       </div>
-      <div className="rounded-xl border border-border/60 bg-card p-6 space-y-4">
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-3/4" />
+      {/* メリットグリッド */}
+      <div className="grid grid-cols-3 gap-3">
+        <Skeleton className="h-28 rounded-xl" />
+        <Skeleton className="h-28 rounded-xl" />
+        <Skeleton className="h-28 rounded-xl" />
       </div>
+      {/* CTA */}
+      <Skeleton className="h-12 w-full rounded-md" />
     </div>
   );
 }

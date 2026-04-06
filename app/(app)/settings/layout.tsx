@@ -17,7 +17,7 @@ const settingsPages = [
     description: "選択中のコミュニティの設定",
   },
   {
-    title: "Stripe アカウント",
+    title: "オンライン集金",
     href: "/settings/payments",
     icon: CreditCard,
     description: "Stripeアカウント設定と入金状況の確認",
