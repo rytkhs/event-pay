@@ -15,7 +15,6 @@ import {
   Zap,
   ChevronDown,
   BookOpen,
-  ExternalLink,
   FileCheck,
   Building2,
   Lock,
@@ -109,7 +108,7 @@ export function OnboardingForm({
       </div>
 
       {/* ② メリットグリッド */}
-      <div className="grid grid-cols-3 gap-3 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
         {BENEFITS.map((benefit) => {
           const Icon = benefit.icon;
           return (
@@ -143,8 +142,8 @@ export function OnboardingForm({
             <div className="mb-3">
               <Label className="text-sm font-semibold">代表コミュニティを選択</Label>
               <p className="text-xs text-muted-foreground mt-1">
-                Stripe
-                アカウントに紐づくコミュニティです。設定完了後、すべてのコミュニティでオンライン集金が利用可能になります。
+                Stripeに登録する情報の代表として使用されます。
+                どれを選んでも、すべてのコミュニティで集金機能を利用できます。
               </p>
             </div>
             <RadioGroup
@@ -252,13 +251,10 @@ export function OnboardingForm({
             <div className="border-t border-border/40 pt-3">
               <Link
                 href="/settings/payments/guide"
-                target="_blank"
-                rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
               >
                 <BookOpen className="h-3.5 w-3.5" />
                 回答に迷ったら：設定ガイドを見る
-                <ExternalLink className="h-3 w-3" />
               </Link>
             </div>
           </div>

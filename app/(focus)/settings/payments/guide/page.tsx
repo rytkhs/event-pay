@@ -62,6 +62,17 @@ export default function OnboardingGuidePage() {
         {/* ナビゲーション */}
         <div className="container mx-auto max-w-5xl px-4 py-8">
           <div className="space-y-12">
+            {/* 戻るリンク */}
+            <div className="-mb-8">
+              <Link
+                href="/settings/payments"
+                className="group inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+                オンライン集金設定に戻る
+              </Link>
+            </div>
+
             {/* ヘッダーセクション */}
             <div className="flex flex-row items-start gap-4 sm:gap-6 mt-0">
               <div className="space-y-2">
