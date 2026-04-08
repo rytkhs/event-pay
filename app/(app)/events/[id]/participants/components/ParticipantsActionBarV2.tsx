@@ -232,7 +232,7 @@ export function ParticipantsActionBarV2({
 
   return (
     <>
-      <div className="flex items-center gap-2 py-1.5 px-1.5 w-full rounded-2xl border border-border/40 bg-background/40 shadow-[0_2px_12px_-4px_transparent] backdrop-blur-md transition-all duration-300 hover:border-border/60 hover:shadow-[0_4px_24px_-8px_hsl(var(--foreground)/0.08)] h-[3.25rem] sm:py-2 flex-nowrap">
+      <div className="flex items-center gap-2 py-1.5 px-1.5 w-full rounded-2xl border border-border/40 bg-background/40 shadow-[0_2px_12px_-4px_transparent] backdrop-blur-md transition-all duration-300 h-[3.25rem] sm:py-2 flex-nowrap">
         {/* 左側：検索エリア (Mobile対応) */}
         <div className="flex items-center flex-1 min-w-0">
           {/* Mobile: 検索展開時のみInput表示 */}

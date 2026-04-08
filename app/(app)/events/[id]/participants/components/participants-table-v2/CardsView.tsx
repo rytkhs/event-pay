@@ -53,7 +53,7 @@ export function CardsView({
     if (status === "attending") {
       if (!isFreeEvent) return null; // 有料イベントは決済情報でわかるので省略
       return (
-        <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/15 border-transparent shadow-none font-semibold px-2 py-0.5 text-[11px] rounded-full h-5">
+        <Badge className="bg-emerald-500/10 text-emerald-600 border-transparent shadow-none font-semibold px-2 py-0.5 text-[11px] rounded-full h-5">
           参加
         </Badge>
       );
@@ -61,8 +61,8 @@ export function CardsView({
     const label = status === "not_attending" ? "不参加" : "未定";
     const className =
       status === "not_attending"
-        ? "bg-rose-500/10 text-rose-600 hover:bg-rose-500/15 border-transparent"
-        : "bg-amber-500/10 text-amber-600 hover:bg-amber-500/15 border-transparent";
+        ? "bg-rose-500/10 text-rose-600 border-transparent"
+        : "bg-amber-500/10 text-amber-600 border-transparent";
     return (
       <Badge
         className={`${className} shadow-none font-semibold px-2 py-0.5 text-[11px] rounded-full h-5`}
@@ -110,8 +110,8 @@ export function CardsView({
               rounded-2xl border
               ${
                 isActionRequired
-                  ? "bg-rose-50/40 border-rose-200/80 shadow-[0_2px_10px_-4px_rgba(225,29,72,0.1)] hover:bg-rose-50/60"
-                  : "bg-white/70 backdrop-blur-sm border-border/60 shadow-[0_1px_3px_hsl(var(--foreground)/0.03)] hover:border-border/80 hover:bg-white hover:shadow-[0_8px_20px_-12px_hsl(var(--foreground)/0.12)]"
+                  ? "bg-rose-50/40 border-rose-200/80 shadow-[0_2px_10px_-4px_rgba(225,29,72,0.1)]"
+                  : "bg-white/70 backdrop-blur-sm border-border/60 shadow-[0_1px_3px_hsl(var(--foreground)/0.03)]"
               }
             `}
             role="gridcell"

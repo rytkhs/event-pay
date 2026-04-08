@@ -56,15 +56,15 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div className="rounded-lg border border-gray-200 overflow-x-auto shadow-sm -mx-1 sm:mx-0">
+    <div className="rounded-2xl border border-border/50 overflow-hidden shadow-sm -mx-1 sm:mx-0 bg-background">
       <Table role="table" aria-label="参加者一覧テーブル">
-        <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
+        <TableHeader className="border-b border-border/60 bg-muted/30">
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="min-h-[30px]">
+            <TableRow key={headerGroup.id} className="hover:bg-transparent border-none">
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
-                  className="px-3 sm:px-4 py-4"
+                  className="px-3 sm:px-4 py-3"
                   aria-sort={
                     header.column.getCanSort()
                       ? header.column.getIsSorted() === "asc"
@@ -79,22 +79,22 @@ export function DataTable<TData, TValue>({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="-ml-3 h-8 data-[state=open]:bg-accent hover:bg-gray-100 justify-start"
+                      className="-ml-3 h-8 data-[state=open]:bg-accent hover:bg-muted/60 justify-start"
                       onClick={header.column.getToggleSortingHandler()}
                       aria-label={`${flexRender(header.column.columnDef.header, header.getContext())}でソート`}
                     >
-                      <span className="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                      <span className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-[0.14em]">
                         {flexRender(header.column.columnDef.header, header.getContext())}
                       </span>
                       {{
-                        asc: <ChevronUp className="ml-2 h-4 w-4 text-gray-600" />,
-                        desc: <ChevronDown className="ml-2 h-4 w-4 text-gray-600" />,
+                        asc: <ChevronUp className="ml-2 h-3.5 w-3.5 text-primary" />,
+                        desc: <ChevronDown className="ml-2 h-3.5 w-3.5 text-primary" />,
                       }[header.column.getIsSorted() as string] ?? (
-                        <ChevronsUpDown className="ml-2 h-4 w-4 text-gray-400" />
+                        <ChevronsUpDown className="ml-2 h-3.5 w-3.5 text-muted-foreground/30" />
                       )}
                     </Button>
                   ) : (
-                    <span className="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                    <span className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-[0.14em]">
                       {flexRender(header.column.columnDef.header, header.getContext())}
                     </span>
                   )}
@@ -103,11 +103,11 @@ export function DataTable<TData, TValue>({
             </TableRow>
           ))}
         </TableHeader>
-        <TableBody className="bg-white divide-y divide-gray-200">
+        <TableBody className="bg-transparent divide-y divide-border/40">
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => {
               const baseClassName =
-                "min-h-[30px] transition-all duration-200 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-opacity-50";
+                "group min-h-[30px] transition-colors duration-200 focus-within:bg-sidebar-accent/40";
               const customClassName = getRowClassName?.(row) || "";
               const combinedClassName = customClassName
                 ? `${baseClassName} ${customClassName}`
@@ -118,7 +118,7 @@ export function DataTable<TData, TValue>({
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-sm sm:text-base"
+                      className="px-3 sm:px-4 py-3.5 whitespace-nowrap text-[14px] leading-snug"
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
@@ -128,7 +128,10 @@ export function DataTable<TData, TValue>({
             })
           ) : (
             <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center text-gray-500">
+              <TableCell
+                colSpan={columns.length}
+                className="h-32 text-center text-muted-foreground/60"
+              >
                 参加者が見つかりません
               </TableCell>
             </TableRow>
