@@ -16,6 +16,10 @@ jest.mock("@core/utils/participant-smart-sort", () => ({
   conditionalSmartSort: mockConditionalSmartSort,
 }));
 
+jest.mock("@/components/layout/mobile-chrome-context", () => ({
+  useMobileBottomOverlay: jest.fn(),
+}));
+
 // next/navigation の useRouter をモック
 const mockRefresh = jest.fn();
 jest.mock("next/navigation", () => ({
@@ -155,7 +159,7 @@ describe("ParticipantsTableV2", () => {
     it("参加者一覧が正しく表示される", () => {
       render(<ParticipantsTableV2 {...defaultProps} />);
 
-      expect(screen.getByText("参加者一覧 (2件)")).toBeInTheDocument();
+      expect(screen.getByText("2名を表示中")).toBeInTheDocument();
       expect(screen.getByText("テストユーザー1")).toBeInTheDocument();
       expect(screen.getByText("テストユーザー2")).toBeInTheDocument();
     });
@@ -301,9 +305,13 @@ describe("ParticipantsTableV2", () => {
       );
 
       // ページネーション表示の確認（クライアントサイドページネーション）
-      expect(screen.getByText("100件中 1-50件を表示")).toBeInTheDocument();
+      expect(screen.getByText("SHOWING 1 – 50 OF 100")).toBeInTheDocument();
       expect(screen.getByText("表示件数:")).toBeInTheDocument();
-      expect(screen.getByText("1 / 2")).toBeInTheDocument();
+      expect(
+        screen.getAllByText(
+          (_, element) => element?.textContent?.replace(/\s+/g, " ").includes("1 / 2") ?? false
+        ).length
+      ).toBeGreaterThan(0);
     });
 
     it("ページ変更ボタンが動作する", async () => {

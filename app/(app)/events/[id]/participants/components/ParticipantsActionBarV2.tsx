@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode, startTransition } from "react";
 
 import { Plus, Download, Search, X, ListTodo, MoreVertical } from "lucide-react";
 
@@ -41,6 +41,8 @@ interface ParticipantsActionBarV2Props {
   query: EventManagementQuery;
   onFiltersChange: (patch: EventManagementQueryPatch) => void;
   filterTrigger: ReactNode;
+  statusTabs?: ReactNode;
+  activeFilters?: ReactNode;
   isSelectionMode?: boolean;
   onToggleSelectionMode?: () => void;
 }
@@ -51,6 +53,8 @@ export function ParticipantsActionBarV2({
   query,
   onFiltersChange,
   filterTrigger,
+  statusTabs,
+  activeFilters,
   isSelectionMode = false,
   onToggleSelectionMode,
 }: ParticipantsActionBarV2Props) {
@@ -77,6 +81,19 @@ export function ParticipantsActionBarV2({
   useEffect(() => {
     setSearchQuery(query.search);
   }, [query.search]);
+
+  useEffect(() => {
+    const normalized = searchQuery.trim();
+    if (normalized === query.search) return;
+
+    const timer = window.setTimeout(() => {
+      startTransition(() => {
+        onFiltersChange({ search: normalized });
+      });
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [searchQuery, query.search, onFiltersChange]);
 
   const handleOpenAdd = () => {
     setAddNickname("");
@@ -221,10 +238,6 @@ export function ParticipantsActionBarV2({
     }
   };
 
-  const handleSearch = () => {
-    onFiltersChange({ search: searchQuery });
-  };
-
   const handleClearSearch = () => {
     setSearchQuery("");
     onFiltersChange({ search: "" });
@@ -232,200 +245,196 @@ export function ParticipantsActionBarV2({
 
   return (
     <>
-      <div className="flex items-center gap-2 py-1.5 px-1.5 w-full rounded-2xl border border-border/40 bg-background/40 shadow-[0_2px_12px_-4px_transparent] backdrop-blur-md transition-all duration-300 h-[3.25rem] sm:py-2 flex-nowrap">
-        {/* 左側：検索エリア (Mobile対応) */}
-        <div className="flex items-center flex-1 min-w-0">
-          {/* Mobile: 検索展開時のみInput表示 */}
-          {isMobileSearchOpen ? (
-            <div className="flex items-center flex-1 gap-2 animate-in fade-in slide-in-from-left-2 direction-normal duration-200">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="ニックネームで検索..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  className="pl-9 pr-8 h-10 rounded-xl border-border/50 bg-muted/40 shadow-inner text-base md:text-sm focus-visible:ring-primary/20 focus-visible:border-primary/40 transition-colors"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={handleClearSearch}
-                    aria-label="検索条件をクリア"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-lg transition-colors"
-                  >
-                    <X className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsMobileSearchOpen(false)}
-                className="shrink-0 h-9 w-9 p-0 rounded-xl transition-colors hover:bg-muted/80"
-                aria-label="検索入力を閉じる"
-              >
-                <X className="h-5 w-5 text-muted-foreground" />
-              </Button>
-            </div>
-          ) : (
-            // 通常表示
-            <div className="flex items-center w-full gap-2 lg:gap-3">
-              {/* Desktop Search */}
-              <div className="hidden md:flex items-center flex-1 max-w-sm">
-                <div
-                  className={cn(
-                    "relative flex-1 transition-all duration-300 rounded-xl border flex items-center overflow-hidden h-9",
-                    isSearchFocused
-                      ? "border-primary/30 bg-background shadow-[0_2px_10px_-4px_hsl(var(--primary)/0.15)] ring-4 ring-primary/5"
-                      : "border-border/50 bg-muted/20 hover:bg-muted/40 hover:border-border/70"
-                  )}
-                >
-                  <Search
-                    className={cn(
-                      "absolute left-3 h-4 w-4 transition-colors",
-                      isSearchFocused ? "text-primary/70" : "text-muted-foreground/70"
-                    )}
-                  />
+      <div className="overflow-hidden rounded-[1.5rem] border border-border/28 bg-background shadow-[0_10px_24px_-30px_hsl(var(--foreground)/0.16)]">
+        <div className="flex min-h-[3.25rem] items-center gap-2 px-2 py-2 sm:px-3">
+          <div className="flex min-w-0 flex-1 items-center">
+            {isMobileSearchOpen ? (
+              <div className="flex flex-1 items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder="ニックネームで検索..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    onFocus={() => setIsSearchFocused(true)}
-                    onBlur={() => setIsSearchFocused(false)}
-                    className="pl-9 pr-8 h-full border-none bg-transparent shadow-none focus-visible:ring-0 text-sm"
+                    className="h-10 rounded-xl border-border/40 bg-background/60 pl-9 pr-8 text-base shadow-[inset_0_1px_0_hsl(var(--background)),0_1px_2px_hsl(var(--foreground)/0.02)] focus-visible:border-primary/20 focus-visible:ring-primary/5 md:text-sm"
                   />
                   {searchQuery && (
                     <button
                       type="button"
                       onClick={handleClearSearch}
                       aria-label="検索条件をクリア"
-                      className="absolute right-1.5 p-1 hover:bg-muted rounded-md transition-colors"
+                      className="absolute right-2 top-1/2 rounded-lg p-1 -translate-y-1/2 transition-colors hover:bg-muted"
                     >
-                      <X className="h-3 w-3 text-muted-foreground" />
+                      <X className="h-3.5 w-3.5 text-muted-foreground" />
                     </button>
                   )}
                 </div>
-              </div>
-
-              {/* Mobile Search Trigger */}
-              <div className="md:hidden">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setIsMobileSearchOpen(true)}
-                  className="h-9 w-9 p-0 rounded-xl transition-colors hover:bg-muted/80 text-muted-foreground/80 hover:text-foreground"
-                  aria-label="検索を開く"
+                  onClick={() => setIsMobileSearchOpen(false)}
+                  className="h-9 w-9 rounded-xl p-0 text-muted-foreground/75 hover:bg-muted/55 hover:text-foreground"
+                  aria-label="検索入力を閉じる"
                 >
-                  <Search className="h-4 w-4" />
+                  <X className="h-5 w-5 text-muted-foreground" />
                 </Button>
               </div>
+            ) : (
+              <div className="flex w-full min-w-0 items-center gap-2 lg:gap-3">
+                <div className="hidden max-w-sm flex-1 items-center md:flex">
+                  <div
+                    className={cn(
+                      "relative flex h-10 flex-1 items-center overflow-hidden rounded-xl border transition-all duration-200",
+                      isSearchFocused
+                        ? "border-primary/20 bg-background/80 shadow-[0_8px_18px_-18px_hsl(var(--foreground)/0.22)] ring-4 ring-primary/5"
+                        : "border-border/40 bg-background/55 hover:border-border/55 hover:bg-background/75"
+                    )}
+                  >
+                    <Search
+                      className={cn(
+                        "absolute left-3 h-4 w-4 transition-colors",
+                        isSearchFocused ? "text-primary/70" : "text-muted-foreground/70"
+                      )}
+                    />
+                    <Input
+                      placeholder="ニックネームで検索..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => setIsSearchFocused(true)}
+                      onBlur={() => setIsSearchFocused(false)}
+                      className="h-full border-none bg-transparent pl-9 pr-8 text-sm shadow-none focus-visible:ring-0"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={handleClearSearch}
+                        aria-label="検索条件をクリア"
+                        className="absolute right-1.5 rounded-md p-1 transition-colors hover:bg-muted"
+                      >
+                        <X className="h-3 w-3 text-muted-foreground" />
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-              {/* フィルター */}
-              {filterTrigger}
+                <div className="md:hidden">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsMobileSearchOpen(true)}
+                    className="h-9 w-9 rounded-xl p-0 text-muted-foreground/75 hover:bg-muted/55 hover:text-foreground"
+                    aria-label="検索を開く"
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {filterTrigger}
+              </div>
+            )}
+          </div>
+
+          {!isMobileSearchOpen && (
+            <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+              {isPayingEvent && onToggleSelectionMode && (
+                <Button
+                  variant={isSelectionMode ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={onToggleSelectionMode}
+                  className={cn(
+                    "h-9 w-9 rounded-xl border-border/40 p-0 transition-all duration-200",
+                    isSelectionMode
+                      ? "border-border/55 bg-foreground/[0.03] text-foreground shadow-[inset_0_1px_0_hsl(var(--background))] hover:bg-foreground/[0.045]"
+                      : "bg-background/65 shadow-[0_4px_12px_-14px_hsl(var(--foreground)/0.24)] hover:border-border/60 hover:bg-muted/30"
+                  )}
+                  aria-label={
+                    isSelectionMode ? "一括操作の選択モードを終了" : "一括操作の選択モードを開始"
+                  }
+                >
+                  <ListTodo className="h-4 w-4" />
+                </Button>
+              )}
+
+              <Button
+                size="sm"
+                onClick={handleOpenAdd}
+                className={cn(
+                  "h-9 rounded-xl border border-primary/12 px-3 font-medium text-primary-foreground transition-all duration-200 sm:px-4",
+                  "bg-primary",
+                  "shadow-[inset_0_1px_0_hsl(var(--primary-foreground)/0.14),0_10px_24px_-20px_hsl(var(--primary)/0.45)]",
+                  "hover:brightness-[1.03] hover:shadow-[inset_0_1px_0_hsl(var(--primary-foreground)/0.18),0_12px_26px_-20px_hsl(var(--primary)/0.52)]",
+                  "active:scale-95"
+                )}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">追加</span>
+              </Button>
+
+              <div className="md:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 w-9 rounded-xl p-0 text-muted-foreground/75 hover:bg-muted/55 hover:text-foreground"
+                      aria-label="その他の参加者操作を開く"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="mt-2 w-56 rounded-xl border-border/45 bg-popover/95 shadow-[0_14px_28px_-24px_hsl(var(--foreground)/0.26)]"
+                  >
+                    <div className="mb-1 border-b border-border/50 p-2.5">
+                      <SmartSortToggle
+                        isActive={smartActive}
+                        onToggle={handleToggleSmartSort}
+                        showLabel={true}
+                      />
+                    </div>
+                    <DropdownMenuItem
+                      onClick={handleExportCsv}
+                      disabled={isExporting}
+                      className="mx-1 cursor-pointer gap-2 rounded-lg p-2.5 focus:bg-muted/45"
+                    >
+                      <Download className="h-4 w-4 text-muted-foreground focus:text-foreground" />
+                      <span className="text-sm font-medium">CSVエクスポート</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              <div className="hidden items-center gap-2 border-l border-border/20 pl-2 md:flex sm:ml-1">
+                <SmartSortToggle
+                  isActive={smartActive}
+                  onToggle={handleToggleSmartSort}
+                  showLabel={false}
+                  className="h-9 rounded-xl"
+                />
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportCsv}
+                  disabled={isExporting}
+                  className={cn(
+                    "h-9 gap-1.5 rounded-xl border-border/40 bg-background/65 shadow-[0_4px_12px_-14px_hsl(var(--foreground)/0.24)] transition-all duration-200",
+                    "hover:border-border/60 hover:bg-muted/30 hover:shadow-[0_8px_16px_-16px_hsl(var(--foreground)/0.22)]"
+                  )}
+                >
+                  <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="hidden font-medium text-foreground/80 lg:inline">CSV</span>
+                </Button>
+              </div>
             </div>
           )}
         </div>
 
-        {/* 右側アクション群 (検索非展開時のみ) */}
-        {!isMobileSearchOpen && (
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 sm:ml-auto">
-            {/* 選択モード切替 (Mobile & Desktop) */}
-            {isPayingEvent && onToggleSelectionMode && (
-              <Button
-                variant={isSelectionMode ? "secondary" : "outline"}
-                size="sm"
-                onClick={onToggleSelectionMode}
-                className={cn(
-                  "h-9 w-9 p-0 rounded-xl transition-all duration-300",
-                  isSelectionMode
-                    ? "bg-primary/15 text-primary border-primary/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] hover:bg-primary/25"
-                    : "border-border/50 bg-background shadow-sm hover:border-border/80 hover:bg-muted/80 hover:shadow-[0_4px_12px_-8px_hsl(var(--foreground)/0.1)]"
-                )}
-                aria-label={
-                  isSelectionMode ? "一括操作の選択モードを終了" : "一括操作の選択モードを開始"
-                }
-              >
-                <ListTodo className="h-4 w-4" />
-              </Button>
-            )}
-
-            {/* 追加ボタン (Primary) */}
-            <Button
-              size="sm"
-              onClick={handleOpenAdd}
-              className={cn(
-                "gap-1.5 h-9 px-3 sm:px-4 rounded-xl font-medium transition-all duration-300 border border-primary/20 text-primary-foreground",
-                "bg-gradient-to-b from-primary to-primary/90",
-                "shadow-[inset_0_1px_0_hsl(var(--primary-foreground)/0.25),0_4px_12px_-4px_hsl(var(--primary)/0.6)]",
-                "hover:brightness-110 hover:shadow-[inset_0_1px_0_hsl(var(--primary-foreground)/0.35),0_6px_16px_-4px_hsl(var(--primary)/0.7)] hover:scale-[1.02]",
-                "active:scale-95"
-              )}
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">追加</span>
-            </Button>
-
-            {/* その他アクション (Dropdown for Mobile) */}
-            <div className="md:hidden">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 w-9 p-0 rounded-xl transition-colors hover:bg-muted/80 text-muted-foreground/80 hover:text-foreground"
-                    aria-label="その他の参加者操作を開く"
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="w-56 rounded-xl border-border/60 shadow-lg mt-2"
-                >
-                  <div className="p-2.5 border-b border-border/50 mb-1">
-                    <SmartSortToggle
-                      isActive={smartActive}
-                      onToggle={handleToggleSmartSort}
-                      showLabel={true}
-                    />
-                  </div>
-                  <DropdownMenuItem
-                    onClick={handleExportCsv}
-                    disabled={isExporting}
-                    className="gap-2 p-2.5 cursor-pointer rounded-lg mx-1 focus:bg-muted/60"
-                  >
-                    <Download className="h-4 w-4 text-muted-foreground focus:text-foreground" />
-                    <span className="font-medium text-sm">CSVエクスポート</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            {/* Desktop Actions (そのまま表示) */}
-            <div className="hidden md:flex items-center gap-2 border-l border-border/40 pl-2 sm:ml-1">
-              <SmartSortToggle
-                isActive={smartActive}
-                onToggle={handleToggleSmartSort}
-                showLabel={false}
-                className="h-9 rounded-xl"
-              />
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportCsv}
-                disabled={isExporting}
-                className={cn(
-                  "gap-1.5 h-9 rounded-xl transition-all duration-300",
-                  "border-border/50 bg-background shadow-sm hover:border-border/80 hover:bg-muted/50 hover:shadow-[0_4px_12px_-8px_hsl(var(--foreground)/0.3)]"
-                )}
-              >
-                <Download className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="hidden lg:inline font-medium text-foreground/80">CSV</span>
-              </Button>
-            </div>
+        {!isMobileSearchOpen && (statusTabs || activeFilters) && (
+          <div className="border-t border-border/15 bg-background px-2 py-1.5 sm:px-3">
+            {statusTabs && <div className="min-w-0 overflow-x-auto">{statusTabs}</div>}
+            {activeFilters && <div className="mt-1.5">{activeFilters}</div>}
           </div>
         )}
       </div>

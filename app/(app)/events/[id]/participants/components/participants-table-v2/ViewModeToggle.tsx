@@ -25,6 +25,8 @@ export function ViewModeToggle({ value, onChange }: ViewModeToggleProps) {
             <button
               type="button"
               onClick={() => onChange("table")}
+              aria-label="テーブル表示"
+              data-state={value === "table" ? "on" : "off"}
               className={cn(
                 "group relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-300 rounded-lg outline-none overflow-hidden",
                 value === "table"
@@ -55,6 +57,8 @@ export function ViewModeToggle({ value, onChange }: ViewModeToggleProps) {
             <button
               type="button"
               onClick={() => onChange("cards")}
+              aria-label="カード表示"
+              data-state={value === "cards" ? "on" : "off"}
               className={cn(
                 "group relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-300 rounded-lg outline-none overflow-hidden",
                 value === "cards"

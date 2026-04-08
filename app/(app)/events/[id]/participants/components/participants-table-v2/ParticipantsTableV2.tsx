@@ -577,10 +577,14 @@ export function ParticipantsTableV2({
   );
 
   return (
-    <Card className="border-none">
-      <CardHeader className="px-4 py-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-md font-semibold">参加者 ({totalCount}名)</CardTitle>
+    <Card className="overflow-hidden bg-background/78 shadow-none border-0">
+      <CardHeader className="border-b border-border/25 px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-1.5">
+            <CardTitle className="text-[15px] font-semibold tracking-tight text-foreground/92">
+              {totalCount}名を表示中
+            </CardTitle>
+          </div>
           {viewMode ? (
             <ViewModeToggle value={viewMode} onChange={handleViewModeChange} />
           ) : (
@@ -588,7 +592,7 @@ export function ParticipantsTableV2({
           )}
         </div>
       </CardHeader>
-      <CardContent className={`px-3 ${hasBulkActionBar ? "pb-32 sm:pb-28" : ""}`}>
+      <CardContent className={`px-3 py-3 ${hasBulkActionBar ? "pb-32 sm:pb-28" : ""}`}>
         {viewMode ? (
           <div
             className={`transition-opacity duration-200 ${isTransitioning ? "opacity-50" : "opacity-100"}`}

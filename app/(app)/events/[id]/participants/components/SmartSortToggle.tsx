@@ -27,10 +27,10 @@ export function SmartSortToggle({
   const content = (
     <div
       className={cn(
-        "flex items-center gap-2 px-2 py-1.5 rounded-full transition-colors border",
+        "flex items-center gap-2 rounded-full border px-2 py-1.5 transition-colors",
         isActive
-          ? "bg-indigo-50/50 border-indigo-200"
-          : "bg-transparent border-transparent hover:bg-gray-100",
+          ? "border-border/45 bg-background/65 shadow-[0_4px_12px_-14px_hsl(var(--foreground)/0.22)]"
+          : "border-border/35 bg-background/55 hover:bg-muted/25",
         className
       )}
     >
@@ -38,20 +38,20 @@ export function SmartSortToggle({
         id={switchId}
         checked={isActive}
         onCheckedChange={onToggle}
-        className={cn(isActive && "data-[state=checked]:bg-indigo-600")}
+        className={cn(isActive && "data-[state=checked]:bg-primary")}
         aria-label="オートソート切り替え"
       />
       <Label
         htmlFor={switchId}
         className={cn(
           "flex items-center gap-1.5 cursor-pointer select-none text-sm transition-colors",
-          isActive ? "text-indigo-700 font-medium" : "text-muted-foreground"
+          isActive ? "font-medium text-foreground/90" : "text-muted-foreground"
         )}
       >
         <Sparkles
           className={cn(
             "h-3.5 w-3.5 transition-colors",
-            isActive ? "fill-indigo-100 text-indigo-600" : "text-gray-400"
+            isActive ? "fill-primary/12 text-primary/85" : "text-muted-foreground/65"
           )}
         />
         {showLabel && <span className="opacity-90">オートソート</span>}

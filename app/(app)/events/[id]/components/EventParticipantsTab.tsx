@@ -12,6 +12,7 @@ import {
   type ParticipantsTableV2Props,
 } from "../participants/components/participants-table-v2/ParticipantsTableV2";
 import { ParticipantsActionBarV2 } from "../participants/components/ParticipantsActionBarV2";
+import { ParticipantsActiveFilters } from "../participants/components/ParticipantsActiveFilters";
 import { ParticipantsFilterSheet } from "../participants/components/ParticipantsFilterSheet";
 import { ParticipantsStatusTabs } from "../participants/components/ParticipantsStatusTabs";
 import type {
@@ -74,11 +75,9 @@ export function EventParticipantsTab({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-2 py-2">
-      <div className="flex flex-col gap-1">
-        {/* スティッキーヘッダーグループ: アクションバー + ステータスタブ */}
-        <div className="sticky top-[calc(var(--app-mobile-header-height)+var(--event-management-tabbar-height))] z-10 -mx-2 flex flex-col gap-3 bg-background/95 px-2 pb-2 pt-1 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:top-[calc(3.5rem+var(--event-management-tabbar-height))]">
-          {/* アクションバー + フィルターSheet */}
+    <div className="mx-auto max-w-7xl px-2 py-3 sm:px-3">
+      <div className="flex flex-col gap-3">
+        <div className="sticky -mx-2 top-[calc(var(--app-mobile-header-height)+var(--event-management-tabbar-height)+0.05rem)] z-10 sm:-mx-2 md:top-[calc(3.5rem+var(--event-management-tabbar-height)+0.05rem)]">
           <ParticipantsActionBarV2
             eventId={eventId}
             eventDetail={eventDetail}
@@ -86,6 +85,21 @@ export function EventParticipantsTab({
             onFiltersChange={handleFiltersUpdate}
             isSelectionMode={isSelectionMode}
             onToggleSelectionMode={() => setIsSelectionMode((prev) => !prev)}
+            statusTabs={
+              <ParticipantsStatusTabs
+                counts={statusCounts}
+                activeStatus={query.attendance}
+                onStatusChange={handleStatusChange}
+                className="pb-0.5"
+              />
+            }
+            activeFilters={
+              <ParticipantsActiveFilters
+                query={query}
+                onFiltersChange={handleFiltersUpdate}
+                isFreeEvent={isFreeEvent}
+              />
+            }
             filterTrigger={
               <ParticipantsFilterSheet
                 query={query}
@@ -94,17 +108,9 @@ export function EventParticipantsTab({
               />
             }
           />
-
-          {/* ステータスタブ（リスト直上） */}
-          <ParticipantsStatusTabs
-            counts={statusCounts}
-            activeStatus={query.attendance}
-            onStatusChange={handleStatusChange}
-          />
         </div>
 
-        {/* 参加者テーブル */}
-        <div className="-mx-4 sm:mx-0">
+        <div className="-mx-2 sm:mx-0">
           <ParticipantsTableV2
             eventId={eventId}
             eventFee={eventDetail.fee}
