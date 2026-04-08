@@ -47,7 +47,7 @@ export function EventDetailHeader({ eventDetail }: EventDetailHeaderProps) {
   };
 
   return (
-    <div className="pt-2 pb-2 sm:py-3 sm:pb-3">
+    <div className="pt-2 pb-2 sm:py-2">
       {/* モバイルではより縦方向にコンパクトに、デスクトップではゆったりと */}
       <div className="flex flex-col gap-3.5 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
         {/* 左側メインエリア */}
@@ -78,7 +78,7 @@ export function EventDetailHeader({ eventDetail }: EventDetailHeaderProps) {
                   asChild
                   variant="outline"
                   size="icon"
-                  className="h-9 w-9 rounded-xl border-primary/20 bg-primary/5 text-primary shadow-sm"
+                  className="h-8 w-8 rounded-xl border-primary/20 bg-primary/5 text-primary shadow-sm"
                 >
                   <Link href={`/events/${eventDetail.id}/edit`}>
                     <Pencil className="h-4 w-4" />
