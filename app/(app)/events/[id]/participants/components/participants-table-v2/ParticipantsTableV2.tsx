@@ -575,8 +575,8 @@ export function ParticipantsTableV2({
   );
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border-none">
+      <CardHeader className="px-4 py-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold">参加者一覧 ({totalCount}件)</CardTitle>
           {viewMode ? (
@@ -626,7 +626,7 @@ export function ParticipantsTableV2({
         )}
 
         {(totalPages > 1 || totalCount > 150) && (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-4 py-3 sm:px-6 border-t">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-4 py-3 sm:px-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
               <div className="text-sm text-gray-700">
                 {totalCount}件中 {(page - 1) * limit + 1}-{Math.min(page * limit, totalCount)}

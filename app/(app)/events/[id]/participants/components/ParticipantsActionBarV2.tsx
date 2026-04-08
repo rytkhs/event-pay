@@ -340,8 +340,8 @@ export function ParticipantsActionBarV2({
                 className={cn(
                   "h-9 w-9 p-0 rounded-xl transition-all duration-300",
                   isSelectionMode
-                    ? "bg-primary/10 text-primary border-primary/20 shadow-[inset_0_2px_4px_-1px_hsl(var(--primary-foreground)/1)]"
-                    : "border-border/50 bg-background shadow-sm hover:border-border/80 hover:bg-muted/50 hover:shadow-[0_4px_12px_-8px_hsl(var(--foreground)/0.3)]"
+                    ? "bg-primary/15 text-primary border-primary/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] hover:bg-primary/25"
+                    : "border-border/50 bg-background shadow-sm hover:border-border/80 hover:bg-muted/80 hover:shadow-[0_4px_12px_-8px_hsl(var(--foreground)/0.1)]"
                 )}
                 aria-label={
                   isSelectionMode ? "一括操作の選択モードを終了" : "一括操作の選択モードを開始"

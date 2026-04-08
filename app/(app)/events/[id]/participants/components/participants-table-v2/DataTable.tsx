@@ -56,7 +56,7 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div className="rounded-lg border border-gray-200 overflow-x-auto shadow-sm -mx-4 sm:mx-0">
+    <div className="rounded-lg border border-gray-200 overflow-x-auto shadow-sm -mx-1 sm:mx-0">
       <Table role="table" aria-label="参加者一覧テーブル">
         <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
           {table.getHeaderGroups().map((headerGroup) => (
