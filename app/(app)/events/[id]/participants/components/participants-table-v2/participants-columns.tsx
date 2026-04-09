@@ -95,7 +95,7 @@ export function buildParticipantsColumns(opts: {
             ? "text-emerald-700 border-emerald-500/20 bg-emerald-500/10 shadow-[0_2px_8px_-4px_rgba(16,185,129,0.2)]"
             : p.status === "not_attending"
               ? "text-rose-700 border-rose-500/20 bg-rose-500/10 shadow-[0_2px_8px_-4px_rgba(244,63,94,0.2)]"
-              : "text-amber-700 border-500/30 bg-amber-500/10 shadow-[0_2px_8px_-4px_rgba(245,158,11,0.2)]";
+              : "text-amber-700 border-amber-500/30 bg-amber-500/10 shadow-[0_2px_8px_-4px_rgba(245,158,11,0.2)]";
         return (
           <Badge
             variant="outline"

@@ -6,11 +6,6 @@ import { GlobalFooter } from "@components/layout/GlobalFooter";
 
 /**
  * 招待ページレイアウト
- *
- * 招待トークンからアクセスする招待ページ専用のレイアウト。
- * ゲストヘッダー（guest variant）とフッターを表示します。
- *
- * このレイアウトは動的レンダリングされます（トークン検証のため）。
  */
 export default function InviteLayout({ children }: { children: ReactNode }): JSX.Element {
   return (

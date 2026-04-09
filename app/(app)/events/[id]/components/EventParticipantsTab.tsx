@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useRouter } from "next/navigation";
 
@@ -58,15 +58,18 @@ export function EventParticipantsTab({
     };
   }, [allParticipants]);
 
-  const handleFiltersUpdate = (patch: EventManagementQueryPatch) => {
-    const params = buildEventManagementSearchParams(window.location.search, {
-      ...patch,
-      tab: "participants",
-    });
-    const search = params.toString();
+  const handleFiltersUpdate = useCallback(
+    (patch: EventManagementQueryPatch) => {
+      const params = buildEventManagementSearchParams(window.location.search, {
+        ...patch,
+        tab: "participants",
+      });
+      const search = params.toString();
 
-    router.replace(`/events/${eventId}${search ? `?${search}` : ""}`, { scroll: false });
-  };
+      router.replace(`/events/${eventId}${search ? `?${search}` : ""}`, { scroll: false });
+    },
+    [eventId, router]
+  );
 
   const handleStatusChange = (status: string) => {
     handleFiltersUpdate({

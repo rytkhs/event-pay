@@ -58,7 +58,7 @@ export function EventDetailHeader({ eventDetail }: EventDetailHeaderProps) {
               className={`flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-wider shadow-sm transition-all duration-300 sm:px-2.5 sm:text-[10px] ${statusCfg.variant}`}
             >
               <span
-                className={`h-1.25 w-1.25 rounded-full sm:h-1.5 sm:w-1.5 ${statusCfg.dotColor} shadow-[0_0_8px_rgba(0,0,0,0.1)]`}
+                className={`h-1 w-1 rounded-full sm:h-1.5 sm:w-1.5 ${statusCfg.dotColor} shadow-[0_0_8px_rgba(0,0,0,0.1)]`}
                 aria-hidden="true"
               />
               {statusCfg.label}
