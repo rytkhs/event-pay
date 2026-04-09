@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Calendar, MapPin, Users, Clock, Info, Banknote, AlertCircle } from "lucide-react";
+import { Calendar, MapPin, Users, Clock, Banknote, AlertCircle } from "lucide-react";
 
 import type { InviteEventDetail } from "@core/types/invite";
 import { formatUtcToJst, formatUtcToJstByType } from "@core/utils/timezone";
@@ -86,67 +86,75 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
           </div>
         </div>
 
-        {/* Capacity */}
-        <div className="flex items-start space-x-3">
-          <Users className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
-          <div className="w-full">
-            <div className="flex justify-between items-end mb-1">
-              <span className="font-semibold text-slate-900">参加状況</span>
-              <span
-                className={`text-sm font-medium ${isNearCapacity ? "text-warning" : "text-slate-600"}`}
-              >
-                {event.attendances_count} / {isCapacitySet ? `${event.capacity}名` : "制限なし"}
-              </span>
+        {/* Metadata Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8 pt-6 border-t border-slate-100">
+          {/* Registration Deadline */}
+          <div className="flex items-start gap-3">
+            <div className="bg-blue-50 p-2 rounded-full shrink-0">
+              <Clock className="w-4 h-4 text-blue-600" />
             </div>
-            {isCapacitySet && event.capacity && (
-              <div className="w-full bg-slate-100 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full ${isNearCapacity ? "bg-warning" : "bg-primary"}`}
-                  style={{
-                    width: `${Math.min((event.attendances_count / event.capacity) * 100, 100)}%`,
-                  }}
-                ></div>
-              </div>
-            )}
-            {isNearCapacity && (
-              <p className="text-xs text-warning mt-1 flex items-center">
-                <AlertCircle className="w-3 h-3 mr-1" /> 残りわずかです
+            <div>
+              <p className="text-xs text-slate-500 mb-0.5 font-medium">申込締切</p>
+              <p className="text-sm font-bold text-slate-700">
+                {event.registration_deadline
+                  ? formatUtcToJstByType(event.registration_deadline, "japanese")
+                  : "設定なし"}
               </p>
-            )}
+            </div>
           </div>
-        </div>
 
-        <hr className="border-slate-100" />
+          {/* Payment Deadline */}
+          <div className="flex items-start gap-3">
+            <div className="bg-emerald-50 p-2 rounded-full shrink-0">
+              <Clock className="w-4 h-4 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-0.5 font-medium">オンライン決済締切</p>
+              <p className="text-sm font-bold text-slate-700">
+                {event.payment_deadline
+                  ? formatUtcToJstByType(event.payment_deadline, "japanese")
+                  : "設定なし"}
+              </p>
+            </div>
+          </div>
 
-        {/* Deadlines & Info */}
-        <div className="space-y-3">
-          <div className="flex items-start space-x-3">
-            <Info className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-slate-600 space-y-1">
-              {event.registration_deadline && (
-                <p>
-                  申込締切:{" "}
-                  <span className="font-medium text-slate-800">
-                    {formatUtcToJstByType(event.registration_deadline, "japanese")}
-                  </span>
+          {/* Capacity */}
+          <div className="flex items-start gap-3 sm:col-span-2">
+            <div className="bg-slate-50 p-2 rounded-full shrink-0">
+              <Users className="w-4 h-4 text-slate-600" />
+            </div>
+            <div className="flex-1">
+              <div className="flex justify-between items-center mb-1">
+                <p className="text-xs text-slate-500 font-medium">参加状況 / 定員</p>
+                <p
+                  className={`text-sm font-bold ${isNearCapacity ? "text-warning" : "text-slate-700"}`}
+                >
+                  {event.attendances_count} / {isCapacitySet ? `${event.capacity}名` : "制限なし"}
                 </p>
+              </div>
+              {isCapacitySet && event.capacity && (
+                <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1.5">
+                  <div
+                    className={`h-1.5 rounded-full ${isNearCapacity ? "bg-warning" : "bg-primary"}`}
+                    style={{
+                      width: `${Math.min((event.attendances_count / event.capacity) * 100, 100)}%`,
+                    }}
+                  ></div>
+                </div>
               )}
-              {event.payment_deadline && (
-                <p>
-                  オンライン決済締切:{" "}
-                  <span className="font-medium text-slate-800">
-                    {formatUtcToJstByType(event.payment_deadline, "japanese")}
-                  </span>
+              {isNearCapacity && (
+                <p className="text-[10px] text-warning mt-1.5 flex items-center font-medium">
+                  <AlertCircle className="w-3 h-3 mr-1" /> 残りわずかです
                 </p>
               )}
             </div>
           </div>
-          {event.description && (
-            <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap pt-4 border-t border-slate-100">
-              {event.description}
-            </div>
-          )}
         </div>
+        {event.description && (
+          <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap pt-4 border-t border-slate-100">
+            {event.description}
+          </div>
+        )}
       </div>
     </div>
   );
