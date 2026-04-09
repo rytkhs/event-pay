@@ -80,43 +80,40 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
             <p className="font-semibold text-slate-900">
               {event.fee > 0 ? `${event.fee.toLocaleString()}円` : "無料"}
             </p>
-            {/* {event.fee > 0 && (
-              <p className="text-xs text-slate-500">オンライン決済 / 現金払い 対応</p>
-            )} */}
           </div>
         </div>
 
         {/* Metadata Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8 pt-6 border-t border-slate-100">
           {/* Registration Deadline */}
-          <div className="flex items-start gap-3">
-            <div className="bg-blue-50 p-2 rounded-full shrink-0">
-              <Clock className="w-4 h-4 text-blue-600" />
+          {event.registration_deadline && (
+            <div className="flex items-start gap-3">
+              <div className="bg-blue-50 p-2 rounded-full shrink-0">
+                <Clock className="w-4 h-4 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-0.5 font-medium">申込締切</p>
+                <p className="text-sm font-bold text-slate-700">
+                  {formatUtcToJstByType(event.registration_deadline, "japanese")}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-slate-500 mb-0.5 font-medium">申込締切</p>
-              <p className="text-sm font-bold text-slate-700">
-                {event.registration_deadline
-                  ? formatUtcToJstByType(event.registration_deadline, "japanese")
-                  : "設定なし"}
-              </p>
-            </div>
-          </div>
+          )}
 
           {/* Payment Deadline */}
-          <div className="flex items-start gap-3">
-            <div className="bg-emerald-50 p-2 rounded-full shrink-0">
-              <Clock className="w-4 h-4 text-emerald-600" />
+          {event.payment_deadline && (
+            <div className="flex items-start gap-3">
+              <div className="bg-emerald-50 p-2 rounded-full shrink-0">
+                <Clock className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-0.5 font-medium">オンライン決済締切</p>
+                <p className="text-sm font-bold text-slate-700">
+                  {formatUtcToJstByType(event.payment_deadline, "japanese")}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-slate-500 mb-0.5 font-medium">オンライン決済締切</p>
-              <p className="text-sm font-bold text-slate-700">
-                {event.payment_deadline
-                  ? formatUtcToJstByType(event.payment_deadline, "japanese")
-                  : "設定なし"}
-              </p>
-            </div>
-          </div>
+          )}
 
           {/* Capacity */}
           <div className="flex items-start gap-3 sm:col-span-2">

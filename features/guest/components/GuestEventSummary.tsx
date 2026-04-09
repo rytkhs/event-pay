@@ -109,7 +109,7 @@ export const GuestEventSummary: React.FC<GuestEventSummaryProps> = ({ attendance
             <AccordionTrigger className="px-5 py-3 hover:bg-gray-50 hover:no-underline text-xs font-semibold text-gray-500 [&[data-state=open]]:bg-gray-50">
               <div className="flex items-center gap-2">
                 <AlignLeft className="w-3 h-3" />
-                <span>イベント説明・備考</span>
+                <span>説明・備考</span>
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-5 pb-5 bg-gray-50 text-gray-600">
