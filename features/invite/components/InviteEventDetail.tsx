@@ -103,7 +103,7 @@ export function InviteEventDetail({
       {canRegister ? (
         <RsvpForm event={event} inviteToken={inviteToken} onSubmit={handleParticipationSubmit} />
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-center space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-4">
           <div className="flex justify-center">
             <AlertCircle className="w-12 h-12 text-slate-300" />
           </div>

@@ -35,15 +35,17 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
   const statusLabel = getStatusLabel(event.status);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
-      <div className="bg-primary px-6 py-4 text-primary-foreground">
-        <div className="flex items-center justify-between mb-2">
-          <span className="bg-primary/80 text-xs font-semibold px-2.5 py-1 rounded-full border border-primary-foreground/30">
+    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden mb-6">
+      <div className="px-6 py-7 border-b border-slate-100">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary uppercase tracking-wider">
             {statusLabel}
           </span>
-          <span className="text-primary-foreground/70 text-sm">作成: {event.community.name}</span>
+          <span className="text-slate-400 text-xs font-medium">{event.community.name}</span>
         </div>
-        <h1 className="text-2xl font-bold leading-tight">{event.title}</h1>
+        <h1 className="text-xl font-bold text-slate-900 leading-tight tracking-tight">
+          {event.title}
+        </h1>
       </div>
 
       <div className="p-6 space-y-5">
@@ -140,7 +142,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
             </div>
           </div>
           {event.description && (
-            <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-600 leading-relaxed border border-slate-100 whitespace-pre-wrap">
+            <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap pt-4 border-t border-slate-100">
               {event.description}
             </div>
           )}

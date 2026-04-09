@@ -45,7 +45,7 @@ export const SuccessView: React.FC<SuccessViewProps> = ({ data, onRegisterAnothe
 
   return (
     <div className="max-w-xl mx-auto text-center space-y-8 animate-fade-in-up">
-      <div className="bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+      <div className="bg-white rounded-2xl p-8 border border-slate-200">
         <div className="flex justify-center mb-4">
           <div className="bg-success/10 p-4 rounded-full">
             <CheckCircle className="w-12 h-12 text-success" />
