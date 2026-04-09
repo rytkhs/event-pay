@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useRouter } from "next/navigation";
 
@@ -20,7 +20,7 @@ import type {
   ParticipantAttendanceFilter,
   EventManagementQueryPatch,
 } from "../query-params";
-import { buildEventManagementSearchParams } from "../query-params";
+import { buildEventManagementSearchParams, parseEventManagementQuery } from "../query-params";
 
 interface EventParticipantsTabProps {
   eventId: string;
@@ -41,6 +41,11 @@ export function EventParticipantsTab({
 }: EventParticipantsTabProps) {
   const router = useRouter();
   const isFreeEvent = eventDetail.fee === 0;
+  const [optimisticQuery, setOptimisticQuery] = useState(query);
+
+  useEffect(() => {
+    setOptimisticQuery(query);
+  }, [query]);
 
   // 選択モード（一括操作用）の状態管理
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -66,6 +71,14 @@ export function EventParticipantsTab({
       });
       const search = params.toString();
 
+      setOptimisticQuery((current) => {
+        const nextRawSearchParams = Object.fromEntries(params.entries());
+        const nextQuery = parseEventManagementQuery(nextRawSearchParams);
+
+        // ナビゲーション完了前でも UI が最新のフィルター状態を反映するようにする
+        return { ...current, ...nextQuery };
+      });
+
       router.replace(`/events/${eventId}${search ? `?${search}` : ""}`, { scroll: false });
     },
     [eventId, router]
@@ -84,28 +97,28 @@ export function EventParticipantsTab({
           <ParticipantsActionBarV2
             eventId={eventId}
             eventDetail={eventDetail}
-            query={query}
+            query={optimisticQuery}
             onFiltersChange={handleFiltersUpdate}
             isSelectionMode={isSelectionMode}
             onToggleSelectionMode={() => setIsSelectionMode((prev) => !prev)}
             statusTabs={
               <ParticipantsStatusTabs
                 counts={statusCounts}
-                activeStatus={query.attendance}
+                activeStatus={optimisticQuery.attendance}
                 onStatusChange={handleStatusChange}
                 className="pb-0.5"
               />
             }
             activeFilters={
               <ParticipantsActiveFilters
-                query={query}
+                query={optimisticQuery}
                 onFiltersChange={handleFiltersUpdate}
                 isFreeEvent={isFreeEvent}
               />
             }
             filterTrigger={
               <ParticipantsFilterSheet
-                query={query}
+                query={optimisticQuery}
                 onFiltersChange={handleFiltersUpdate}
                 isFreeEvent={isFreeEvent}
               />
@@ -118,7 +131,7 @@ export function EventParticipantsTab({
             eventId={eventId}
             eventFee={eventDetail.fee}
             allParticipants={allParticipants}
-            query={query}
+            query={optimisticQuery}
             onParamsChange={handleFiltersUpdate}
             updateCashStatusAction={updateCashStatusAction}
             bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}
