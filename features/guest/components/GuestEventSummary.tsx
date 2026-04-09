@@ -38,7 +38,7 @@ export const GuestEventSummary: React.FC<GuestEventSummaryProps> = ({ attendance
             {sanitizeForEventPay(event.community.name)}
           </span>
         </div>
-        <h1 className="text-xl font-bold text-slate-900 leading-tight tracking-tight">
+        <h1 className="text-lg font-bold text-slate-900 leading-tight tracking-tight">
           {sanitizeForEventPay(event.title)}
         </h1>
       </div>
