@@ -569,16 +569,22 @@ export function ParticipantsTableV2({
       const p = row.original;
       const isActionRequired =
         !isFreeEvent && p.status === "attending" && isPaymentUnpaid(p.payment_status);
-      return isActionRequired ? "bg-red-50 border-l-4 !border-l-red-500" : "";
+      return isActionRequired
+        ? "bg-destructive/5 hover:bg-destructive/5 border-l-2 !border-l-destructive shadow-[inset_1px_0_0_0_hsl(var(--destructive)/0.1)]"
+        : "";
     },
     [isFreeEvent]
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">参加者一覧 ({totalCount}件)</CardTitle>
+    <Card className="overflow-hidden bg-background/78 shadow-none border-0">
+      <CardHeader className="border-b border-border/25 px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-1.5">
+            <CardTitle className="text-[15px] font-semibold tracking-tight text-foreground/92">
+              {totalCount}名を表示中
+            </CardTitle>
+          </div>
           {viewMode ? (
             <ViewModeToggle value={viewMode} onChange={handleViewModeChange} />
           ) : (
@@ -586,7 +592,7 @@ export function ParticipantsTableV2({
           )}
         </div>
       </CardHeader>
-      <CardContent className={`px-3 ${hasBulkActionBar ? "pb-32 sm:pb-28" : ""}`}>
+      <CardContent className={`px-3 py-3 ${hasBulkActionBar ? "pb-32 sm:pb-28" : ""}`}>
         {viewMode ? (
           <div
             className={`transition-opacity duration-200 ${isTransitioning ? "opacity-50" : "opacity-100"}`}
@@ -625,20 +631,22 @@ export function ParticipantsTableV2({
           <div className="h-40 rounded-md border bg-muted/10" aria-hidden="true" />
         )}
 
-        {(totalPages > 1 || totalCount > 150) && (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-4 py-3 sm:px-6 border-t">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              <div className="text-sm text-gray-700">
-                {totalCount}件中 {(page - 1) * limit + 1}-{Math.min(page * limit, totalCount)}
-                件を表示
+        {(totalPages > 1 || totalCount > 50) && (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-1 py-6 sm:px-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+              <div className="text-[10px] font-bold text-muted-foreground/50 tracking-[0.14em] uppercase">
+                SHOWING {(page - 1) * limit + 1} – {Math.min(page * limit, totalCount)} OF{" "}
+                {totalCount}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">表示件数:</span>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
+                  表示件数:
+                </span>
                 <Select value={String(limit)} onValueChange={handlePageSizeChange}>
-                  <SelectTrigger className="w-20 h-9 text-sm">
+                  <SelectTrigger className="w-[70px] h-8 text-[12px] font-bold rounded-lg border-border/50 bg-muted/20 hover:bg-muted/40 transition-colors">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-xl border-border/60 shadow-xl">
                     <SelectItem value="50">50</SelectItem>
                     <SelectItem value="100">100</SelectItem>
                     <SelectItem value="150">150</SelectItem>
@@ -648,27 +656,30 @@ export function ParticipantsTableV2({
               </div>
             </div>
             {totalPages > 1 && (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-1.5 bg-muted/30 p-1 rounded-xl border border-border/40">
                 <Button
-                  variant="outline"
-                  size="sm"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => handlePageChange(page - 2)}
                   disabled={!hasPrev}
-                  className="min-h-[44px] min-w-[44px]"
+                  className="h-8 w-8 rounded-lg hover:bg-background hover:shadow-sm"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-4 w-4 text-muted-foreground" />
                 </Button>
-                <span className="text-sm text-gray-700 px-2 sm:px-3">
-                  {page} / {totalPages}
-                </span>
+                <div className="flex items-center px-2 min-w-[60px] justify-center">
+                  <span className="text-[12px] font-bold text-foreground">
+                    {page} <span className="text-muted-foreground/40 font-medium mx-1">/</span>{" "}
+                    {totalPages}
+                  </span>
+                </div>
                 <Button
-                  variant="outline"
-                  size="sm"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => handlePageChange(page)}
                   disabled={!hasNext}
-                  className="min-h-[44px] min-w-[44px]"
+                  className="h-8 w-8 rounded-lg hover:bg-background hover:shadow-sm"
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </div>
             )}

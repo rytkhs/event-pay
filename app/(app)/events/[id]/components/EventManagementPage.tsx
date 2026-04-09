@@ -14,7 +14,7 @@ import { EventParticipantsTab } from "./EventParticipantsTab";
 
 const EVENT_MANAGEMENT_TAB_LABELS = {
   overview: "概要",
-  participants: "参加者管理",
+  participants: "参加者",
 } as const;
 
 interface EventManagementPageProps {

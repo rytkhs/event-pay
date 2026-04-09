@@ -16,7 +16,7 @@ export function ViewModeToggle({ value, onChange }: ViewModeToggleProps) {
   return (
     <TooltipProvider delayDuration={400}>
       <div
-        className="inline-flex items-center p-1 bg-muted/40 rounded-xl border border-border/40 shadow-inner"
+        className="inline-flex items-center p-1 bg-muted/40 rounded-xl border border-border/40"
         role="group"
         aria-label="表示形式を選択"
       >
@@ -25,24 +25,29 @@ export function ViewModeToggle({ value, onChange }: ViewModeToggleProps) {
             <button
               type="button"
               onClick={() => onChange("table")}
+              aria-label="テーブル表示"
+              data-state={value === "table" ? "on" : "off"}
               className={cn(
                 "group relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-300 rounded-lg outline-none overflow-hidden",
                 value === "table"
-                  ? "bg-white text-primary shadow-md ring-1 ring-black/5"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/40"
+                  ? "bg-background text-primary shadow-sm ring-1 ring-border/50"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
               )}
               aria-pressed={value === "table"}
             >
               <Table
                 className={cn(
-                  "h-4 w-4 transition-transform duration-300",
+                  "h-3.5 w-3.5 transition-transform duration-300",
                   value === "table" ? "scale-110" : "group-hover:scale-105"
                 )}
               />
-              <span className="hidden sm:inline font-semibold">テーブル</span>
+              <span className="hidden sm:inline text-[13px] font-bold">テーブル</span>
             </button>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
+          <TooltipContent
+            side="bottom"
+            className="text-xs bg-popover/95 backdrop-blur-sm border-border/60 rounded-lg shadow-xl"
+          >
             テーブル形式で表示
           </TooltipContent>
         </Tooltip>
@@ -52,24 +57,29 @@ export function ViewModeToggle({ value, onChange }: ViewModeToggleProps) {
             <button
               type="button"
               onClick={() => onChange("cards")}
+              aria-label="カード表示"
+              data-state={value === "cards" ? "on" : "off"}
               className={cn(
                 "group relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-300 rounded-lg outline-none overflow-hidden",
                 value === "cards"
-                  ? "bg-white text-primary shadow-md ring-1 ring-black/5"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/40"
+                  ? "bg-background text-primary shadow-sm ring-1 ring-border/50"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
               )}
               aria-pressed={value === "cards"}
             >
               <LayoutGrid
                 className={cn(
-                  "h-4 w-4 transition-transform duration-300",
+                  "h-3.5 w-3.5 transition-transform duration-300",
                   value === "cards" ? "scale-110" : "group-hover:scale-105"
                 )}
               />
-              <span className="hidden sm:inline font-semibold">カード</span>
+              <span className="hidden sm:inline text-[13px] font-bold">カード</span>
             </button>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
+          <TooltipContent
+            side="bottom"
+            className="text-xs bg-popover/95 backdrop-blur-sm border-border/60 rounded-lg shadow-xl"
+          >
             カード形式で表示
           </TooltipContent>
         </Tooltip>

@@ -147,13 +147,16 @@ export function ParticipantsFilterSheet({
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
-        <Button variant="outline" className="relative gap-2">
-          <SlidersHorizontal className="h-4 w-4" />
-          <span className="hidden sm:inline">フィルター</span>
+        <Button
+          variant="outline"
+          className="relative gap-2 h-9 rounded-xl transition-all duration-300 border-border/50 shadow-sm bg-background hover:bg-muted/50 hover:border-border/80 hover:shadow-[0_4px_12px_-8px_hsl(var(--foreground)/0.3)]"
+        >
+          <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+          <span className="hidden sm:inline font-medium text-foreground/80">フィルター</span>
           {activeFiltersCount > 0 && (
             <Badge
               variant="default"
-              className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-xs"
+              className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px] sm:text-xs shadow-md border border-background"
             >
               {activeFiltersCount}
             </Badge>

@@ -33,7 +33,7 @@ export const RESTRICTED_STATUS: DetailedAccountStatus = {
   description:
     "Stripeアカウントに制限がかかっています。表示される案内に従って情報を更新してください。",
   actionText: "Stripeで状況を確認",
-  actionUrl: "/settings/payments?action=update",
+  actionUrl: "/settings/payments",
   severity: "error",
 };
 

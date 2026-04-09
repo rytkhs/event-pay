@@ -59,24 +59,26 @@ export function EventManagementTabsShell({
       className="min-h-screen w-full [--event-management-tabbar-height:3.25rem]"
     >
       <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6">{headerContent}</div>
-      <div className="sticky top-[var(--app-mobile-header-height)] z-20 border-b border-border/60 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90 md:top-14">
+      <div className="sticky top-[var(--app-mobile-header-height)] z-20 border-b border-border/40 bg-white/80 backdrop-blur-xl md:top-14">
         <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6">
-          <div className="py-2">
+          <div className="py-0">
             <TabsList
-              className="h-auto w-full justify-start gap-1 rounded-none bg-transparent p-0"
+              className="h-auto w-full justify-start gap-5 rounded-none bg-transparent p-0 sm:gap-8"
               aria-label="イベント管理タブ"
             >
               <TabsTrigger
                 value="overview"
-                className="rounded-full border border-transparent px-4 py-2 text-sm font-medium text-muted-foreground data-[state=active]:border-primary/15 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none hover:text-foreground"
+                className="group relative rounded-none border-0 px-0.5 py-3.5 text-sm font-semibold text-muted-foreground/70 transition-all data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none hover:text-foreground md:px-1 md:py-4 md:text-[15px]"
               >
                 {tabLabels.overview}
+                <span className="absolute bottom-0 left-0 h-0.5 w-full origin-center scale-x-0 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.4)] transition-transform duration-300 group-data-[state=active]:scale-x-100" />
               </TabsTrigger>
               <TabsTrigger
                 value="participants"
-                className="rounded-full border border-transparent px-4 py-2 text-sm font-medium text-muted-foreground data-[state=active]:border-primary/15 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none hover:text-foreground"
+                className="group relative rounded-none border-0 px-0.5 py-3.5 text-sm font-semibold text-muted-foreground/70 transition-all data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none hover:text-foreground md:px-1 md:py-4 md:text-[15px]"
               >
                 {tabLabels.participants}
+                <span className="absolute bottom-0 left-0 h-0.5 w-full origin-center scale-x-0 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.4)] transition-transform duration-300 group-data-[state=active]:scale-x-100" />
               </TabsTrigger>
             </TabsList>
           </div>

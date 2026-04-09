@@ -53,7 +53,7 @@ export function CardsView({
     if (status === "attending") {
       if (!isFreeEvent) return null; // 有料イベントは決済情報でわかるので省略
       return (
-        <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100 shadow-none font-medium px-1.5 py-0.5 text-xs h-5">
+        <Badge className="bg-emerald-500/10 text-emerald-600 border-transparent shadow-none font-semibold px-2 py-0.5 text-[11px] rounded-full h-5">
           参加
         </Badge>
       );
@@ -61,10 +61,12 @@ export function CardsView({
     const label = status === "not_attending" ? "不参加" : "未定";
     const className =
       status === "not_attending"
-        ? "bg-red-100 text-red-800 border-red-200 hover:bg-red-100"
-        : "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-100";
+        ? "bg-rose-500/10 text-rose-600 border-transparent"
+        : "bg-amber-500/10 text-amber-600 border-transparent";
     return (
-      <Badge className={`${className} shadow-none font-medium px-1.5 py-0.5 text-xs h-5`}>
+      <Badge
+        className={`${className} shadow-none font-semibold px-2 py-0.5 text-[11px] rounded-full h-5`}
+      >
         {label}
       </Badge>
     );
@@ -74,18 +76,14 @@ export function CardsView({
   const getPaymentMethodIcon = (method: string | null) => {
     if (!method) return null;
     return method === "stripe" ? (
-      <CreditCard className="h-3.5 w-3.5 text-purple-600" aria-label="オンライン決済" />
+      <CreditCard className="h-3.5 w-3.5 text-violet-500" aria-label="オンライン決済" />
     ) : (
-      <Banknote className="h-3.5 w-3.5 text-orange-600" aria-label="現金" />
+      <Banknote className="h-3.5 w-3.5 text-orange-500" aria-label="現金" />
     );
   };
 
   return (
-    <div
-      className="flex flex-col border rounded-md divide-y divide-border bg-white"
-      role="grid"
-      aria-label="参加者一覧"
-    >
+    <div className="flex flex-col gap-3 py-1" role="grid" aria-label="参加者一覧">
       {participants.map((p) => {
         const isActionRequired =
           !isFreeEvent && p.status === "attending" && isPaymentUnpaid(p.payment_status);
@@ -100,9 +98,6 @@ export function CardsView({
           p.status === "attending" && isCashPayment && (simple === "paid" || simple === "waived");
         const isSelected = bulkSelection?.selectedPaymentIds.includes(p.payment_id || "") || false;
 
-        // 選択モード中の挙動：
-        // bulkSelectionが存在する = 選択モードON
-        // ただし、チェックボックスを表示するのは isOperatable な項目のみ
         const isSelectionMode = !!bulkSelection;
         const showCheckbox = isSelectionMode && isOperatable && p.payment_id;
 
@@ -110,21 +105,25 @@ export function CardsView({
           <div
             key={p.attendance_id}
             className={`
-              relative flex items-start gap-3 py-3 px-4
+              relative flex items-start gap-3 py-3.5 px-4
               transition-all duration-200
-              ${isActionRequired ? "bg-red-50/30" : "bg-white"}
-              hover:bg-gray-50
+              rounded-2xl border
+              ${
+                isActionRequired
+                  ? "bg-rose-50/40 border-rose-200/80 shadow-[0_2px_10px_-4px_rgba(225,29,72,0.1)]"
+                  : "bg-white/70 backdrop-blur-sm border-border/60 shadow-[0_1px_3px_hsl(var(--foreground)/0.03)]"
+              }
             `}
             role="gridcell"
           >
-            {/* Action Required Indicator (Left Border) */}
+            {/* Action Required Indicator */}
             {isActionRequired && (
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 rounded-l-sm" />
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-[65%] bg-rose-400 rounded-r-md opacity-80" />
             )}
 
-            {/* Selection Checkbox (Slide-in effect logic handled by parent state presence) */}
+            {/* Selection Checkbox */}
             {isSelectionMode && (
-              <div className="flex items-center self-center h-full mr-1">
+              <div className="flex items-center self-center h-full mr-0.5">
                 {showCheckbox ? (
                   <Checkbox
                     checked={isSelected}
@@ -136,57 +135,62 @@ export function CardsView({
                     }}
                     disabled={bulkSelection.isDisabled}
                     aria-label="選択"
-                    className="h-5 w-5"
+                    className="h-5 w-5 rounded-md border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-colors"
                   />
                 ) : (
-                  <div className="w-5 h-5" /> /* Placeholder alignment */
+                  <div className="w-5 h-5" />
                 )}
               </div>
             )}
 
             {/* Main Content Grid */}
-            <div className="flex-1 min-w-0 grid gap-1.5">
+            <div className="flex-1 min-w-0 grid gap-2">
               {/* Row 1: Name & Status */}
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold text-gray-900 truncate">{p.nickname}</span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="text-[14px] font-semibold text-foreground/90 truncate tracking-tight">
+                    {p.nickname}
+                  </span>
                   {getStatusBadge(p.status)}
                 </div>
               </div>
 
               {/* Row 2: Payment Status & Actions */}
               {!isFreeEvent && (
-                <div className="flex items-center justify-between gap-2 min-h-10">
+                <div className="flex items-center justify-between gap-2 min-h-[2.25rem]">
                   {/* Status Badge */}
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     {p.status === "attending" && !isCanceledPayment ? (
                       <>
-                        {getPaymentMethodIcon(p.payment_method)}
+                        {getPaymentMethodIcon(p.payment_method) && (
+                          <div className="flex items-center justify-center bg-muted/40 w-[1.375rem] h-[1.375rem] rounded-md shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
+                            {getPaymentMethodIcon(p.payment_method)}
+                          </div>
+                        )}
                         {p.payment_status && (
                           <Badge
                             variant={getSimplePaymentStatusStyle(simple).variant}
-                            className={`${getSimplePaymentStatusStyle(simple).className} text-xs px-1.5 py-0 h-5 font-normal`}
+                            className={`${getSimplePaymentStatusStyle(simple).className} rounded-full text-[11px] px-2.5 py-0.5 h-6 font-medium shadow-sm border-transparent tracking-wide`}
                           >
                             {SIMPLE_PAYMENT_STATUS_LABELS[simple]}
                           </Badge>
                         )}
                       </>
                     ) : (
-                      <span className="text-xs text-gray-300">-</span>
+                      <span className="text-xs text-muted-foreground/45">-</span>
                     )}
                   </div>
 
                   {/* Primary Action Button (Right aligned) */}
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     {isOperatable && !isSelectionMode && (
                       <Button
-                        // size="sm"
                         variant="outline"
                         onClick={() => hasPaymentId(p) && onReceive(p.payment_id)}
                         disabled={!!isUpdating}
-                        className="h-9 px-2 py-3 text-sm font-medium border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:border-green-300 hover:text-green-800 shadow-sm"
+                        className="h-8 px-3.5 text-[12px] font-semibold rounded-xl border-emerald-200/80 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 hover:border-emerald-300 hover:text-emerald-800 shadow-sm transition-all"
                       >
-                        <Check className="h-5 w-5 mr-0" />
+                        <Check className="h-3.5 w-3.5 mr-1" strokeWidth={2.5} />
                         受領
                       </Button>
                     )}
@@ -198,18 +202,21 @@ export function CardsView({
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 w-7 p-0 text-muted-foreground"
+                            className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:bg-muted/60 transition-colors"
                             disabled={!!isUpdating}
                           >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent
+                          align="end"
+                          className="rounded-xl shadow-xl border-border/60 min-w-[8rem] p-1.5"
+                        >
                           <DropdownMenuItem
                             onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
-                            className="text-gray-700"
+                            className="text-foreground/80 focus:bg-muted/60 focus:text-foreground text-[13px] rounded-lg cursor-pointer"
                           >
-                            <RotateCcw className="h-4 w-4 mr-2" />
+                            <RotateCcw className="h-3.5 w-3.5 mr-2" />
                             受領を取り消し
                           </DropdownMenuItem>
                         </DropdownMenuContent>

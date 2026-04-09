@@ -96,7 +96,7 @@ export default function OnboardingGuidePage() {
                   <CardDescription className="text-sm">
                     コミュニティの活動内容に合わせて、最も近いものを選択してください。多くの場合、
                     <span className="font-bold text-slate-900 mx-1">「会員制組織」</span>
-                    がカテゴリが該当します。
+                    カテゴリが該当します。
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
