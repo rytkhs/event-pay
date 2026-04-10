@@ -7,7 +7,12 @@ import { render, screen } from "@testing-library/react";
 
 const resolveAppWorkspaceForServerComponent = jest.fn();
 const createCommunityAction = jest.fn();
-const createCommunityForm = jest.fn((_props: any) => <div data-testid="create-community-form" />);
+const logoutAction = jest.fn();
+const createCommunityForm = jest.fn(({ hasOwnedCommunities }: any) => (
+  <div data-testid="create-community-form">
+    {hasOwnedCommunities ? "コミュニティを追加" : "最初のコミュニティを作成してください。"}
+  </div>
+));
 
 jest.mock("@core/community/app-workspace", () => ({
   resolveAppWorkspaceForServerComponent,
@@ -19,6 +24,10 @@ jest.mock("@features/communities/components/CreateCommunityForm", () => ({
 
 jest.mock("@/app/(app)/actions/communities", () => ({
   createCommunityAction,
+}));
+
+jest.mock("@/app/(auth)/actions", () => ({
+  logoutAction,
 }));
 
 jest.mock("next/link", () => ({
@@ -54,17 +63,18 @@ describe("CreateCommunityPage", () => {
       hasOwnedCommunities: false,
     });
 
-    const CreateCommunityPage = (await import("../../../../app/(app)/communities/create/page"))
+    const CreateCommunityPage = (await import("../../../../app/(focus)/communities/create/page"))
       .default;
     const ui = await CreateCommunityPage();
 
     render(ui);
 
-    expect(screen.getByText("最初のコミュニティを作成する")).toBeInTheDocument();
+    expect(screen.getByText("最初のコミュニティを作成してください。")).toBeInTheDocument();
     expect(screen.getByTestId("create-community-form")).toBeInTheDocument();
     expect(createCommunityForm).toHaveBeenCalledWith(
       expect.objectContaining({
         createCommunityAction,
+        logoutAction,
         hasOwnedCommunities: false,
       })
     );
@@ -79,15 +89,16 @@ describe("CreateCommunityPage", () => {
       hasOwnedCommunities: true,
     });
 
-    const CreateCommunityPage = (await import("../../../../app/(app)/communities/create/page"))
+    const CreateCommunityPage = (await import("../../../../app/(focus)/communities/create/page"))
       .default;
     const ui = await CreateCommunityPage();
 
     render(ui);
 
-    expect(screen.getByText("コミュニティを追加する")).toBeInTheDocument();
+    expect(screen.getByText("コミュニティを追加")).toBeInTheDocument();
     expect(createCommunityForm).toHaveBeenCalledWith(
       expect.objectContaining({
+        logoutAction,
         hasOwnedCommunities: true,
       })
     );

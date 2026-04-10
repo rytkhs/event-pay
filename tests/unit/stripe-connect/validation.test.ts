@@ -22,7 +22,7 @@ describe("stripe-connect validation", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.flatten().fieldErrors.representativeCommunityId).toEqual([
-        "代表コミュニティを選択してください",
+        "Stripe アカウント設定に使うコミュニティを選択してください",
       ]);
     }
   });

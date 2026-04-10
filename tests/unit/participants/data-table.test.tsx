@@ -136,7 +136,7 @@ describe("DataTable", () => {
       const dataRows = rows.slice(1);
 
       dataRows.forEach((row) => {
-        expect(row).toHaveClass("focus-within:ring-2");
+        expect(row).toHaveClass("focus-within:bg-sidebar-accent/40");
         expect(row).toHaveAttribute("tabIndex", "0");
       });
     });
@@ -172,7 +172,7 @@ describe("DataTable", () => {
 
       const cells = screen.getAllByRole("cell");
       cells.forEach((cell) => {
-        expect(cell).toHaveClass("px-2", "sm:px-4");
+        expect(cell).toHaveClass("px-3", "sm:px-4");
       });
     });
   });

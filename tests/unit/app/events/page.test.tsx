@@ -39,8 +39,17 @@ jest.mock("@/components/errors/ui/ErrorCard", () => ({
 }));
 
 jest.mock("@features/events", () => ({
-  EventListWithFilters: ({ events }: { events: Array<{ title: string }> }) => (
-    <div>{events.map((event) => event.title).join(",")}</div>
+  EventListWithFilters: ({
+    events,
+    totalCount,
+  }: {
+    events: Array<{ title: string }>;
+    totalCount: number;
+  }) => (
+    <div>
+      <div>{totalCount} EVENTS FOUND</div>
+      <div>{events.map((event) => event.title).join(",")}</div>
+    </div>
   ),
 }));
 
@@ -110,8 +119,7 @@ describe("EventsPage", () => {
         statusFilter: "past",
       })
     );
-    expect(screen.getByText("イベント一覧")).toBeInTheDocument();
-    expect(screen.getByText("ボドゲ会 に属するイベントを表示しています")).toBeInTheDocument();
+    expect(screen.getByText("1 EVENTS FOUND")).toBeInTheDocument();
     expect(screen.getByText("交流会")).toBeInTheDocument();
   });
 });

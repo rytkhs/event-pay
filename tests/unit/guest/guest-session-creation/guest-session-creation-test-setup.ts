@@ -7,7 +7,7 @@
 import { jest } from "@jest/globals";
 
 import { enforceRateLimit, buildKey } from "@core/rate-limit";
-import { getSecureClientFactory } from "@core/security/secure-client-factory.impl";
+import * as SecureClientFactory from "@core/security/secure-client-factory.impl";
 import * as DestinationCharges from "@core/stripe/destination-charges";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
@@ -32,7 +32,7 @@ jest.mock("@core/rate-limit");
 jest.mock("@core/stripe/destination-charges");
 jest.mock("@features/payments/services/fee-config/application-fee-calculator");
 jest.mock("@core/security/secure-client-factory.impl", () => ({
-  getSecureClientFactory: jest.fn(),
+  createGuestClient: jest.fn(),
 }));
 
 export interface GuestSessionCreationTestContext {
@@ -125,10 +125,7 @@ export function setupBeforeEach(context: GuestSessionCreationTestContext): void 
     ApplicationFeeCalculator as jest.MockedClass<typeof ApplicationFeeCalculator>
   ).mockImplementation(() => context.mockApplicationFeeCalculator);
 
-  // SecureSupabaseClientFactory のモック
-  (getSecureClientFactory as jest.Mock).mockReturnValue({
-    createGuestClient: jest.fn().mockReturnValue(context.mockSupabaseClient),
-  });
+  jest.spyOn(SecureClientFactory, "createGuestClient").mockReturnValue(context.mockSupabaseClient);
 }
 
 export async function cleanupAfterAll(context: GuestSessionCreationTestContext): Promise<void> {

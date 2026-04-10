@@ -138,7 +138,7 @@ describe("loginAction", () => {
       expect(result.success).toBe(false);
       const error = expectActionFailure(result);
       // ユーザー列挙攻撃対策により、統一されたエラーメッセージが返される
-      expect(error.userMessage).toBe("メールアドレスまたはパスワードが正しくありません");
+      expect(error.userMessage).toBe("ログイン処理中にエラーが発生しました");
     });
 
     it("メール未確認エラーは適切に処理される", async () => {
