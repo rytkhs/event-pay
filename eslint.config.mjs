@@ -379,6 +379,7 @@ const eslintConfig = [
       'coverage/**',
       '**/*.md',
       '.eslintrc.js',
+      'app/debug/**',
     ],
   },
 ]

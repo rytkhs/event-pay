@@ -45,7 +45,7 @@ describe("SuccessView", () => {
 
     render(<SuccessView data={data} onRegisterAnother={onRegisterAnother} />);
 
-    const button = screen.getByRole("button", { name: "別の参加者を登録する" });
+    const button = screen.getByRole("button", { name: "登録フォームに戻る" });
     await user.click(button);
 
     expect(onRegisterAnother).toHaveBeenCalledTimes(1);
@@ -63,7 +63,7 @@ describe("SuccessView", () => {
 
     render(<SuccessView data={data} onRegisterAnother={onRegisterAnother} />);
 
-    const button = screen.getByRole("button", { name: "別の参加者を登録する" });
+    const button = screen.getByRole("button", { name: "登録フォームに戻る" });
     await user.click(button);
 
     expect(button).toBeDisabled();
@@ -85,7 +85,7 @@ describe("SuccessView", () => {
 
     render(<SuccessView data={data} onRegisterAnother={onRegisterAnother} />);
 
-    const button = screen.getByRole("button", { name: "別の参加者を登録する" });
+    const button = screen.getByRole("button", { name: "登録フォームに戻る" });
     await user.click(button);
 
     await waitFor(() => {

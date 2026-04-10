@@ -38,6 +38,11 @@ function createDeferred<T>(): Deferred<T> {
 }
 
 describe("CreateCommunityForm", () => {
+  const logoutAction = jest.fn(async () => ({
+    success: true as const,
+    redirectUrl: "/login",
+  }));
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -55,12 +60,17 @@ describe("CreateCommunityForm", () => {
     render(
       <CreateCommunityForm
         createCommunityAction={createCommunityAction}
+        logoutAction={logoutAction}
         hasOwnedCommunities={false}
       />
     );
 
-    expect(screen.getByLabelText("コミュニティ名")).toBeInTheDocument();
-    expect(screen.getByLabelText("コミュニティの説明")).toHaveValue(defaultCommunityDescription);
+    expect(screen.getByPlaceholderText("例: ボドゲ会、読書会、テニスサークル")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(
+        "例: サークル・グループの活動やイベント等の企画・運営を行っています..."
+      )
+    ).toHaveValue("");
     expect(screen.getByRole("button", { name: /コミュニティを作成/ })).toBeInTheDocument();
   });
 
@@ -68,7 +78,7 @@ describe("CreateCommunityForm", () => {
     const user = userEvent.setup();
     const createCommunityAction = jest.fn(async (_state, formData: FormData) => {
       expect(formData.get("name")).toBe("");
-      expect(formData.get("description")).toBe(defaultCommunityDescription);
+      expect(formData.get("description")).toBe("");
 
       return {
         success: false as const,
@@ -90,6 +100,7 @@ describe("CreateCommunityForm", () => {
     render(
       <CreateCommunityForm
         createCommunityAction={createCommunityAction}
+        logoutAction={logoutAction}
         hasOwnedCommunities={false}
       />
     );
@@ -117,10 +128,14 @@ describe("CreateCommunityForm", () => {
       await import("@/features/communities/components/CreateCommunityForm");
 
     render(
-      <CreateCommunityForm createCommunityAction={createCommunityAction} hasOwnedCommunities />
+      <CreateCommunityForm
+        createCommunityAction={createCommunityAction}
+        logoutAction={logoutAction}
+        hasOwnedCommunities
+      />
     );
 
-    await user.type(screen.getByLabelText("コミュニティ名"), "読書会");
+    await user.type(screen.getByPlaceholderText("例: ボドゲ会、読書会、テニスサークル"), "読書会");
     await user.click(screen.getByRole("button", { name: /コミュニティを作成/ }));
 
     expect(await screen.findByText("作成できませんでした")).toBeInTheDocument();
@@ -145,11 +160,12 @@ describe("CreateCommunityForm", () => {
     render(
       <CreateCommunityForm
         createCommunityAction={createCommunityAction}
+        logoutAction={logoutAction}
         hasOwnedCommunities={false}
       />
     );
 
-    await user.type(screen.getByLabelText("コミュニティ名"), "映画会");
+    await user.type(screen.getByPlaceholderText("例: ボドゲ会、読書会、テニスサークル"), "映画会");
     await user.click(screen.getByRole("button", { name: /コミュニティを作成/ }));
 
     await waitFor(() => {
@@ -172,11 +188,12 @@ describe("CreateCommunityForm", () => {
     render(
       <CreateCommunityForm
         createCommunityAction={createCommunityAction}
+        logoutAction={logoutAction}
         hasOwnedCommunities={false}
       />
     );
 
-    await user.type(screen.getByLabelText("コミュニティ名"), "散歩会");
+    await user.type(screen.getByPlaceholderText("例: ボドゲ会、読書会、テニスサークル"), "散歩会");
     await user.click(screen.getByRole("button", { name: /コミュニティを作成/ }));
 
     expect(await screen.findByRole("button", { name: /作成中/ })).toBeDisabled();

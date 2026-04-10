@@ -45,7 +45,7 @@ describe("SettingsLayout", () => {
 
     render(<SettingsLayout>child</SettingsLayout>);
 
-    expect(screen.getByRole("link", { name: /コミュニティ設定/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /コミュニティ/ })).toHaveAttribute(
       "href",
       "/settings/community"
     );
@@ -58,7 +58,7 @@ describe("SettingsLayout", () => {
 
     render(<SettingsLayout>child</SettingsLayout>);
 
-    expect(screen.getByText("コミュニティ設定")).toBeInTheDocument();
-    expect(screen.getByText("選択中のコミュニティの公開情報と設定")).toBeInTheDocument();
+    expect(screen.getByText("コミュニティ")).toBeInTheDocument();
+    expect(screen.getByText("選択中のコミュニティの設定")).toBeInTheDocument();
   });
 });

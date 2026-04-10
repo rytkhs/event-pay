@@ -2,31 +2,12 @@
  * Guest Session Creation: 入力検証テスト
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
+import { describe, it, expect } from "@jest/globals";
 
 import { createGuestStripeSessionAction } from "../../../../features/guest/actions/create-stripe-session";
 
-import {
-  setupGuestSessionCreationTest,
-  setupBeforeEach,
-  cleanupAfterAll,
-  type GuestSessionCreationTestContext,
-} from "./guest-session-creation-test-setup";
-
 describe("入力検証", () => {
-  let context: GuestSessionCreationTestContext;
-
-  beforeAll(async () => {
-    context = await setupGuestSessionCreationTest();
-  });
-
-  afterAll(async () => {
-    await cleanupAfterAll(context);
-  });
-
-  beforeEach(() => {
-    setupBeforeEach(context);
-  });
+  const validGuestToken = "gst_12345678901234567890123456789012";
 
   it("guestTokenが36文字未満の場合はVALIDATION_ERRORを返す", async () => {
     const input = {
@@ -56,7 +37,7 @@ describe("入力検証", () => {
 
   it("successUrlが無効なURL形式の場合はVALIDATION_ERRORを返す", async () => {
     const input = {
-      guestToken: context.testAttendance.guest_token,
+      guestToken: validGuestToken,
       successUrl: "invalid-url", // 無効なURL
       cancelUrl: "https://example.com/cancel",
     };
@@ -82,7 +63,7 @@ describe("入力検証", () => {
 
   it("cancelUrlが無効なURL形式の場合はVALIDATION_ERRORを返す", async () => {
     const input = {
-      guestToken: context.testAttendance.guest_token,
+      guestToken: validGuestToken,
       successUrl: "https://example.com/success",
       cancelUrl: "invalid-url", // 無効なURL
     };

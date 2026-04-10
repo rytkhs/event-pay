@@ -35,11 +35,7 @@ describe("EventDetailHeader", () => {
     render(<EventDetailHeader eventDetail={baseEvent} />);
 
     expect(screen.getByRole("heading", { name: "春合宿" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "イベント一覧に戻る" })).toHaveAttribute(
-      "href",
-      "/events"
-    );
-    expect(screen.getByRole("link", { name: "イベント設定を編集" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "イベントを編集" })).toHaveAttribute(
       "href",
       "/events/event-1/edit"
     );
@@ -48,7 +44,7 @@ describe("EventDetailHeader", () => {
   it("編集不可イベントでは編集リンクを出さず disabled button を表示する", () => {
     render(<EventDetailHeader eventDetail={{ ...baseEvent, status: "past" }} />);
 
-    expect(screen.queryByRole("link", { name: "イベント設定を編集" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "イベント設定は編集できません" })).toBeDisabled();
+    expect(screen.queryByRole("link", { name: "イベントを編集" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "編集不可" })).toBeDisabled();
   });
 });

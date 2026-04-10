@@ -53,7 +53,7 @@ describe("DeleteCommunityDangerZone", () => {
       />
     );
 
-    expect(screen.getByText("コミュニティを削除")).toBeInTheDocument();
+    expect(screen.getByText("「ボドゲ会」を削除")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "削除する" })).toBeInTheDocument();
   });
 

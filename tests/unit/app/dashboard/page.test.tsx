@@ -7,9 +7,14 @@ import { render, screen } from "@testing-library/react";
 
 const resolveAppWorkspaceForServerComponent = jest.fn();
 const createDashboardDataResource = jest.fn();
+const redirect = jest.fn();
 
 jest.mock("@core/community/app-workspace", () => ({
   resolveAppWorkspaceForServerComponent,
+}));
+
+jest.mock("next/navigation", () => ({
+  redirect,
 }));
 
 jest.mock("next/link", () => ({
@@ -73,17 +78,13 @@ describe("DashboardPage", () => {
     resolveAppWorkspaceForServerComponent.mockResolvedValue({
       isCommunityEmptyState: true,
     });
+    redirect.mockImplementation(() => {
+      throw new Error("NEXT_REDIRECT");
+    });
 
     const DashboardPage = (await import("../../../../app/(app)/dashboard/page")).default;
-    const ui = await DashboardPage();
-
-    render(ui);
-
-    expect(screen.getByText("コミュニティをまだ作成していません")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "最初のコミュニティを作成" })).toHaveAttribute(
-      "href",
-      "/communities/create"
-    );
+    await expect(DashboardPage()).rejects.toThrow("NEXT_REDIRECT");
+    expect(redirect).toHaveBeenCalledWith("/communities/create");
     expect(createDashboardDataResource).not.toHaveBeenCalled();
   });
 
