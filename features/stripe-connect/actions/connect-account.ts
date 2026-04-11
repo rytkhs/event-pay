@@ -567,7 +567,7 @@ export async function startOnboardingAction(
 ): Promise<StartOnboardingActionResult> {
   const actionLogger = logger.withContext({
     category: "stripe_connect",
-    action: "start_onboarding",
+    action: "stripe_connect.onboarding.start",
     actor_type: "user",
   });
 
@@ -579,6 +579,12 @@ export async function startOnboardingAction(
     // 1. 認証チェック
     const user = await getCurrentUserForServerAction();
     if (!user) {
+      logger.warn("Unauthenticated Stripe Connect onboarding attempt", {
+        category: "authentication",
+        action: "stripe_connect.onboarding.start",
+        actor_type: "anonymous",
+        outcome: "failure",
+      });
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
     userId = user.id;
@@ -631,6 +637,13 @@ export async function startOnboardingAction(
       });
       account = await stripeConnectService.getConnectAccountByUser(user.id);
       if (!account) {
+        actionLogger.error("Stripe Connect account was not found after creation", {
+          user_id: user.id,
+          resource_type: "community",
+          resource_id: representativeCommunityResult.data.id,
+          communityId: representativeCommunityResult.data.id,
+          outcome: "failure",
+        });
         return fail("INTERNAL_ERROR", { userMessage: "アカウント情報の取得に失敗しました" });
       }
     }
@@ -653,6 +666,16 @@ export async function startOnboardingAction(
       },
     });
     if (!businessProfileUpdateResult.success) {
+      actionLogger.error("Stripe business profile update failed during onboarding start", {
+        user_id: user.id,
+        resource_type: "community",
+        resource_id: representativeCommunityResult.data.id,
+        communityId: representativeCommunityResult.data.id,
+        payoutProfileId: account.id,
+        stripe_account_id: account.stripe_account_id,
+        outcome: "failure",
+        error: businessProfileUpdateResult.error,
+      });
       return failFrom(businessProfileUpdateResult.error, {
         userMessage: "Stripe に提出するコミュニティプロフィールのURLの更新に失敗しました",
       });
@@ -670,10 +693,14 @@ export async function startOnboardingAction(
     });
 
     // 6. ログ記録
-    actionLogger.info("Representative-community onboarding started", {
+    actionLogger.info("Stripe Connect onboarding started", {
       user_id: user.id,
-      account_id: account.stripe_account_id,
-      representative_community_id: representativeCommunityResult.data.id,
+      resource_type: "community",
+      resource_id: representativeCommunityResult.data.id,
+      communityId: representativeCommunityResult.data.id,
+      requestedCommunityId: representativeCommunityResult.data.id,
+      payoutProfileId: account.id,
+      stripe_account_id: account.stripe_account_id,
       outcome: "success",
     });
     onboardingRedirectUrl = accountLink.url;
@@ -693,6 +720,10 @@ export async function startOnboardingAction(
   }
 
   if (!onboardingRedirectUrl) {
+    actionLogger.error("Stripe Connect onboarding redirect URL was not generated", {
+      user_id: userId,
+      outcome: "failure",
+    });
     return fail("INTERNAL_ERROR", {
       userMessage: "オンボーディングURLの生成に失敗しました",
     });

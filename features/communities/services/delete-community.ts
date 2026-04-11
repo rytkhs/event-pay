@@ -20,11 +20,17 @@ type ExistingCommunityRow = {
 
 function toDatabaseError(
   cause: unknown,
+  ownerUserId: string,
   details?: Record<string, string | number | boolean | null>
 ) {
-  logger.error(DELETE_COMMUNITY_ERROR_MESSAGE, {
+  logger.error("Community delete failed", {
     category: "system",
-    action: details?.operation?.toString() || "delete_community_database_error",
+    action: "community.delete",
+    outcome: "failure",
+    user_id: ownerUserId,
+    resource_type: details?.communityId ? "community" : undefined,
+    resource_id: details?.communityId?.toString(),
+    communityId: details?.communityId?.toString() ?? null,
     error: cause,
     ...details,
   });
@@ -51,7 +57,7 @@ async function ensureCommunityIsNotRepresentative(
     .eq("representative_community_id", communityId);
 
   if (error) {
-    return toDatabaseError(error, {
+    return toDatabaseError(error, ownerUserId, {
       communityId,
       operation: "count_representative_community_usage",
     });
@@ -60,10 +66,13 @@ async function ensureCommunityIsNotRepresentative(
   if ((count ?? 0) > 0) {
     logger.warn(REPRESENTATIVE_COMMUNITY_IN_USE_MESSAGE, {
       category: "system",
-      action: "delete_representative_community_check",
+      action: "community.delete",
       outcome: "failure",
+      resource_type: "community",
+      resource_id: communityId,
       communityId,
-      ownerUserId,
+      user_id: ownerUserId,
+      reason: "representative_community_in_use",
     });
     return errResult(
       new AppError("RESOURCE_CONFLICT", {
@@ -104,7 +113,7 @@ export async function deleteCommunity(
     .maybeSingle<ExistingCommunityRow>();
 
   if (existingCommunityError) {
-    return toDatabaseError(existingCommunityError, {
+    return toDatabaseError(existingCommunityError, ownerUserId, {
       communityId,
       operation: "get_delete_target_community",
     });
@@ -113,10 +122,13 @@ export async function deleteCommunity(
   if (!existingCommunity) {
     logger.warn(DELETE_COMMUNITY_NOT_FOUND_MESSAGE, {
       category: "system",
-      action: "soft_delete_community",
+      action: "community.delete",
       outcome: "failure",
+      resource_type: "community",
+      resource_id: communityId,
       communityId,
-      ownerUserId,
+      user_id: ownerUserId,
+      reason: "delete_target_not_found",
     });
     return errResult(
       new AppError("NOT_FOUND", {
@@ -154,7 +166,7 @@ export async function deleteCommunity(
     .eq("is_deleted", false);
 
   if (error) {
-    return toDatabaseError(error, {
+    return toDatabaseError(error, ownerUserId, {
       communityId,
       operation: "soft_delete_community",
     });
@@ -163,10 +175,13 @@ export async function deleteCommunity(
   if ((count ?? 0) === 0) {
     logger.warn(DELETE_COMMUNITY_NOT_FOUND_MESSAGE, {
       category: "system",
-      action: "soft_delete_community",
+      action: "community.delete",
       outcome: "failure",
+      resource_type: "community",
+      resource_id: communityId,
       communityId,
-      ownerUserId,
+      user_id: ownerUserId,
+      reason: "delete_target_not_found",
     });
     return errResult(
       new AppError("NOT_FOUND", {
@@ -178,10 +193,12 @@ export async function deleteCommunity(
 
   logger.info("コミュニティを削除しました", {
     category: "system",
-    action: "delete_community_success",
+    action: "community.delete",
     outcome: "success",
+    resource_type: "community",
+    resource_id: communityId,
     communityId,
-    ownerUserId,
+    user_id: ownerUserId,
   });
 
   return okResult({

@@ -2,6 +2,7 @@ import "server-only";
 
 import { AppError } from "@core/errors/app-error";
 import { errResult, okResult, type AppResult } from "@core/errors/app-result";
+import { logger } from "@core/logging/app-logger";
 import { getPublicUrl } from "@core/seo/metadata";
 import type { AppSupabaseClient } from "@core/types/supabase";
 
@@ -24,7 +25,20 @@ const REPRESENTATIVE_COMMUNITY_LOOKUP_ERROR_MESSAGE = "代表コミュニティ�
 const PAYOUT_PROFILE_UPDATE_ERROR_MESSAGE = "代表コミュニティの保存に失敗しました";
 const PAYOUT_PROFILE_NOT_FOUND_MESSAGE = "Stripe の受取設定が見つかりません";
 
-function invalidRepresentativeCommunityResult(): AppResult<never> {
+function invalidRepresentativeCommunityResult(
+  ownerUserId: string,
+  representativeCommunityId: string
+): AppResult<never> {
+  logger.warn("Representative community selection is not allowed", {
+    category: "authorization",
+    action: "stripe_connect.representative_community.resolve",
+    outcome: "failure",
+    resource_type: "community",
+    resource_id: representativeCommunityId,
+    user_id: ownerUserId,
+    requestedCommunityId: representativeCommunityId,
+  });
+
   return errResult(
     new AppError("VALIDATION_ERROR", {
       details: {
@@ -50,6 +64,17 @@ export async function resolveRepresentativeCommunitySelection(
     .maybeSingle<RepresentativeCommunityRow>();
 
   if (error) {
+    logger.error("Representative community lookup failed", {
+      category: "stripe_connect",
+      action: "stripe_connect.representative_community.resolve",
+      outcome: "failure",
+      resource_type: "community",
+      resource_id: representativeCommunityId,
+      user_id: ownerUserId,
+      requestedCommunityId: representativeCommunityId,
+      error,
+    });
+
     return errResult(
       new AppError("DATABASE_ERROR", {
         cause: error,
@@ -65,7 +90,7 @@ export async function resolveRepresentativeCommunitySelection(
   }
 
   if (!data) {
-    return invalidRepresentativeCommunityResult();
+    return invalidRepresentativeCommunityResult(ownerUserId, representativeCommunityId);
   }
 
   return okResult({
@@ -91,6 +116,17 @@ export async function updateRepresentativeCommunitySelection(
     .maybeSingle<{ id: string }>();
 
   if (error) {
+    logger.error("Representative community update failed", {
+      category: "stripe_connect",
+      action: "stripe_connect.representative_community.persist",
+      outcome: "failure",
+      resource_type: "community",
+      resource_id: representativeCommunityId,
+      payoutProfileId,
+      communityId: representativeCommunityId,
+      error,
+    });
+
     return errResult(
       new AppError("DATABASE_ERROR", {
         cause: error,
@@ -106,6 +142,16 @@ export async function updateRepresentativeCommunitySelection(
   }
 
   if (!data?.id) {
+    logger.warn("Representative community update target not found", {
+      category: "stripe_connect",
+      action: "stripe_connect.representative_community.persist",
+      outcome: "failure",
+      resource_type: "community",
+      resource_id: representativeCommunityId,
+      payoutProfileId,
+      communityId: representativeCommunityId,
+    });
+
     return errResult(
       new AppError("NOT_FOUND", {
         retryable: false,

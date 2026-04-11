@@ -1,3 +1,14 @@
+jest.mock("@core/logging/app-logger", () => ({
+  logger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    withContext: jest.fn().mockReturnThis(),
+  },
+}));
+
+import { logger } from "@core/logging/app-logger";
 import { updateCommunitySchema } from "@features/communities/server";
 import { updateCommunity } from "@features/communities/services/update-community";
 
@@ -94,6 +105,16 @@ describe("features/communities/services/update-community", () => {
     expect(spies.eqCreatedBy).toHaveBeenCalledWith("created_by", "user-1");
     expect(spies.eqIsDeleted).toHaveBeenCalledWith("is_deleted", false);
     expect(spies.select).toHaveBeenCalledWith("id, name, description");
+    expect(logger.info).toHaveBeenCalledWith(
+      "Community updated",
+      expect.objectContaining({
+        category: "system",
+        action: "community.update",
+        outcome: "success",
+        user_id: "user-1",
+        communityId: "community-1",
+      })
+    );
   });
 
   it("更新対象が無ければ NOT_FOUND を返す", async () => {
@@ -114,6 +135,16 @@ describe("features/communities/services/update-community", () => {
 
     expect(result.error.code).toBe("NOT_FOUND");
     expect(result.error.userMessage).toBe("更新対象のコミュニティが見つかりません");
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Community update target not found",
+      expect.objectContaining({
+        category: "system",
+        action: "community.update",
+        outcome: "failure",
+        user_id: "user-1",
+        communityId: "community-x",
+      })
+    );
   });
 
   it("DB エラー時は DATABASE_ERROR を返す", async () => {
@@ -137,5 +168,15 @@ describe("features/communities/services/update-community", () => {
 
     expect(result.error.code).toBe("DATABASE_ERROR");
     expect(result.error.userMessage).toBe("コミュニティの更新に失敗しました");
+    expect(logger.error).toHaveBeenCalledWith(
+      "Community update failed",
+      expect.objectContaining({
+        category: "system",
+        action: "community.update",
+        outcome: "failure",
+        user_id: "user-1",
+        communityId: "community-1",
+      })
+    );
   });
 });

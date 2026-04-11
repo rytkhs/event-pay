@@ -10,6 +10,16 @@ const mockClearCurrentCommunityCookie = jest.fn();
 const mockCreateServerActionSupabaseClient = jest.fn();
 const mockEnsureFeaturesRegistered = jest.fn();
 
+jest.mock("@core/logging/app-logger", () => ({
+  logger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    withContext: jest.fn().mockReturnThis(),
+  },
+}));
+
 jest.mock("@core/auth/auth-utils", () => ({
   getCurrentUserForServerAction: mockGetCurrentUserForServerAction,
 }));
@@ -29,7 +39,6 @@ jest.mock("@/app/_init/feature-registrations", () => ({
 }));
 
 type CurrentCommunityActionModule = typeof import("@/app/(app)/actions/current-community");
-
 async function loadCurrentCommunityActionModule(): Promise<CurrentCommunityActionModule> {
   jest.resetModules();
   jest.unmock("@/app/(app)/actions/current-community");
@@ -42,7 +51,6 @@ async function loadCurrentCommunityActionModule(): Promise<CurrentCommunityActio
   if (!loadedModule) {
     throw new Error("Failed to load current-community action module");
   }
-
   return (
     (loadedModule as CurrentCommunityActionModule & { default?: CurrentCommunityActionModule })
       .default ?? loadedModule

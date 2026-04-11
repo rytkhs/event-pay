@@ -1,3 +1,14 @@
+jest.mock("@core/logging/app-logger", () => ({
+  logger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    withContext: jest.fn().mockReturnThis(),
+  },
+}));
+
+import { logger } from "@core/logging/app-logger";
 import { createCommunitySchema } from "@features/communities/server";
 import { createCommunity } from "@features/communities/services/create-community";
 
@@ -122,6 +133,16 @@ describe("features/communities/services/create-community", () => {
       },
     ]);
     expect(spies.insertPayloads[0]).not.toHaveProperty("representative_community_id");
+    expect(logger.info).toHaveBeenCalledWith(
+      "Community created",
+      expect.objectContaining({
+        category: "system",
+        action: "community.create",
+        outcome: "success",
+        user_id: "user-1",
+        communityId: "community-1",
+      })
+    );
   });
 
   it("owner の payout profile が無ければ current_payout_profile_id は null のまま作成する", async () => {
@@ -214,5 +235,15 @@ describe("features/communities/services/create-community", () => {
 
     expect(result.error.code).toBe("DATABASE_ERROR");
     expect(spies.insert).not.toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalledWith(
+      "Community create failed",
+      expect.objectContaining({
+        category: "system",
+        action: "community.create",
+        outcome: "failure",
+        user_id: "user-4",
+        operation: "select_owner_payout_profile",
+      })
+    );
   });
 });

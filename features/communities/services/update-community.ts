@@ -1,5 +1,6 @@
 import { AppError } from "@core/errors/app-error";
 import { errResult, okResult, type AppResult } from "@core/errors/app-result";
+import { logger } from "@core/logging/app-logger";
 import type { AppSupabaseClient } from "@core/types/supabase";
 
 import type { UpdateCommunityInput } from "../validation";
@@ -19,7 +20,18 @@ export type UpdateCommunityResult = {
   name: string;
 };
 
-function toDatabaseError(cause: unknown) {
+function toDatabaseError(cause: unknown, ownerUserId: string, communityId: string) {
+  logger.error("Community update failed", {
+    category: "system",
+    action: "community.update",
+    outcome: "failure",
+    resource_type: "community",
+    resource_id: communityId,
+    user_id: ownerUserId,
+    communityId,
+    error: cause,
+  });
+
   return errResult(
     new AppError("DATABASE_ERROR", {
       cause,
@@ -48,10 +60,20 @@ export async function updateCommunity(
     .maybeSingle<UpdatedCommunityRow>();
 
   if (error) {
-    return toDatabaseError(error);
+    return toDatabaseError(error, ownerUserId, communityId);
   }
 
   if (!data) {
+    logger.warn("Community update target not found", {
+      category: "system",
+      action: "community.update",
+      outcome: "failure",
+      resource_type: "community",
+      resource_id: communityId,
+      user_id: ownerUserId,
+      communityId,
+    });
+
     return errResult(
       new AppError("NOT_FOUND", {
         retryable: false,
@@ -59,6 +81,16 @@ export async function updateCommunity(
       })
     );
   }
+
+  logger.info("Community updated", {
+    category: "system",
+    action: "community.update",
+    outcome: "success",
+    resource_type: "community",
+    resource_id: data.id,
+    user_id: ownerUserId,
+    communityId: data.id,
+  });
 
   return okResult({
     communityId: data.id,
