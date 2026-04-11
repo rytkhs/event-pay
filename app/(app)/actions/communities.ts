@@ -17,6 +17,7 @@ import {
   zodFail,
   type ActionResult,
 } from "@core/errors/adapters/server-actions";
+import { logger } from "@core/logging/app-logger";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 
 import {
@@ -78,6 +79,12 @@ export async function createCommunityAction(
     const user = await getCurrentUserForServerAction();
 
     if (!user) {
+      logger.warn("Unauthenticated community create attempt", {
+        category: "authentication",
+        action: "community.create",
+        actor_type: "anonymous",
+        outcome: "failure",
+      });
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
@@ -136,6 +143,12 @@ export async function updateCommunityAction(
     const user = await getCurrentUserForServerAction();
 
     if (!user) {
+      logger.warn("Unauthenticated community update attempt", {
+        category: "authentication",
+        action: "community.update",
+        actor_type: "anonymous",
+        outcome: "failure",
+      });
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
@@ -212,6 +225,12 @@ export async function deleteCommunityAction(
     const user = await getCurrentUserForServerAction();
 
     if (!user) {
+      logger.warn("Unauthenticated community delete attempt", {
+        category: "authentication",
+        action: "community.delete",
+        actor_type: "anonymous",
+        outcome: "failure",
+      });
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
@@ -253,8 +272,34 @@ export async function deleteCommunityAction(
     if (nextResolutionResult.success && nextResolutionResult.data?.currentCommunity?.id) {
       nextCurrentCommunityId = nextResolutionResult.data.currentCommunity.id;
       await setCurrentCommunityCookie(nextCurrentCommunityId);
+      logger.info("Current community switched after community deletion", {
+        category: "system",
+        action: "community.delete.current_context_resolved",
+        actor_type: "user",
+        outcome: "success",
+        resource_type: "community",
+        resource_id: result.data.communityId,
+        user_id: user.id,
+        deletedCommunityId: result.data.communityId,
+        communityId: nextCurrentCommunityId,
+        resolvedBy: nextResolutionResult.data.resolvedBy,
+      });
     } else {
       await clearCurrentCommunityCookie();
+      if (nextResolutionResult.success) {
+        logger.info("Current community cleared after community deletion", {
+          category: "system",
+          action: "community.delete.current_context_cleared",
+          actor_type: "user",
+          outcome: "success",
+          resource_type: "community",
+          resource_id: result.data.communityId,
+          user_id: user.id,
+          deletedCommunityId: result.data.communityId,
+          communityId: null,
+          resolvedBy: nextResolutionResult.data?.resolvedBy ?? "empty",
+        });
+      }
     }
 
     revalidatePath("/(app)", "layout");

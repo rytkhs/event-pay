@@ -4,6 +4,17 @@ jest.mock("@core/security/secure-client-factory.impl", () => ({
   createAuditedAdminClient: (...args: unknown[]) => mockCreateAuditedAdminClient(...args),
 }));
 
+jest.mock("@core/logging/app-logger", () => ({
+  logger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    withContext: jest.fn().mockReturnThis(),
+  },
+}));
+
+import { logger } from "@core/logging/app-logger";
 import { deleteCommunity } from "@features/communities/services/delete-community";
 
 type CountQueryResponse = {
@@ -174,6 +185,16 @@ describe("features/communities/services/delete-community", () => {
     expect(spies.adminCommunitiesUpdateEqId).toHaveBeenCalledWith("id", "community-1");
     expect(spies.adminCommunitiesUpdateEqCreatedBy).toHaveBeenCalledWith("created_by", "user-1");
     expect(spies.adminCommunitiesUpdateEqIsDeleted).toHaveBeenCalledWith("is_deleted", false);
+    expect(logger.info).toHaveBeenCalledWith(
+      "コミュニティを削除しました",
+      expect.objectContaining({
+        category: "system",
+        action: "community.delete",
+        outcome: "success",
+        communityId: "community-1",
+        user_id: "user-1",
+      })
+    );
   });
 
   it("representative community は RESOURCE_CONFLICT を返す", async () => {
@@ -203,6 +224,17 @@ describe("features/communities/services/delete-community", () => {
     );
     expect(spies.adminCommunitiesUpdate).not.toHaveBeenCalled();
     expect(mockCreateAuditedAdminClient).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
+      "代表コミュニティに設定されているため削除できません。付け替え後に削除してください",
+      expect.objectContaining({
+        category: "system",
+        action: "community.delete",
+        outcome: "failure",
+        communityId: "community-1",
+        user_id: "user-1",
+        reason: "representative_community_in_use",
+      })
+    );
   });
 
   it("削除対象が無ければ NOT_FOUND を返す", async () => {
@@ -255,6 +287,17 @@ describe("features/communities/services/delete-community", () => {
 
     expect(result.error.code).toBe("DATABASE_ERROR");
     expect(result.error.userMessage).toBe("コミュニティの削除に失敗しました");
+    expect(logger.error).toHaveBeenCalledWith(
+      "Community delete failed",
+      expect.objectContaining({
+        category: "system",
+        action: "community.delete",
+        outcome: "failure",
+        user_id: "user-1",
+        communityId: "community-1",
+        operation: "count_representative_community_usage",
+      })
+    );
   });
 
   it("論理削除 update の失敗は DATABASE_ERROR を返す", async () => {

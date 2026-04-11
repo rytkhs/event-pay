@@ -1,5 +1,6 @@
 import { AppError } from "@core/errors/app-error";
 import { errResult, okResult, type AppResult } from "@core/errors/app-result";
+import { logger } from "@core/logging/app-logger";
 import { hasPostgrestCode } from "@core/supabase/postgrest-error-guards";
 import type { CommunityInsert } from "@core/types/community";
 import type { AppSupabaseClient } from "@core/types/supabase";
@@ -23,8 +24,18 @@ type PayoutProfileLookupRow = {
 
 function toDatabaseError(
   cause: unknown,
+  ownerUserId: string,
   details?: Record<string, string | number | boolean | null>
 ) {
+  logger.error("Community create failed", {
+    category: "system",
+    action: "community.create",
+    outcome: "failure",
+    user_id: ownerUserId,
+    error: cause,
+    ...details,
+  });
+
   return errResult(
     new AppError("DATABASE_ERROR", {
       cause,
@@ -46,7 +57,7 @@ async function resolveOwnerPayoutProfileId(
     .maybeSingle<PayoutProfileLookupRow>();
 
   if (error) {
-    return toDatabaseError(error, {
+    return toDatabaseError(error, ownerUserId, {
       operation: "select_owner_payout_profile",
     });
   }
@@ -83,6 +94,16 @@ export async function createCommunity(
       .single<{ id: string }>();
 
     if (!error && data) {
+      logger.info("Community created", {
+        category: "system",
+        action: "community.create",
+        outcome: "success",
+        resource_type: "community",
+        resource_id: data.id,
+        user_id: ownerUserId,
+        communityId: data.id,
+      });
+
       return okResult({
         communityId: data.id,
       });
@@ -92,14 +113,14 @@ export async function createCommunity(
       continue;
     }
 
-    return toDatabaseError(error ?? new Error("Community insert returned no row"), {
+    return toDatabaseError(error ?? new Error("Community insert returned no row"), ownerUserId, {
       attempt,
       operation: "insert_community",
       slugConflict: error ? hasPostgrestCode(error, "23505") : false,
     });
   }
 
-  return toDatabaseError(new Error("Community insert retries exhausted"), {
+  return toDatabaseError(new Error("Community insert retries exhausted"), ownerUserId, {
     operation: "insert_community",
     slugConflict: true,
   });

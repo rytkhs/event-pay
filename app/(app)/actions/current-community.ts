@@ -15,6 +15,7 @@ import {
   toActionResultFromAppResult,
   type ActionResult,
 } from "@core/errors/adapters/server-actions";
+import { logger } from "@core/logging/app-logger";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
@@ -32,11 +33,24 @@ export async function updateCurrentCommunityAction(
     const user = await getCurrentUserForServerAction();
 
     if (!user) {
+      logger.warn("Unauthenticated current community switch attempt", {
+        category: "authentication",
+        action: "community.switch",
+        actor_type: "anonymous",
+        outcome: "failure",
+      });
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
     if (nextCommunityId === null) {
       await clearCurrentCommunityCookie();
+      logger.info("Current community selection cleared", {
+        category: "system",
+        action: "community.switch.clear",
+        actor_type: "user",
+        outcome: "success",
+        user_id: user.id,
+      });
       return ok({ currentCommunityId: null });
     }
 
@@ -73,12 +87,36 @@ export async function updateCurrentCommunityAction(
     const resolution = resolutionResult.data;
 
     if (resolution.currentCommunity?.id !== parsedCommunityId.data) {
+      logger.warn("Current community switch forbidden", {
+        category: "authorization",
+        action: "community.switch",
+        actor_type: "user",
+        outcome: "failure",
+        resource_type: "community",
+        resource_id: parsedCommunityId.data,
+        user_id: user.id,
+        requestedCommunityId: parsedCommunityId.data,
+        communityId: resolution.currentCommunity?.id ?? null,
+        resolvedBy: resolution.resolvedBy,
+      });
       return fail("FORBIDDEN", {
         userMessage: "このコミュニティを選択する権限がありません",
       });
     }
 
     await setCurrentCommunityCookie(parsedCommunityId.data);
+    logger.info("Current community switched", {
+      category: "system",
+      action: "community.switch",
+      actor_type: "user",
+      outcome: "success",
+      resource_type: "community",
+      resource_id: parsedCommunityId.data,
+      user_id: user.id,
+      requestedCommunityId: parsedCommunityId.data,
+      communityId: parsedCommunityId.data,
+      resolvedBy: resolution.resolvedBy,
+    });
 
     return ok({
       currentCommunityId: parsedCommunityId.data,

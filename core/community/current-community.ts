@@ -10,6 +10,7 @@ import {
 } from "@core/auth/auth-utils";
 import { AppError } from "@core/errors/app-error";
 import { errResult, okResult, type AppResult } from "@core/errors/app-result";
+import { logger } from "@core/logging/app-logger";
 import {
   createServerActionSupabaseClient,
   createServerComponentSupabaseClient,
@@ -107,6 +108,14 @@ export async function listOwnedCommunities(
     .order("id", { ascending: true });
 
   if (error) {
+    logger.error("Failed to list owned communities for current community resolution", {
+      category: "system",
+      action: "community.current_context.list_owned",
+      outcome: "failure",
+      user_id: userId,
+      error,
+    });
+
     return errResult(
       new AppError("DATABASE_ERROR", {
         cause: error,

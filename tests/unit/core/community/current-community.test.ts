@@ -6,6 +6,16 @@ const mockCreateServerComponentSupabaseClient = jest.fn();
 const mockRequireCurrentUserForServerAction = jest.fn();
 const mockRequireCurrentUserForServerComponent = jest.fn();
 
+jest.mock("@core/logging/app-logger", () => ({
+  logger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    withContext: jest.fn().mockReturnThis(),
+  },
+}));
+
 jest.mock("next/headers", () => ({
   cookies: mockCookies,
 }));
@@ -21,7 +31,6 @@ jest.mock("@core/auth/auth-utils", () => ({
 }));
 
 type CurrentCommunityModule = typeof import("@core/community/current-community");
-
 type CommunitiesQueryOptions = {
   data?: Array<{ created_at: string; id: string; name: string; slug: string }>;
   error?: { message: string } | null;

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
+import { logger } from "@core/logging/app-logger";
 
 import { setupSupabaseClientMocks } from "../../setup/common-mocks";
 import { setTestUserById, supabaseAuthMock } from "../../setup/supabase-auth-mock";
@@ -12,6 +13,18 @@ const representativeCommunityId = "11111111-1111-4111-8111-111111111111";
 jest.mock("next/navigation", () => ({
   redirect: jest.fn(),
 }));
+
+jest.mock("@core/logging/app-logger", () => {
+  const mockLogger = {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    withContext: jest.fn(),
+  };
+  mockLogger.withContext.mockReturnValue(mockLogger);
+  return { logger: mockLogger };
+});
 
 const mockResolveCurrentCommunityForServerAction = jest.fn();
 const mockResolveCurrentCommunityForServerComponent = jest.fn();
@@ -303,6 +316,17 @@ describe("Stripe Connect actions", () => {
         mockSupabase,
         "profile-1",
         representativeCommunityId
+      );
+      expect(logger.withContext().info).toHaveBeenCalledWith(
+        "Stripe Connect onboarding started",
+        expect.objectContaining({
+          user_id: defaultUserId,
+          communityId: representativeCommunityId,
+          requestedCommunityId: representativeCommunityId,
+          payoutProfileId: "profile-1",
+          stripe_account_id: "acct_test",
+          outcome: "success",
+        })
       );
     });
 
