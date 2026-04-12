@@ -96,6 +96,7 @@ const ParticipantViewSchema = z.object({
   payment_version: z.number().nullable(), // 楽観的ロック用
   payment_created_at: z.string().nullable(),
   payment_updated_at: z.string().nullable(),
+  can_delete_mistaken_attendance: z.boolean().optional(),
 });
 
 export type ParticipantView = z.infer<typeof ParticipantViewSchema>;
@@ -157,4 +158,19 @@ export interface AdminAddAttendanceResult {
   canOnlinePay: boolean;
   reason?: string;
   paymentId?: string;
+}
+
+// ====================================================================
+// 誤登録取り消し関連スキーマ
+// ====================================================================
+
+export const DeleteMistakenAttendanceInputSchema = z.object({
+  eventId: z.string().uuid(),
+  attendanceId: z.string().uuid(),
+});
+
+export type DeleteMistakenAttendanceInput = z.infer<typeof DeleteMistakenAttendanceInputSchema>;
+
+export interface DeleteMistakenAttendanceResult {
+  attendanceId: string;
 }

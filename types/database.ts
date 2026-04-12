@@ -1107,6 +1107,10 @@ export type Database = {
         };
         Returns: string;
       };
+      rpc_admin_delete_mistaken_attendance: {
+        Args: { p_attendance_id: string; p_event_id: string; p_user_id: string };
+        Returns: Json;
+      };
       rpc_bulk_update_payment_status_safe: {
         Args: { p_notes?: string; p_payment_updates: Json; p_user_id: string };
         Returns: Json;

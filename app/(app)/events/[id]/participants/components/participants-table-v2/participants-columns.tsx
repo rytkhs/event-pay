@@ -3,7 +3,7 @@
 import React from "react";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { Banknote, Check, CreditCard, RotateCcw } from "lucide-react";
+import { Banknote, Check, CreditCard, MoreHorizontal, RotateCcw, Trash2 } from "lucide-react";
 
 import { hasPaymentId, toSimplePaymentStatus } from "@core/utils/payment-status-mapper";
 import type { ParticipantView } from "@core/validation/participant-management";
@@ -13,11 +13,21 @@ import { SIMPLE_PAYMENT_STATUS_LABELS, getSimplePaymentStatusStyle } from "@feat
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/core/utils";
+
+import { canShowDeleteMistakenAttendanceAction } from "./participant-action-visibility";
 
 export interface ActionsCellHandlers {
   onReceive: (paymentId: string) => void;
   onCancel: (paymentId: string) => void;
+  onDeleteMistaken: (participant: ParticipantView) => void;
   isUpdating?: boolean;
 }
 
@@ -30,10 +40,11 @@ export interface BulkSelectionConfig {
 export function buildParticipantsColumns(opts: {
   eventFee: number;
   handlers: ActionsCellHandlers;
+  isSelectionMode?: boolean;
   bulkSelection?: BulkSelectionConfig;
 }): ColumnDef<ParticipantView>[] {
   const isFreeEvent = opts.eventFee === 0;
-  const { bulkSelection } = opts;
+  const { bulkSelection, isSelectionMode = false } = opts;
 
   const columns: ColumnDef<ParticipantView>[] = [];
 
@@ -179,11 +190,15 @@ export function buildParticipantsColumns(opts: {
           const p = row.original;
           const simple = toSimplePaymentStatus(p.payment_status);
           const isCashPayment = p.payment_method === "cash" && p.payment_id;
-          const { onReceive, onCancel, isUpdating } = opts.handlers;
+          const canDeleteMistaken = canShowDeleteMistakenAttendanceAction(p);
+          const { onReceive, onCancel, onDeleteMistaken, isUpdating } = opts.handlers;
           const canOperateCash =
             p.status === "attending" &&
             isCashPayment &&
             (p.payment_status === "pending" || p.payment_status === "failed");
+          const canCancel =
+            p.status === "attending" && isCashPayment && (simple === "paid" || simple === "waived");
+          const showSecondaryMenu = !isSelectionMode && (canCancel || canDeleteMistaken);
 
           return (
             <div className="flex items-center gap-2">
@@ -201,27 +216,91 @@ export function buildParticipantsColumns(opts: {
                   受領
                 </Button>
               )}
-              {p.status === "attending" &&
-                isCashPayment &&
-                (simple === "paid" || simple === "waived") && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
-                    disabled={!!isUpdating}
-                    aria-label={`${p.nickname}の受領を取り消す`}
-                    className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200"
-                    title="受領を取り消し"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                  </Button>
-                )}
+              {showSecondaryMenu && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      disabled={!!isUpdating}
+                      aria-label={`${p.nickname}の操作メニューを開く`}
+                      className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-[9rem]">
+                    <DropdownMenuGroup>
+                      {canCancel && (
+                        <DropdownMenuItem
+                          onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
+                          className="cursor-pointer"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          受領を取り消し
+                        </DropdownMenuItem>
+                      )}
+                      {canDeleteMistaken && (
+                        <DropdownMenuItem
+                          onClick={() => onDeleteMistaken(p)}
+                          className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          参加者を削除
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           );
         },
         enableSorting: false,
       }
     );
+  }
+
+  if (isFreeEvent) {
+    columns.push({
+      id: "actions",
+      header: "アクション",
+      cell: ({ row }) => {
+        const p = row.original;
+        const { onDeleteMistaken, isUpdating } = opts.handlers;
+        if (isSelectionMode || !canShowDeleteMistakenAttendanceAction(p)) {
+          return <div className="h-8" />;
+        }
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                disabled={!!isUpdating}
+                aria-label={`${p.nickname}の操作メニューを開く`}
+                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[9rem]">
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  onClick={() => onDeleteMistaken(p)}
+                  className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  参加者を削除
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+      enableSorting: false,
+    });
   }
 
   return columns;

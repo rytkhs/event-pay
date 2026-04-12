@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import { Banknote, Check, CreditCard, MoreHorizontal, RotateCcw } from "lucide-react";
+import { Banknote, Check, CreditCard, MoreHorizontal, RotateCcw, Trash2 } from "lucide-react";
 
 import {
   hasPaymentId,
@@ -19,9 +19,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+import { canShowDeleteMistakenAttendanceAction } from "./participant-action-visibility";
 
 export interface BulkSelectionConfig {
   selectedPaymentIds: string[];
@@ -35,6 +38,8 @@ export interface CardsViewProps {
   isUpdating?: boolean;
   onReceive: (paymentId: string) => void;
   onCancel: (paymentId: string) => void;
+  onDeleteMistaken: (participant: ParticipantView) => void;
+  isSelectionMode?: boolean;
   bulkSelection?: BulkSelectionConfig;
 }
 
@@ -44,6 +49,8 @@ export function CardsView({
   isUpdating,
   onReceive,
   onCancel,
+  onDeleteMistaken,
+  isSelectionMode: isSelectionModeProp = false,
   bulkSelection,
 }: CardsViewProps) {
   const isFreeEvent = eventFee === 0;
@@ -96,10 +103,12 @@ export function CardsView({
           (p.payment_status === "pending" || p.payment_status === "failed");
         const canCancel =
           p.status === "attending" && isCashPayment && (simple === "paid" || simple === "waived");
+        const canDeleteMistaken = canShowDeleteMistakenAttendanceAction(p);
+        const isBulkSelectionMode = !!bulkSelection;
+        const isSelectionMode = isSelectionModeProp || isBulkSelectionMode;
+        const showSecondaryMenu = !isSelectionMode && (canCancel || canDeleteMistaken);
         const isSelected = bulkSelection?.selectedPaymentIds.includes(p.payment_id || "") || false;
-
-        const isSelectionMode = !!bulkSelection;
-        const showCheckbox = isSelectionMode && isOperatable && p.payment_id;
+        const showCheckbox = isBulkSelectionMode && isOperatable && p.payment_id;
 
         return (
           <div
@@ -122,7 +131,7 @@ export function CardsView({
             )}
 
             {/* Selection Checkbox */}
-            {isSelectionMode && (
+            {isBulkSelectionMode && (
               <div className="flex items-center self-center h-full mr-0.5">
                 {showCheckbox ? (
                   <Checkbox
@@ -153,6 +162,35 @@ export function CardsView({
                   </span>
                   {getStatusBadge(p.status)}
                 </div>
+                {isFreeEvent && showSecondaryMenu && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0 rounded-xl p-0 text-muted-foreground hover:bg-muted/60 transition-colors"
+                        disabled={!!isUpdating}
+                        aria-label={`${p.nickname}の操作メニューを開く`}
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      className="rounded-xl shadow-xl border-border/60 min-w-[8rem] p-1.5"
+                    >
+                      <DropdownMenuGroup>
+                        <DropdownMenuItem
+                          onClick={() => onDeleteMistaken(p)}
+                          className="text-destructive focus:bg-destructive/10 focus:text-destructive text-[13px] rounded-lg cursor-pointer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-2" />
+                          参加者を削除
+                        </DropdownMenuItem>
+                      </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
 
               {/* Row 2: Payment Status & Actions */}
@@ -196,7 +234,7 @@ export function CardsView({
                     )}
 
                     {/* Secondary Menu */}
-                    {canCancel && !isSelectionMode && (
+                    {showSecondaryMenu && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -212,13 +250,26 @@ export function CardsView({
                           align="end"
                           className="rounded-xl shadow-xl border-border/60 min-w-[8rem] p-1.5"
                         >
-                          <DropdownMenuItem
-                            onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
-                            className="text-foreground/80 focus:bg-muted/60 focus:text-foreground text-[13px] rounded-lg cursor-pointer"
-                          >
-                            <RotateCcw className="h-3.5 w-3.5 mr-2" />
-                            受領を取り消し
-                          </DropdownMenuItem>
+                          <DropdownMenuGroup>
+                            {canCancel && (
+                              <DropdownMenuItem
+                                onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
+                                className="text-foreground/80 focus:bg-muted/60 focus:text-foreground text-[13px] rounded-lg cursor-pointer"
+                              >
+                                <RotateCcw className="h-3.5 w-3.5 mr-2" />
+                                受領を取り消し
+                              </DropdownMenuItem>
+                            )}
+                            {canDeleteMistaken && (
+                              <DropdownMenuItem
+                                onClick={() => onDeleteMistaken(p)}
+                                className="text-destructive focus:bg-destructive/10 focus:text-destructive text-[13px] rounded-lg cursor-pointer"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                参加者を削除
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuGroup>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
