@@ -3,7 +3,7 @@
 import React from "react";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { Banknote, Check, CreditCard, RotateCcw } from "lucide-react";
+import { Banknote, Check, CreditCard } from "lucide-react";
 
 import { hasPaymentId, toSimplePaymentStatus } from "@core/utils/payment-status-mapper";
 import type { ParticipantView } from "@core/validation/participant-management";
@@ -15,9 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/core/utils";
 
+import { getParticipantActionState } from "./participant-action-visibility";
+import { ParticipantActionMenu } from "./ParticipantActionMenu";
+
 export interface ActionsCellHandlers {
   onReceive: (paymentId: string) => void;
   onCancel: (paymentId: string) => void;
+  onDeleteMistaken: (participant: ParticipantView) => void;
   isUpdating?: boolean;
 }
 
@@ -30,10 +34,11 @@ export interface BulkSelectionConfig {
 export function buildParticipantsColumns(opts: {
   eventFee: number;
   handlers: ActionsCellHandlers;
+  isSelectionMode?: boolean;
   bulkSelection?: BulkSelectionConfig;
 }): ColumnDef<ParticipantView>[] {
   const isFreeEvent = opts.eventFee === 0;
-  const { bulkSelection } = opts;
+  const { bulkSelection, isSelectionMode = false } = opts;
 
   const columns: ColumnDef<ParticipantView>[] = [];
 
@@ -44,13 +49,9 @@ export function buildParticipantsColumns(opts: {
       header: "",
       cell: ({ row }) => {
         const p = row.original;
-        const isCashPayment = p.payment_method === "cash" && p.payment_id;
-        const isOperatable =
-          p.status === "attending" &&
-          isCashPayment &&
-          (p.payment_status === "pending" || p.payment_status === "failed");
+        const { canReceiveCash } = getParticipantActionState(p);
 
-        if (!isOperatable) {
+        if (!canReceiveCash) {
           return <div className="w-4" />; // 空の領域を確保
         }
 
@@ -177,17 +178,12 @@ export function buildParticipantsColumns(opts: {
         header: "アクション",
         cell: ({ row }) => {
           const p = row.original;
-          const simple = toSimplePaymentStatus(p.payment_status);
-          const isCashPayment = p.payment_method === "cash" && p.payment_id;
-          const { onReceive, onCancel, isUpdating } = opts.handlers;
-          const canOperateCash =
-            p.status === "attending" &&
-            isCashPayment &&
-            (p.payment_status === "pending" || p.payment_status === "failed");
+          const { onReceive, onCancel, onDeleteMistaken, isUpdating } = opts.handlers;
+          const actionState = getParticipantActionState(p, { isSelectionMode });
 
           return (
             <div className="flex items-center gap-2">
-              {canOperateCash && (
+              {actionState.canReceiveCash && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -201,27 +197,63 @@ export function buildParticipantsColumns(opts: {
                   受領
                 </Button>
               )}
-              {p.status === "attending" &&
-                isCashPayment &&
-                (simple === "paid" || simple === "waived") && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
-                    disabled={!!isUpdating}
-                    aria-label={`${p.nickname}の受領を取り消す`}
-                    className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200"
-                    title="受領を取り消し"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                  </Button>
-                )}
+              {actionState.showSecondaryMenu && (
+                <ParticipantActionMenu
+                  participant={p}
+                  canCancel={actionState.canCancelCashReceipt}
+                  canDeleteMistaken={actionState.canDeleteMistakenAttendance}
+                  isUpdating={isUpdating}
+                  onCancel={onCancel}
+                  onDeleteMistaken={onDeleteMistaken}
+                  triggerSize="icon"
+                  triggerClassName="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200"
+                  triggerAriaLabel={`${p.nickname}の操作メニューを開く`}
+                  contentClassName="min-w-[9rem]"
+                  cancelItemClassName="cursor-pointer"
+                  deleteItemClassName="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
+                  itemIconClassName="h-3.5 w-3.5"
+                />
+              )}
             </div>
           );
         },
         enableSorting: false,
       }
     );
+  }
+
+  if (isFreeEvent) {
+    columns.push({
+      id: "actions",
+      header: "アクション",
+      cell: ({ row }) => {
+        const p = row.original;
+        const { onCancel, onDeleteMistaken, isUpdating } = opts.handlers;
+        const actionState = getParticipantActionState(p, { isSelectionMode });
+        if (!actionState.showSecondaryMenu) {
+          return <div className="h-8" />;
+        }
+
+        return (
+          <ParticipantActionMenu
+            participant={p}
+            canCancel={false}
+            canDeleteMistaken={actionState.canDeleteMistakenAttendance}
+            isUpdating={isUpdating}
+            onCancel={onCancel}
+            onDeleteMistaken={onDeleteMistaken}
+            triggerSize="icon"
+            triggerClassName="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200"
+            triggerAriaLabel={`${p.nickname}の操作メニューを開く`}
+            contentClassName="min-w-[9rem]"
+            cancelItemClassName="cursor-pointer"
+            deleteItemClassName="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
+            itemIconClassName="h-3.5 w-3.5"
+          />
+        );
+      },
+      enableSorting: false,
+    });
   }
 
   return columns;

@@ -5,6 +5,7 @@ export { adminAddAttendanceAction } from "./actions/admin-add-attendance";
 export { cancelEventAction } from "./actions/cancel-event";
 export { createEventAction } from "./actions/create-event";
 export { deleteEventAction } from "./actions/delete-event";
+export { deleteMistakenAttendanceAction } from "./actions/delete-mistaken-attendance";
 export { exportParticipantsCsvAction } from "./actions/export-participants-csv";
 export { generateInviteTokenAction } from "./actions/generate-invite-token";
 export {

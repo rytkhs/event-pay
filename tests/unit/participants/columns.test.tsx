@@ -17,6 +17,7 @@ import {
 const mockHandlers: ActionsCellHandlers = {
   onReceive: jest.fn(),
   onCancel: jest.fn(),
+  onDeleteMistaken: jest.fn(),
   isUpdating: false,
 };
 
@@ -35,6 +36,7 @@ const mockParticipant: ParticipantView = {
   payment_version: 1,
   payment_created_at: "2023-01-01T00:00:00Z",
   payment_updated_at: "2023-01-01T00:00:00Z",
+  can_delete_mistaken_attendance: true,
 };
 
 // テスト用のテーブル行コンポーネント
@@ -146,11 +148,14 @@ describe("buildParticipantsColumns", () => {
       expect(screen.getByTitle("受領済みにする")).toBeInTheDocument();
     });
 
-    it("決済完了の場合、取り消しボタンが表示される", () => {
+    it("決済完了の場合、取り消しボタンが表示される", async () => {
+      const user = userEvent.setup();
       const paidParticipant = { ...mockParticipant, payment_status: "received" as const };
       render(<TestTableRow participant={paidParticipant} eventFee={1000} />);
 
-      expect(screen.getByTitle("受領を取り消し")).toBeInTheDocument();
+      const trigger = screen.getByLabelText("テストユーザーの操作メニューを開く");
+      await user.click(trigger);
+      expect(screen.getByText("受領を取り消し")).toBeInTheDocument();
     });
 
     it("オンライン決済の場合、アクションボタンが表示されない", () => {
@@ -158,6 +163,27 @@ describe("buildParticipantsColumns", () => {
       render(<TestTableRow participant={stripeParticipant} eventFee={1000} />);
 
       expect(screen.queryByTitle("受領済みにする")).not.toBeInTheDocument();
+    });
+
+    it("誤登録取り消し可能な場合、誤登録取り消しボタンが表示される", async () => {
+      const user = userEvent.setup();
+      render(<TestTableRow participant={mockParticipant} eventFee={1000} />);
+
+      const trigger = screen.getByLabelText("テストユーザーの操作メニューを開く");
+      await user.click(trigger);
+      expect(screen.getByText("誤登録を取り消す")).toBeInTheDocument();
+    });
+
+    it("誤登録取り消し不可の場合、誤登録取り消しボタンが表示されない", async () => {
+      const user = userEvent.setup();
+      const blockedParticipant = {
+        ...mockParticipant,
+        can_delete_mistaken_attendance: false,
+      };
+      render(<TestTableRow participant={blockedParticipant} eventFee={1000} />);
+
+      const trigger = screen.queryByLabelText("テストユーザーの操作メニューを開く");
+      expect(trigger).not.toBeInTheDocument();
     });
 
     it("受領ボタンクリックでハンドラーが呼ばれる", async () => {
@@ -175,7 +201,10 @@ describe("buildParticipantsColumns", () => {
       const paidParticipant = { ...mockParticipant, payment_status: "received" as const };
       render(<TestTableRow participant={paidParticipant} eventFee={1000} />);
 
-      const cancelButton = screen.getByTitle("受領を取り消し");
+      const trigger = screen.getByLabelText("テストユーザーの操作メニューを開く");
+      await user.click(trigger);
+
+      const cancelButton = screen.getByText("受領を取り消し");
       await user.click(cancelButton);
 
       expect(mockHandlers.onCancel).toHaveBeenCalledWith("pay-1");
@@ -205,6 +234,9 @@ describe("buildParticipantsColumns", () => {
 
       const receiveButton = screen.getByTitle("受領済みにする");
       expect(receiveButton).toBeDisabled();
+
+      const trigger = screen.getByLabelText("テストユーザーの操作メニューを開く");
+      expect(trigger).toBeDisabled();
     });
   });
 });

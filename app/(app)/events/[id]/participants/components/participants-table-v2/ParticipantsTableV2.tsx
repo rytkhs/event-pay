@@ -13,8 +13,17 @@ import { conditionalSmartSort } from "@core/utils/participant-smart-sort";
 import { isPaymentUnpaid, toSimplePaymentStatus } from "@core/utils/payment-status-mapper";
 import type { ParticipantView } from "@core/validation/participant-management";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -65,6 +74,15 @@ type UpdateCashStatusAction = (
 type BulkUpdateCashStatusAction = (
   input: BulkUpdateCashStatusInput
 ) => Promise<ActionResult<BulkUpdateResult>>;
+
+type DeleteMistakenAttendanceInput = {
+  eventId: string;
+  attendanceId: string;
+};
+
+type DeleteMistakenAttendanceAction = (
+  input: DeleteMistakenAttendanceInput
+) => Promise<ActionResult<{ attendanceId: string }>>;
 
 const MOBILE_BREAKPOINT = 768;
 const VIEW_MODE_STORAGE_KEYS = {
@@ -161,6 +179,7 @@ export interface ParticipantsTableV2Props {
   allParticipants: ParticipantView[];
   query: EventManagementQuery;
   onParamsChange: (patch: EventManagementQueryPatch) => void;
+  deleteMistakenAttendanceAction: DeleteMistakenAttendanceAction;
   updateCashStatusAction: UpdateCashStatusAction;
   bulkUpdateCashStatusAction: BulkUpdateCashStatusAction;
   isSelectionMode?: boolean;
@@ -168,11 +187,12 @@ export interface ParticipantsTableV2Props {
 }
 
 export function ParticipantsTableV2({
-  eventId: _eventId,
+  eventId,
   eventFee,
   allParticipants,
   query,
   onParamsChange,
+  deleteMistakenAttendanceAction,
   updateCashStatusAction,
   bulkUpdateCashStatusAction,
   isSelectionMode = false,
@@ -187,6 +207,8 @@ export function ParticipantsTableV2({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<ParticipantView | null>(null);
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
 
   // 端末別に初回デフォルトを決めつつ、保存済みの選択を復元する
   useEffect(() => {
@@ -505,6 +527,51 @@ export function ParticipantsTableV2({
     [toast, router, localParticipants, applyLocal, updateCashStatusAction]
   );
 
+  const handleOpenDeleteMistaken = useCallback((participant: ParticipantView) => {
+    setDeleteErrorMessage(null);
+    setDeleteTarget(participant);
+  }, []);
+
+  const handleCloseDeleteMistaken = useCallback(() => {
+    setDeleteErrorMessage(null);
+    setDeleteTarget(null);
+  }, []);
+
+  const handleConfirmDeleteMistaken = useCallback(async () => {
+    if (!deleteTarget) return;
+
+    setDeleteErrorMessage(null);
+    setIsUpdating(true);
+    const prev = localParticipants;
+    const attendanceId = deleteTarget.attendance_id;
+    setLocalParticipants((current) =>
+      current.filter((participant) => participant.attendance_id !== attendanceId)
+    );
+    setSelectedPaymentIds((current) =>
+      current.filter((paymentId) => paymentId !== deleteTarget.payment_id)
+    );
+
+    try {
+      const result = await deleteMistakenAttendanceAction({ eventId, attendanceId });
+      if (!result.success) {
+        throw new Error(result.error?.userMessage || "参加者の削除に失敗しました");
+      }
+
+      toast({
+        title: "参加者を削除しました",
+        description: "",
+      });
+      setDeleteTarget(null);
+      startTransition(() => router.refresh());
+    } catch (error) {
+      setLocalParticipants(prev);
+      const errorMessage = error instanceof Error ? error.message : "参加者の削除に失敗しました";
+      setDeleteErrorMessage(errorMessage);
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [deleteMistakenAttendanceAction, deleteTarget, eventId, localParticipants, router, toast]);
+
   // columns
   const columns = useMemo(
     () =>
@@ -513,8 +580,10 @@ export function ParticipantsTableV2({
         handlers: {
           onReceive: handleReceive,
           onCancel: handleCancel,
+          onDeleteMistaken: handleOpenDeleteMistaken,
           isUpdating,
         },
+        isSelectionMode,
         bulkSelection:
           !isFreeEvent && isSelectionMode
             ? {
@@ -529,6 +598,7 @@ export function ParticipantsTableV2({
       isUpdating,
       handleReceive,
       handleCancel,
+      handleOpenDeleteMistaken,
       isFreeEvent,
       validSelectedPaymentIds,
       handleSelectPayment,
@@ -615,6 +685,8 @@ export function ParticipantsTableV2({
                 isUpdating={isUpdating}
                 onReceive={handleReceive}
                 onCancel={handleCancel}
+                onDeleteMistaken={handleOpenDeleteMistaken}
+                isSelectionMode={isSelectionMode}
                 bulkSelection={
                   !isFreeEvent && isSelectionMode
                     ? {
@@ -701,6 +773,35 @@ export function ParticipantsTableV2({
           isProcessing={isBulkUpdating || isUpdating}
         />
       )}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && handleCloseDeleteMistaken()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>参加者を削除しますか？</DialogTitle>
+            <DialogDescription>
+              <span className="block text-foreground">
+                {deleteTarget?.nickname}の登録を削除します。
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          {deleteErrorMessage && (
+            <Alert variant="destructive">
+              <AlertDescription>{deleteErrorMessage}</AlertDescription>
+            </Alert>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseDeleteMistaken} disabled={isUpdating}>
+              戻る
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleConfirmDeleteMistaken()}
+              disabled={isUpdating || !deleteTarget}
+            >
+              {isUpdating ? "処理中..." : "削除する"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

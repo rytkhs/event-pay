@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import { Banknote, Check, CreditCard, MoreHorizontal, RotateCcw } from "lucide-react";
+import { Banknote, Check, CreditCard } from "lucide-react";
 
 import {
   hasPaymentId,
@@ -16,12 +16,9 @@ import { SIMPLE_PAYMENT_STATUS_LABELS, getSimplePaymentStatusStyle } from "@feat
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
+import { getParticipantActionState } from "./participant-action-visibility";
+import { ParticipantActionMenu } from "./ParticipantActionMenu";
 
 export interface BulkSelectionConfig {
   selectedPaymentIds: string[];
@@ -35,6 +32,8 @@ export interface CardsViewProps {
   isUpdating?: boolean;
   onReceive: (paymentId: string) => void;
   onCancel: (paymentId: string) => void;
+  onDeleteMistaken: (participant: ParticipantView) => void;
+  isSelectionMode?: boolean;
   bulkSelection?: BulkSelectionConfig;
 }
 
@@ -44,6 +43,8 @@ export function CardsView({
   isUpdating,
   onReceive,
   onCancel,
+  onDeleteMistaken,
+  isSelectionMode: isSelectionModeProp = false,
   bulkSelection,
 }: CardsViewProps) {
   const isFreeEvent = eventFee === 0;
@@ -89,17 +90,11 @@ export function CardsView({
           !isFreeEvent && p.status === "attending" && isPaymentUnpaid(p.payment_status);
         const simple = toSimplePaymentStatus(p.payment_status);
         const isCanceledPayment = p.payment_status === "canceled";
-        const isCashPayment = p.payment_method === "cash" && p.payment_id && !isCanceledPayment;
-        const isOperatable =
-          p.status === "attending" &&
-          isCashPayment &&
-          (p.payment_status === "pending" || p.payment_status === "failed");
-        const canCancel =
-          p.status === "attending" && isCashPayment && (simple === "paid" || simple === "waived");
+        const isBulkSelectionMode = !!bulkSelection;
+        const isSelectionMode = isSelectionModeProp || isBulkSelectionMode;
+        const actionState = getParticipantActionState(p, { isSelectionMode });
         const isSelected = bulkSelection?.selectedPaymentIds.includes(p.payment_id || "") || false;
-
-        const isSelectionMode = !!bulkSelection;
-        const showCheckbox = isSelectionMode && isOperatable && p.payment_id;
+        const showCheckbox = isBulkSelectionMode && actionState.canReceiveCash && p.payment_id;
 
         return (
           <div
@@ -122,7 +117,7 @@ export function CardsView({
             )}
 
             {/* Selection Checkbox */}
-            {isSelectionMode && (
+            {isBulkSelectionMode && (
               <div className="flex items-center self-center h-full mr-0.5">
                 {showCheckbox ? (
                   <Checkbox
@@ -153,6 +148,23 @@ export function CardsView({
                   </span>
                   {getStatusBadge(p.status)}
                 </div>
+                {isFreeEvent && actionState.showSecondaryMenu && (
+                  <ParticipantActionMenu
+                    participant={p}
+                    canCancel={false}
+                    canDeleteMistaken={actionState.canDeleteMistakenAttendance}
+                    isUpdating={isUpdating}
+                    onCancel={onCancel}
+                    onDeleteMistaken={onDeleteMistaken}
+                    triggerSize="sm"
+                    triggerClassName="h-8 w-8 shrink-0 rounded-xl p-0 text-muted-foreground hover:bg-muted/60 transition-colors"
+                    triggerAriaLabel={`${p.nickname}の操作メニューを開く`}
+                    contentClassName="rounded-xl shadow-xl border-border/60 min-w-[8rem] p-1.5"
+                    cancelItemClassName="text-foreground/80 focus:bg-muted/60 focus:text-foreground text-[13px] rounded-lg cursor-pointer"
+                    deleteItemClassName="text-destructive focus:bg-destructive/10 focus:text-destructive text-[13px] rounded-lg cursor-pointer"
+                    itemIconClassName="h-3.5 w-3.5 mr-2"
+                  />
+                )}
               </div>
 
               {/* Row 2: Payment Status & Actions */}
@@ -183,7 +195,7 @@ export function CardsView({
 
                   {/* Primary Action Button (Right aligned) */}
                   <div className="flex items-center gap-1.5">
-                    {isOperatable && !isSelectionMode && (
+                    {actionState.canReceiveCash && !isSelectionMode && (
                       <Button
                         variant="outline"
                         onClick={() => hasPaymentId(p) && onReceive(p.payment_id)}
@@ -196,31 +208,21 @@ export function CardsView({
                     )}
 
                     {/* Secondary Menu */}
-                    {canCancel && !isSelectionMode && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:bg-muted/60 transition-colors"
-                            disabled={!!isUpdating}
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="rounded-xl shadow-xl border-border/60 min-w-[8rem] p-1.5"
-                        >
-                          <DropdownMenuItem
-                            onClick={() => hasPaymentId(p) && onCancel(p.payment_id)}
-                            className="text-foreground/80 focus:bg-muted/60 focus:text-foreground text-[13px] rounded-lg cursor-pointer"
-                          >
-                            <RotateCcw className="h-3.5 w-3.5 mr-2" />
-                            受領を取り消し
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    {actionState.showSecondaryMenu && (
+                      <ParticipantActionMenu
+                        participant={p}
+                        canCancel={actionState.canCancelCashReceipt}
+                        canDeleteMistaken={actionState.canDeleteMistakenAttendance}
+                        isUpdating={isUpdating}
+                        onCancel={onCancel}
+                        onDeleteMistaken={onDeleteMistaken}
+                        triggerSize="sm"
+                        triggerClassName="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:bg-muted/60 transition-colors"
+                        contentClassName="rounded-xl shadow-xl border-border/60 min-w-[8rem] p-1.5"
+                        cancelItemClassName="text-foreground/80 focus:bg-muted/60 focus:text-foreground text-[13px] rounded-lg cursor-pointer"
+                        deleteItemClassName="text-destructive focus:bg-destructive/10 focus:text-destructive text-[13px] rounded-lg cursor-pointer"
+                        itemIconClassName="h-3.5 w-3.5 mr-2"
+                      />
                     )}
                   </div>
                 </div>

@@ -20,7 +20,11 @@ import { buildCollectionProgressSummary } from "@features/events/server";
 
 import { getEventDetailAction, getEventParticipantsAction, getEventStatsAction } from "./actions";
 import { EventManagementPage } from "./components/EventManagementPage";
-import { bulkUpdateCashStatusAction, updateCashStatusAction } from "./participants/actions";
+import {
+  bulkUpdateCashStatusAction,
+  deleteMistakenAttendanceAction,
+  updateCashStatusAction,
+} from "./participants/actions";
 import { parseEventManagementQuery, type RawSearchParams } from "./query-params";
 
 interface EventDetailPageProps {
@@ -120,6 +124,7 @@ export default async function EventDetailPage(props: {
         collectionSummary={collectionSummary}
         overviewStats={stats}
         participantsData={participantsData}
+        deleteMistakenAttendanceAction={deleteMistakenAttendanceAction}
         updateCashStatusAction={updateCashStatusAction}
         bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}
       />

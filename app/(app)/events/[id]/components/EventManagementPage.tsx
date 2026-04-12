@@ -24,6 +24,7 @@ interface EventManagementPageProps {
   collectionSummary: CollectionProgressSummary | null;
   overviewStats: { attending_count: number; maybe_count: number } | null;
   participantsData: GetParticipantsResponse | null;
+  deleteMistakenAttendanceAction: ParticipantsTableV2Props["deleteMistakenAttendanceAction"];
   updateCashStatusAction: ParticipantsTableV2Props["updateCashStatusAction"];
   bulkUpdateCashStatusAction: ParticipantsTableV2Props["bulkUpdateCashStatusAction"];
 }
@@ -35,6 +36,7 @@ export function EventManagementPage({
   collectionSummary,
   overviewStats,
   participantsData,
+  deleteMistakenAttendanceAction,
   updateCashStatusAction,
   bulkUpdateCashStatusAction,
 }: EventManagementPageProps) {
@@ -60,6 +62,7 @@ export function EventManagementPage({
               eventDetail={eventDetail}
               participantsData={participantsData}
               query={query}
+              deleteMistakenAttendanceAction={deleteMistakenAttendanceAction}
               updateCashStatusAction={updateCashStatusAction}
               bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}
             />

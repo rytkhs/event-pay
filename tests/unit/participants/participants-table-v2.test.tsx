@@ -3,6 +3,7 @@
 // モック定義（importより前に配置）
 const mockUpdateCashStatus = jest.fn();
 const mockBulkUpdateCashStatus = jest.fn();
+const mockDeleteMistakenAttendance = jest.fn();
 const mockToast = jest.fn();
 const mockConditionalSmartSort = jest.fn((participants) => participants);
 
@@ -89,6 +90,7 @@ function buildParticipantsArray(count: number = 2): ParticipantView[] {
       payment_version: 1,
       payment_created_at: "2023-01-01T00:00:00Z",
       payment_updated_at: "2023-01-01T00:00:00Z",
+      can_delete_mistaken_attendance: true,
     },
     {
       attendance_id: "att-2",
@@ -105,6 +107,7 @@ function buildParticipantsArray(count: number = 2): ParticipantView[] {
       payment_version: 1,
       payment_created_at: "2023-01-01T00:00:00Z",
       payment_updated_at: "2023-01-01T00:00:00Z",
+      can_delete_mistaken_attendance: false,
     },
   ];
   return participants.slice(0, count);
@@ -127,6 +130,7 @@ function buildManyParticipants(): ParticipantView[] {
     payment_version: 1,
     payment_created_at: "2023-01-01T00:00:00Z",
     payment_updated_at: "2023-01-01T00:00:00Z",
+    can_delete_mistaken_attendance: i % 2 === 0,
   }));
 }
 
@@ -144,6 +148,7 @@ describe("ParticipantsTableV2", () => {
       limit: 150,
     },
     onParamsChange: jest.fn(),
+    deleteMistakenAttendanceAction: mockDeleteMistakenAttendance,
     updateCashStatusAction: mockUpdateCashStatus,
     bulkUpdateCashStatusAction: mockBulkUpdateCashStatus,
   };
@@ -153,6 +158,10 @@ describe("ParticipantsTableV2", () => {
     mockLocalStorage.getItem.mockReturnValue(null);
     jest.clearAllMocks();
     mockRefresh.mockClear();
+    mockDeleteMistakenAttendance.mockResolvedValue({
+      success: true,
+      data: { attendanceId: "att-1" },
+    });
   });
 
   describe("基本表示", () => {
@@ -289,6 +298,52 @@ describe("ParticipantsTableV2", () => {
           variant: "destructive",
         });
       });
+    });
+
+    it("誤登録取り消し不可の参加者には誤登録取り消しUIを表示しない", async () => {
+      const user = userEvent.setup();
+      const participants = buildParticipantsArray(2);
+
+      render(<ParticipantsTableV2 {...defaultProps} allParticipants={participants} />);
+
+      // テストユーザー1: 取り消し可能
+      await user.click(screen.getByLabelText("テストユーザー1の操作メニューを開く"));
+      expect(screen.getByText("参加者を削除")).toBeInTheDocument();
+      await user.keyboard("{Escape}"); // メニューを閉じる
+
+      // テストユーザー2: 取り消し不可、かつ他にアクションがないためメニュー自体が表示されない
+      expect(
+        screen.queryByLabelText("テストユーザー2の操作メニューを開く")
+      ).not.toBeInTheDocument();
+    });
+
+    it("参加者削除失敗時はモーダル内にエラーを表示し、失敗トーストを出さない", async () => {
+      const user = userEvent.setup();
+      const errorMessage = "決済処理が開始済みのため、この参加は取り消せません。";
+      mockDeleteMistakenAttendance.mockResolvedValue({
+        success: false,
+        error: { userMessage: errorMessage },
+      });
+
+      render(<ParticipantsTableV2 {...defaultProps} />);
+
+      await user.click(screen.getByLabelText("テストユーザー1の操作メニューを開く"));
+      await user.click(screen.getByText("参加者を削除"));
+      await user.click(screen.getByRole("button", { name: "削除する" }));
+
+      expect(mockDeleteMistakenAttendance).toHaveBeenCalledWith({
+        eventId: "event-1",
+        attendanceId: "att-1",
+      });
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(errorMessage);
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(mockToast).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "削除に失敗しました",
+          variant: "destructive",
+        })
+      );
     });
   });
 
