@@ -129,3 +129,5 @@ docs/analysis/
 .next-docs/
 
 app/debug/
+
+.codex
