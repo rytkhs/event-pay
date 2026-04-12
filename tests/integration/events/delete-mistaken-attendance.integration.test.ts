@@ -142,12 +142,13 @@ describe("deleteMistakenAttendanceAction integration", () => {
     cleanupHelper.trackCommunity(fixture.communityId);
 
     const email = `mistaken-${Date.now()}@example.com`;
+    const nickname = "誤登録";
     const { data: attendance, error: attendanceError } = await setup.adminClient
       .from("attendances")
       .insert({
         event_id: fixture.event.id,
         email,
-        nickname: "誤登録",
+        nickname,
         status: "attending",
         guest_token: generateGuestToken(),
       })
@@ -193,6 +194,15 @@ describe("deleteMistakenAttendanceAction integration", () => {
       .eq("id", payment!.id)
       .maybeSingle();
     expect(deletedPayment.data).toBeNull();
+
+    const { data: auditLog, error: auditLogError } = await setup.adminClient
+      .from("system_logs")
+      .select("metadata")
+      .eq("action", "attendance.mistaken_registration_deleted")
+      .eq("resource_id", attendance!.id)
+      .single();
+    expect(auditLogError).toBeNull();
+    expect((auditLog!.metadata as Record<string, unknown>).attendance_nickname).toBe(nickname);
 
     const { data: replacement, error: replacementError } = await setup.adminClient
       .from("attendances")
