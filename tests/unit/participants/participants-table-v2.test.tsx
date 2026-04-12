@@ -308,13 +308,42 @@ describe("ParticipantsTableV2", () => {
 
       // テストユーザー1: 取り消し可能
       await user.click(screen.getByLabelText("テストユーザー1の操作メニューを開く"));
-      expect(screen.getByText("誤登録を取り消す")).toBeInTheDocument();
+      expect(screen.getByText("参加者を削除")).toBeInTheDocument();
       await user.keyboard("{Escape}"); // メニューを閉じる
 
       // テストユーザー2: 取り消し不可、かつ他にアクションがないためメニュー自体が表示されない
       expect(
         screen.queryByLabelText("テストユーザー2の操作メニューを開く")
       ).not.toBeInTheDocument();
+    });
+
+    it("参加者削除失敗時はモーダル内にエラーを表示し、失敗トーストを出さない", async () => {
+      const user = userEvent.setup();
+      const errorMessage = "決済処理が開始済みのため、この参加は取り消せません。";
+      mockDeleteMistakenAttendance.mockResolvedValue({
+        success: false,
+        error: { userMessage: errorMessage },
+      });
+
+      render(<ParticipantsTableV2 {...defaultProps} />);
+
+      await user.click(screen.getByLabelText("テストユーザー1の操作メニューを開く"));
+      await user.click(screen.getByText("参加者を削除"));
+      await user.click(screen.getByRole("button", { name: "削除する" }));
+
+      expect(mockDeleteMistakenAttendance).toHaveBeenCalledWith({
+        eventId: "event-1",
+        attendanceId: "att-1",
+      });
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(errorMessage);
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(mockToast).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "削除に失敗しました",
+          variant: "destructive",
+        })
+      );
     });
   });
 

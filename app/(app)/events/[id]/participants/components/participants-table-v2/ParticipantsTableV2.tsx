@@ -13,6 +13,7 @@ import { conditionalSmartSort } from "@core/utils/participant-smart-sort";
 import { isPaymentUnpaid, toSimplePaymentStatus } from "@core/utils/payment-status-mapper";
 import type { ParticipantView } from "@core/validation/participant-management";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -207,6 +208,7 @@ export function ParticipantsTableV2({
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<ParticipantView | null>(null);
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
 
   // 端末別に初回デフォルトを決めつつ、保存済みの選択を復元する
   useEffect(() => {
@@ -526,12 +528,19 @@ export function ParticipantsTableV2({
   );
 
   const handleOpenDeleteMistaken = useCallback((participant: ParticipantView) => {
+    setDeleteErrorMessage(null);
     setDeleteTarget(participant);
+  }, []);
+
+  const handleCloseDeleteMistaken = useCallback(() => {
+    setDeleteErrorMessage(null);
+    setDeleteTarget(null);
   }, []);
 
   const handleConfirmDeleteMistaken = useCallback(async () => {
     if (!deleteTarget) return;
 
+    setDeleteErrorMessage(null);
     setIsUpdating(true);
     const prev = localParticipants;
     const attendanceId = deleteTarget.attendance_id;
@@ -557,11 +566,7 @@ export function ParticipantsTableV2({
     } catch (error) {
       setLocalParticipants(prev);
       const errorMessage = error instanceof Error ? error.message : "参加者の削除に失敗しました";
-      toast({
-        title: "削除に失敗しました",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      setDeleteErrorMessage(errorMessage);
     } finally {
       setIsUpdating(false);
     }
@@ -768,19 +773,23 @@ export function ParticipantsTableV2({
           isProcessing={isBulkUpdating || isUpdating}
         />
       )}
-      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && handleCloseDeleteMistaken()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>参加者を削除しますか？</DialogTitle>
-            <DialogDescription className="space-y-2">
+            <DialogDescription>
               <span className="block text-foreground">
                 {deleteTarget?.nickname}の登録を削除します。
               </span>
-              <span className="block">決済処理が開始済みの場合は取り消せません。</span>
             </DialogDescription>
           </DialogHeader>
+          {deleteErrorMessage && (
+            <Alert variant="destructive">
+              <AlertDescription>{deleteErrorMessage}</AlertDescription>
+            </Alert>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={isUpdating}>
+            <Button variant="outline" onClick={handleCloseDeleteMistaken} disabled={isUpdating}>
               戻る
             </Button>
             <Button

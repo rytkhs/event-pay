@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import { MoreHorizontal, RotateCcw, Trash2 } from "lucide-react";
+import { MoreVertical, RotateCcw, Trash2 } from "lucide-react";
 
 import { hasPaymentId } from "@core/utils/payment-status-mapper";
 import type { ParticipantView } from "@core/validation/participant-management";
@@ -63,7 +63,7 @@ export function ParticipantActionMenu({
           disabled={!!isUpdating}
           {...(triggerAriaLabel ? { "aria-label": triggerAriaLabel } : {})}
         >
-          <MoreHorizontal className="h-4 w-4" />
+          <MoreVertical className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className={contentClassName}>
