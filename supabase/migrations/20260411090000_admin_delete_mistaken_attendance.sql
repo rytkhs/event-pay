@@ -77,7 +77,6 @@ BEGIN
        OR refunded_amount > 0
        OR application_fee_refunded_amount > 0
      )
-   ORDER BY paid_at DESC NULLS LAST, created_at DESC, updated_at DESC
    LIMIT 1;
 
   IF v_blocking_payment_id IS NOT NULL THEN
@@ -109,6 +108,7 @@ BEGIN
       'event_id', p_event_id,
       'attendance_id', p_attendance_id,
       'attendance_status', v_attendance.status,
+      'attendance_nickname', v_attendance.nickname,
       'payment_count', v_payment_count,
       'deleted_payment_ids', v_deleted_payment_ids,
       'email_hash', encode(extensions.digest(convert_to(lower(v_attendance.email), 'UTF8'), 'sha256'::text), 'hex'),
