@@ -97,7 +97,6 @@ type AdminUpdateAttendanceStatusInput = {
   attendanceId: string;
   status: AttendanceStatus;
   paymentMethod?: PaymentMethod;
-  bypassCapacity?: boolean;
   acknowledgedFinalizedPayment?: boolean;
   acknowledgedPastEvent?: boolean;
   notes?: string;
@@ -263,10 +262,6 @@ export function ParticipantsTableV2({
     undefined
   );
   const [attendanceErrorMessage, setAttendanceErrorMessage] = useState<string | null>(null);
-  const [capacityConfirmation, setCapacityConfirmation] = useState<{
-    capacity?: number | null;
-    current?: number | null;
-  } | null>(null);
   const [requiresFinalizedPaymentConfirmation, setRequiresFinalizedPaymentConfirmation] =
     useState(false);
   const [requiresPastEventConfirmation, setRequiresPastEventConfirmation] = useState(false);
@@ -663,7 +658,6 @@ export function ParticipantsTableV2({
           : undefined
       );
       setAttendanceErrorMessage(null);
-      setCapacityConfirmation(null);
       setRequiresFinalizedPaymentConfirmation(false);
       setRequiresPastEventConfirmation(false);
     },
@@ -673,7 +667,6 @@ export function ParticipantsTableV2({
   const handleCloseAttendanceUpdate = useCallback(() => {
     setAttendanceTarget(null);
     setAttendanceErrorMessage(null);
-    setCapacityConfirmation(null);
     setRequiresFinalizedPaymentConfirmation(false);
     setRequiresPastEventConfirmation(false);
   }, []);
@@ -681,7 +674,6 @@ export function ParticipantsTableV2({
   const handleNextAttendanceStatusChange = useCallback(
     (value: AttendanceStatus) => {
       setNextAttendanceStatus(value);
-      setCapacityConfirmation(null);
       if (attendanceTarget && requiresPaymentMethodForAttendance(attendanceTarget, value)) {
         setAttendancePaymentMethod((current) => current ?? getDefaultPaymentMethod());
       } else {
@@ -770,7 +762,6 @@ export function ParticipantsTableV2({
         ...(requiresPaymentMethod && attendancePaymentMethod
           ? { paymentMethod: attendancePaymentMethod }
           : {}),
-        bypassCapacity: capacityConfirmation !== null,
         acknowledgedFinalizedPayment:
           isFinalizedPaymentStatus(attendanceTarget.payment_status) ||
           requiresFinalizedPaymentConfirmation,
@@ -784,14 +775,6 @@ export function ParticipantsTableV2({
 
       const responseData = result.data;
       if ("confirmRequired" in responseData && responseData.confirmRequired) {
-        if (responseData.reason === "capacity") {
-          setCapacityConfirmation({
-            capacity: responseData.capacity,
-            current: responseData.current,
-          });
-          return;
-        }
-
         if (responseData.reason === "finalized_payment") {
           setRequiresFinalizedPaymentConfirmation(true);
           return;
@@ -822,7 +805,6 @@ export function ParticipantsTableV2({
     applyLocalAttendanceStatus,
     attendancePaymentMethod,
     attendanceTarget,
-    capacityConfirmation,
     eventId,
     eventStatus,
     handleCloseAttendanceUpdate,
@@ -1123,16 +1105,6 @@ export function ParticipantsTableV2({
               </Alert>
             )}
 
-            {capacityConfirmation && (
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  定員（{capacityConfirmation.capacity ?? "-"}名）に達しています。現在の参加者は
-                  {capacityConfirmation.current ?? "-"}名です。定員を超えて参加にします。
-                </AlertDescription>
-              </Alert>
-            )}
-
             {attendanceErrorMessage && (
               <Alert variant="destructive">
                 <AlertDescription>{attendanceErrorMessage}</AlertDescription>
@@ -1153,7 +1125,7 @@ export function ParticipantsTableV2({
                 (attendanceChangeRequiresPaymentMethod && !attendancePaymentMethod)
               }
             >
-              {isUpdating ? "処理中..." : capacityConfirmation ? "定員超過で変更" : "変更する"}
+              {isUpdating ? "処理中..." : "変更する"}
             </Button>
           </DialogFooter>
         </DialogContent>

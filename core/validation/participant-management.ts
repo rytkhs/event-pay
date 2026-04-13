@@ -132,7 +132,6 @@ export const AdminAddAttendanceInputSchema = z
     eventId: z.string().uuid(),
     nickname: z.string().min(1, "ニックネームは必須です").max(50),
     status: z.enum(["attending", "maybe", "not_attending"]).default("attending"),
-    bypassCapacity: z.boolean().optional().default(false),
     paymentMethod: z.enum(["cash"]).optional(),
   })
   .refine(
@@ -186,7 +185,6 @@ export const AdminUpdateAttendanceStatusInputSchema = z.object({
   attendanceId: z.string().uuid(),
   status: AttendanceStatusSchema,
   paymentMethod: z.enum(["cash", "stripe"]).optional(),
-  bypassCapacity: z.boolean().optional().default(false),
   acknowledgedFinalizedPayment: z.boolean().optional().default(false),
   acknowledgedPastEvent: z.boolean().optional().default(false),
   notes: z.string().max(1000).optional(),
@@ -204,12 +202,6 @@ export type AdminUpdateAttendancePaymentEffect =
   | "finalized_payment_preserved";
 
 export type AdminUpdateAttendanceConfirmation =
-  | {
-      confirmRequired: true;
-      reason: "capacity";
-      capacity?: number | null;
-      current?: number | null;
-    }
   | {
       confirmRequired: true;
       reason: "finalized_payment";

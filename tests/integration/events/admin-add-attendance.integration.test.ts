@@ -148,7 +148,6 @@ describe("adminAddAttendanceAction integration", () => {
       eventId: fixture.event.id,
       nickname: "Rollback Participant",
       status: "attending",
-      bypassCapacity: false,
       paymentMethod: "cash",
     });
 
@@ -165,5 +164,85 @@ describe("adminAddAttendanceAction integration", () => {
 
     expect(attendanceCount.error).toBeNull();
     expect(attendanceCount.count ?? 0).toBe(0);
+  });
+
+  test("capacity reached rejects manual add without creating attendance or payment", async () => {
+    const owner = setup.users[0];
+    const authenticated = await createAuthenticatedClient(owner.email, owner.password);
+    const fixture = await createCommunityOwnedEventFixture(owner.id, {
+      fee: 1200,
+      capacity: 1,
+      payment_methods: ["cash"],
+      withPayoutProfile: false,
+      attachPayoutProfileToEvent: false,
+    });
+
+    cleanupHelper.trackEvent(fixture.event.id);
+    cleanupHelper.trackCommunity(fixture.communityId);
+    if (fixture.payoutProfileId) {
+      cleanupHelper.trackPayoutProfile(fixture.payoutProfileId);
+    }
+
+    const { data: existingAttendance, error: existingAttendanceError } = await setup.adminClient
+      .from("attendances")
+      .insert({
+        event_id: fixture.event.id,
+        email: "existing-capacity@example.com",
+        nickname: "Existing Participant",
+        status: "attending",
+        guest_token: `gst_${`${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`.padEnd(32, "a").slice(0, 32)}`,
+      })
+      .select("id")
+      .single();
+
+    expect(existingAttendanceError).toBeNull();
+    cleanupHelper.trackAttendance(existingAttendance!.id);
+
+    mockCreateServerActionSupabaseClient.mockResolvedValue(authenticated.client as never);
+    mockGetCurrentCommunityServerActionContext.mockResolvedValue(
+      okResult({
+        currentCommunity: {
+          id: fixture.communityId,
+          name: "Current Community",
+          slug: "current-community",
+          createdAt: new Date().toISOString(),
+        },
+        user: {
+          id: owner.id,
+          email: owner.email,
+          user_metadata: {},
+          app_metadata: {},
+        } as never,
+      })
+    );
+
+    const createCashPayment = jest.fn();
+    mockGetPaymentPort.mockReturnValue({
+      createCashPayment,
+    } as never);
+
+    const { adminAddAttendanceAction } =
+      await import("@/features/events/actions/admin-add-attendance");
+    const result = await adminAddAttendanceAction({
+      eventId: fixture.event.id,
+      nickname: "Over Capacity Participant",
+      status: "attending",
+      paymentMethod: "cash",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe("RESOURCE_CONFLICT");
+      expect(result.error.userMessage).toContain("先にイベントの定員を変更");
+    }
+    expect(createCashPayment).not.toHaveBeenCalled();
+
+    const attendanceCount = await setup.adminClient
+      .from("attendances")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", fixture.event.id);
+
+    expect(attendanceCount.error).toBeNull();
+    expect(attendanceCount.count ?? 0).toBe(1);
   });
 });

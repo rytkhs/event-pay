@@ -406,14 +406,10 @@ describe("adminUpdateAttendanceStatusAction integration", () => {
       paymentMethod: "cash",
     });
 
-    expect(capacityResult.success).toBe(true);
-    if (capacityResult.success) {
-      expect(capacityResult.data).toEqual(
-        expect.objectContaining({
-          confirmRequired: true,
-          reason: "capacity",
-        })
-      );
+    expect(capacityResult.success).toBe(false);
+    if (!capacityResult.success) {
+      expect(capacityResult.error.code).toBe("RESOURCE_CONFLICT");
+      expect(capacityResult.error.userMessage).toContain("先にイベントの定員を変更");
     }
     expect(await getAttendanceStatus(overCapacityTarget.id)).toBe("not_attending");
     expect(await getPayments(overCapacityTarget.id)).toHaveLength(0);

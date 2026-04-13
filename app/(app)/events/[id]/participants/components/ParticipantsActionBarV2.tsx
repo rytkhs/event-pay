@@ -65,10 +65,6 @@ export function ParticipantsActionBarV2({
   const [isAdding, setIsAdding] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cash">("cash");
-  const [confirmOverCapacity, setConfirmOverCapacity] = useState<null | {
-    capacity?: number | null;
-    current?: number;
-  }>(null);
 
   // インライン検索
   const [searchQuery, setSearchQuery] = useState(query.search);
@@ -97,13 +93,12 @@ export function ParticipantsActionBarV2({
 
   const handleOpenAdd = () => {
     setAddNickname("");
-    setConfirmOverCapacity(null);
     setAddError(null);
     setPaymentMethod("cash");
     setShowAddDialog(true);
   };
 
-  const handleSubmitAdd = async (forceBypass = false) => {
+  const handleSubmitAdd = async () => {
     if (isAdding) return;
     if (!addNickname || addNickname.trim().length === 0) {
       setAddError("ニックネームを入力してください");
@@ -123,7 +118,6 @@ export function ParticipantsActionBarV2({
         eventId,
         nickname: addNickname,
         status: "attending",
-        bypassCapacity: forceBypass,
         ...(isPayingEvent && { paymentMethod }),
       });
 
@@ -133,13 +127,6 @@ export function ParticipantsActionBarV2({
           description: result.error?.userMessage || "参加者の追加に失敗しました",
           variant: "destructive",
         });
-        return;
-      }
-
-      // confirmRequired の特殊ケース（成功として返される）
-      if ("confirmRequired" in result.data && result.data.confirmRequired) {
-        const payload = result.data;
-        setConfirmOverCapacity({ capacity: payload.capacity, current: payload.current });
         return;
       }
 
@@ -155,7 +142,6 @@ export function ParticipantsActionBarV2({
         description: successDescription,
       });
       setShowAddDialog(false);
-      setConfirmOverCapacity(null);
 
       window.location.reload();
     } catch (_error) {
@@ -452,7 +438,7 @@ export function ParticipantsActionBarV2({
               onChange={(e) => setAddNickname(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  void handleSubmitAdd(false);
+                  void handleSubmitAdd();
                 }
               }}
               required
@@ -483,41 +469,15 @@ export function ParticipantsActionBarV2({
             )}
 
             {addError && <div className="text-sm text-red-600">{addError}</div>}
-            {confirmOverCapacity && (
-              <div className="text-sm text-orange-700 bg-orange-50 border border-orange-200 rounded p-2">
-                定員（{confirmOverCapacity.capacity ?? "-"}）を超過しています（現在{" "}
-                {confirmOverCapacity.current ?? "-"} 名）。本当に追加しますか？
-              </div>
-            )}
           </div>
           <DialogFooter>
-            {!confirmOverCapacity ? (
-              <Button
-                onClick={() => void handleSubmitAdd(false)}
-                disabled={isAdding || !addNickname || addNickname.trim().length === 0}
-                className="w-full sm:w-auto"
-              >
-                {isAdding ? "追加中..." : "追加"}
-              </Button>
-            ) : (
-              <div className="flex flex-col sm:flex-row gap-2 w-full">
-                <Button
-                  variant="outline"
-                  onClick={() => setConfirmOverCapacity(null)}
-                  disabled={isAdding}
-                  className="w-full sm:w-auto"
-                >
-                  戻る
-                </Button>
-                <Button
-                  onClick={() => void handleSubmitAdd(true)}
-                  disabled={isAdding}
-                  className="bg-red-600 hover:bg-red-700 w-full sm:w-auto"
-                >
-                  {isAdding ? "処理中..." : "定員超過で追加"}
-                </Button>
-              </div>
-            )}
+            <Button
+              onClick={() => void handleSubmitAdd()}
+              disabled={isAdding || !addNickname || addNickname.trim().length === 0}
+              className="w-full sm:w-auto"
+            >
+              {isAdding ? "追加中..." : "追加"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

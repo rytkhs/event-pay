@@ -30,17 +30,6 @@ type RpcAdminUpdateAttendanceStatusResult = {
   guest_token?: string | null;
 };
 
-function parseCapacityConflict(error: { message?: string; details?: string | null }) {
-  const target = `${error.message ?? ""} ${error.details ?? ""}`;
-  const currentMatch = target.match(/Current(?: attendees)?:\s*(\d+)/i);
-  const capacityMatch = target.match(/Capacity:\s*(\d+)/i) ?? target.match(/capacity \((\d+)\)/i);
-
-  return {
-    current: currentMatch ? Number.parseInt(currentMatch[1], 10) : null,
-    capacity: capacityMatch ? Number.parseInt(capacityMatch[1], 10) : null,
-  };
-}
-
 function mapRpcResult(
   data: RpcAdminUpdateAttendanceStatusResult
 ): AdminUpdateAttendanceStatusResult {
@@ -72,7 +61,6 @@ export async function adminUpdateAttendanceStatusAction(
       attendanceId,
       status,
       paymentMethod,
-      bypassCapacity,
       acknowledgedFinalizedPayment,
       acknowledgedPastEvent,
       notes,
@@ -95,7 +83,6 @@ export async function adminUpdateAttendanceStatusAction(
       p_new_status: status,
       p_user_id: accessContext.user.id,
       p_payment_method: paymentMethod ?? undefined,
-      p_bypass_capacity: bypassCapacity,
       p_acknowledged_finalized_payment: acknowledgedFinalizedPayment,
       p_acknowledged_past_event: acknowledgedPastEvent,
       p_notes: notes ?? undefined,
@@ -103,10 +90,9 @@ export async function adminUpdateAttendanceStatusAction(
 
     if (error) {
       if (hasPostgrestCode(error, "P0004")) {
-        return ok({
-          confirmRequired: true,
-          reason: "capacity",
-          ...parseCapacityConflict(error),
+        return fail("RESOURCE_CONFLICT", {
+          userMessage:
+            "定員に達しています。参加に変更する場合は、先にイベントの定員を変更してください。",
         });
       }
 

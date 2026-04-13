@@ -207,7 +207,7 @@ $$;
 ALTER FUNCTION "private"."_get_guest_token_from_header"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean DEFAULT false) RETURNS "uuid"
+CREATE OR REPLACE FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
@@ -261,7 +261,7 @@ BEGIN
     RAISE EXCEPTION 'Guest token already exists: %', LEFT(p_guest_token, 8) || '...';
   END IF;
 
-  IF p_status = 'attending' AND v_capacity IS NOT NULL AND NOT p_bypass_capacity THEN
+  IF p_status = 'attending' AND v_capacity IS NOT NULL THEN
     SELECT COUNT(*)
       INTO v_current_count
       FROM public.attendances
@@ -270,9 +270,9 @@ BEGIN
 
     IF v_current_count >= v_capacity THEN
       RAISE EXCEPTION 'Event capacity (%) has been reached. Current attendees: %', v_capacity, v_current_count
-        USING ERRCODE = 'P0001',
-              DETAIL = format('Current: %s, Capacity: %s, Bypass: %s', v_current_count, v_capacity, p_bypass_capacity),
-              HINT = 'Set bypass_capacity=true to override capacity limit';
+        USING ERRCODE = 'P0004',
+              DETAIL = format('Current attendees: %s, Capacity: %s', v_current_count, v_capacity),
+              HINT = 'Increase the event capacity before adding another attending participant';
     END IF;
   END IF;
 
@@ -285,10 +285,10 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) OWNER TO "app_definer";
+ALTER FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying) OWNER TO "app_definer";
 
 
-COMMENT ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) IS '主催者用参加者追加（排他ロック・定員チェック・レースコンディション対策）';
+COMMENT ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying) IS '主催者用参加者追加（排他ロック・定員チェック・レースコンディション対策）';
 
 
 
@@ -535,10 +535,6 @@ DECLARE
   event_capacity integer;
   current_attending_count integer;
 BEGIN
-  IF current_setting('app.internal_attendance_capacity_bypass_7f8d2c91', true) = 'true' THEN
-    RETURN NEW;
-  END IF;
-
   IF NEW.status = 'attending'
      AND (TG_OP = 'INSERT' OR OLD.status IS DISTINCT FROM 'attending') THEN
     SELECT capacity INTO event_capacity
@@ -1603,7 +1599,7 @@ $$;
 ALTER FUNCTION "public"."rpc_admin_delete_mistaken_attendance"("p_event_id" "uuid", "p_attendance_id" "uuid", "p_user_id" "uuid") OWNER TO "app_definer";
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_admin_update_attendance_status"("p_event_id" "uuid", "p_attendance_id" "uuid", "p_new_status" "public"."attendance_status_enum", "p_user_id" "uuid", "p_payment_method" "public"."payment_method_enum" DEFAULT NULL::"public"."payment_method_enum", "p_bypass_capacity" boolean DEFAULT false, "p_acknowledged_finalized_payment" boolean DEFAULT false, "p_acknowledged_past_event" boolean DEFAULT false, "p_notes" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."rpc_admin_update_attendance_status"("p_event_id" "uuid", "p_attendance_id" "uuid", "p_new_status" "public"."attendance_status_enum", "p_user_id" "uuid", "p_payment_method" "public"."payment_method_enum" DEFAULT NULL::"public"."payment_method_enum", "p_acknowledged_finalized_payment" boolean DEFAULT false, "p_acknowledged_past_event" boolean DEFAULT false, "p_notes" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
@@ -1711,11 +1707,11 @@ BEGIN
          AND status = 'attending'
          AND id <> p_attendance_id;
 
-      IF v_current_attendees >= v_capacity AND NOT p_bypass_capacity THEN
+      IF v_current_attendees >= v_capacity THEN
         RAISE EXCEPTION 'Event capacity (%) has been reached. Current attendees: %', v_capacity, v_current_attendees
           USING ERRCODE = 'P0004',
-                DETAIL = format('Current: %s, Capacity: %s, Bypass: %s', v_current_attendees, v_capacity, p_bypass_capacity),
-                HINT = 'Set bypass_capacity=true to override capacity limit';
+                DETAIL = format('Current attendees: %s, Capacity: %s', v_current_attendees, v_capacity),
+                HINT = 'Increase the event capacity before changing this attendance to attending';
       END IF;
     END IF;
   END IF;
@@ -1725,7 +1721,7 @@ BEGIN
       INTO v_preserved_payment
       FROM public.payments
      WHERE attendance_id = p_attendance_id
-       AND status IN ('paid', 'received', 'waived')
+       AND status IN ('paid', 'received', 'waived', 'refunded')
      ORDER BY paid_at DESC NULLS LAST, created_at DESC, updated_at DESC
      LIMIT 1
      FOR UPDATE;
@@ -1765,8 +1761,23 @@ BEGIN
         INTO v_open_payment
         FROM public.payments
        WHERE attendance_id = p_attendance_id
-         AND status IN ('pending', 'failed')
-       ORDER BY CASE WHEN status = 'pending' THEN 0 ELSE 1 END, created_at DESC, updated_at DESC
+         AND status = 'pending'
+         AND stripe_checkout_session_id IS NULL
+         AND stripe_payment_intent_id IS NULL
+         AND stripe_charge_id IS NULL
+         AND stripe_balance_transaction_id IS NULL
+         AND stripe_customer_id IS NULL
+         AND stripe_transfer_id IS NULL
+         AND application_fee_id IS NULL
+         AND application_fee_refund_id IS NULL
+         AND webhook_event_id IS NULL
+         AND webhook_processed_at IS NULL
+         AND checkout_idempotency_key IS NULL
+         AND checkout_key_revision = 0
+         AND paid_at IS NULL
+         AND COALESCE(refunded_amount, 0) = 0
+         AND COALESCE(application_fee_refunded_amount, 0) = 0
+       ORDER BY created_at DESC, updated_at DESC
        LIMIT 1
        FOR UPDATE;
 
@@ -1799,6 +1810,13 @@ BEGIN
         v_payment_status := 'pending';
         v_payment_effect := 'open_payment_reused';
       ELSE
+        UPDATE public.payments
+           SET status = 'canceled',
+               paid_at = NULL,
+               updated_at = now()
+         WHERE attendance_id = p_attendance_id
+           AND status = 'pending';
+
         INSERT INTO public.payments (
           attendance_id,
           amount,
@@ -1839,17 +1857,9 @@ BEGIN
     END IF;
   END IF;
 
-  IF p_bypass_capacity THEN
-    PERFORM set_config('app.internal_attendance_capacity_bypass_7f8d2c91', 'true', true);
-  END IF;
-
   UPDATE public.attendances
      SET status = p_new_status
    WHERE id = p_attendance_id;
-
-  IF p_bypass_capacity THEN
-    PERFORM set_config('app.internal_attendance_capacity_bypass_7f8d2c91', 'false', true);
-  END IF;
 
   INSERT INTO public.system_logs (
     log_category,
@@ -1880,7 +1890,6 @@ BEGIN
       'payment_id', v_payment_id,
       'payment_method', v_payment_method,
       'payment_status', v_payment_status,
-      'bypass_capacity', p_bypass_capacity,
       'acknowledged_finalized_payment', p_acknowledged_finalized_payment,
       'acknowledged_past_event', p_acknowledged_past_event,
       'notes', p_notes
@@ -1902,10 +1911,10 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."rpc_admin_update_attendance_status"("p_event_id" "uuid", "p_attendance_id" "uuid", "p_new_status" "public"."attendance_status_enum", "p_user_id" "uuid", "p_payment_method" "public"."payment_method_enum", "p_bypass_capacity" boolean, "p_acknowledged_finalized_payment" boolean, "p_acknowledged_past_event" boolean, "p_notes" "text") OWNER TO "app_definer";
+ALTER FUNCTION "public"."rpc_admin_update_attendance_status"("p_event_id" "uuid", "p_attendance_id" "uuid", "p_new_status" "public"."attendance_status_enum", "p_user_id" "uuid", "p_payment_method" "public"."payment_method_enum", "p_acknowledged_finalized_payment" boolean, "p_acknowledged_past_event" boolean, "p_notes" "text") OWNER TO "app_definer";
 
 
-COMMENT ON FUNCTION "public"."rpc_admin_update_attendance_status"("p_event_id" "uuid", "p_attendance_id" "uuid", "p_new_status" "public"."attendance_status_enum", "p_user_id" "uuid", "p_payment_method" "public"."payment_method_enum", "p_bypass_capacity" boolean, "p_acknowledged_finalized_payment" boolean, "p_acknowledged_past_event" boolean, "p_notes" "text") IS '主催者による代理出欠変更（権限確認・定員チェック・決済副作用・監査ログをDB内で実施）';
+COMMENT ON FUNCTION "public"."rpc_admin_update_attendance_status"("p_event_id" "uuid", "p_attendance_id" "uuid", "p_new_status" "public"."attendance_status_enum", "p_user_id" "uuid", "p_payment_method" "public"."payment_method_enum", "p_acknowledged_finalized_payment" boolean, "p_acknowledged_past_event" boolean, "p_notes" "text") IS '主催者による代理出欠変更（権限確認・定員チェック・決済副作用・監査ログをDB内で実施）';
 
 
 
@@ -4507,10 +4516,9 @@ GRANT ALL ON FUNCTION "private"."_get_guest_token_from_header"() TO "authenticat
 
 
 
-REVOKE ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) TO "anon";
-GRANT ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_bypass_capacity" boolean) TO "service_role";
+REVOKE ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."admin_add_attendance_with_capacity_check"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying) TO "service_role";
 
 
 
@@ -4694,9 +4702,9 @@ GRANT ALL ON FUNCTION "public"."rpc_admin_delete_mistaken_attendance"("p_event_i
 
 
 
-REVOKE ALL ON FUNCTION "public"."rpc_admin_update_attendance_status"("p_event_id" "uuid", "p_attendance_id" "uuid", "p_new_status" "public"."attendance_status_enum", "p_user_id" "uuid", "p_payment_method" "public"."payment_method_enum", "p_bypass_capacity" boolean, "p_acknowledged_finalized_payment" boolean, "p_acknowledged_past_event" boolean, "p_notes" "text") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."rpc_admin_update_attendance_status"("p_event_id" "uuid", "p_attendance_id" "uuid", "p_new_status" "public"."attendance_status_enum", "p_user_id" "uuid", "p_payment_method" "public"."payment_method_enum", "p_bypass_capacity" boolean, "p_acknowledged_finalized_payment" boolean, "p_acknowledged_past_event" boolean, "p_notes" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."rpc_admin_update_attendance_status"("p_event_id" "uuid", "p_attendance_id" "uuid", "p_new_status" "public"."attendance_status_enum", "p_user_id" "uuid", "p_payment_method" "public"."payment_method_enum", "p_bypass_capacity" boolean, "p_acknowledged_finalized_payment" boolean, "p_acknowledged_past_event" boolean, "p_notes" "text") TO "service_role";
+REVOKE ALL ON FUNCTION "public"."rpc_admin_update_attendance_status"("p_event_id" "uuid", "p_attendance_id" "uuid", "p_new_status" "public"."attendance_status_enum", "p_user_id" "uuid", "p_payment_method" "public"."payment_method_enum", "p_acknowledged_finalized_payment" boolean, "p_acknowledged_past_event" boolean, "p_notes" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."rpc_admin_update_attendance_status"("p_event_id" "uuid", "p_attendance_id" "uuid", "p_new_status" "public"."attendance_status_enum", "p_user_id" "uuid", "p_payment_method" "public"."payment_method_enum", "p_acknowledged_finalized_payment" boolean, "p_acknowledged_past_event" boolean, "p_notes" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_admin_update_attendance_status"("p_event_id" "uuid", "p_attendance_id" "uuid", "p_new_status" "public"."attendance_status_enum", "p_user_id" "uuid", "p_payment_method" "public"."payment_method_enum", "p_acknowledged_finalized_payment" boolean, "p_acknowledged_past_event" boolean, "p_notes" "text") TO "service_role";
 
 
 
