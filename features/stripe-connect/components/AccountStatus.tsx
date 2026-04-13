@@ -9,7 +9,7 @@ import { useState } from "react";
 
 import Link from "next/link";
 
-import { CreditCard, ArrowUpDown, RefreshCw, ExternalLink, BookOpen } from "lucide-react";
+import { CreditCard, RefreshCw, ExternalLink, BookOpen } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,7 +81,7 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
       case "no_account":
         return <Badge variant="outline">未設定</Badge>;
       case "unverified":
-        return <Badge variant="outline">未認証</Badge>;
+        return <Badge variant="outline">未設定</Badge>;
       case "requirements_due":
         return <Badge variant="secondary">設定中</Badge>;
       case "pending_review":
@@ -139,21 +139,6 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
           </div>
           {getUIStatusBadge()}
         </div>
-
-        {/* 送金ステータス（アカウントが存在する場合のみ） */}
-        {status.hasAccount && (
-          <div className="grid gap-4 md:grid-cols-1">
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <div className="flex items-center gap-2">
-                <ArrowUpDown className="h-4 w-4" />
-                <span className="text-sm font-medium">送金</span>
-              </div>
-              <Badge variant={status.payoutsEnabled ? "default" : "outline"}>
-                {status.payoutsEnabled ? "有効" : "無効"}
-              </Badge>
-            </div>
-          </div>
-        )}
 
         {/* UI Status別のビューを表示 */}
         {renderStatusView()}
