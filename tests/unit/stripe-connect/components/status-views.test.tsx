@@ -9,6 +9,7 @@ import {
   NoAccountView,
   UnverifiedView,
   RequirementsDueView,
+  PendingReviewView,
   RestrictedView,
   ReadyView,
 } from "@features/stripe-connect";
@@ -94,11 +95,11 @@ describe("Status View Components", () => {
       expect(screen.getByRole("link", { name: /Stripeで設定を続行/i })).toBeInTheDocument();
     });
 
-    it("should display review pending message when under review", () => {
+    it("should not display review pending message inside requirements due view", () => {
       const reviewStatus: AccountStatusData = {
         ...mockStatus,
         requirements: {
-          currently_due: [],
+          currently_due: ["external_account"],
           eventually_due: [],
           past_due: [],
           pending_verification: ["individual.verification.document"],
@@ -107,32 +108,28 @@ describe("Status View Components", () => {
 
       render(<RequirementsDueView status={reviewStatus} refreshUrl={mockRefreshUrl} />);
 
-      expect(screen.getByText(/Stripeが提出情報を審査中です/i)).toBeInTheDocument();
+      expect(screen.getByText(/アカウント情報の更新が必要です/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Stripeが提出情報を審査中です/i)).not.toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /Stripeで設定を続行/i })).toBeInTheDocument();
     });
 
-    it("should display dashboard button when review pending and dashboard available", () => {
+    it("should display continue button even when pending verification data is present", () => {
       const reviewStatus: AccountStatusData = {
         ...mockStatus,
         requirements: {
-          currently_due: [],
+          currently_due: ["external_account"],
           eventually_due: [],
           past_due: [],
           pending_verification: ["individual.verification.document"],
         },
       };
 
-      render(
-        <RequirementsDueView
-          status={reviewStatus}
-          refreshUrl={mockRefreshUrl}
-          expressDashboardAction={mockExpressDashboardAction}
-          expressDashboardAvailable={true}
-        />
-      );
+      render(<RequirementsDueView status={reviewStatus} refreshUrl={mockRefreshUrl} />);
 
+      expect(screen.getByRole("link", { name: /Stripeで設定を続行/i })).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: /Stripeダッシュボードで状況を確認/i })
-      ).toBeInTheDocument();
+        screen.queryByRole("button", { name: /Stripeダッシュボードで状況を確認/i })
+      ).not.toBeInTheDocument();
     });
 
     it("should display destructive alert when past due requirements exist", () => {
@@ -150,6 +147,22 @@ describe("Status View Components", () => {
 
       const alert = screen.getByRole("alert");
       expect(alert).toBeInTheDocument();
+    });
+  });
+
+  describe("PendingReviewView", () => {
+    it("should render pending review message", () => {
+      render(<PendingReviewView />);
+
+      expect(screen.getByText(/Stripeが審査中です/i)).toBeInTheDocument();
+      expect(screen.getByText(/通常1〜2営業日で完了します/i)).toBeInTheDocument();
+    });
+
+    it("should not display any action buttons", () => {
+      render(<PendingReviewView />);
+
+      expect(screen.queryByRole("button")).not.toBeInTheDocument();
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
     });
   });
 

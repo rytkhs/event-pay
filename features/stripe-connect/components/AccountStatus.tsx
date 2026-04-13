@@ -47,14 +47,7 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
       case "unverified":
         return <UnverifiedView refreshUrl={refreshUrl} />;
       case "requirements_due":
-        return (
-          <RequirementsDueView
-            status={status}
-            refreshUrl={refreshUrl}
-            expressDashboardAction={expressDashboardAction}
-            expressDashboardAvailable={status.expressDashboardAvailable}
-          />
-        );
+        return <RequirementsDueView status={status} refreshUrl={refreshUrl} />;
       case "pending_review":
         return <PendingReviewView />;
       case "restricted":

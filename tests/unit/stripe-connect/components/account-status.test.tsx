@@ -65,6 +65,33 @@ describe("AccountStatus Component", () => {
       expect(screen.getByText(/設定中/i)).toBeInTheDocument();
     });
 
+    it("should render PendingReviewView when uiStatus is pending_review", () => {
+      const status: AccountStatusData = {
+        hasAccount: true,
+        accountId: "acct_test123",
+        dbStatus: "onboarding",
+        uiStatus: "pending_review",
+        chargesEnabled: false,
+        payoutsEnabled: false,
+        requirements: {
+          currently_due: [],
+          eventually_due: [],
+          past_due: [],
+          pending_verification: ["individual.verification.document"],
+        },
+        capabilities: {
+          card_payments: "pending",
+          transfers: "pending",
+        },
+      };
+
+      render(<AccountStatus refreshUrl={mockRefreshUrl} status={status} />);
+
+      expect(screen.getByText(/Stripeが審査中です/i)).toBeInTheDocument();
+      const pendingReviewTexts = screen.getAllByText(/審査中/i);
+      expect(pendingReviewTexts.length).toBeGreaterThan(0);
+    });
+
     it("should render RestrictedView when uiStatus is restricted", () => {
       const status: AccountStatusData = {
         hasAccount: true,
@@ -218,6 +245,7 @@ describe("AccountStatus Component", () => {
         { uiStatus: "no_account", expectedText: "未設定" },
         { uiStatus: "unverified", expectedText: "未認証" },
         { uiStatus: "requirements_due", expectedText: "設定中" },
+        { uiStatus: "pending_review", expectedText: "審査中" },
         { uiStatus: "restricted", expectedText: "制限あり" },
         { uiStatus: "ready", expectedText: "設定完了" },
       ];
