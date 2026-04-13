@@ -158,11 +158,22 @@ describe("Status View Components", () => {
       expect(screen.getByText(/通常1〜2営業日で完了します/i)).toBeInTheDocument();
     });
 
-    it("should not display any action buttons", () => {
+    it("should not display dashboard button when not available", () => {
       render(<PendingReviewView />);
 
       expect(screen.queryByRole("button")).not.toBeInTheDocument();
       expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    });
+
+    it("should display dashboard button when available", () => {
+      render(
+        <PendingReviewView
+          expressDashboardAction={mockExpressDashboardAction}
+          expressDashboardAvailable={true}
+        />
+      );
+
+      expect(screen.getByRole("button", { name: /Stripeで審査状況を確認/i })).toBeInTheDocument();
     });
   });
 
@@ -183,11 +194,22 @@ describe("Status View Components", () => {
       expect(alert).toBeInTheDocument();
     });
 
-    it("should not display any action buttons", () => {
+    it("should not display dashboard button when not available", () => {
       render(<RestrictedView />);
 
       expect(screen.queryByRole("button")).not.toBeInTheDocument();
       expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    });
+
+    it("should display dashboard button when available", () => {
+      render(
+        <RestrictedView
+          expressDashboardAction={mockExpressDashboardAction}
+          expressDashboardAvailable={true}
+        />
+      );
+
+      expect(screen.getByRole("button", { name: /Stripeで制限内容を確認/i })).toBeInTheDocument();
     });
   });
 

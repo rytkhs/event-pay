@@ -92,6 +92,28 @@ describe("AccountStatus Component", () => {
       expect(pendingReviewTexts.length).toBeGreaterThan(0);
     });
 
+    it("should render pending review dashboard button when available", () => {
+      const status: AccountStatusData = {
+        hasAccount: true,
+        accountId: "acct_test123",
+        dbStatus: "onboarding",
+        uiStatus: "pending_review",
+        chargesEnabled: false,
+        payoutsEnabled: false,
+        expressDashboardAvailable: true,
+      };
+
+      render(
+        <AccountStatus
+          refreshUrl={mockRefreshUrl}
+          status={status}
+          expressDashboardAction={mockExpressDashboardAction}
+        />
+      );
+
+      expect(screen.getByRole("button", { name: /Stripeで審査状況を確認/i })).toBeInTheDocument();
+    });
+
     it("should render RestrictedView when uiStatus is restricted", () => {
       const status: AccountStatusData = {
         hasAccount: true,
@@ -111,6 +133,28 @@ describe("AccountStatus Component", () => {
       // "制限あり"というテキストが複数ある場合があるので、getAllByTextを使用
       const restrictedBadges = screen.getAllByText(/制限あり/i);
       expect(restrictedBadges.length).toBeGreaterThan(0);
+    });
+
+    it("should render restricted dashboard button when available", () => {
+      const status: AccountStatusData = {
+        hasAccount: true,
+        accountId: "acct_test123",
+        dbStatus: "restricted",
+        uiStatus: "restricted",
+        chargesEnabled: false,
+        payoutsEnabled: false,
+        expressDashboardAvailable: true,
+      };
+
+      render(
+        <AccountStatus
+          refreshUrl={mockRefreshUrl}
+          status={status}
+          expressDashboardAction={mockExpressDashboardAction}
+        />
+      );
+
+      expect(screen.getByRole("button", { name: /Stripeで制限内容を確認/i })).toBeInTheDocument();
     });
 
     it("should render ReadyView when uiStatus is ready", () => {
