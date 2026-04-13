@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import { MoreVertical, RotateCcw, Trash2 } from "lucide-react";
+import { MoreVertical, RotateCcw, Trash2, UserCheck } from "lucide-react";
 
 import { hasPaymentId } from "@core/utils/payment-status-mapper";
 import type { ParticipantView } from "@core/validation/participant-management";
@@ -22,9 +22,11 @@ interface ParticipantActionMenuProps {
   participant: ParticipantView;
   canCancel: boolean;
   canDeleteMistaken: boolean;
+  canUpdateAttendance: boolean;
   isUpdating?: boolean;
   onCancel: (paymentId: string) => void;
   onDeleteMistaken: (participant: ParticipantView) => void;
+  onUpdateAttendance: (participant: ParticipantView) => void;
   triggerSize: ButtonSize;
   triggerClassName: string;
   contentClassName: string;
@@ -38,9 +40,11 @@ export function ParticipantActionMenu({
   participant,
   canCancel,
   canDeleteMistaken,
+  canUpdateAttendance,
   isUpdating,
   onCancel,
   onDeleteMistaken,
+  onUpdateAttendance,
   triggerSize,
   triggerClassName,
   contentClassName,
@@ -49,7 +53,7 @@ export function ParticipantActionMenu({
   itemIconClassName,
   triggerAriaLabel,
 }: ParticipantActionMenuProps) {
-  if (!canCancel && !canDeleteMistaken) {
+  if (!canCancel && !canDeleteMistaken && !canUpdateAttendance) {
     return null;
   }
 
@@ -68,6 +72,15 @@ export function ParticipantActionMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className={contentClassName}>
         <DropdownMenuGroup>
+          {canUpdateAttendance && (
+            <DropdownMenuItem
+              onClick={() => onUpdateAttendance(participant)}
+              className={cancelItemClassName}
+            >
+              <UserCheck className={itemIconClassName} />
+              出欠を代理変更
+            </DropdownMenuItem>
+          )}
           {canCancel && (
             <DropdownMenuItem
               onClick={() => hasPaymentId(participant) && onCancel(participant.payment_id)}

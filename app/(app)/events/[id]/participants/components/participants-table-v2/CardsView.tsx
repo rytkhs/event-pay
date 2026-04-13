@@ -33,6 +33,7 @@ export interface CardsViewProps {
   onReceive: (paymentId: string) => void;
   onCancel: (paymentId: string) => void;
   onDeleteMistaken: (participant: ParticipantView) => void;
+  onUpdateAttendance: (participant: ParticipantView) => void;
   isSelectionMode?: boolean;
   bulkSelection?: BulkSelectionConfig;
 }
@@ -44,6 +45,7 @@ export function CardsView({
   onReceive,
   onCancel,
   onDeleteMistaken,
+  onUpdateAttendance,
   isSelectionMode: isSelectionModeProp = false,
   bulkSelection,
 }: CardsViewProps) {
@@ -153,9 +155,11 @@ export function CardsView({
                     participant={p}
                     canCancel={false}
                     canDeleteMistaken={actionState.canDeleteMistakenAttendance}
+                    canUpdateAttendance={actionState.canUpdateAttendanceStatus}
                     isUpdating={isUpdating}
                     onCancel={onCancel}
                     onDeleteMistaken={onDeleteMistaken}
+                    onUpdateAttendance={onUpdateAttendance}
                     triggerSize="sm"
                     triggerClassName="h-8 w-8 shrink-0 rounded-xl p-0 text-muted-foreground hover:bg-muted/60 transition-colors"
                     triggerAriaLabel={`${p.nickname}の操作メニューを開く`}
@@ -172,7 +176,7 @@ export function CardsView({
                 <div className="flex items-center justify-between gap-2 min-h-[2.25rem]">
                   {/* Status Badge */}
                   <div className="flex items-center gap-2">
-                    {p.status === "attending" && !isCanceledPayment ? (
+                    {p.payment_status && !isCanceledPayment ? (
                       <>
                         {getPaymentMethodIcon(p.payment_method) && (
                           <div className="flex items-center justify-center bg-muted/40 w-[1.375rem] h-[1.375rem] rounded-md shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
@@ -213,9 +217,11 @@ export function CardsView({
                         participant={p}
                         canCancel={actionState.canCancelCashReceipt}
                         canDeleteMistaken={actionState.canDeleteMistakenAttendance}
+                        canUpdateAttendance={actionState.canUpdateAttendanceStatus}
                         isUpdating={isUpdating}
                         onCancel={onCancel}
                         onDeleteMistaken={onDeleteMistaken}
+                        onUpdateAttendance={onUpdateAttendance}
                         triggerSize="sm"
                         triggerClassName="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:bg-muted/60 transition-colors"
                         contentClassName="rounded-xl shadow-xl border-border/60 min-w-[8rem] p-1.5"

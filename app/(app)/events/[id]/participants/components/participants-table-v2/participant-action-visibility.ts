@@ -25,12 +25,15 @@ export function getParticipantActionState(
     isCashPayment &&
     (simplePaymentStatus === "paid" || simplePaymentStatus === "waived");
   const canDeleteMistakenAttendance = canShowDeleteMistakenAttendanceAction(participant);
+  const canUpdateAttendanceStatus = true;
 
   return {
     canReceiveCash,
     canCancelCashReceipt,
     canDeleteMistakenAttendance,
+    canUpdateAttendanceStatus,
     showSecondaryMenu:
-      !opts.isSelectionMode && (canCancelCashReceipt || canDeleteMistakenAttendance),
+      !opts.isSelectionMode &&
+      (canUpdateAttendanceStatus || canCancelCashReceipt || canDeleteMistakenAttendance),
   };
 }

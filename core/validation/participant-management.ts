@@ -174,3 +174,67 @@ export type DeleteMistakenAttendanceInput = z.infer<typeof DeleteMistakenAttenda
 export interface DeleteMistakenAttendanceResult {
   attendanceId: string;
 }
+
+// ====================================================================
+// 主催者による代理出欠変更関連スキーマ
+// ====================================================================
+
+export const AttendanceStatusSchema = z.enum(["attending", "not_attending", "maybe"]);
+
+export const AdminUpdateAttendanceStatusInputSchema = z.object({
+  eventId: z.string().uuid(),
+  attendanceId: z.string().uuid(),
+  status: AttendanceStatusSchema,
+  paymentMethod: z.enum(["cash", "stripe"]).optional(),
+  bypassCapacity: z.boolean().optional().default(false),
+  acknowledgedFinalizedPayment: z.boolean().optional().default(false),
+  acknowledgedPastEvent: z.boolean().optional().default(false),
+  notes: z.string().max(1000).optional(),
+});
+
+export type AdminUpdateAttendanceStatusInput = z.infer<
+  typeof AdminUpdateAttendanceStatusInputSchema
+>;
+
+export type AdminUpdateAttendancePaymentEffect =
+  | "none"
+  | "open_payment_canceled"
+  | "open_payment_reused"
+  | "payment_created"
+  | "finalized_payment_preserved";
+
+export type AdminUpdateAttendanceConfirmation =
+  | {
+      confirmRequired: true;
+      reason: "capacity";
+      capacity?: number | null;
+      current?: number | null;
+    }
+  | {
+      confirmRequired: true;
+      reason: "finalized_payment";
+    }
+  | {
+      confirmRequired: true;
+      reason: "past_event";
+    };
+
+export interface AdminUpdateAttendanceStatusResult {
+  updated: boolean;
+  attendanceId: string;
+  oldStatus: z.infer<typeof AttendanceStatusSchema>;
+  newStatus: z.infer<typeof AttendanceStatusSchema>;
+  paymentEffect: AdminUpdateAttendancePaymentEffect;
+  paymentId?: string | null;
+  paymentMethod?: "cash" | "stripe" | null;
+  paymentStatus?:
+    | "pending"
+    | "paid"
+    | "failed"
+    | "received"
+    | "refunded"
+    | "waived"
+    | "canceled"
+    | null;
+  guestUrl?: string;
+}
