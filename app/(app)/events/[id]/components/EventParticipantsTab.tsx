@@ -27,6 +27,7 @@ interface EventParticipantsTabProps {
   eventDetail: Event;
   participantsData: GetParticipantsResponse | null;
   query: EventManagementQuery;
+  adminUpdateAttendanceStatusAction: ParticipantsTableV2Props["adminUpdateAttendanceStatusAction"];
   deleteMistakenAttendanceAction: ParticipantsTableV2Props["deleteMistakenAttendanceAction"];
   updateCashStatusAction: ParticipantsTableV2Props["updateCashStatusAction"];
   bulkUpdateCashStatusAction: ParticipantsTableV2Props["bulkUpdateCashStatusAction"];
@@ -37,6 +38,7 @@ export function EventParticipantsTab({
   eventDetail,
   participantsData,
   query,
+  adminUpdateAttendanceStatusAction,
   deleteMistakenAttendanceAction,
   updateCashStatusAction,
   bulkUpdateCashStatusAction,
@@ -132,9 +134,12 @@ export function EventParticipantsTab({
           <ParticipantsTableV2
             eventId={eventId}
             eventFee={eventDetail.fee}
+            eventStatus={eventDetail.status}
+            eventPaymentMethods={eventDetail.payment_methods}
             allParticipants={allParticipants}
             query={optimisticQuery}
             onParamsChange={handleFiltersUpdate}
+            adminUpdateAttendanceStatusAction={adminUpdateAttendanceStatusAction}
             deleteMistakenAttendanceAction={deleteMistakenAttendanceAction}
             updateCashStatusAction={updateCashStatusAction}
             bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}

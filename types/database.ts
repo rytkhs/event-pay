@@ -965,7 +965,6 @@ export type Database = {
     Functions: {
       admin_add_attendance_with_capacity_check: {
         Args: {
-          p_bypass_capacity?: boolean;
           p_email: string;
           p_event_id: string;
           p_guest_token: string;
@@ -1109,6 +1108,19 @@ export type Database = {
       };
       rpc_admin_delete_mistaken_attendance: {
         Args: { p_attendance_id: string; p_event_id: string; p_user_id: string };
+        Returns: Json;
+      };
+      rpc_admin_update_attendance_status: {
+        Args: {
+          p_acknowledged_finalized_payment?: boolean;
+          p_acknowledged_past_event?: boolean;
+          p_attendance_id: string;
+          p_event_id: string;
+          p_new_status: Database["public"]["Enums"]["attendance_status_enum"];
+          p_notes?: string;
+          p_payment_method?: Database["public"]["Enums"]["payment_method_enum"];
+          p_user_id: string;
+        };
         Returns: Json;
       };
       rpc_bulk_update_payment_status_safe: {

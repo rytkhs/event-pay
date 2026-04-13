@@ -2,6 +2,7 @@ import "server-only";
 
 export { getOwnedEventContextForCurrentCommunity } from "@core/community/get-owned-event-context-for-current-community";
 export { adminAddAttendanceAction } from "./actions/admin-add-attendance";
+export { adminUpdateAttendanceStatusAction } from "./actions/admin-update-attendance-status";
 export { cancelEventAction } from "./actions/cancel-event";
 export { createEventAction } from "./actions/create-event";
 export { deleteEventAction } from "./actions/delete-event";

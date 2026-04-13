@@ -2,6 +2,7 @@
 
 import {
   adminAddAttendanceAction as adminAddAttendanceActionImpl,
+  adminUpdateAttendanceStatusAction as adminUpdateAttendanceStatusActionImpl,
   deleteMistakenAttendanceAction as deleteMistakenAttendanceActionImpl,
   exportParticipantsCsvAction as exportParticipantsCsvActionImpl,
 } from "@features/events/server";
@@ -13,6 +14,7 @@ import {
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
 type AdminAddAttendanceInput = Parameters<typeof adminAddAttendanceActionImpl>[0];
+type AdminUpdateAttendanceStatusInput = Parameters<typeof adminUpdateAttendanceStatusActionImpl>[0];
 type DeleteMistakenAttendanceInput = Parameters<typeof deleteMistakenAttendanceActionImpl>[0];
 type ExportParticipantsCsvParams = Parameters<typeof exportParticipantsCsvActionImpl>[0];
 type UpdateCashStatusInput = Parameters<typeof updateCashStatusActionImpl>[0];
@@ -21,6 +23,11 @@ type BulkUpdateCashStatusInput = Parameters<typeof bulkUpdateCashStatusActionImp
 export async function adminAddAttendanceAction(input: AdminAddAttendanceInput) {
   ensureFeaturesRegistered();
   return adminAddAttendanceActionImpl(input);
+}
+
+export async function adminUpdateAttendanceStatusAction(input: AdminUpdateAttendanceStatusInput) {
+  ensureFeaturesRegistered();
+  return adminUpdateAttendanceStatusActionImpl(input);
 }
 
 export async function exportParticipantsCsvAction(params: ExportParticipantsCsvParams) {

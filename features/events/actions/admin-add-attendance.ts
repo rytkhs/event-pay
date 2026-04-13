@@ -27,23 +27,17 @@ import {
 import { getOwnedEventActionContextForServerAction } from "../services/get-owned-event-context-for-community";
 
 /**
- * 主催者が手動で参加者を追加する（締切制約なし、定員は上書き可能）
+ * 主催者が手動で参加者を追加する（締切制約なし、定員制約はDBで厳格に適用）
  * - RLSポリシーベースのセキュリティアクセス制御
  * - 専用RPC関数による排他ロック付き定員チェック
  * - レースコンディション対策済み
- * - 定員超過時、bypassCapacity=false なら確認要求エラーを返す
  * - 追加完了後、ゲストURLとオンライン決済可否を返す
  */
 export async function adminAddAttendanceAction(
   input: unknown
-): Promise<
-  ActionResult<
-    AdminAddAttendanceResult | { confirmRequired: true; capacity?: number | null; current?: number }
-  >
-> {
+): Promise<ActionResult<AdminAddAttendanceResult>> {
   try {
-    const { eventId, nickname, status, bypassCapacity, paymentMethod } =
-      AdminAddAttendanceInputSchema.parse(input);
+    const { eventId, nickname, status, paymentMethod } = AdminAddAttendanceInputSchema.parse(input);
 
     // 認証済みクライアント（RLSポリシーベースのアクセス制御）
     const authenticatedClient = await createServerActionSupabaseClient();
@@ -78,30 +72,20 @@ export async function adminAddAttendanceAction(
           p_email: placeholderEmail,
           p_status: status,
           p_guest_token: guestToken,
-          p_bypass_capacity: bypassCapacity,
         })
         .returns<string>()
         .single();
 
       if (rpcError || !rpcResult) {
-        // 定員超過の場合の特別処理
         if (
-          rpcError?.message?.includes("Event capacity") &&
-          rpcError.message.includes("has been reached")
+          rpcError?.code === "P0004" ||
+          rpcError?.message?.includes("Event capacity") ||
+          rpcError?.message?.includes("このイベントは定員")
         ) {
-          // エラーメッセージから現在の参加者数と定員を抽出
-          const capacityMatch = rpcError.message.match(
-            /Event capacity \((\d+)\) has been reached\. Current attendees: (\d+)/
-          );
-          if (capacityMatch) {
-            const capacity = parseInt(capacityMatch[1], 10);
-            const current = parseInt(capacityMatch[2], 10);
-            return ok({
-              confirmRequired: true,
-              capacity,
-              current,
-            });
-          }
+          return fail("RESOURCE_CONFLICT", {
+            userMessage:
+              "定員に達しています。追加する場合は、先にイベントの定員を変更してください。",
+          });
         }
 
         return fail("DATABASE_ERROR", {
@@ -191,7 +175,6 @@ export async function adminAddAttendanceAction(
       event_id: validatedEventId,
       attendance_id: attendanceId,
       actor_id: user.id,
-      bypass_capacity: bypassCapacity,
       nickname,
       email: placeholderEmail.toLowerCase(),
       can_online_pay: eligibility.isEligible,
@@ -213,7 +196,6 @@ export async function adminAddAttendanceAction(
         nickname,
         email: placeholderEmail.toLowerCase(),
         status,
-        bypass_capacity: bypassCapacity,
         payment_id: paymentId,
       },
     });

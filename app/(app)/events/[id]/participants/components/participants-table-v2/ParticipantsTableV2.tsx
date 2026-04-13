@@ -5,13 +5,18 @@ import React, { useCallback, useEffect, useMemo, useState, startTransition } fro
 import { useRouter } from "next/navigation";
 
 import { SortingState, Row } from "@tanstack/react-table";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
+import type { EventStatus, PaymentMethod } from "@core/types/statuses";
 import { conditionalSmartSort } from "@core/utils/participant-smart-sort";
 import { isPaymentUnpaid, toSimplePaymentStatus } from "@core/utils/payment-status-mapper";
-import type { ParticipantView } from "@core/validation/participant-management";
+import type {
+  AdminUpdateAttendanceConfirmation,
+  AdminUpdateAttendanceStatusResult,
+  ParticipantView,
+} from "@core/validation/participant-management";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -24,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -84,6 +90,22 @@ type DeleteMistakenAttendanceAction = (
   input: DeleteMistakenAttendanceInput
 ) => Promise<ActionResult<{ attendanceId: string }>>;
 
+type AttendanceStatus = ParticipantView["status"];
+
+type AdminUpdateAttendanceStatusInput = {
+  eventId: string;
+  attendanceId: string;
+  status: AttendanceStatus;
+  paymentMethod?: PaymentMethod;
+  acknowledgedFinalizedPayment?: boolean;
+  acknowledgedPastEvent?: boolean;
+  notes?: string;
+};
+
+type AdminUpdateAttendanceStatusAction = (
+  input: AdminUpdateAttendanceStatusInput
+) => Promise<ActionResult<AdminUpdateAttendanceStatusResult | AdminUpdateAttendanceConfirmation>>;
+
 const MOBILE_BREAKPOINT = 768;
 const VIEW_MODE_STORAGE_KEYS = {
   mobile: "event-participants-view-mode-mobile",
@@ -134,6 +156,25 @@ function getStatusOrder(status: ParticipantView["status"]): number {
   }
 }
 
+function getAttendanceStatusLabel(status: AttendanceStatus): string {
+  switch (status) {
+    case "attending":
+      return "参加";
+    case "not_attending":
+      return "不参加";
+    case "maybe":
+      return "未定";
+  }
+}
+
+function isFinalizedPaymentStatus(status: ParticipantView["payment_status"]): boolean {
+  return status === "paid" || status === "received" || status === "waived" || status === "refunded";
+}
+
+function hasPreservedPayment(status: ParticipantView["payment_status"]): boolean {
+  return status === "paid" || status === "received" || status === "waived" || status === "refunded";
+}
+
 function toTimestamp(value: string): number {
   return new Date(value).getTime();
 }
@@ -176,9 +217,12 @@ function applyManualSort(
 export interface ParticipantsTableV2Props {
   eventId: string;
   eventFee: number;
+  eventStatus: EventStatus;
+  eventPaymentMethods: PaymentMethod[];
   allParticipants: ParticipantView[];
   query: EventManagementQuery;
   onParamsChange: (patch: EventManagementQueryPatch) => void;
+  adminUpdateAttendanceStatusAction: AdminUpdateAttendanceStatusAction;
   deleteMistakenAttendanceAction: DeleteMistakenAttendanceAction;
   updateCashStatusAction: UpdateCashStatusAction;
   bulkUpdateCashStatusAction: BulkUpdateCashStatusAction;
@@ -189,9 +233,12 @@ export interface ParticipantsTableV2Props {
 export function ParticipantsTableV2({
   eventId,
   eventFee,
+  eventStatus,
+  eventPaymentMethods,
   allParticipants,
   query,
   onParamsChange,
+  adminUpdateAttendanceStatusAction,
   deleteMistakenAttendanceAction,
   updateCashStatusAction,
   bulkUpdateCashStatusAction,
@@ -209,6 +256,15 @@ export function ParticipantsTableV2({
   const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<ParticipantView | null>(null);
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
+  const [attendanceTarget, setAttendanceTarget] = useState<ParticipantView | null>(null);
+  const [nextAttendanceStatus, setNextAttendanceStatus] = useState<AttendanceStatus>("attending");
+  const [attendancePaymentMethod, setAttendancePaymentMethod] = useState<PaymentMethod | undefined>(
+    undefined
+  );
+  const [attendanceErrorMessage, setAttendanceErrorMessage] = useState<string | null>(null);
+  const [requiresFinalizedPaymentConfirmation, setRequiresFinalizedPaymentConfirmation] =
+    useState(false);
+  const [requiresPastEventConfirmation, setRequiresPastEventConfirmation] = useState(false);
 
   // 端末別に初回デフォルトを決めつつ、保存済みの選択を復元する
   useEffect(() => {
@@ -345,6 +401,12 @@ export function ParticipantsTableV2({
   // =======================================================
   // ハンドラー
   // =======================================================
+  const getDefaultPaymentMethod = useCallback((): PaymentMethod | undefined => {
+    if (eventPaymentMethods.includes("cash")) return "cash";
+    if (eventPaymentMethods.includes("stripe")) return "stripe";
+    return undefined;
+  }, [eventPaymentMethods]);
+
   const applyLocal = useCallback(
     (paymentId: string, nextStatus: "received" | "waived" | "pending") => {
       setLocalParticipants((prev) =>
@@ -572,6 +634,188 @@ export function ParticipantsTableV2({
     }
   }, [deleteMistakenAttendanceAction, deleteTarget, eventId, localParticipants, router, toast]);
 
+  const requiresPaymentMethodForAttendance = useCallback(
+    (participant: ParticipantView, nextStatus: AttendanceStatus) => {
+      return (
+        eventFee > 0 &&
+        nextStatus === "attending" &&
+        participant.status !== "attending" &&
+        !hasPreservedPayment(participant.payment_status)
+      );
+    },
+    [eventFee]
+  );
+
+  const handleOpenAttendanceUpdate = useCallback(
+    (participant: ParticipantView) => {
+      const defaultNextStatus: AttendanceStatus =
+        participant.status === "attending" ? "not_attending" : "attending";
+      setAttendanceTarget(participant);
+      setNextAttendanceStatus(defaultNextStatus);
+      setAttendancePaymentMethod(
+        requiresPaymentMethodForAttendance(participant, defaultNextStatus)
+          ? getDefaultPaymentMethod()
+          : undefined
+      );
+      setAttendanceErrorMessage(null);
+      setRequiresFinalizedPaymentConfirmation(false);
+      setRequiresPastEventConfirmation(false);
+    },
+    [getDefaultPaymentMethod, requiresPaymentMethodForAttendance]
+  );
+
+  const handleCloseAttendanceUpdate = useCallback(() => {
+    setAttendanceTarget(null);
+    setAttendanceErrorMessage(null);
+    setRequiresFinalizedPaymentConfirmation(false);
+    setRequiresPastEventConfirmation(false);
+  }, []);
+
+  const handleNextAttendanceStatusChange = useCallback(
+    (value: AttendanceStatus) => {
+      setNextAttendanceStatus(value);
+      if (attendanceTarget && requiresPaymentMethodForAttendance(attendanceTarget, value)) {
+        setAttendancePaymentMethod((current) => current ?? getDefaultPaymentMethod());
+      } else {
+        setAttendancePaymentMethod(undefined);
+      }
+    },
+    [attendanceTarget, getDefaultPaymentMethod, requiresPaymentMethodForAttendance]
+  );
+
+  const applyLocalAttendanceStatus = useCallback(
+    (result: AdminUpdateAttendanceStatusResult) => {
+      const now = new Date().toISOString();
+      setLocalParticipants((current) =>
+        current.map((participant) => {
+          if (participant.attendance_id !== result.attendanceId) return participant;
+
+          const next: ParticipantView = {
+            ...participant,
+            status: result.newStatus,
+            attendance_updated_at: now,
+          };
+
+          if (result.paymentEffect === "open_payment_canceled") {
+            return {
+              ...next,
+              payment_status:
+                participant.payment_status === "pending" || participant.payment_status === "failed"
+                  ? "canceled"
+                  : participant.payment_status,
+              payment_updated_at: now,
+            };
+          }
+
+          if (
+            result.paymentEffect === "payment_created" ||
+            result.paymentEffect === "open_payment_reused"
+          ) {
+            return {
+              ...next,
+              payment_id: result.paymentId ?? participant.payment_id,
+              payment_method: result.paymentMethod ?? participant.payment_method,
+              payment_status: result.paymentStatus ?? participant.payment_status,
+              amount: eventFee,
+              payment_updated_at: now,
+            };
+          }
+
+          return next;
+        })
+      );
+    },
+    [eventFee]
+  );
+
+  const handleConfirmAttendanceUpdate = useCallback(async () => {
+    if (!attendanceTarget) return;
+
+    if (eventStatus === "canceled") {
+      setAttendanceErrorMessage("中止済みイベントの出欠は変更できません。");
+      return;
+    }
+
+    if (attendanceTarget.status === nextAttendanceStatus) {
+      handleCloseAttendanceUpdate();
+      return;
+    }
+
+    const requiresPaymentMethod = requiresPaymentMethodForAttendance(
+      attendanceTarget,
+      nextAttendanceStatus
+    );
+
+    if (requiresPaymentMethod && !attendancePaymentMethod) {
+      setAttendanceErrorMessage("有料イベントで参加に変更するには、支払い方法を選択してください。");
+      return;
+    }
+
+    setAttendanceErrorMessage(null);
+    setIsUpdating(true);
+
+    try {
+      const result = await adminUpdateAttendanceStatusAction({
+        eventId,
+        attendanceId: attendanceTarget.attendance_id,
+        status: nextAttendanceStatus,
+        ...(requiresPaymentMethod && attendancePaymentMethod
+          ? { paymentMethod: attendancePaymentMethod }
+          : {}),
+        acknowledgedFinalizedPayment:
+          isFinalizedPaymentStatus(attendanceTarget.payment_status) ||
+          requiresFinalizedPaymentConfirmation,
+        acknowledgedPastEvent: eventStatus === "past" || requiresPastEventConfirmation,
+        notes: "主催者による代理出欠変更",
+      });
+
+      if (!result.success) {
+        throw new Error(result.error?.userMessage || "出欠変更に失敗しました");
+      }
+
+      const responseData = result.data;
+      if ("confirmRequired" in responseData && responseData.confirmRequired) {
+        if (responseData.reason === "finalized_payment") {
+          setRequiresFinalizedPaymentConfirmation(true);
+          return;
+        }
+
+        if (responseData.reason === "past_event") {
+          setRequiresPastEventConfirmation(true);
+          return;
+        }
+      }
+
+      const updateResult = responseData as AdminUpdateAttendanceStatusResult;
+      applyLocalAttendanceStatus(updateResult);
+      toast({
+        title: "出欠を更新しました",
+        description: `${attendanceTarget.nickname}を「${getAttendanceStatusLabel(updateResult.newStatus)}」に変更しました。`,
+      });
+      handleCloseAttendanceUpdate();
+      startTransition(() => router.refresh());
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "出欠変更に失敗しました";
+      setAttendanceErrorMessage(errorMessage);
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [
+    adminUpdateAttendanceStatusAction,
+    applyLocalAttendanceStatus,
+    attendancePaymentMethod,
+    attendanceTarget,
+    eventId,
+    eventStatus,
+    handleCloseAttendanceUpdate,
+    nextAttendanceStatus,
+    requiresFinalizedPaymentConfirmation,
+    requiresPastEventConfirmation,
+    requiresPaymentMethodForAttendance,
+    router,
+    toast,
+  ]);
+
   // columns
   const columns = useMemo(
     () =>
@@ -581,6 +825,7 @@ export function ParticipantsTableV2({
           onReceive: handleReceive,
           onCancel: handleCancel,
           onDeleteMistaken: handleOpenDeleteMistaken,
+          onUpdateAttendance: handleOpenAttendanceUpdate,
           isUpdating,
         },
         isSelectionMode,
@@ -599,6 +844,7 @@ export function ParticipantsTableV2({
       handleReceive,
       handleCancel,
       handleOpenDeleteMistaken,
+      handleOpenAttendanceUpdate,
       isFreeEvent,
       validSelectedPaymentIds,
       handleSelectPayment,
@@ -646,6 +892,14 @@ export function ParticipantsTableV2({
     [isFreeEvent]
   );
 
+  const attendanceChangeRequiresPaymentMethod =
+    attendanceTarget !== null &&
+    requiresPaymentMethodForAttendance(attendanceTarget, nextAttendanceStatus);
+  const attendanceChangeHasFinalizedPayment =
+    attendanceTarget !== null && isFinalizedPaymentStatus(attendanceTarget.payment_status);
+  const canUseCashForAttendanceChange = eventPaymentMethods.includes("cash");
+  const canUseStripeForAttendanceChange = eventPaymentMethods.includes("stripe");
+
   return (
     <Card className="overflow-hidden bg-background/78 shadow-none border-0">
       <CardHeader className="border-b border-border/25 px-4 py-3">
@@ -686,6 +940,7 @@ export function ParticipantsTableV2({
                 onReceive={handleReceive}
                 onCancel={handleCancel}
                 onDeleteMistaken={handleOpenDeleteMistaken}
+                onUpdateAttendance={handleOpenAttendanceUpdate}
                 isSelectionMode={isSelectionMode}
                 bulkSelection={
                   !isFreeEvent && isSelectionMode
@@ -773,6 +1028,108 @@ export function ParticipantsTableV2({
           isProcessing={isBulkUpdating || isUpdating}
         />
       )}
+      <Dialog
+        open={!!attendanceTarget}
+        onOpenChange={(open) => !open && handleCloseAttendanceUpdate()}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>出欠を代理変更</DialogTitle>
+            <DialogDescription>
+              <span className="block text-foreground">
+                {attendanceTarget?.nickname}の出欠を主催者として変更します。
+              </span>
+              <span className="block mt-1">
+                支払い状態の変更や返金は、この操作では行われません。
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="attendance-status-select">変更後の出欠</Label>
+              <Select
+                value={nextAttendanceStatus}
+                onValueChange={(value) =>
+                  handleNextAttendanceStatusChange(value as AttendanceStatus)
+                }
+                disabled={isUpdating}
+              >
+                <SelectTrigger id="attendance-status-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="attending">参加</SelectItem>
+                  <SelectItem value="maybe">未定</SelectItem>
+                  <SelectItem value="not_attending">不参加</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {attendanceChangeRequiresPaymentMethod && (
+              <div className="space-y-2">
+                <Label htmlFor="attendance-payment-method-select">支払い方法</Label>
+                <Select
+                  value={attendancePaymentMethod}
+                  onValueChange={(value) => setAttendancePaymentMethod(value as PaymentMethod)}
+                  disabled={isUpdating}
+                >
+                  <SelectTrigger id="attendance-payment-method-select">
+                    <SelectValue placeholder="支払い方法を選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {canUseCashForAttendanceChange && <SelectItem value="cash">現金</SelectItem>}
+                    {canUseStripeForAttendanceChange && (
+                      <SelectItem value="stripe">オンライン</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {(eventStatus === "past" || requiresPastEventConfirmation) && (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>イベント後の台帳修正として記録されます。</AlertDescription>
+              </Alert>
+            )}
+
+            {(attendanceChangeHasFinalizedPayment || requiresFinalizedPaymentConfirmation) && (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  この参加者は確定済みの支払いがあります。
+                  <br />
+                  出欠のみ変更され、支払い状態は維持されます。
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {attendanceErrorMessage && (
+              <Alert variant="destructive">
+                <AlertDescription>{attendanceErrorMessage}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseAttendanceUpdate} disabled={isUpdating}>
+              戻る
+            </Button>
+            <Button
+              onClick={() => void handleConfirmAttendanceUpdate()}
+              disabled={
+                isUpdating ||
+                !attendanceTarget ||
+                attendanceTarget.status === nextAttendanceStatus ||
+                (attendanceChangeRequiresPaymentMethod && !attendancePaymentMethod)
+              }
+            >
+              {isUpdating ? "処理中..." : "変更する"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && handleCloseDeleteMistaken()}>
         <DialogContent>
           <DialogHeader>

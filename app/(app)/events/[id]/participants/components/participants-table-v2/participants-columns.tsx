@@ -22,6 +22,7 @@ export interface ActionsCellHandlers {
   onReceive: (paymentId: string) => void;
   onCancel: (paymentId: string) => void;
   onDeleteMistaken: (participant: ParticipantView) => void;
+  onUpdateAttendance: (participant: ParticipantView) => void;
   isUpdating?: boolean;
 }
 
@@ -120,7 +121,7 @@ export function buildParticipantsColumns(opts: {
         header: "決済方法",
         cell: ({ row }) => {
           const p = row.original;
-          const showMethod = p.status === "attending" && p.payment_status !== "canceled";
+          const showMethod = p.payment_status !== "canceled";
           if (!showMethod)
             return <span className="text-muted-foreground/40 text-[13px] font-medium">-</span>;
 
@@ -154,8 +155,7 @@ export function buildParticipantsColumns(opts: {
           const p = row.original;
           const status = p.payment_status;
           const isCanceledPayment = status === "canceled";
-          const isNotAttending = p.status !== "attending";
-          if (isFreeEvent || !status || isCanceledPayment || isNotAttending)
+          if (isFreeEvent || !status || isCanceledPayment)
             return <span className="text-muted-foreground/40 text-[12px] font-medium">-</span>;
           const simple = toSimplePaymentStatus(status);
           const s = getSimplePaymentStatusStyle(simple);
@@ -178,7 +178,8 @@ export function buildParticipantsColumns(opts: {
         header: "アクション",
         cell: ({ row }) => {
           const p = row.original;
-          const { onReceive, onCancel, onDeleteMistaken, isUpdating } = opts.handlers;
+          const { onReceive, onCancel, onDeleteMistaken, onUpdateAttendance, isUpdating } =
+            opts.handlers;
           const actionState = getParticipantActionState(p, { isSelectionMode });
 
           return (
@@ -202,9 +203,11 @@ export function buildParticipantsColumns(opts: {
                   participant={p}
                   canCancel={actionState.canCancelCashReceipt}
                   canDeleteMistaken={actionState.canDeleteMistakenAttendance}
+                  canUpdateAttendance={actionState.canUpdateAttendanceStatus}
                   isUpdating={isUpdating}
                   onCancel={onCancel}
                   onDeleteMistaken={onDeleteMistaken}
+                  onUpdateAttendance={onUpdateAttendance}
                   triggerSize="icon"
                   triggerClassName="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200"
                   triggerAriaLabel={`${p.nickname}の操作メニューを開く`}
@@ -228,7 +231,7 @@ export function buildParticipantsColumns(opts: {
       header: "アクション",
       cell: ({ row }) => {
         const p = row.original;
-        const { onCancel, onDeleteMistaken, isUpdating } = opts.handlers;
+        const { onCancel, onDeleteMistaken, onUpdateAttendance, isUpdating } = opts.handlers;
         const actionState = getParticipantActionState(p, { isSelectionMode });
         if (!actionState.showSecondaryMenu) {
           return <div className="h-8" />;
@@ -239,9 +242,11 @@ export function buildParticipantsColumns(opts: {
             participant={p}
             canCancel={false}
             canDeleteMistaken={actionState.canDeleteMistakenAttendance}
+            canUpdateAttendance={actionState.canUpdateAttendanceStatus}
             isUpdating={isUpdating}
             onCancel={onCancel}
             onDeleteMistaken={onDeleteMistaken}
+            onUpdateAttendance={onUpdateAttendance}
             triggerSize="icon"
             triggerClassName="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200"
             triggerAriaLabel={`${p.nickname}の操作メニューを開く`}

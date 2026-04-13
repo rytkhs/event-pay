@@ -22,6 +22,7 @@ import { getEventDetailAction, getEventParticipantsAction, getEventStatsAction }
 import { EventManagementPage } from "./components/EventManagementPage";
 import {
   bulkUpdateCashStatusAction,
+  adminUpdateAttendanceStatusAction,
   deleteMistakenAttendanceAction,
   updateCashStatusAction,
 } from "./participants/actions";
@@ -124,6 +125,7 @@ export default async function EventDetailPage(props: {
         collectionSummary={collectionSummary}
         overviewStats={stats}
         participantsData={participantsData}
+        adminUpdateAttendanceStatusAction={adminUpdateAttendanceStatusAction}
         deleteMistakenAttendanceAction={deleteMistakenAttendanceAction}
         updateCashStatusAction={updateCashStatusAction}
         bulkUpdateCashStatusAction={bulkUpdateCashStatusAction}

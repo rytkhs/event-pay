@@ -4,6 +4,7 @@
 const mockUpdateCashStatus = jest.fn();
 const mockBulkUpdateCashStatus = jest.fn();
 const mockDeleteMistakenAttendance = jest.fn();
+const mockAdminUpdateAttendanceStatus = jest.fn();
 const mockToast = jest.fn();
 const mockConditionalSmartSort = jest.fn((participants) => participants);
 
@@ -138,6 +139,8 @@ describe("ParticipantsTableV2", () => {
   const defaultProps = {
     eventId: "event-1",
     eventFee: 1000,
+    eventStatus: "upcoming" as const,
+    eventPaymentMethods: ["cash", "stripe"] as const,
     allParticipants: buildParticipantsArray(),
     query: {
       tab: "participants" as const,
@@ -148,6 +151,7 @@ describe("ParticipantsTableV2", () => {
       limit: 150,
     },
     onParamsChange: jest.fn(),
+    adminUpdateAttendanceStatusAction: mockAdminUpdateAttendanceStatus,
     deleteMistakenAttendanceAction: mockDeleteMistakenAttendance,
     updateCashStatusAction: mockUpdateCashStatus,
     bulkUpdateCashStatusAction: mockBulkUpdateCashStatus,
@@ -311,10 +315,9 @@ describe("ParticipantsTableV2", () => {
       expect(screen.getByText("参加者を削除")).toBeInTheDocument();
       await user.keyboard("{Escape}"); // メニューを閉じる
 
-      // テストユーザー2: 取り消し不可、かつ他にアクションがないためメニュー自体が表示されない
-      expect(
-        screen.queryByLabelText("テストユーザー2の操作メニューを開く")
-      ).not.toBeInTheDocument();
+      // テストユーザー2: 取り消し不可でも代理出欠変更は可能。削除アクションだけ表示されない
+      await user.click(screen.getByLabelText("テストユーザー2の操作メニューを開く"));
+      expect(screen.queryByText("参加者を削除")).not.toBeInTheDocument();
     });
 
     it("参加者削除失敗時はモーダル内にエラーを表示し、失敗トーストを出さない", async () => {
