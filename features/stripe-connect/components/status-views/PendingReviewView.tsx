@@ -36,9 +36,13 @@ export function PendingReviewView({
 
       {expressDashboardAvailable && expressDashboardAction && (
         <form action={expressDashboardAction}>
-          <Button type="submit" variant="outline" className="w-full">
+          <Button
+            type="submit"
+            variant="outline"
+            className="group relative h-11 w-full rounded-xl border border-primary/10 bg-card text-sm font-semibold text-foreground/80 transition-all duration-300 hover:border-primary/20 hover:bg-muted/50 hover:text-foreground shadow-sm hover:shadow-[0_4px_12px_-8px_hsl(var(--primary)/0.4)]"
+          >
             Stripeで審査状況を確認
-            <ExternalLink className="ml-2 h-3.5 w-3.5" />
+            <ExternalLink className="ml-2 h-3.5 w-3.5 opacity-70 transition-opacity group-hover:opacity-100" />
           </Button>
         </form>
       )}

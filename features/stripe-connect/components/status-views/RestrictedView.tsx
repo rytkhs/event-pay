@@ -39,10 +39,10 @@ export function RestrictedView({
           <Button
             type="submit"
             variant="outline"
-            className="w-full border-destructive/30 text-destructive hover:bg-destructive/5"
+            className="group relative h-11 w-full rounded-xl border border-destructive/25 bg-gradient-to-r from-destructive/10 via-destructive/5 to-transparent text-sm font-semibold text-red-700 transition-all duration-300 hover:border-destructive/40 hover:from-destructive/20 hover:via-destructive/10 hover:to-destructive/5 hover:text-red-800 shadow-[inset_0_1px_0_hsl(var(--destructive-foreground)/0.4),0_8px_16px_-12px_hsl(var(--destructive)/0.2)] hover:shadow-[inset_0_1px_0_hsl(var(--destructive-foreground)/0.5),0_12px_24px_-12px_hsl(var(--destructive)/0.4)]"
           >
             Stripeで制限内容を確認
-            <ExternalLink className="ml-2 h-3.5 w-3.5" />
+            <ExternalLink className="ml-2 h-3.5 w-3.5 opacity-70 transition-transform group-hover:translate-x-0.5" />
           </Button>
         </form>
       )}

@@ -32,10 +32,14 @@ export function NoAccountView({ refreshUrl }: NoAccountViewProps) {
         </div>
       </div>
 
-      <Button asChild className="w-full">
+      <Button
+        asChild
+        className="group relative h-11 w-full rounded-xl border border-primary/25 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent text-sm font-semibold text-teal-800 transition-all duration-300 hover:border-primary/40 hover:from-primary/20 hover:via-primary/10 hover:to-primary/5 hover:text-teal-900 shadow-[inset_0_1px_0_hsl(var(--primary-foreground)/0.4),0_8px_16px_-12px_hsl(var(--primary)/0.6)] hover:shadow-[inset_0_1px_0_hsl(var(--primary-foreground)/0.5),0_12px_24px_-12px_hsl(var(--primary)/0.8)]"
+        variant="outline"
+      >
         <Link href={refreshUrl} prefetch={false}>
           Stripeで設定を始める
-          <ArrowRight className="ml-2 h-4 w-4" />
+          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
         </Link>
       </Button>
     </div>

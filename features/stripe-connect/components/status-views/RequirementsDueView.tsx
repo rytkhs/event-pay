@@ -46,11 +46,7 @@ export function RequirementsDueView({ status, refreshUrl }: RequirementsDueViewP
             }
           >
             <TriangleAlert
-              className={
-                hasPastDue
-                  ? "h-4 w-4 text-destructive"
-                  : "h-4 w-4 text-amber-600 dark:text-amber-400"
-              }
+              className={hasPastDue ? "h-4 w-4 text-destructive" : "h-4 w-4 text-amber-600"}
             />
           </div>
           <div className="min-w-0">
@@ -62,10 +58,18 @@ export function RequirementsDueView({ status, refreshUrl }: RequirementsDueViewP
         </div>
       </div>
 
-      <Button asChild className="w-full">
+      <Button
+        asChild
+        className={
+          hasPastDue
+            ? "group relative h-11 w-full rounded-xl border border-destructive/25 bg-gradient-to-r from-destructive/10 via-destructive/5 to-transparent text-sm font-semibold text-red-700 dark:text-red-400 transition-all duration-300 hover:border-destructive/40 hover:from-destructive/20 hover:via-destructive/10 hover:to-destructive/5 hover:text-red-800 dark:hover:text-red-300 shadow-[inset_0_1px_0_hsl(var(--destructive-foreground)/0.4),0_8px_16px_-12px_hsl(var(--destructive)/0.4)] hover:shadow-[inset_0_1px_0_hsl(var(--destructive-foreground)/0.5),0_12px_24px_-12px_hsl(var(--destructive)/0.6)]"
+            : "group relative h-11 w-full rounded-xl border border-amber-500/25 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent text-sm font-semibold text-amber-800 dark:text-amber-400 transition-all duration-300 hover:border-amber-500/40 hover:from-amber-500/20 hover:via-amber-500/10 hover:to-amber-500/5 hover:text-amber-900 dark:hover:text-amber-300 shadow-[inset_0_1px_0_hsl(var(--background)/0.4),0_8px_16px_-12px_rgba(245,158,11,0.2)] hover:shadow-[inset_0_1px_0_hsl(var(--background)/0.5),0_12px_24px_-12px_rgba(245,158,11,0.4)]"
+        }
+        variant="outline"
+      >
         <Link href={refreshUrl} prefetch={false}>
           Stripeで設定を続行
-          <ArrowRight className="ml-2 h-4 w-4" />
+          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
         </Link>
       </Button>
     </div>
