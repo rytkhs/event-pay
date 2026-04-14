@@ -446,7 +446,7 @@ export function ParticipantsActionBarV2({
                   onValueChange={(value: "cash") => setPaymentMethod(value)}
                   className="flex flex-col space-y-2"
                 >
-                  <div className="flex items-center gap space-x-2">
+                  <div className="flex items-center space-x-2">
                     <RadioGroupItem value="cash" id="cash" />
                     <Label htmlFor="cash" className="text-sm">
                       現金 ({eventDetail.fee.toLocaleString()}円)
