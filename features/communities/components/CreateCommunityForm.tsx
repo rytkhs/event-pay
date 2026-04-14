@@ -61,8 +61,8 @@ const features = [
   },
   {
     icon: Link2,
-    title: "招待リンク発行",
-    description: "参加者がリンク1つで申し込み完了",
+    title: "出欠確認",
+    description: "参加者がリンク1つで出欠登録完了",
   },
 ];
 

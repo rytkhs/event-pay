@@ -32,9 +32,8 @@
 
     <!-- メインコピー -->
     <text x="0" y="40" font-size="64" fill="#1A2035" class="text-base font-bold" line-height="1.4">
-      <tspan x="0" dy="0">イベントの集金</tspan>
-      <tspan x="0" dy="78">出欠確認は、</tspan>
-      <tspan x="0" dy="78">これひとつ。</tspan>
+      <tspan x="0" dy="20">集金・出欠確認を</tspan>
+      <tspan x="0" dy="78">もっとラクに</tspan>
     </text>
 
     <!-- サブコピー -->
@@ -79,7 +78,7 @@
 
       <!-- 参加ステータス -->
       <g transform="translate(0, 120)">
-        <text x="0" y="0" font-size="14" fill="#1A2035" class="text-base font-bold">参加ステータス</text>
+        <text x="0" y="0" font-size="14" fill="#1A2035" class="text-base font-bold">出欠</text>
         <g transform="translate(0, 20)">
           <!-- 参加ボタン（Active） -->
           <rect width="90" height="40" rx="8" fill="#E6F7F7" stroke="#2EB0B0" stroke-width="2"/>
@@ -104,14 +103,14 @@
           <rect width="300" height="50" rx="8" fill="#FFFFFF" stroke="#2EB0B0" stroke-width="2"/>
           <circle cx="25" cy="25" r="8" fill="#FFFFFF" stroke="#2EB0B0" stroke-width="2"/>
           <circle cx="25" cy="25" r="4" fill="#2EB0B0"/>
-          <text x="45" y="30" font-size="14" fill="#1A2035" class="text-base font-bold">オンライン決済</text>
+          <text x="45" y="30" font-size="14" fill="#1A2035" class="text-base font-bold">オンライン</text>
         </g>
 
         <!-- 現金払い -->
         <g transform="translate(0, 80)">
           <rect width="300" height="50" rx="8" fill="#FAFAFA" stroke="#EEEEEE" stroke-width="1"/>
           <circle cx="25" cy="25" r="8" fill="#FFFFFF" stroke="#CCCCCC" stroke-width="2"/>
-          <text x="45" y="30" font-size="14" fill="#555555" class="text-base">現金払い</text>
+          <text x="45" y="30" font-size="14" fill="#555555" class="text-base">現金</text>
         </g>
       </g>
 

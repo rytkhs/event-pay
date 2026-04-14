@@ -39,7 +39,7 @@ export const metadata: Metadata = {
   openGraph: buildOpenGraphMetadata(),
   twitter: {
     card: "summary_large_image",
-    title: "みんなの集金 - 集金ストレスをゼロに。",
+    title: "みんなの集金 - 集金・出欠管理をもっとラクに",
     description: siteDescription,
     images: ["/og/homepage.png"],
     site: "@minnano_shukin",
