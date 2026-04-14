@@ -138,7 +138,7 @@ function buildQuery(overrides: Partial<EventManagementQuery> = {}): EventManagem
     tab: "participants",
     search: "",
     attendance: "all",
-    smart: true,
+    smart: false,
     page: 1,
     limit: 150,
     ...overrides,
@@ -167,7 +167,7 @@ describe("ParticipantsFilterSheet", () => {
     expect(onFiltersChange).toHaveBeenCalledWith({
       paymentMethod: "cash",
       paymentStatus: undefined,
-      smart: true,
+      smart: false,
       sort: undefined,
       order: undefined,
     });
@@ -250,7 +250,7 @@ describe("ParticipantsFilterSheet", () => {
     expect(onFiltersChange).toHaveBeenCalledWith({
       paymentMethod: undefined,
       paymentStatus: undefined,
-      smart: true,
+      smart: false,
       sort: undefined,
       order: undefined,
     });

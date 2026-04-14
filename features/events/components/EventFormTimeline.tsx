@@ -310,17 +310,17 @@ export function EventFormTimeline({
 
   return (
     <Card
-      className={cn("p-6 bg-gradient-to-br from-blue-50/50 to-purple-50/50", className)}
+      className={cn("p-4 sm:p-6 bg-gradient-to-br from-blue-50/50 to-purple-50/50", className)}
       role="list"
       aria-label="イベントスケジュールタイムライン"
     >
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold flex items-center gap-2">
+        <div className="flex flex-col gap-2 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
+          <h3 className="text-base font-semibold flex min-w-0 items-center gap-2">
             <Calendar className="h-4 w-4" /> タイムラインプレビュー
           </h3>
           {hasCriticalErrors && (
-            <span className="text-xs text-destructive bg-destructive/10 px-2 py-1 rounded flex items-center gap-1">
+            <span className="w-fit max-w-full text-xs text-destructive bg-destructive/10 px-2 py-1 rounded flex items-center gap-1">
               <AlertCircle className="h-3 w-3" /> 日時設定を確認してください
             </span>
           )}
@@ -374,31 +374,31 @@ export function EventFormTimeline({
                     </div>
 
                     {/* コンテンツ */}
-                    <div className="flex-1 pt-1">
-                      <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 sm:gap-4">
-                        <div className="flex items-baseline gap-2 flex-wrap">
+                    <div className="min-w-0 flex-1 pt-1">
+                      <div className="flex min-w-0 flex-col gap-1">
+                        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
                           <h4
                             className={cn(
-                              "text-sm font-semibold",
+                              "min-w-0 text-sm font-semibold",
                               hasError ? "text-destructive" : "text-foreground"
                             )}
                           >
                             {item.label}
                           </h4>
                           {!hasError && eventDateObj && item.type !== "event" && (
-                            <span className="text-xs text-muted-foreground">
+                            <span className="min-w-0 text-xs text-muted-foreground">
                               {formatRelativeTime(item.date, eventDateObj)}
                             </span>
                           )}
                         </div>
-                        <span className="text-sm font-mono text-muted-foreground shrink-0 bg-white/50 px-2 py-0.5 rounded">
+                        <span className="w-fit max-w-full break-words text-sm font-mono text-muted-foreground bg-white/50 px-2 py-0.5 rounded">
                           {formatDate(item.date)}
                         </span>
                       </div>
 
                       {/* 決済猶予期間メタデータ */}
                       {item.metadata?.isGracePeriod && !hasError && (
-                        <p className="text-xs text-orange-600 mt-1">
+                        <p className="mt-1 text-xs text-orange-600">
                           ※ 決済締切後{item.metadata.graceDays}日間の猶予期間終了
                         </p>
                       )}
@@ -410,11 +410,14 @@ export function EventFormTimeline({
                             <p
                               key={i}
                               className={cn(
-                                "text-xs font-medium flex items-center gap-1",
+                                "text-xs font-medium flex items-start gap-1",
                                 err.severity === "error" ? "text-destructive" : "text-amber-600"
                               )}
                             >
-                              {err.severity === "error" ? "⚠️" : "💡"} {err.message}
+                              <span aria-hidden="true">
+                                {err.severity === "error" ? "⚠️" : "💡"}
+                              </span>
+                              <span className="min-w-0">{err.message}</span>
                             </p>
                           ))}
                         </div>
@@ -422,9 +425,9 @@ export function EventFormTimeline({
 
                       {/* 差分インジケーター */}
                       {!hasError && nextItem && (
-                        <div className="mt-4 ml-[-34px] flex items-center gap-2 pl-9 pointer-events-none select-none">
+                        <div className="mt-4 ml-[-34px] flex min-w-0 items-center gap-2 pl-9 pointer-events-none select-none">
                           <div className="hidden sm:block h-6 w-0.5 bg-slate-200/50 absolute left-[29px] top-[40px] -z-10" />
-                          <span className="text-[10px] uppercase tracking-wider font-medium text-slate-500 bg-white/80 px-2 py-0.5 rounded-full border shadow-sm">
+                          <span className="max-w-full whitespace-normal text-[10px] uppercase tracking-wider font-medium text-slate-500 bg-white/80 px-2 py-0.5 rounded-full border shadow-sm">
                             ⬇ 約{getDiffText(item.date, nextItem.date)}
                           </span>
                         </div>

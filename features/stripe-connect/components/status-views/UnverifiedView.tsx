@@ -7,10 +7,11 @@
 
 import Link from "next/link";
 
-import { AlertCircle, ExternalLink } from "lucide-react";
+import { ArrowRight, CircleAlert, Lock } from "lucide-react";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+
+import { OnboardingIntro } from "../OnboardingIntro";
 
 interface UnverifiedViewProps {
   refreshUrl: string;
@@ -18,22 +19,38 @@ interface UnverifiedViewProps {
 
 export function UnverifiedView({ refreshUrl }: UnverifiedViewProps) {
   return (
-    <div className="space-y-4">
-      <Alert variant="warning">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          <strong>オンボーディングを開始してください</strong>
-          <br />
-          Stripeアカウントの認証が完了していません。認証を完了することで決済を受け取れるようになります。
-        </AlertDescription>
-      </Alert>
+    <div>
+      <OnboardingIntro hasExistingAccount />
 
-      <Button asChild className="w-full">
+      <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4">
+        <div className="flex gap-3 items-start">
+          <div className="shrink-0 rounded-lg bg-amber-500/15 p-2 flex items-center justify-center">
+            <CircleAlert className="h-4 w-4 text-amber-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">設定を再開しましょう</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              オンライン集金設定が完了していません。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <Button
+        asChild
+        className="w-full mt-6 h-12 text-base font-semibold shadow-md hover:shadow-lg transition-shadow"
+        size="lg"
+      >
         <Link href={refreshUrl} prefetch={false}>
-          <ExternalLink className="h-4 w-4 mr-2" />
-          Stripeで設定を始める
+          設定を再開する
+          <ArrowRight className="ml-2 h-5 w-5" />
         </Link>
       </Button>
+
+      <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mt-3">
+        <Lock className="h-3 w-3" />
+        Stripeの安全な画面で設定します・約3分で完了
+      </p>
     </div>
   );
 }

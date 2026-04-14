@@ -65,7 +65,7 @@ export function ParticipantsActiveFilters({
       key: "sort",
       label: `${sortLabels[query.sort]}: ${query.order === "asc" ? "昇順" : "降順"}`,
       clearPatch: {
-        smart: true,
+        smart: false,
         sort: undefined,
         order: undefined,
       },
@@ -103,7 +103,7 @@ export function ParticipantsActiveFilters({
             search: "",
             paymentMethod: undefined,
             paymentStatus: undefined,
-            smart: true,
+            smart: false,
             sort: undefined,
             order: undefined,
           })

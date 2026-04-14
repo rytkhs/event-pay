@@ -247,7 +247,7 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
                   />
                   <div className="ml-3 flex-1">
                     <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <CreditCard className="w-4 h-4" /> オンライン決済
+                      <CreditCard className="w-4 h-4" /> オンライン
                     </span>
                     <span className="block text-xs text-slate-500 mt-0.5">
                       クレジットカード / Apple Pay / Google Payなど
@@ -272,7 +272,7 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
                   />
                   <div className="ml-3 flex-1">
                     <span className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <Banknote className="w-4 h-4" /> 現金決済
+                      <Banknote className="w-4 h-4" /> 現金
                     </span>
                     <span className="block text-xs text-slate-500 mt-0.5">
                       現金で直接お支払いください

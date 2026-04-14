@@ -119,7 +119,7 @@ export function parseEventManagementQuery(searchParams: RawSearchParams): EventM
     attendance: isAttendanceFilter(rawAttendance) ? rawAttendance : "all",
     paymentMethod: isPaymentMethodFilter(rawPaymentMethod) ? rawPaymentMethod : undefined,
     paymentStatus: isSimplePaymentStatus(rawPaymentStatus) ? rawPaymentStatus : undefined,
-    smart: rawSmart !== "0",
+    smart: rawSmart === "1",
     sort,
     order: sort ? (order ?? "desc") : undefined,
     page: parsePositiveInteger(rawPage, 1),
@@ -180,10 +180,10 @@ export function buildEventManagementSearchParams(
   }
 
   if ("smart" in patch) {
-    if (patch.smart === undefined || patch.smart) {
-      params.delete("smart");
+    if (patch.smart) {
+      params.set("smart", "1");
     } else {
-      params.set("smart", "0");
+      params.delete("smart");
     }
   }
 

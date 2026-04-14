@@ -4,8 +4,8 @@ type OpenGraphMetadata = NonNullable<Metadata["openGraph"]>;
 
 export const siteName = "みんなの集金";
 export const siteDescription =
-  "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できるイベント管理 & 集金アプリです。いつもの集金を、キャッシュレスにしませんか?";
-export const siteOgTitle = "みんなの集金 - 集金ストレスをゼロに。";
+  "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できる、集金 & 出欠確認アプリです。いつもの集金を、キャッシュレスにしませんか?";
+export const siteOgTitle = "みんなの集金 - 集金・出欠確認をもっとラクに";
 export const siteOgImage = {
   url: "/og/homepage.png",
   width: 1200,

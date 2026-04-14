@@ -97,7 +97,7 @@ export function EventParticipantsTab({
   return (
     <div className="mx-auto max-w-7xl px-2 py-3 sm:px-3">
       <div className="flex flex-col gap-3">
-        <div className="sticky -mx-3 top-[calc(var(--app-mobile-header-height)+var(--event-management-tabbar-height)-0.2rem)] z-10 sm:-mx-2 md:top-[calc(3.5rem+var(--event-management-tabbar-height)+0.03rem)]">
+        <div className="sticky -mx-3 top-[calc(var(--app-mobile-header-height)+var(--event-management-tabbar-height)-0.2rem)] z-30 sm:-mx-2 md:top-[calc(3.5rem+var(--event-management-tabbar-height)+0.03rem)]">
           <ParticipantsActionBarV2
             eventId={eventId}
             eventDetail={eventDetail}

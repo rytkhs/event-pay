@@ -7,9 +7,8 @@
 
 import Link from "next/link";
 
-import { AlertCircle, ExternalLink, Clock } from "lucide-react";
+import { ArrowRight, TriangleAlert } from "lucide-react";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
 import type { AccountStatusData } from "../../types/status-classification";
@@ -17,16 +16,9 @@ import type { AccountStatusData } from "../../types/status-classification";
 interface RequirementsDueViewProps {
   status: AccountStatusData;
   refreshUrl: string;
-  expressDashboardAction?: (formData: FormData) => Promise<void>;
-  expressDashboardAvailable?: boolean;
 }
 
-export function RequirementsDueView({
-  status,
-  refreshUrl,
-  expressDashboardAction,
-  expressDashboardAvailable,
-}: RequirementsDueViewProps) {
+export function RequirementsDueView({ status, refreshUrl }: RequirementsDueViewProps) {
   const requirements = status.requirements ?? {
     currently_due: [],
     eventually_due: [],
@@ -35,50 +27,51 @@ export function RequirementsDueView({
   };
 
   const hasPastDue = (requirements.past_due?.length ?? 0) > 0;
-  const hasPendingVerification = (requirements.pending_verification?.length ?? 0) > 0;
-  const hasPendingCapabilities = Boolean(
-    status.capabilities &&
-    (status.capabilities.card_payments === "pending" || status.capabilities.transfers === "pending")
-  );
-
-  const isReviewPending =
-    status.dbStatus === "onboarding" && (hasPendingVerification || hasPendingCapabilities);
 
   return (
     <div className="space-y-4">
-      {isReviewPending ? (
-        <Alert variant="info">
-          <Clock className="h-4 w-4" />
-          <AlertDescription>
-            <strong>Stripeが提出情報を審査中です。</strong> 審査には数日かかる場合があります。
-            審査が完了すると自動で入金設定が有効になります。
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <Alert variant={hasPastDue ? "destructive" : "warning"}>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            <strong>アカウント情報の更新が必要です。</strong>{" "}
-            Stripeの案内に従って、本人確認書類や入金口座などの不足情報を入力してください。
-          </AlertDescription>
-        </Alert>
-      )}
+      <div
+        className={
+          hasPastDue
+            ? "rounded-xl border border-destructive/25 bg-destructive/5 p-4"
+            : "rounded-xl border border-amber-500/25 bg-amber-500/5 p-4"
+        }
+      >
+        <div className="flex gap-3 items-start">
+          <div
+            className={
+              hasPastDue
+                ? "shrink-0 rounded-lg bg-destructive/15 p-2 flex items-center justify-center"
+                : "shrink-0 rounded-lg bg-amber-500/15 p-2 flex items-center justify-center"
+            }
+          >
+            <TriangleAlert
+              className={hasPastDue ? "h-4 w-4 text-destructive" : "h-4 w-4 text-amber-600"}
+            />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">アカウント情報の更新が必要です</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              案内に従って、不足情報を入力してください。
+            </p>
+          </div>
+        </div>
+      </div>
 
-      {isReviewPending && expressDashboardAvailable && expressDashboardAction ? (
-        <form action={expressDashboardAction}>
-          <Button type="submit" className="w-full">
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Stripeダッシュボードで状況を確認
-          </Button>
-        </form>
-      ) : (
-        <Button asChild className="w-full">
-          <Link href={refreshUrl} prefetch={false}>
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Stripeで設定を続行
-          </Link>
-        </Button>
-      )}
+      <Button
+        asChild
+        className={
+          hasPastDue
+            ? "group relative h-11 w-full rounded-xl border border-destructive/25 bg-gradient-to-r from-destructive/10 via-destructive/5 to-transparent text-sm font-semibold text-red-700 dark:text-red-400 transition-all duration-300 hover:border-destructive/40 hover:from-destructive/20 hover:via-destructive/10 hover:to-destructive/5 hover:text-red-800 dark:hover:text-red-300 shadow-[inset_0_1px_0_hsl(var(--destructive-foreground)/0.4),0_8px_16px_-12px_hsl(var(--destructive)/0.4)] hover:shadow-[inset_0_1px_0_hsl(var(--destructive-foreground)/0.5),0_12px_24px_-12px_hsl(var(--destructive)/0.6)]"
+            : "group relative h-11 w-full rounded-xl border border-amber-500/25 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent text-sm font-semibold text-amber-800 dark:text-amber-400 transition-all duration-300 hover:border-amber-500/40 hover:from-amber-500/20 hover:via-amber-500/10 hover:to-amber-500/5 hover:text-amber-900 dark:hover:text-amber-300 shadow-[inset_0_1px_0_hsl(var(--background)/0.4),0_8px_16px_-12px_rgba(245,158,11,0.2)] hover:shadow-[inset_0_1px_0_hsl(var(--background)/0.5),0_12px_24px_-12px_rgba(245,158,11,0.4)]"
+        }
+        variant="outline"
+      >
+        <Link href={refreshUrl} prefetch={false}>
+          Stripeで設定を続行
+          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+        </Link>
+      </Button>
     </div>
   );
 }

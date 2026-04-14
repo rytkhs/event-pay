@@ -5,15 +5,13 @@
 
 "use client";
 
-import { useState } from "react";
+import React from "react";
 
 import Link from "next/link";
 
-import { CreditCard, ArrowUpDown, RefreshCw, ExternalLink, BookOpen } from "lucide-react";
+import { BookOpen, ExternalLink } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/components/ui/_lib/cn";
 
 import type { AccountStatusData } from "../types/status-classification";
 
@@ -30,16 +28,48 @@ interface AccountStatusProps {
   expressDashboardAction?: (formData: FormData) => Promise<void>;
 }
 
-export function AccountStatus({ refreshUrl, status, expressDashboardAction }: AccountStatusProps) {
-  const [isRefreshing, setIsRefreshing] = useState(false);
+type StatusConfig = {
+  label: string;
+  dotClass: string;
+  pulse?: boolean;
+};
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    // サーバーコンポーネントを再評価するにはページをリロード（または router.refresh()）
-    window.location.reload();
+const STATUS_CONFIG: Record<string, StatusConfig> = {
+  no_account: {
+    label: "未設定",
+    dotClass: "bg-muted-foreground/40",
+  },
+  unverified: {
+    label: "未設定",
+    dotClass: "bg-amber-500",
+    pulse: true,
+  },
+  requirements_due: {
+    label: "設定中",
+    dotClass: "bg-amber-500",
+    pulse: true,
+  },
+  pending_review: {
+    label: "審査中",
+    dotClass: "bg-primary",
+    pulse: true,
+  },
+  restricted: {
+    label: "制限あり",
+    dotClass: "bg-destructive",
+  },
+  ready: {
+    label: "設定完了",
+    dotClass: "bg-emerald-500",
+  },
+};
+
+export function AccountStatus({ refreshUrl, status, expressDashboardAction }: AccountStatusProps) {
+  const config = STATUS_CONFIG[status.uiStatus] ?? {
+    label: "不明",
+    dotClass: "bg-muted-foreground/40",
   };
 
-  // UI Statusに基づいてビューを切り替え
   const renderStatusView = () => {
     switch (status.uiStatus) {
       case "no_account":
@@ -47,18 +77,21 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
       case "unverified":
         return <UnverifiedView refreshUrl={refreshUrl} />;
       case "requirements_due":
+        return <RequirementsDueView status={status} refreshUrl={refreshUrl} />;
+      case "pending_review":
         return (
-          <RequirementsDueView
-            status={status}
-            refreshUrl={refreshUrl}
+          <PendingReviewView
             expressDashboardAction={expressDashboardAction}
             expressDashboardAvailable={status.expressDashboardAvailable}
           />
         );
-      case "pending_review":
-        return <PendingReviewView />;
       case "restricted":
-        return <RestrictedView />;
+        return (
+          <RestrictedView
+            expressDashboardAction={expressDashboardAction}
+            expressDashboardAvailable={status.expressDashboardAvailable}
+          />
+        );
       case "ready":
         return (
           <ReadyView
@@ -72,89 +105,52 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
     }
   };
 
-  // UI Statusバッジの表示
-  const getUIStatusBadge = () => {
-    switch (status.uiStatus) {
-      case "no_account":
-        return <Badge variant="outline">未設定</Badge>;
-      case "unverified":
-        return <Badge variant="outline">未認証</Badge>;
-      case "requirements_due":
-        return <Badge variant="secondary">設定中</Badge>;
-      case "pending_review":
-        return <Badge variant="secondary">審査中</Badge>;
-      case "restricted":
-        return <Badge variant="destructive">制限あり</Badge>;
-      case "ready":
-        return <Badge variant="default">設定完了</Badge>;
-      default:
-        return <Badge variant="outline">不明</Badge>;
-    }
-  };
-
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Stripe 入金設定
-            </CardTitle>
-            <CardDescription>
-              売上の入金設定の状況です。未完了の項目がある場合は「Stripeで設定を続行」から再設定してください。
-            </CardDescription>
-            <div className="pt-2">
-              <Link
-                href="/settings/payments/guide"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-md text-blue-600 hover:text-blue-800 hover:underline"
-              >
-                <BookOpen className="h-4 w-4" />
-                設定回答の参考ページを見る
-                <ExternalLink className="h-3 w-3" />
-              </Link>
-            </div>
-          </div>
-          <Button onClick={handleRefresh} variant="outline" size="sm" disabled={isRefreshing}>
-            {isRefreshing ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* ステータス概要 */}
-        <div className="flex items-center justify-between p-4 border rounded-lg">
+    <div className="space-y-5">
+      {/* ステータスインジケーター */}
+      <div className="flex items-center gap-2">
+        <span className="relative flex h-2 w-2">
+          {config.pulse && (
+            <span
+              className={cn(
+                "absolute inline-flex h-full w-full animate-ping rounded-full opacity-60",
+                config.dotClass
+              )}
+            />
+          )}
+          <span className={cn("relative inline-flex h-2 w-2 rounded-full", config.dotClass)} />
+        </span>
+        <span className="text-xs font-medium text-foreground/70">{config.label}</span>
+        <span className="text-xs text-muted-foreground/60">— 現在のStripe連携状況</span>
+      </div>
+
+      {/* UI Status別のビューを表示 */}
+      {renderStatusView()}
+
+      {/* ガイドリンク */}
+      <div className="pt-2">
+        <Link
+          href="/settings/payments/guide"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group block rounded-xl border border-border/60 bg-muted/30 p-4 transition-all hover:bg-muted/50"
+        >
           <div className="flex items-center gap-3">
-            <div>
-              <div className="font-semibold">アカウントステータス</div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-background border border-border/40 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
+              <BookOpen className="h-4.5 w-4.5" />
             </div>
-          </div>
-          {getUIStatusBadge()}
-        </div>
-
-        {/* 送金ステータス（アカウントが存在する場合のみ） */}
-        {status.hasAccount && (
-          <div className="grid gap-4 md:grid-cols-1">
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <div className="flex items-center gap-2">
-                <ArrowUpDown className="h-4 w-4" />
-                <span className="text-sm font-medium">送金</span>
+            <div className="flex-1 space-y-0.5">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground/80 group-hover:text-primary transition-colors">
+                設定に迷ったら
+                <ExternalLink className="h-3 w-3 opacity-40 group-hover:opacity-70" />
               </div>
-              <Badge variant={status.payoutsEnabled ? "default" : "outline"}>
-                {status.payoutsEnabled ? "有効" : "無効"}
-              </Badge>
+              <p className="text-xs text-muted-foreground/70 leading-relaxed">
+                どのように入力すべきか迷ったときの参考ガイドです。
+              </p>
             </div>
           </div>
-        )}
-
-        {/* UI Status別のビューを表示 */}
-        {renderStatusView()}
-      </CardContent>
-    </Card>
+        </Link>
+      </div>
+    </div>
   );
 }

@@ -630,6 +630,7 @@ export async function startOnboardingAction(
         userId: user.id,
         email: user.email || `${user.id}@example.com`,
         country: "JP",
+        businessType: "individual",
         businessProfile: {
           productDescription: CONNECT_BUSINESS_PROFILE_PRODUCT_DESCRIPTION,
           url: representativeCommunityResult.data.publicPageUrl,

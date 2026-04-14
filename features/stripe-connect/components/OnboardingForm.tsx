@@ -10,14 +10,12 @@ import Link from "next/link";
 
 import {
   Loader2,
-  Smartphone,
-  ShieldCheck,
-  Zap,
   ChevronDown,
   BookOpen,
   FileCheck,
   Building2,
   Lock,
+  ExternalLink,
 } from "lucide-react";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
@@ -27,6 +25,8 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+import { OnboardingIntro } from "./OnboardingIntro";
 
 type StartOnboardingPayload = Record<string, never>;
 
@@ -61,24 +61,6 @@ const initialState: StartOnboardingResult = {
   },
 };
 
-const BENEFITS = [
-  {
-    icon: Smartphone,
-    title: "かんたん",
-    description: "参加者はリンクからすぐに支払い。現金の手間ゼロ",
-  },
-  {
-    icon: ShieldCheck,
-    title: "安全",
-    description: "Stripeが決済を安全に処理。個人情報は当サービスに保存されません",
-  },
-  {
-    icon: Zap,
-    title: "自動送金",
-    description: "集金は自動であなたの銀行口座に入金されます",
-  },
-] as const;
-
 export function OnboardingForm({
   communities,
   defaultRepresentativeCommunityId,
@@ -95,36 +77,7 @@ export function OnboardingForm({
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      {/* ① ヒーローセクション */}
-      <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold tracking-tight mb-2">
-          {hasExistingAccount ? "オンライン集金の設定を再開" : "オンライン集金を始めよう"}
-        </h1>
-        <p className="text-muted-foreground text-sm leading-relaxed max-w-md mx-auto">
-          参加費や会費をオンラインで受け取れるようになります。
-          <br className="hidden sm:block" />
-          現金管理の手間から解放されましょう。
-        </p>
-      </div>
-
-      {/* ② メリットグリッド */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
-        {BENEFITS.map((benefit) => {
-          const Icon = benefit.icon;
-          return (
-            <div
-              key={benefit.title}
-              className="flex flex-col items-center text-center rounded-xl border border-border/60 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-primary/[0.02]"
-            >
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 mb-3">
-                <Icon className="h-5 w-5 text-primary" />
-              </div>
-              <p className="text-sm font-semibold mb-1">{benefit.title}</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">{benefit.description}</p>
-            </div>
-          );
-        })}
-      </div>
+      <OnboardingIntro hasExistingAccount={hasExistingAccount} />
 
       {/* エラー表示 */}
       {!state.success && error?.userMessage ? (
@@ -134,7 +87,7 @@ export function OnboardingForm({
         </Alert>
       ) : null}
 
-      {/* ③ アクションエリア */}
+      {/* アクションエリア */}
       <form action={formAction} noValidate>
         {/* 代表コミュニティ選択 — 複数コミュニティ時のみ */}
         {hasMultipleCommunities ? (
@@ -215,14 +168,39 @@ export function OnboardingForm({
         </p>
       </form>
 
+      {/* ガイドリンク */}
+      <div className="mt-8">
+        <Link
+          href="/settings/payments/guide"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group block rounded-xl border border-border/60 bg-muted/30 p-4 transition-all hover:bg-muted/50"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-background border border-border/40 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
+              <BookOpen className="h-4.5 w-4.5" />
+            </div>
+            <div className="flex-1 space-y-0.5">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground/80 group-hover:text-primary transition-colors">
+                設定に迷ったら
+                <ExternalLink className="h-3 w-3 opacity-40 group-hover:opacity-70" />
+              </div>
+              <p className="text-xs text-muted-foreground/70 leading-relaxed">
+                どのように入力すべきか迷ったときの参考ガイドです。
+              </p>
+            </div>
+          </div>
+        </Link>
+      </div>
+
       {/* ④ 補足情報（Collapsible） */}
-      <Collapsible open={isSupplementOpen} onOpenChange={setIsSupplementOpen} className="mt-8">
+      <Collapsible open={isSupplementOpen} onOpenChange={setIsSupplementOpen} className="mt-4">
         <CollapsibleTrigger asChild>
           <button
             type="button"
             className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/50"
           >
-            設定に必要なもの・ガイド
+            設定に必要なもの
             <ChevronDown
               className={`h-3.5 w-3.5 transition-transform duration-200 ${
                 isSupplementOpen ? "rotate-180" : ""
@@ -245,17 +223,6 @@ export function OnboardingForm({
                   銀行口座情報（入金先として登録します）
                 </li>
               </ul>
-            </div>
-
-            {/* ガイドリンク */}
-            <div className="border-t border-border/40 pt-3">
-              <Link
-                href="/settings/payments/guide"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-              >
-                <BookOpen className="h-3.5 w-3.5" />
-                回答に迷ったら：設定ガイドを見る
-              </Link>
             </div>
           </div>
         </CollapsibleContent>

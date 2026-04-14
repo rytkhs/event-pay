@@ -25,21 +25,10 @@ export const HeroSection: React.FC = () => {
         <div className="flex flex-col md:flex-row items-center gap-12 lg:gap-20">
           {/* Text Content */}
           <div className="flex-1 text-center md:text-left">
-            {/* <FadeIn delay={0.1}>
-              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-bold mb-6">
-                <span className="relative flex h-3 w-3" aria-hidden="true">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/40 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-                </span>
-                集金ストレスをゼロに
-              </div>
-            </FadeIn> */}
-
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 leading-tight mb-6">
-              イベントの集金
+              集金·出欠確認を
               <br />
-              出欠確認は、これひとつ。
-              <br />
+              もっとラクに
             </h1>
 
             <FadeIn delay={0.3}>
@@ -198,16 +187,16 @@ export const HeroSection: React.FC = () => {
                   {/* Attendance Form UI Mock */}
                   <div className="p-4 flex-1 overflow-y-auto bg-slate-50" aria-hidden="true">
                     <div className="bg-white p-4 rounded-xl shadow-sm mb-4">
-                      <p className="font-bold text-slate-700 mb-3">参加ステータス</p>
+                      <p className="text-base font-bold text-slate-700 mb-3">出欠</p>
                       <div className="flex gap-2 mb-4">
                         <div className="flex-1 bg-primary/5 border-2 border-primary text-primary text-center py-2 rounded-lg font-bold text-sm">
                           参加
                         </div>
                         <div className="flex-1 border border-slate-200 text-slate-500 text-center py-2 rounded-lg text-sm">
-                          不参加
+                          未定
                         </div>
                         <div className="flex-1 border border-slate-200 text-slate-500 text-center py-2 rounded-lg text-sm">
-                          未定
+                          不参加
                         </div>
                       </div>
 
@@ -217,11 +206,11 @@ export const HeroSection: React.FC = () => {
                           <div className="w-4 h-4 rounded-full bg-primary mr-3 flex items-center justify-center">
                             <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
                           </div>
-                          <span className="text-sm font-bold text-slate-800">オンライン決済</span>
+                          <span className="text-sm font-bold text-slate-800">オンライン</span>
                         </div>
                         <div className="flex items-center p-3 border border-slate-200 rounded-lg cursor-pointer">
                           <div className="w-4 h-4 rounded-full border border-slate-300 mr-3"></div>
-                          <span className="text-sm text-slate-600">現金払い</span>
+                          <span className="text-sm text-slate-600">現金</span>
                         </div>
                       </div>
 
