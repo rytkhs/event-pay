@@ -7,9 +7,8 @@
 
 import Link from "next/link";
 
-import { AlertCircle, ExternalLink } from "lucide-react";
+import { ArrowRight, TriangleAlert } from "lucide-react";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
 import type { AccountStatusData } from "../../types/status-classification";
@@ -31,18 +30,42 @@ export function RequirementsDueView({ status, refreshUrl }: RequirementsDueViewP
 
   return (
     <div className="space-y-4">
-      <Alert variant={hasPastDue ? "destructive" : "warning"}>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          <strong>アカウント情報の更新が必要です。</strong>{" "}
-          Stripeの案内に従って、本人確認書類や入金口座などの不足情報を入力してください。
-        </AlertDescription>
-      </Alert>
+      <div
+        className={
+          hasPastDue
+            ? "rounded-xl border border-destructive/25 bg-destructive/5 p-4"
+            : "rounded-xl border border-amber-500/25 bg-amber-500/5 p-4"
+        }
+      >
+        <div className="flex gap-3 items-start">
+          <div
+            className={
+              hasPastDue
+                ? "shrink-0 rounded-lg bg-destructive/15 p-2 flex items-center justify-center"
+                : "shrink-0 rounded-lg bg-amber-500/15 p-2 flex items-center justify-center"
+            }
+          >
+            <TriangleAlert
+              className={
+                hasPastDue
+                  ? "h-4 w-4 text-destructive"
+                  : "h-4 w-4 text-amber-600 dark:text-amber-400"
+              }
+            />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">アカウント情報の更新が必要です</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              案内に従って、不足情報を入力してください。
+            </p>
+          </div>
+        </div>
+      </div>
 
       <Button asChild className="w-full">
         <Link href={refreshUrl} prefetch={false}>
-          <ExternalLink className="h-4 w-4 mr-2" />
           Stripeで設定を続行
+          <ArrowRight className="ml-2 h-4 w-4" />
         </Link>
       </Button>
     </div>

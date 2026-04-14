@@ -9,10 +9,9 @@ import React from "react";
 
 import Link from "next/link";
 
-import { CreditCard, ExternalLink, BookOpen } from "lucide-react";
+import { BookOpen, ExternalLink } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/components/ui/_lib/cn";
 
 import type { AccountStatusData } from "../types/status-classification";
 
@@ -29,8 +28,48 @@ interface AccountStatusProps {
   expressDashboardAction?: (formData: FormData) => Promise<void>;
 }
 
+type StatusConfig = {
+  label: string;
+  dotClass: string;
+  pulse?: boolean;
+};
+
+const STATUS_CONFIG: Record<string, StatusConfig> = {
+  no_account: {
+    label: "未設定",
+    dotClass: "bg-muted-foreground/40",
+  },
+  unverified: {
+    label: "未設定",
+    dotClass: "bg-amber-500",
+    pulse: true,
+  },
+  requirements_due: {
+    label: "設定中",
+    dotClass: "bg-amber-500",
+    pulse: true,
+  },
+  pending_review: {
+    label: "審査中",
+    dotClass: "bg-primary",
+    pulse: true,
+  },
+  restricted: {
+    label: "制限あり",
+    dotClass: "bg-destructive",
+  },
+  ready: {
+    label: "設定完了",
+    dotClass: "bg-emerald-500",
+  },
+};
+
 export function AccountStatus({ refreshUrl, status, expressDashboardAction }: AccountStatusProps) {
-  // UI Statusに基づいてビューを切り替え
+  const config = STATUS_CONFIG[status.uiStatus] ?? {
+    label: "不明",
+    dotClass: "bg-muted-foreground/40",
+  };
+
   const renderStatusView = () => {
     switch (status.uiStatus) {
       case "no_account":
@@ -66,67 +105,41 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
     }
   };
 
-  // UI Statusバッジの表示
-  const getUIStatusBadge = () => {
-    switch (status.uiStatus) {
-      case "no_account":
-        return <Badge variant="outline">未設定</Badge>;
-      case "unverified":
-        return <Badge variant="outline">未設定</Badge>;
-      case "requirements_due":
-        return <Badge variant="secondary">設定中</Badge>;
-      case "pending_review":
-        return <Badge variant="secondary">審査中</Badge>;
-      case "restricted":
-        return <Badge variant="destructive">制限あり</Badge>;
-      case "ready":
-        return <Badge variant="default">設定完了</Badge>;
-      default:
-        return <Badge variant="outline">不明</Badge>;
-    }
-  };
-
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Stripe 入金設定
-            </CardTitle>
-            <CardDescription>
-              売上の入金設定の状況です。未完了の項目がある場合は「Stripeで設定を続行」から再設定してください。
-            </CardDescription>
-            <div className="pt-2">
-              <Link
-                href="/settings/payments/guide"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-md text-blue-600 hover:text-blue-800 hover:underline"
-              >
-                <BookOpen className="h-4 w-4" />
-                設定回答の参考ページを見る
-                <ExternalLink className="h-3 w-3" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* ステータス概要 */}
-        <div className="flex items-center justify-between p-4 border rounded-lg">
-          <div className="flex items-center gap-3">
-            <div>
-              <div className="font-semibold">アカウントステータス</div>
-            </div>
-          </div>
-          {getUIStatusBadge()}
-        </div>
+    <div className="space-y-5">
+      {/* ステータスインジケーター */}
+      <div className="flex items-center gap-2">
+        <span className="relative flex h-2 w-2">
+          {config.pulse && (
+            <span
+              className={cn(
+                "absolute inline-flex h-full w-full animate-ping rounded-full opacity-60",
+                config.dotClass
+              )}
+            />
+          )}
+          <span className={cn("relative inline-flex h-2 w-2 rounded-full", config.dotClass)} />
+        </span>
+        <span className="text-xs font-medium text-foreground/70">{config.label}</span>
+        <span className="text-xs text-muted-foreground/60">— 現在のStripe連携状況</span>
+      </div>
 
-        {/* UI Status別のビューを表示 */}
-        {renderStatusView()}
-      </CardContent>
-    </Card>
+      {/* UI Status別のビューを表示 */}
+      {renderStatusView()}
+
+      {/* ガイドリンク */}
+      <div className="border-t border-border/40 pt-3">
+        <Link
+          href="/settings/payments/guide"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/70 transition-colors hover:text-foreground"
+        >
+          <BookOpen className="h-3.5 w-3.5" />
+          設定回答の参考ページを見る
+          <ExternalLink className="h-3 w-3" />
+        </Link>
+      </div>
+    </div>
   );
 }

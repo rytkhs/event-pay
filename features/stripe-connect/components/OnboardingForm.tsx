@@ -97,9 +97,9 @@ export function OnboardingForm({
     <div className="w-full max-w-2xl mx-auto">
       {/* ① ヒーローセクション */}
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold tracking-tight mb-2">
+        <p className="text-lg font-semibold tracking-tight mb-2">
           {hasExistingAccount ? "オンライン集金の設定を再開" : "オンライン集金を始めよう"}
-        </h1>
+        </p>
         <p className="text-muted-foreground text-sm leading-relaxed max-w-md mx-auto">
           参加費や会費をオンラインで受け取れるようになります。
           <br className="hidden sm:block" />
