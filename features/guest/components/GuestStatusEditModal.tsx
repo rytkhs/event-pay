@@ -325,7 +325,7 @@ export const GuestStatusEditModal: React.FC<GuestStatusEditModalProps> = ({
                           <p
                             className={`font-bold ${paymentMethod === "stripe" ? "text-indigo-900" : "text-gray-800"}`}
                           >
-                            オンライン決済
+                            オンライン
                           </p>
                           <p className="text-xs text-gray-500">
                             クレジットカード / Apple Pay / Google Payなど
@@ -359,7 +359,7 @@ export const GuestStatusEditModal: React.FC<GuestStatusEditModalProps> = ({
                           <p
                             className={`font-bold ${paymentMethod === "cash" ? "text-blue-900" : "text-gray-800"}`}
                           >
-                            現金決済
+                            現金
                           </p>
                           <p className="text-xs text-gray-500">現金で直接お支払いください</p>
                         </div>
