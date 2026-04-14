@@ -128,16 +128,27 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
       {renderStatusView()}
 
       {/* ガイドリンク */}
-      <div className="border-t border-border/40 pt-3">
+      <div className="pt-2">
         <Link
           href="/settings/payments/guide"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/70 transition-colors hover:text-foreground"
+          className="group block rounded-xl border border-border/60 bg-muted/30 p-4 transition-all hover:bg-muted/50"
         >
-          <BookOpen className="h-3.5 w-3.5" />
-          設定回答の参考ページを見る
-          <ExternalLink className="h-3 w-3" />
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-background border border-border/40 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
+              <BookOpen className="h-4.5 w-4.5" />
+            </div>
+            <div className="flex-1 space-y-0.5">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground/80 group-hover:text-primary transition-colors">
+                設定に迷ったら
+                <ExternalLink className="h-3 w-3 opacity-40 group-hover:opacity-70" />
+              </div>
+              <p className="text-xs text-muted-foreground/70 leading-relaxed">
+                どのように入力すべきか迷ったときの参考ガイドです。
+              </p>
+            </div>
+          </div>
         </Link>
       </div>
     </div>

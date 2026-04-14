@@ -8,7 +8,15 @@ import { useActionState, useState } from "react";
 
 import Link from "next/link";
 
-import { Loader2, ChevronDown, BookOpen, FileCheck, Building2, Lock } from "lucide-react";
+import {
+  Loader2,
+  ChevronDown,
+  BookOpen,
+  FileCheck,
+  Building2,
+  Lock,
+  ExternalLink,
+} from "lucide-react";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
@@ -160,14 +168,39 @@ export function OnboardingForm({
         </p>
       </form>
 
+      {/* ガイドリンク */}
+      <div className="mt-8">
+        <Link
+          href="/settings/payments/guide"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group block rounded-xl border border-border/60 bg-muted/30 p-4 transition-all hover:bg-muted/50"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-background border border-border/40 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
+              <BookOpen className="h-4.5 w-4.5" />
+            </div>
+            <div className="flex-1 space-y-0.5">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground/80 group-hover:text-primary transition-colors">
+                設定に迷ったら
+                <ExternalLink className="h-3 w-3 opacity-40 group-hover:opacity-70" />
+              </div>
+              <p className="text-xs text-muted-foreground/70 leading-relaxed">
+                どのように入力すべきか迷ったときの参考ガイドです。
+              </p>
+            </div>
+          </div>
+        </Link>
+      </div>
+
       {/* ④ 補足情報（Collapsible） */}
-      <Collapsible open={isSupplementOpen} onOpenChange={setIsSupplementOpen} className="mt-8">
+      <Collapsible open={isSupplementOpen} onOpenChange={setIsSupplementOpen} className="mt-4">
         <CollapsibleTrigger asChild>
           <button
             type="button"
             className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/50"
           >
-            設定に必要なもの・ガイド
+            設定に必要なもの
             <ChevronDown
               className={`h-3.5 w-3.5 transition-transform duration-200 ${
                 isSupplementOpen ? "rotate-180" : ""
@@ -190,17 +223,6 @@ export function OnboardingForm({
                   銀行口座情報（入金先として登録します）
                 </li>
               </ul>
-            </div>
-
-            {/* ガイドリンク */}
-            <div className="border-t border-border/40 pt-3">
-              <Link
-                href="/settings/payments/guide"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-              >
-                <BookOpen className="h-3.5 w-3.5" />
-                回答に迷ったら：設定ガイドを見る
-              </Link>
             </div>
           </div>
         </CollapsibleContent>
