@@ -316,6 +316,12 @@ export function ParticipantsActionBarV2({
                 </div>
 
                 {filterTrigger}
+                <SmartSortToggle
+                  isActive={smartActive}
+                  onToggle={handleToggleSmartSort}
+                  showLabel={false}
+                  className="h-9 rounded-xl"
+                />
               </div>
             )}
           </div>
@@ -372,13 +378,6 @@ export function ParticipantsActionBarV2({
                     align="end"
                     className="mt-2 w-56 rounded-xl border-border/45 bg-popover/95 shadow-[0_14px_28px_-24px_hsl(var(--foreground)/0.26)]"
                   >
-                    <div className="mb-1 border-b border-border/50 p-2.5">
-                      <SmartSortToggle
-                        isActive={smartActive}
-                        onToggle={handleToggleSmartSort}
-                        showLabel={true}
-                      />
-                    </div>
                     <DropdownMenuItem
                       onClick={handleExportCsv}
                       disabled={isExporting}
@@ -391,14 +390,7 @@ export function ParticipantsActionBarV2({
                 </DropdownMenu>
               </div>
 
-              <div className="hidden items-center gap-2 border-l border-border/20 pl-2 md:flex sm:ml-1">
-                <SmartSortToggle
-                  isActive={smartActive}
-                  onToggle={handleToggleSmartSort}
-                  showLabel={false}
-                  className="h-9 rounded-xl"
-                />
-
+              <div className="hidden border-l border-border/20 pl-2 md:block">
                 <Button
                   variant="outline"
                   size="sm"
@@ -454,7 +446,7 @@ export function ParticipantsActionBarV2({
                   onValueChange={(value: "cash") => setPaymentMethod(value)}
                   className="flex flex-col space-y-2"
                 >
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap space-x-2">
                     <RadioGroupItem value="cash" id="cash" />
                     <Label htmlFor="cash" className="text-sm">
                       現金 ({eventDetail.fee.toLocaleString()}円)

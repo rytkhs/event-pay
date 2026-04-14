@@ -28,25 +28,29 @@ export function SmartSortToggle({
   const switchId = useId();
 
   const control = (
-    <div className="flex items-center gap-1.5">
+    <div className={cn("flex items-center", showLabel ? "gap-1.5" : "gap-0 sm:gap-1")}>
       <Switch
         id={switchId}
         checked={isActive}
         onCheckedChange={onToggle}
-        className={cn(isActive && "data-[state=checked]:bg-primary")}
+        className={cn(
+          "scale-[0.8] sm:scale-100 origin-left",
+          !showLabel && "-mr-1 sm:mr-0",
+          isActive && "data-[state=checked]:bg-primary"
+        )}
         aria-label="オートソート切り替え"
       />
-      <div className="flex items-center gap-2">
+      <div className={cn("flex items-center", showLabel ? "gap-2" : "gap-1.5")}>
         <Label
           htmlFor={switchId}
           className={cn(
-            "flex cursor-pointer select-none items-center gap-1.5 text-sm transition-colors",
+            "flex cursor-pointer select-none items-center gap-1 text-sm transition-colors",
             isActive ? "font-medium text-foreground/90" : "text-muted-foreground"
           )}
         >
           <Sparkles
             className={cn(
-              "h-3.5 w-3.5 transition-colors",
+              "h-3 w-3 sm:h-3.5 sm:w-3.5 transition-colors",
               isActive ? "fill-primary/12 text-primary/85" : "text-muted-foreground/65"
             )}
           />
@@ -60,10 +64,11 @@ export function SmartSortToggle({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-full border px-1.5 py-1 transition-colors",
+        "flex items-center transition-colors",
         isActive
           ? "border-primary/20 bg-primary/[0.03] shadow-[0_2px_8px_-4px_hsl(var(--primary)/0.12)]"
           : "border-border/40 bg-background/50 hover:bg-muted/30",
+        showLabel ? "rounded-full border px-1.5 py-1 gap-2" : "rounded-xl border px-1 py-0.5 gap-1",
         className
       )}
     >
