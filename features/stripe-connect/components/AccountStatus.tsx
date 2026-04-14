@@ -5,14 +5,13 @@
 
 "use client";
 
-import { useState } from "react";
+import React from "react";
 
 import Link from "next/link";
 
-import { CreditCard, RefreshCw, ExternalLink, BookOpen } from "lucide-react";
+import { CreditCard, ExternalLink, BookOpen } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 import type { AccountStatusData } from "../types/status-classification";
@@ -31,14 +30,6 @@ interface AccountStatusProps {
 }
 
 export function AccountStatus({ refreshUrl, status, expressDashboardAction }: AccountStatusProps) {
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    // サーバーコンポーネントを再評価するにはページをリロード（または router.refresh()）
-    window.location.reload();
-  };
-
   // UI Statusに基づいてビューを切り替え
   const renderStatusView = () => {
     switch (status.uiStatus) {
@@ -120,13 +111,6 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
               </Link>
             </div>
           </div>
-          <Button onClick={handleRefresh} variant="outline" size="sm" disabled={isRefreshing}>
-            {isRefreshing ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
