@@ -137,7 +137,7 @@ export function ParticipantsFilterSheet({
     onFiltersChange({
       paymentMethod: undefined,
       paymentStatus: undefined,
-      smart: true,
+      smart: false,
       sort: undefined,
       order: undefined,
     });

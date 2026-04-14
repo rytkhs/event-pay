@@ -9,7 +9,7 @@ describe("event-management query params", () => {
       const query = parseEventManagementQuery({
         tab: "invalid",
         attendance: "wrong",
-        smart: "1",
+        smart: "invalid",
         sort: "unknown",
         order: "wrong",
         page: "0",
@@ -19,7 +19,7 @@ describe("event-management query params", () => {
       expect(query).toMatchObject({
         tab: "overview",
         attendance: "all",
-        smart: true,
+        smart: false,
         sort: undefined,
         order: undefined,
         page: 1,
@@ -34,7 +34,7 @@ describe("event-management query params", () => {
         attendance: "attending",
         payment_method: "cash",
         payment_status: "paid",
-        smart: "0",
+        smart: "1",
         sort: "nickname",
         order: "asc",
         page: "2",
@@ -47,12 +47,18 @@ describe("event-management query params", () => {
         attendance: "attending",
         paymentMethod: "cash",
         paymentStatus: "paid",
-        smart: false,
+        smart: true,
         sort: "nickname",
         order: "asc",
         page: 2,
         limit: 50,
       });
+    });
+
+    it("defaults smart sort to off when smart param is absent", () => {
+      const query = parseEventManagementQuery({});
+
+      expect(query.smart).toBe(false);
     });
 
     it("defaults order to desc when sort is present but order is invalid", () => {
@@ -73,7 +79,7 @@ describe("event-management query params", () => {
       const params = buildEventManagementSearchParams("?tab=participants&attendance=attending", {
         tab: "overview",
         attendance: "all",
-        smart: true,
+        smart: false,
         page: 1,
         limit: 150,
       });
@@ -91,23 +97,20 @@ describe("event-management query params", () => {
     });
 
     it("clears manual sort when smart sort is enabled", () => {
-      const params = buildEventManagementSearchParams(
-        "?tab=participants&smart=0&sort=nickname&order=asc",
-        {
-          smart: true,
-          sort: undefined,
-          order: undefined,
-        }
-      );
+      const params = buildEventManagementSearchParams("?tab=participants&sort=nickname&order=asc", {
+        smart: true,
+        sort: undefined,
+        order: undefined,
+      });
 
-      expect(params.get("smart")).toBeNull();
+      expect(params.get("smart")).toBe("1");
       expect(params.get("sort")).toBeNull();
       expect(params.get("order")).toBeNull();
     });
 
     it("preserves other filters when changing tabs", () => {
       const params = buildEventManagementSearchParams(
-        "?search=alice&attendance=attending&smart=0",
+        "?search=alice&attendance=attending&smart=1",
         {
           tab: "participants",
         }
@@ -116,7 +119,7 @@ describe("event-management query params", () => {
       expect(params.get("tab")).toBe("participants");
       expect(params.get("search")).toBe("alice");
       expect(params.get("attendance")).toBe("attending");
-      expect(params.get("smart")).toBe("0");
+      expect(params.get("smart")).toBe("1");
     });
 
     it("preserves tab when updating filters", () => {
