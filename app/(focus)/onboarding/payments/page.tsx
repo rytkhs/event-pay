@@ -71,12 +71,6 @@ export default async function OnboardingPaymentsPage() {
         <div className="flex flex-1 items-center justify-center py-8 sm:py-12">
           <div className="w-full">
             <div className="mx-auto mb-10 flex max-w-2xl flex-col items-center">
-              {/* 成功バッジ */}
-              {/* <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-3 py-1 text-[13px] font-medium text-emerald-600 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                コミュニティを作成しました
-              </div> */}
-
               <OnboardingForm
                 communities={representativeCommunityOptions}
                 defaultRepresentativeCommunityId={currentCommunity.id}
