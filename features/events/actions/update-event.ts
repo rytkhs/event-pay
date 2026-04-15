@@ -198,7 +198,7 @@ export async function updateEventAction(
 
       if (!effectivePaymentDeadline) {
         const message =
-          "オンライン決済を選択した場合、決済締切の設定が必要です。既存のイベントでオンライン決済締切が未設定の場合は、編集画面で締切日時を入力してください。";
+          "オンライン集金を選択した場合、決済締切の設定が必要です。既存のイベントでオンライン決済締切が未設定の場合は、編集画面で締切日時を入力してください。";
         return fail("VALIDATION_ERROR", {
           userMessage: message,
           fieldErrors: {

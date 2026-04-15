@@ -9,10 +9,11 @@
 
 import { jest } from "@jest/globals";
 
+import { getCurrentCommunityServerActionContext } from "@core/community/current-community";
 import { AppError } from "@core/errors/app-error";
 import { errResult, okResult } from "@core/errors/app-result";
-import { getCurrentCommunityServerActionContext } from "@core/community/current-community";
 import { createServerActionSupabaseClient } from "@core/supabase/factory";
+
 import { createCommunityOwnedEventFixture } from "@tests/helpers/community-owner-fixtures";
 import { setupNextCacheMocks } from "@tests/setup/common-mocks";
 import {
@@ -284,7 +285,7 @@ describe("イベント編集 統合テスト", () => {
     if (!res.success) {
       expect(res.error.code).toBe("VALIDATION_ERROR");
       expect(res.error.userMessage).toMatch(
-        /オンライン決済を選択した場合、決済締切は必須です|入力内容に誤りがあります。確認して再度お試しください。/
+        /オンライン集金を選択した場合、決済締切は必須です|入力内容に誤りがあります。確認して再度お試しください。/
       );
     }
   });
