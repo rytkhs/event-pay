@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUserForServerAction } from "@core/auth/auth-utils";
 import {
   clearCurrentCommunityCookie,
+  listOwnedCommunities,
   resolveCurrentCommunityContext,
   resolveCurrentCommunityForServerAction,
   setCurrentCommunityCookie,
@@ -98,6 +99,14 @@ export async function createCommunityAction(
     }
 
     const supabase = await createServerActionSupabaseClient();
+    const ownedCommunitiesResult = await listOwnedCommunities(supabase, user.id);
+    if (!ownedCommunitiesResult.success) {
+      return toActionResultFromAppResult(ownedCommunitiesResult, {
+        userMessage: "コミュニティの作成に失敗しました",
+      });
+    }
+
+    const isInitialCommunity = (ownedCommunitiesResult.data ?? []).length === 0;
     const result = await createCommunity(supabase, user.id, parsedInput.data);
 
     if (!result.success || !result.data) {
@@ -115,7 +124,7 @@ export async function createCommunityAction(
       },
       {
         message: "コミュニティを作成しました",
-        redirectUrl: "/dashboard",
+        redirectUrl: isInitialCommunity ? "/onboarding/payments" : "/dashboard",
       }
     );
   } catch (error) {

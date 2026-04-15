@@ -4,6 +4,7 @@ import { errResult, okResult } from "@core/errors/app-result";
 const mockGetCurrentUserForServerAction = jest.fn();
 const mockSetCurrentCommunityCookie = jest.fn();
 const mockClearCurrentCommunityCookie = jest.fn();
+const mockListOwnedCommunities = jest.fn();
 const mockResolveCurrentCommunityContext = jest.fn();
 const mockResolveCurrentCommunityForServerAction = jest.fn();
 const mockCreateServerActionSupabaseClient = jest.fn();
@@ -19,6 +20,7 @@ jest.mock("@core/auth/auth-utils", () => ({
 
 jest.mock("@core/community/current-community", () => ({
   clearCurrentCommunityCookie: mockClearCurrentCommunityCookie,
+  listOwnedCommunities: mockListOwnedCommunities,
   resolveCurrentCommunityContext: mockResolveCurrentCommunityContext,
   resolveCurrentCommunityForServerAction: mockResolveCurrentCommunityForServerAction,
   setCurrentCommunityCookie: mockSetCurrentCommunityCookie,
@@ -95,6 +97,16 @@ describe("app/(app)/actions/communities", () => {
         resolvedBy: "oldest_fallback",
       })
     );
+    mockListOwnedCommunities.mockResolvedValue(
+      okResult([
+        {
+          id: "community-existing",
+          name: "既存コミュニティ",
+          slug: "existing",
+          createdAt: "2026-03-01T00:00:00.000Z",
+        },
+      ])
+    );
   });
 
   it("未認証時は UNAUTHORIZED を返す", async () => {
@@ -139,7 +151,7 @@ describe("app/(app)/actions/communities", () => {
     expect(mockCreateCommunity).not.toHaveBeenCalled();
   });
 
-  it("成功時は cookie を更新して dashboard 遷移用 ActionResult を返す", async () => {
+  it("既存コミュニティがある場合は cookie を更新して dashboard 遷移用 ActionResult を返す", async () => {
     const supabase = { from: jest.fn() };
     mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
     mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
@@ -168,8 +180,67 @@ describe("app/(app)/actions/communities", () => {
       name: "ボドゲ会",
       description: "毎週開催",
     });
+    expect(mockListOwnedCommunities).toHaveBeenCalledWith(supabase, "user-1");
     expect(mockSetCurrentCommunityCookie).toHaveBeenCalledWith("community-1");
     expect(mockRevalidatePath).toHaveBeenCalledWith("/(app)", "layout");
+  });
+
+  it("初回コミュニティ作成時は onboarding payments 遷移用 ActionResult を返す", async () => {
+    const supabase = { from: jest.fn() };
+    mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
+    mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
+    mockListOwnedCommunities.mockResolvedValue(okResult([]));
+    mockCreateCommunity.mockResolvedValue(
+      okResult({
+        communityId: "community-1",
+      })
+    );
+
+    const { createCommunityAction } = await loadCommunitiesActionModule();
+    const formData = new FormData();
+    formData.set("name", "ボドゲ会");
+
+    await expect(createCommunityAction(formData)).resolves.toEqual(
+      expect.objectContaining({
+        success: true,
+        redirectUrl: "/onboarding/payments",
+      })
+    );
+
+    expect(mockSetCurrentCommunityCookie).toHaveBeenCalledWith("community-1");
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/(app)", "layout");
+  });
+
+  it("owned community 取得失敗時は作成せず ActionResult の失敗へ投影する", async () => {
+    const supabase = { from: jest.fn() };
+    mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
+    mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
+    mockListOwnedCommunities.mockResolvedValue(
+      errResult(
+        new AppError("DATABASE_ERROR", {
+          userMessage: "コミュニティ情報の取得に失敗しました",
+          retryable: true,
+        })
+      )
+    );
+
+    const { createCommunityAction } = await loadCommunitiesActionModule();
+    const formData = new FormData();
+    formData.set("name", "ボドゲ会");
+
+    await expect(createCommunityAction(formData)).resolves.toEqual(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: "DATABASE_ERROR",
+          userMessage: "コミュニティの作成に失敗しました",
+        }),
+      })
+    );
+
+    expect(mockCreateCommunity).not.toHaveBeenCalled();
+    expect(mockSetCurrentCommunityCookie).not.toHaveBeenCalled();
+    expect(mockRevalidatePath).not.toHaveBeenCalled();
   });
 
   it("service failure は ActionResult の失敗へ投影する", async () => {

@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, type ReactNode } from "react";
 
 import Link from "next/link";
 
@@ -49,6 +49,7 @@ interface OnboardingFormProps {
   defaultRepresentativeCommunityId: string;
   hasExistingAccount?: boolean;
   onStartOnboarding: OnboardingFormAction;
+  secondaryAction?: ReactNode;
 }
 
 const initialState: StartOnboardingResult = {
@@ -66,6 +67,7 @@ export function OnboardingForm({
   defaultRepresentativeCommunityId,
   hasExistingAccount = false,
   onStartOnboarding,
+  secondaryAction,
 }: OnboardingFormProps) {
   const [selectedCommunityId, setSelectedCommunityId] = useState(defaultRepresentativeCommunityId);
   const [state, formAction, isPending] = useActionState(onStartOnboarding, initialState);
@@ -166,6 +168,8 @@ export function OnboardingForm({
           <Lock className="h-3 w-3" />
           Stripeの安全な画面で設定します・約3分で完了
         </p>
+
+        {secondaryAction ? <div className="mt-4">{secondaryAction}</div> : null}
       </form>
 
       {/* ガイドリンク */}

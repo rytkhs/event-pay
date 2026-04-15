@@ -23,7 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
   title: "オンライン集金設定",
-  description: "Stripeで売上の受け取り方法を設定します",
+  description: "オンライン集金の受け取り方法を設定します",
 };
 
 async function PaymentSettingsContent() {
