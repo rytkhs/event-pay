@@ -380,7 +380,17 @@ export function CreateCommunityForm({
       </div>
 
       {/* ── 右/下パネル: フォーム ───────────────────────── */}
-      <div className="flex flex-1 items-center justify-center px-6 py-12 sm:px-10 lg:overflow-y-auto lg:py-16">
+      <div className="relative flex flex-1 items-center justify-center px-6 py-12 sm:px-10 lg:overflow-y-auto lg:py-16">
+        {/* ステップインジケーター */}
+        <div className="absolute right-6 top-6 flex items-center gap-3 sm:right-10 sm:top-10 lg:right-12 lg:top-12">
+          <span className="hidden text-[11px] font-medium text-muted-foreground/60 sm:block">
+            セットアップ
+          </span>
+          <span className="rounded-full border border-border/60 bg-background/80 px-3 py-1 text-[11px] font-bold text-foreground/80 shadow-sm backdrop-blur-sm">
+            1 / 2
+          </span>
+        </div>
+
         <div className="w-full max-w-sm">
           {/* ヘッダー */}
           <div className="mb-12">
