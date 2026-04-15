@@ -32,7 +32,7 @@
 
     <!-- メインコピー -->
     <text x="0" y="40" font-size="64" fill="#1A2035" class="text-base font-bold" line-height="1.4">
-      <tspan x="0" dy="20">集金・出欠確認を</tspan>
+      <tspan x="0" dy="20">集金・出欠管理を</tspan>
       <tspan x="0" dy="78">もっとラクに</tspan>
     </text>
 
