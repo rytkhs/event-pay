@@ -13,6 +13,7 @@ import {
   InfoIcon,
   ClockIcon,
   AlignLeftIcon,
+  CheckIcon,
 } from "lucide-react";
 
 import type { RestrictableField } from "@core/domain/event-edit-restrictions";
@@ -328,9 +329,7 @@ export function SinglePageEventEditForm({
                     render={({ field }) => (
                       <FormItem>
                         <div className="flex items-center gap-2">
-                          <FormLabel className="text-sm font-medium">
-                            イベントの説明・詳細（任意）
-                          </FormLabel>
+                          <FormLabel className="text-sm font-medium">説明・備考（任意）</FormLabel>
                           {isChanged("description") && (
                             <Badge
                               variant="outline"
@@ -541,8 +540,8 @@ export function SinglePageEventEditForm({
                 {/* Section 3: 参加費・決済 */}
                 {/* ============================================= */}
                 <FormSection
-                  title="参加費・決済"
-                  description="参加費の金額や決済方法を編集します"
+                  title="参加費・集金"
+                  description="参加費の金額や集金方法を編集します"
                   icon={<WalletIcon className="w-5 h-5" />}
                 >
                   {/* 参加費入力 */}
@@ -612,7 +611,7 @@ export function SinglePageEventEditForm({
                         <FormItem>
                           <div className="flex items-center gap-2">
                             <FormLabel className="text-sm font-medium">
-                              決済方法を選択 <span className="text-red-500">*</span>
+                              集金方法を選択 <span className="text-red-500">*</span>
                             </FormLabel>
                             {isChanged("payment_methods") && (
                               <Badge
@@ -631,7 +630,8 @@ export function SinglePageEventEditForm({
                             {/* 現金払い */}
                             <label
                               className={cn(
-                                "relative flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all",
+                                "relative flex items-center p-4 rounded-xl border-2 transition-all",
+                                isPending ? "opacity-70 cursor-not-allowed" : "cursor-pointer",
                                 Array.isArray(field.value) && field.value.includes("cash")
                                   ? "border-primary bg-primary/5"
                                   : "border-slate-200 hover:border-slate-300 bg-white"
@@ -639,7 +639,7 @@ export function SinglePageEventEditForm({
                             >
                               <input
                                 type="checkbox"
-                                className="sr-only"
+                                className="absolute opacity-0 w-0 h-0"
                                 checked={Array.isArray(field.value) && field.value.includes("cash")}
                                 onChange={(e) => {
                                   const current = Array.isArray(field.value) ? field.value : [];
@@ -680,15 +680,19 @@ export function SinglePageEventEditForm({
                                 </div>
                               </div>
                               {Array.isArray(field.value) && field.value.includes("cash") && (
-                                <div className="absolute top-4 right-4 h-3 w-3 bg-primary rounded-full" />
+                                <div className="absolute top-3 right-3 h-5 w-5 bg-primary rounded-full flex items-center justify-center text-white animate-in zoom-in-50 duration-200">
+                                  <CheckIcon className="w-3.5 h-3.5 stroke-[3]" />
+                                </div>
                               )}
                             </label>
 
                             {/* オンライン決済 */}
                             <label
                               className={cn(
-                                "relative flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all",
-                                !canUseOnlinePayments && "opacity-60",
+                                "relative flex items-center p-4 rounded-xl border-2 transition-all",
+                                !canUseOnlinePayments || isPending
+                                  ? "opacity-60 cursor-not-allowed"
+                                  : "cursor-pointer",
                                 Array.isArray(field.value) && field.value.includes("stripe")
                                   ? "border-primary bg-primary/5"
                                   : "border-slate-200 hover:border-slate-300 bg-white"
@@ -696,7 +700,7 @@ export function SinglePageEventEditForm({
                             >
                               <input
                                 type="checkbox"
-                                className="sr-only"
+                                className="absolute opacity-0 w-0 h-0"
                                 checked={
                                   Array.isArray(field.value) && field.value.includes("stripe")
                                 }
@@ -733,22 +737,24 @@ export function SinglePageEventEditForm({
                                 </div>
                                 <div>
                                   <span className="block font-semibold text-sm text-slate-900">
-                                    オンライン決済
+                                    オンライン
                                   </span>
                                   <span className="block text-xs text-slate-500">
-                                    クレジットカード、Apple Payなど
+                                    クレジットカード、Apple Pay、Google Payなど
                                   </span>
                                 </div>
                               </div>
                               {Array.isArray(field.value) && field.value.includes("stripe") && (
-                                <div className="absolute top-4 right-4 h-3 w-3 bg-primary rounded-full" />
+                                <div className="absolute top-3 right-3 h-5 w-5 bg-primary rounded-full flex items-center justify-center text-white animate-in zoom-in-50 duration-200">
+                                  <CheckIcon className="w-3.5 h-3.5 stroke-[3]" />
+                                </div>
                               )}
                             </label>
                           </div>
 
                           {!canUseOnlinePayments && (
                             <p className="text-xs text-muted-foreground mt-2">
-                              オンライン決済を利用するにはStripeアカウントの設定が必要です。
+                              「オンライン」を選択するにはオンライン集金設定が必要です。
                               <Link href="/settings/payments" className="underline ml-1">
                                 設定に進む
                               </Link>
@@ -780,7 +786,7 @@ export function SinglePageEventEditForm({
                       <div className="flex items-start gap-2 mb-3">
                         <InfoIcon className="w-4 h-4 text-blue-500 mt-0.5" />
                         <p className="text-xs text-blue-700">
-                          オンライン決済を選択した場合、決済期限を設定できます。
+                          オンライン集金を選択した場合、決済期限を設定できます。
                         </p>
                       </div>
 

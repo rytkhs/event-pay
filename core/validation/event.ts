@@ -169,7 +169,7 @@ export const createEventSchema = z
       return true;
     },
     {
-      message: "オンライン決済を選択した場合、決済締切は必須です",
+      message: "オンライン集金を選択した場合、決済締切は必須です",
       path: ["payment_deadline"],
     }
   )
@@ -450,7 +450,7 @@ export const updateEventSchema = z
       return true;
     },
     {
-      message: "オンライン決済を選択した場合、決済締切は必須です",
+      message: "オンライン集金を選択した場合、決済締切は必須です",
       path: ["payment_deadline"],
     }
   );
