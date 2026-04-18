@@ -5,7 +5,7 @@
  *
  * テストケース:
  * - ケース2-1-1: Connect未設定時の決済不可
- * - ケース2-1-2: payouts_enabled = false の場合の決済不可
+ * - ケース2-1-2: payout_profile.status = onboarding の場合の決済不可
  *
  * 前提条件:
  * - .env.test に SKIP_QSTASH_IN_TEST=true が設定されていること
@@ -118,7 +118,7 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
     console.log("🎉 ケース2-1-1: テスト成功（Connect未設定時の決済不可）");
   });
 
-  test("ケース2-1-2: payouts_enabled = false の場合の決済不可", async ({ page }) => {
+  test("ケース2-1-2: payout_profile.status = onboarding の場合の決済不可", async ({ page }) => {
     /**
      * テストID: PAYMENT-E2E-005 (ケース2-1-2)
      * 優先度: P0
@@ -134,7 +134,7 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
      * - エラーメッセージ: "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。"
      */
 
-    console.log("=== ケース2-1-2: payouts_enabled = false の場合の決済不可 ===");
+    console.log("=== ケース2-1-2: payout_profile.status = onboarding の場合の決済不可 ===");
 
     // === 1. テストデータの作成 ===
     console.log("📝 テストデータ作成中...");
@@ -155,7 +155,7 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
     // === 2. payout_profile を審査未完了状態に更新 ===
     await TestDataManager.setCurrentPayoutProfileState({
       status: "onboarding",
-      payoutsEnabled: false,
+      payoutsEnabled: true,
       chargesEnabled: true,
     });
 
@@ -171,7 +171,7 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
 
     const { data: payoutProfile, error: payoutProfileError } = await supabase
       .from("payout_profiles")
-      .select("status, payouts_enabled")
+      .select("status")
       .eq("id", eventData.payout_profile_id)
       .single();
 
@@ -180,7 +180,6 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
     }
 
     expect(payoutProfile.status).toBe("onboarding");
-    expect(payoutProfile.payouts_enabled).toBe(false);
 
     console.log("✓ payout_profile を onboarding に設定完了（審査未完了状態）");
 
@@ -217,8 +216,10 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
     );
     await expect(errorToast).toBeVisible({ timeout: 5000 });
 
-    console.log("✓ エラーメッセージが表示された（payouts_enabled = false）");
+    console.log("✓ エラーメッセージが表示された（payout_profile.status = onboarding）");
 
-    console.log("🎉 ケース2-1-2: テスト成功（payouts_enabled = false の場合の決済不可）");
+    console.log(
+      "🎉 ケース2-1-2: テスト成功（payout_profile.status = onboarding の場合の決済不可）"
+    );
   });
 });

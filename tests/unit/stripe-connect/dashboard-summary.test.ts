@@ -50,8 +50,6 @@ describe("dashboard stripe summary", () => {
         owner_user_id: "user-1",
         stripe_account_id: "acct_ready",
         status: "verified",
-        charges_enabled: true,
-        payouts_enabled: true,
         representative_community_id: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -90,8 +88,6 @@ describe("dashboard stripe summary", () => {
         owner_user_id: "user-1",
         stripe_account_id: "acct_ready",
         status: "verified",
-        charges_enabled: true,
-        payouts_enabled: true,
         representative_community_id: "community-5",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -113,8 +109,6 @@ describe("dashboard stripe summary", () => {
         owner_user_id: "user-1",
         stripe_account_id: "acct_broken",
         status: "onboarding",
-        charges_enabled: false,
-        payouts_enabled: false,
         representative_community_id: "community-6",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -127,12 +121,21 @@ describe("dashboard stripe summary", () => {
     );
   });
 
-  it("maps verified accounts without payouts to the simplified setup CTA", () => {
+  it("returns no CTA when verified and representative community exists", () => {
     const ctaStatus = resolveDashboardConnectCtaStatus({
       representative_community_id: "community-7",
       status: "verified",
-      payouts_enabled: false,
       stripe_account_id: "acct_partial",
+    });
+
+    expect(ctaStatus).toBeUndefined();
+  });
+
+  it("returns setup CTA when onboarding even if representative community exists", () => {
+    const ctaStatus = resolveDashboardConnectCtaStatus({
+      representative_community_id: "community-8",
+      status: "onboarding",
+      stripe_account_id: "acct_complete",
     });
 
     expect(ctaStatus).toEqual(
@@ -141,16 +144,5 @@ describe("dashboard stripe summary", () => {
         actionText: "状況を確認",
       })
     );
-  });
-
-  it("returns no CTA only when verified, payouts enabled, and representative community exists", () => {
-    const ctaStatus = resolveDashboardConnectCtaStatus({
-      representative_community_id: "community-8",
-      status: "verified",
-      payouts_enabled: true,
-      stripe_account_id: "acct_complete",
-    });
-
-    expect(ctaStatus).toBeUndefined();
   });
 });

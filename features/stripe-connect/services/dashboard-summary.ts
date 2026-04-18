@@ -16,7 +16,7 @@ import { resolveCurrentCommunityPayoutProfile } from "./payout-profile-resolver"
 
 type DashboardPayoutProfileRow = Pick<
   PayoutProfileRow,
-  "representative_community_id" | "status" | "payouts_enabled" | "stripe_account_id"
+  "representative_community_id" | "status" | "stripe_account_id"
 >;
 
 export function resolveDashboardConnectCtaStatus(
@@ -36,7 +36,7 @@ export function resolveDashboardConnectCtaStatus(
     case "unverified":
       return UNVERIFIED_STATUS;
     case "verified":
-      return account.payouts_enabled ? undefined : DASHBOARD_SETUP_INCOMPLETE_STATUS;
+      return undefined;
     case "onboarding":
     default:
       return DASHBOARD_SETUP_INCOMPLETE_STATUS;
@@ -58,7 +58,6 @@ async function getDashboardPayoutProfile(
 
   return {
     representative_community_id: payoutProfile.representative_community_id,
-    payouts_enabled: payoutProfile.payouts_enabled,
     status: payoutProfile.status,
     stripe_account_id: payoutProfile.stripe_account_id,
   };

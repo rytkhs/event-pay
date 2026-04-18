@@ -197,7 +197,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
             fieldErrors: {
               payment_methods: [
                 payoutReadiness.userMessage ||
-                  "受取先プロファイルの設定を完了してください（本人確認と入金有効化）",
+                  "受取先プロファイルの設定を完了してください（本人確認）",
               ],
             },
           });

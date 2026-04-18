@@ -3,6 +3,8 @@ import { jest } from "@jest/globals";
 import { AppError } from "@core/errors/app-error";
 import { errResult, okResult } from "@core/errors/app-result";
 
+import { getFutureDateTimeLocal } from "../../helpers/test-datetime";
+
 const mockGetCurrentUserForServerAction = jest.fn();
 const mockResolveCurrentCommunityForServerAction = jest.fn();
 const mockCreateServerActionSupabaseClient = jest.fn();
@@ -51,12 +53,12 @@ function buildValidFormData(
 ): FormData {
   const formData = new FormData();
   formData.set("title", "春合宿");
-  formData.set("date", "2026-04-15T19:00");
+  formData.set("date", getFutureDateTimeLocal(96));
   formData.set("fee", overrides.fee ?? "1500");
   formData.set("location", "渋谷");
   formData.set("description", "新歓イベント");
-  formData.set("registration_deadline", "2026-04-10T23:59");
-  formData.set("payment_deadline", "2026-04-12T23:59");
+  formData.set("registration_deadline", getFutureDateTimeLocal(24));
+  formData.set("payment_deadline", getFutureDateTimeLocal(48));
 
   for (const method of overrides.paymentMethods ?? ["cash"]) {
     formData.append("payment_methods", method);
