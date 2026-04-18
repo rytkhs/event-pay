@@ -41,8 +41,24 @@ const createMockAccountInfo = (overrides?: Partial<AccountInfo>): AccountInfo =>
   return {
     accountId: "acct_test_123",
     status: "verified",
-    chargesEnabled: true,
+    collectionReady: true,
     payoutsEnabled: true,
+    transfersStatus: "active",
+    requirementsSummary: {
+      account: {
+        currently_due: [],
+        past_due: [],
+        eventually_due: [],
+        pending_verification: [],
+      },
+      transfers: {
+        currently_due: [],
+        past_due: [],
+        eventually_due: [],
+        pending_verification: [],
+      },
+      review_state: "none",
+    },
     stripeAccount: {
       id: "acct_test_123",
       object: "account",
@@ -79,7 +95,6 @@ describe("StatusSyncService", () => {
       expect(mockStripeConnectService.updateAccountStatus).toHaveBeenCalledWith({
         userId,
         status: accountInfo.status,
-        chargesEnabled: accountInfo.chargesEnabled,
         payoutsEnabled: accountInfo.payoutsEnabled,
         stripeAccountId: accountId,
         classificationMetadata: accountInfo.classificationMetadata,

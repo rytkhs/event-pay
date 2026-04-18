@@ -6,7 +6,6 @@
 import type Stripe from "stripe";
 
 import { AccountStatusClassifier } from "@features/stripe-connect/server";
-import type { DatabaseStatus } from "@features/stripe-connect/types/status-classification";
 
 /**
  * モックStripe Accountオブジェクトを生成するヘルパー関数
@@ -208,7 +207,9 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result.status).toBe("onboarding");
-      expect(result.metadata.gate).toBe(2);
+      expect(result.collectionReady).toBe(false);
+      expect(result.metadata.gate).toBe(3);
+      expect(result.metadata.review_state).toBe("under_review");
     });
 
     it("pending_verificationの場合はGate 2で処理される", () => {
@@ -223,7 +224,9 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result.status).toBe("onboarding");
-      expect(result.metadata.gate).toBe(2);
+      expect(result.collectionReady).toBe(false);
+      expect(result.metadata.gate).toBe(3);
+      expect(result.metadata.review_state).toBe("pending_review");
     });
   });
 
@@ -240,8 +243,10 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result.status).toBe("onboarding");
-      expect(result.metadata.gate).toBe(2);
+      expect(result.collectionReady).toBe(false);
+      expect(result.metadata.gate).toBe(3);
       expect(result.reason).toContain("Under review");
+      expect(result.metadata.review_state).toBe("under_review");
     });
 
     it("pending_verificationの場合はonboardingに分類される", () => {
@@ -256,7 +261,31 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result.status).toBe("onboarding");
-      expect(result.metadata.gate).toBe(2);
+      expect(result.collectionReady).toBe(false);
+      expect(result.metadata.gate).toBe(3);
+      expect(result.metadata.review_state).toBe("pending_review");
+    });
+
+    it("pending_verification配列のみでも審査待ちとして集金不可に分類される", () => {
+      const account = createMockAccount({
+        details_submitted: true,
+        payouts_enabled: true,
+        capabilities: {
+          transfers: "active",
+          card_payments: "active",
+        },
+        requirements: {
+          ...createMockAccount().requirements!,
+          pending_verification: ["individual.verification.document"],
+        },
+      });
+
+      const result = classifier.classify(account);
+
+      expect(result.status).toBe("onboarding");
+      expect(result.collectionReady).toBe(false);
+      expect(result.metadata.review_state).toBe("pending_review");
+      expect(result.metadata.has_pending_verification).toBe(true);
     });
   });
 
@@ -274,11 +303,13 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result.status).toBe("onboarding");
-      expect(result.metadata.gate).toBe(3);
+      expect(result.collectionReady).toBe(false);
+      expect(result.metadata.gate).toBe(4);
       expect(result.metadata.transfers_active).toBe(false);
+      expect(result.metadata.transfers_status).toBe("inactive");
     });
 
-    it("card_paymentsがinactiveの場合はverifiedに分類されない", () => {
+    it("card_paymentsがinactiveでもtransfersがactiveならverifiedに分類される", () => {
       const account = createMockAccount({
         details_submitted: true,
         payouts_enabled: true,
@@ -290,12 +321,12 @@ describe("AccountStatusClassifier", () => {
 
       const result = classifier.classify(account);
 
-      expect(result.status).toBe("onboarding");
-      expect(result.metadata.gate).toBe(3);
-      expect(result.metadata.card_payments_active).toBe(false);
+      expect(result.status).toBe("verified");
+      expect(result.collectionReady).toBe(true);
+      expect(result.metadata.gate).toBe(5);
     });
 
-    it("payouts_enabledがfalseの場合はverifiedに分類されない", () => {
+    it("payouts_enabledがfalseでもcollectionReadyには影響しない", () => {
       const account = createMockAccount({
         details_submitted: true,
         payouts_enabled: false,
@@ -307,8 +338,9 @@ describe("AccountStatusClassifier", () => {
 
       const result = classifier.classify(account);
 
-      expect(result.status).toBe("onboarding");
-      expect(result.metadata.gate).toBe(3);
+      expect(result.status).toBe("verified");
+      expect(result.collectionReady).toBe(true);
+      expect(result.metadata.gate).toBe(5);
       expect(result.metadata.payouts_enabled).toBe(false);
     });
 
@@ -324,9 +356,9 @@ describe("AccountStatusClassifier", () => {
 
       const result = classifier.classify(account);
 
-      // Gate 3を通過してGate 4へ
       expect(result.metadata.transfers_active).toBe(true);
-      expect(result.metadata.card_payments_active).toBe(true);
+      expect(result.metadata.transfers_status).toBe("active");
+      expect(result.collectionReady).toBe(true);
     });
 
     it("capabilitiesがobject型の場合も正しく処理される", () => {
@@ -342,7 +374,8 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result.metadata.transfers_active).toBe(true);
-      expect(result.metadata.card_payments_active).toBe(true);
+      expect(result.metadata.transfers_status).toBe("active");
+      expect(result.collectionReady).toBe(true);
     });
   });
 
@@ -364,8 +397,10 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result.status).toBe("onboarding");
+      expect(result.collectionReady).toBe(false);
       expect(result.metadata.gate).toBe(4);
       expect(result.metadata.has_due_requirements).toBe(true);
+      expect(result.metadata.has_currently_due_requirements).toBe(true);
     });
 
     it("past_dueがある場合はverifiedに分類されない", () => {
@@ -385,11 +420,13 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result.status).toBe("onboarding");
+      expect(result.collectionReady).toBe(false);
       expect(result.metadata.gate).toBe(4);
       expect(result.metadata.has_due_requirements).toBe(true);
+      expect(result.metadata.has_past_due_requirements).toBe(true);
     });
 
-    it("eventually_dueがある場合はverifiedに分類されない", () => {
+    it("eventually_dueのみの場合はverifiedに分類される", () => {
       const account = createMockAccount({
         details_submitted: true,
         payouts_enabled: true,
@@ -405,8 +442,10 @@ describe("AccountStatusClassifier", () => {
 
       const result = classifier.classify(account);
 
-      expect(result.status).toBe("onboarding");
-      expect(result.metadata.gate).toBe(4);
+      expect(result.status).toBe("verified");
+      expect(result.collectionReady).toBe(true);
+      expect(result.metadata.gate).toBe(5);
+      expect(result.metadata.has_eventually_due_requirements).toBe(true);
     });
 
     it("Capability レベルのcurrently_dueがある場合はverifiedに分類されない", () => {
@@ -427,7 +466,9 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result.status).toBe("onboarding");
+      expect(result.collectionReady).toBe(false);
       expect(result.metadata.gate).toBe(4);
+      expect(result.metadata.has_currently_due_requirements).toBe(true);
     });
 
     it("Capability レベルのdisabled_reasonがある場合はverifiedに分類されない", () => {
@@ -448,6 +489,7 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result.status).toBe("onboarding");
+      expect(result.collectionReady).toBe(false);
       expect(result.metadata.gate).toBe(4);
     });
   });
@@ -472,12 +514,12 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result.status).toBe("verified");
+      expect(result.collectionReady).toBe(true);
       expect(result.metadata.gate).toBe(5);
-      expect(result.reason).toContain("All conditions met");
+      expect(result.reason).toContain("All collection conditions met");
       expect(result.metadata.details_submitted).toBe(true);
       expect(result.metadata.payouts_enabled).toBe(true);
       expect(result.metadata.transfers_active).toBe(true);
-      expect(result.metadata.card_payments_active).toBe(true);
       expect(result.metadata.has_due_requirements).toBe(false);
     });
   });
@@ -491,18 +533,21 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result.status).toBe("unverified");
+      expect(result.collectionReady).toBe(false);
+      expect(result.metadata.gate).toBe(2);
       expect(result.metadata.details_submitted).toBe(false);
     });
 
-    it("details_submittedがtrueだが条件を満たさない場合はonboardingに分類される", () => {
+    it("details_submittedがtrueだがtransfersがactiveでない場合はonboardingに分類される", () => {
       const account = createMockAccount({
         details_submitted: true,
-        payouts_enabled: false,
+        payouts_enabled: true,
       });
 
       const result = classifier.classify(account);
 
       expect(result.status).toBe("onboarding");
+      expect(result.collectionReady).toBe(false);
       expect(result.metadata.details_submitted).toBe(true);
     });
   });
@@ -534,7 +579,8 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result.status).toBe("onboarding");
-      expect(result.metadata.gate).toBe(3);
+      expect(result.collectionReady).toBe(false);
+      expect(result.metadata.gate).toBe(4);
     });
 
     it("due配列が空配列の場合は健全と判定される", () => {
@@ -556,6 +602,7 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result.status).toBe("verified");
+      expect(result.collectionReady).toBe(true);
       expect(result.metadata.has_due_requirements).toBe(false);
     });
 
@@ -576,6 +623,7 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result.status).toBe("verified");
+      expect(result.collectionReady).toBe(true);
     });
 
     it("複数のdue配列がある場合も正しく検出される", () => {
@@ -597,6 +645,7 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result.status).toBe("onboarding");
+      expect(result.collectionReady).toBe(false);
       expect(result.metadata.has_due_requirements).toBe(true);
     });
   });
@@ -610,9 +659,13 @@ describe("AccountStatusClassifier", () => {
       const result = classifier.classify(account);
 
       expect(result).toHaveProperty("status");
+      expect(result).toHaveProperty("collectionReady");
+      expect(result).toHaveProperty("transfersStatus");
+      expect(result).toHaveProperty("requirementsSummary");
       expect(result).toHaveProperty("reason");
       expect(result).toHaveProperty("metadata");
       expect(typeof result.status).toBe("string");
+      expect(typeof result.collectionReady).toBe("boolean");
       expect(typeof result.reason).toBe("string");
       expect(typeof result.metadata).toBe("object");
     });
@@ -632,9 +685,15 @@ describe("AccountStatusClassifier", () => {
       expect(result.metadata).toHaveProperty("gate");
       expect(result.metadata).toHaveProperty("details_submitted");
       expect(result.metadata).toHaveProperty("payouts_enabled");
+      expect(result.metadata).toHaveProperty("collection_ready");
       expect(result.metadata).toHaveProperty("transfers_active");
-      expect(result.metadata).toHaveProperty("card_payments_active");
+      expect(result.metadata).toHaveProperty("transfers_status");
+      expect(result.metadata).toHaveProperty("has_currently_due_requirements");
+      expect(result.metadata).toHaveProperty("has_past_due_requirements");
+      expect(result.metadata).toHaveProperty("has_eventually_due_requirements");
+      expect(result.metadata).toHaveProperty("has_pending_verification");
       expect(result.metadata).toHaveProperty("has_due_requirements");
+      expect(result.metadata).toHaveProperty("review_state");
     });
   });
 });

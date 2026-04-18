@@ -8,7 +8,11 @@ import type { AppResult } from "@core/errors";
 import type { LogLevel } from "@core/logging/app-logger";
 import type { StripeAccountStatus } from "@core/types/statuses";
 
-import type { UIStatus } from "./types/status-classification";
+import type {
+  ClassificationMetadata,
+  RequirementsSummary,
+  UIStatus,
+} from "./types/status-classification";
 
 export interface DetailedAccountStatus {
   statusType: UIStatus;
@@ -28,8 +32,13 @@ export interface StripeConnectAccount {
   owner_user_id: string;
   stripe_account_id: string;
   status: StripeAccountStatus;
+  collection_ready?: boolean;
   payouts_enabled: boolean;
   representative_community_id: string | null;
+  requirements_disabled_reason?: string | null;
+  requirements_summary?: unknown;
+  stripe_status_synced_at?: string | null;
+  transfers_status?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -74,7 +83,11 @@ export interface CreateAccountLinkResult {
 export interface AccountInfo {
   accountId: string;
   status: StripeAccountStatus;
+  collectionReady: boolean;
   payoutsEnabled: boolean;
+  transfersStatus?: string;
+  requirementsDisabledReason?: string;
+  requirementsSummary: RequirementsSummary;
   /**
    * Stripe Account オブジェクト
    * StatusSyncServiceがAPI呼び出しを削減するために返す
@@ -103,14 +116,7 @@ export interface AccountInfo {
   /**
    * 分類メタデータ（監査ログ用）
    */
-  classificationMetadata?: {
-    gate: 1 | 2 | 3 | 4 | 5;
-    details_submitted: boolean;
-    payouts_enabled: boolean;
-    transfers_active: boolean;
-    has_due_requirements: boolean;
-    disabled_reason?: string;
-  };
+  classificationMetadata?: ClassificationMetadata;
 }
 
 // アカウントステータス更新パラメータ
@@ -124,14 +130,7 @@ export interface UpdateAccountStatusParams {
    * 分類メタデータ（監査ログ用）
    * AccountStatusClassifierから取得した分類情報
    */
-  classificationMetadata?: {
-    gate: 1 | 2 | 3 | 4 | 5;
-    details_submitted: boolean;
-    payouts_enabled: boolean;
-    transfers_active: boolean;
-    has_due_requirements: boolean;
-    disabled_reason?: string;
-  };
+  classificationMetadata?: ClassificationMetadata;
   /**
    * ステータス変更のトリガー（監査ログ用）
    */

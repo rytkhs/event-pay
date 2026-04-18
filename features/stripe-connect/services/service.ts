@@ -433,6 +433,7 @@ export class StripeConnectService implements IStripeConnectService {
       this.logger.info("Account classified", {
         account_id: accountId,
         status: status,
+        collection_ready: classificationResult.collectionReady,
         gate: classificationResult.metadata.gate,
         reason: classificationResult.reason,
         details_submitted: account.details_submitted,
@@ -448,7 +449,11 @@ export class StripeConnectService implements IStripeConnectService {
       return {
         accountId: account.id,
         status: status,
+        collectionReady: classificationResult.collectionReady,
         payoutsEnabled: account.payouts_enabled || false,
+        transfersStatus: classificationResult.transfersStatus,
+        requirementsDisabledReason: classificationResult.requirementsDisabledReason,
+        requirementsSummary: classificationResult.requirementsSummary,
         stripeAccount: account,
         email: account.email || undefined,
         country: account.country || undefined,

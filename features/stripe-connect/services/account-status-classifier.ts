@@ -15,7 +15,18 @@ import type {
   ClassificationResult,
   ClassificationMetadata,
   Capability,
+  RequirementsSummary,
+  ReviewState,
 } from "../types";
+
+type RequirementsSummarySource = {
+  currently_due?: string[] | null;
+  past_due?: string[] | null;
+  eventually_due?: string[] | null;
+  pending_verification?: string[] | null;
+  disabled_reason?: string | null;
+  current_deadline?: number | null;
+};
 
 /**
  * AccountStatusClassifier
@@ -30,33 +41,49 @@ export class AccountStatusClassifier {
   classify(account: Stripe.Account): ClassificationResult {
     // Gate 1: Hard Restriction Check
     if (this.hasHardRestriction(account)) {
-      return this.createResult("restricted", 1, account, "Hard restriction detected");
+      return this.createResult("restricted", false, 1, account, "Hard restriction detected");
     }
 
-    // Gate 2: Review/Verification Gate
+    // Gate 2: Submission Gate
+    if (account.details_submitted !== true) {
+      return this.createResult("unverified", false, 2, account, "Details not submitted");
+    }
+
+    // Gate 3: Review/Verification Gate
     if (this.isUnderReview(account)) {
-      return this.createResult("onboarding", 2, account, "Under review or pending verification");
-    }
-
-    // Gate 3: Capability Gate (Destination Charges)
-    if (!this.hasRequiredCapabilities(account)) {
-      const status = this.getStatusBySubmission(account);
       return this.createResult(
-        status,
+        "onboarding",
+        false,
         3,
         account,
-        "Required capabilities not met (transfers/payouts)"
+        "Under review or pending verification"
+      );
+    }
+
+    // Gate 4: Capability Gate (Destination Charges)
+    if (!this.hasRequiredCapabilities(account)) {
+      return this.createResult(
+        "onboarding",
+        false,
+        4,
+        account,
+        "Required transfers capability not met"
       );
     }
 
     // Gate 4: Requirements Health Gate
     if (!this.hasHealthyRequirements(account)) {
-      const status = this.getStatusBySubmission(account);
-      return this.createResult(status, 4, account, "Requirements not healthy (due items exist)");
+      return this.createResult(
+        "onboarding",
+        false,
+        4,
+        account,
+        "Requirements not healthy (blocking due items exist)"
+      );
     }
 
     // Gate 5: All conditions met
-    return this.createResult("verified", 5, account, "All conditions met");
+    return this.createResult("verified", true, 5, account, "All collection conditions met");
   }
 
   /**
@@ -94,7 +121,16 @@ export class AccountStatusClassifier {
   private isUnderReview(account: Stripe.Account): boolean {
     const disabledReason = account.requirements?.disabled_reason;
     const reviewReasons = ["under_review", "requirements.pending_verification"];
-    return reviewReasons.includes(disabledReason as string);
+    if (reviewReasons.includes(disabledReason as string)) return true;
+
+    const accountPendingVerification =
+      (account.requirements?.pending_verification?.length ?? 0) > 0;
+    const transfersRequirements = this.getCapabilityRequirements(account.capabilities?.transfers);
+    const transfersPendingVerification =
+      (transfersRequirements?.pending_verification?.length ?? 0) > 0 ||
+      transfersRequirements?.disabled_reason === "requirements.pending_verification";
+
+    return accountPendingVerification || transfersPendingVerification;
   }
 
   /**
@@ -108,12 +144,7 @@ export class AccountStatusClassifier {
     if (!capabilities) return false;
 
     // destination charges では connected account 側は transfers が active であればよい
-    const transfersActive = this.getCapabilityStatus(capabilities.transfers) === "active";
-
-    // payouts_enabled も必須
-    const payoutsEnabled = account.payouts_enabled === true;
-
-    return transfersActive && payoutsEnabled;
+    return this.getCapabilityStatus(capabilities.transfers) === "active";
   }
 
   /**
@@ -129,7 +160,7 @@ export class AccountStatusClassifier {
       const hasDue =
         (accountReqs.currently_due?.length ?? 0) > 0 ||
         (accountReqs.past_due?.length ?? 0) > 0 ||
-        (accountReqs.eventually_due?.length ?? 0) > 0;
+        this.isBlockingRequirementsDisabledReason(accountReqs.disabled_reason);
 
       if (hasDue) return false;
     }
@@ -145,13 +176,14 @@ export class AccountStatusClassifier {
   }
 
   /**
-   * Gate 5: Submission Status
-   * details_submittedに基づいてunverified/onboardingを判定
-   * @param account Stripe Account Object
-   * @returns unverified または onboarding
+   * requirements.* のうち review 以外を blocking reason として扱う
+   * @param disabledReason requirements.disabled_reason
+   * @returns 集金不可にすべき理由の場合true
    */
-  private getStatusBySubmission(account: Stripe.Account): "unverified" | "onboarding" {
-    return account.details_submitted ? "onboarding" : "unverified";
+  private isBlockingRequirementsDisabledReason(disabledReason?: string | null): boolean {
+    if (!disabledReason) return false;
+    if (disabledReason === "requirements.pending_verification") return false;
+    return disabledReason.startsWith("requirements.");
   }
 
   /**
@@ -188,9 +220,9 @@ export class AccountStatusClassifier {
         const hasDue =
           (reqs.currently_due?.length ?? 0) > 0 ||
           (reqs.past_due?.length ?? 0) > 0 ||
-          (reqs.eventually_due?.length ?? 0) > 0;
+          this.isBlockingRequirementsDisabledReason(reqs.disabled_reason);
 
-        if (hasDue || reqs.disabled_reason) return false;
+        if (hasDue) return false;
       }
     }
 
@@ -207,19 +239,30 @@ export class AccountStatusClassifier {
    */
   private createResult(
     status: DatabaseStatus,
+    collectionReady: boolean,
     gate: 1 | 2 | 3 | 4 | 5,
     account: Stripe.Account,
     reason: string
   ): ClassificationResult {
+    const transfersStatus = this.getCapabilityStatus(account.capabilities?.transfers);
+    const requirementsDisabledReason = account.requirements?.disabled_reason
+      ? String(account.requirements.disabled_reason)
+      : undefined;
+    const requirementsSummary = this.buildRequirementsSummary(account);
     const metadata: ClassificationMetadata = {
       gate,
       details_submitted: account.details_submitted ?? false,
       payouts_enabled: account.payouts_enabled ?? false,
-      transfers_active: this.getCapabilityStatus(account.capabilities?.transfers) === "active",
+      collection_ready: collectionReady,
+      transfers_active: transfersStatus === "active",
+      transfers_status: transfersStatus,
+      has_currently_due_requirements: this.hasCurrentlyDueRequirements(account),
+      has_past_due_requirements: this.hasPastDueRequirements(account),
+      has_eventually_due_requirements: this.hasEventuallyDueRequirements(account),
+      has_pending_verification: this.hasPendingVerification(account),
       has_due_requirements: this.hasDueRequirements(account),
-      disabled_reason: account.requirements?.disabled_reason
-        ? String(account.requirements.disabled_reason)
-        : undefined,
+      review_state: this.getReviewState(account),
+      disabled_reason: requirementsDisabledReason,
     };
 
     logger.info("Account status classified", {
@@ -228,6 +271,7 @@ export class AccountStatusClassifier {
       actor_type: "system",
       account_id: account.id,
       status,
+      collection_ready: collectionReady,
       gate,
       reason,
       metadata,
@@ -236,6 +280,10 @@ export class AccountStatusClassifier {
 
     return {
       status,
+      collectionReady,
+      transfersStatus,
+      requirementsDisabledReason,
+      requirementsSummary,
       reason,
       metadata,
     };
@@ -247,13 +295,86 @@ export class AccountStatusClassifier {
    * @returns due配列が存在する場合true
    */
   private hasDueRequirements(account: Stripe.Account): boolean {
+    return (
+      this.hasCurrentlyDueRequirements(account) ||
+      this.hasPastDueRequirements(account) ||
+      this.hasEventuallyDueRequirements(account) ||
+      this.hasPendingVerification(account)
+    );
+  }
+
+  private hasCurrentlyDueRequirements(account: Stripe.Account): boolean {
     const reqs = account.requirements;
-    if (!reqs) return false;
+    const transfersReqs = this.getCapabilityRequirements(account.capabilities?.transfers);
 
     return (
-      (reqs.currently_due?.length ?? 0) > 0 ||
-      (reqs.past_due?.length ?? 0) > 0 ||
-      (reqs.eventually_due?.length ?? 0) > 0
+      (reqs?.currently_due?.length ?? 0) > 0 || (transfersReqs?.currently_due?.length ?? 0) > 0
     );
+  }
+
+  private hasPastDueRequirements(account: Stripe.Account): boolean {
+    const reqs = account.requirements;
+    const transfersReqs = this.getCapabilityRequirements(account.capabilities?.transfers);
+
+    return (reqs?.past_due?.length ?? 0) > 0 || (transfersReqs?.past_due?.length ?? 0) > 0;
+  }
+
+  private hasEventuallyDueRequirements(account: Stripe.Account): boolean {
+    const reqs = account.requirements;
+    const transfersReqs = this.getCapabilityRequirements(account.capabilities?.transfers);
+
+    return (
+      (reqs?.eventually_due?.length ?? 0) > 0 || (transfersReqs?.eventually_due?.length ?? 0) > 0
+    );
+  }
+
+  private hasPendingVerification(account: Stripe.Account): boolean {
+    const reqs = account.requirements;
+    const transfersReqs = this.getCapabilityRequirements(account.capabilities?.transfers);
+
+    return (
+      (reqs?.pending_verification?.length ?? 0) > 0 ||
+      (transfersReqs?.pending_verification?.length ?? 0) > 0 ||
+      reqs?.disabled_reason === "requirements.pending_verification" ||
+      transfersReqs?.disabled_reason === "requirements.pending_verification"
+    );
+  }
+
+  private getReviewState(account: Stripe.Account): ReviewState {
+    if (account.requirements?.disabled_reason === "under_review") return "under_review";
+    return this.hasPendingVerification(account) ? "pending_review" : "none";
+  }
+
+  private buildRequirementsSummary(account: Stripe.Account): RequirementsSummary {
+    return {
+      account: this.buildRequirementsStateSummary(account.requirements),
+      transfers: this.buildRequirementsStateSummary(
+        this.getCapabilityRequirements(account.capabilities?.transfers)
+      ),
+      review_state: this.getReviewState(account),
+    };
+  }
+
+  private buildRequirementsStateSummary(
+    requirements?: RequirementsSummarySource | null
+  ): RequirementsSummary["account"] {
+    return {
+      currently_due: requirements?.currently_due ?? [],
+      past_due: requirements?.past_due ?? [],
+      eventually_due: requirements?.eventually_due ?? [],
+      pending_verification: requirements?.pending_verification ?? [],
+      disabled_reason: requirements?.disabled_reason ?? undefined,
+      current_deadline: requirements?.current_deadline,
+    };
+  }
+
+  private getCapabilityRequirements(
+    capability: Capability | undefined
+  ): RequirementsSummarySource | undefined {
+    if (!capability || typeof capability === "string") return undefined;
+    if (typeof capability === "object" && "requirements" in capability) {
+      return capability.requirements;
+    }
+    return undefined;
   }
 }
