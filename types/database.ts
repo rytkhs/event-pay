@@ -590,7 +590,6 @@ export type Database = {
       };
       payout_profiles: {
         Row: {
-          charges_enabled: boolean;
           created_at: string;
           id: string;
           owner_user_id: string;
@@ -601,7 +600,6 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
-          charges_enabled?: boolean;
           created_at?: string;
           id?: string;
           owner_user_id: string;
@@ -612,7 +610,6 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
-          charges_enabled?: boolean;
           created_at?: string;
           id?: string;
           owner_user_id?: string;

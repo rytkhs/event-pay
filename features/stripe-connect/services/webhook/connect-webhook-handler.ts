@@ -3,7 +3,7 @@
  *
  * account.updated Webhookを受信したとき、Account Objectを取得してClassification Algorithmを実行する
  * capabilities.* の status または requirements が変化したとき、Status Synchronizationを実行する
- * payouts_enabled または charges_enabled が変化したとき、Status Synchronizationを実行する
+ * payouts_enabled が変化したとき、Status Synchronizationを実行する
  */
 
 import Stripe from "stripe";
@@ -70,7 +70,7 @@ export class ConnectWebhookHandler {
    *
    * Account Objectを取得してClassification Algorithmを実行する
    * capabilities.* の status または requirements が変化したとき、Status Synchronizationを実行する
-   * payouts_enabled または charges_enabled が変化したとき、Status Synchronizationを実行する
+   * payouts_enabled が変化したとき、Status Synchronizationを実行する
    */
   async handleAccountUpdated(account: Stripe.Account): Promise<ConnectWebhookResult> {
     try {
@@ -112,7 +112,6 @@ export class ConnectWebhookHandler {
         userId,
         payoutProfileId: payoutProfile.id,
         status: classificationResult.status,
-        chargesEnabled: account.charges_enabled || false,
         payoutsEnabled: account.payouts_enabled || false,
         stripeAccountId: account.id,
         classificationMetadata: classificationResult.metadata,
@@ -132,7 +131,6 @@ export class ConnectWebhookHandler {
       // 通知を送信
       await this.sendNotifications(userId, account.id, oldStatus, {
         status: classificationResult.status,
-        chargesEnabled: account.charges_enabled || false,
         payoutsEnabled: account.payouts_enabled || false,
         requirements: account.requirements
           ? {
@@ -149,7 +147,6 @@ export class ConnectWebhookHandler {
       await this.logAccountUpdate(userId, account.id, oldStatus, {
         payoutProfileId: payoutProfile.id,
         status: classificationResult.status,
-        chargesEnabled: account.charges_enabled || false,
         payoutsEnabled: account.payouts_enabled || false,
         requirements: account.requirements
           ? {
@@ -187,7 +184,6 @@ export class ConnectWebhookHandler {
           accountId: account.id,
           oldStatus: "unverified" as StripeAccountStatus,
           newStatus: "restricted" as StripeAccountStatus,
-          chargesEnabled: false,
           payoutsEnabled: false,
         });
       } catch (notificationError) {
@@ -260,7 +256,6 @@ export class ConnectWebhookHandler {
           userId: payoutProfile.owner_user_id,
           payoutProfileId: payoutProfile.id,
           status: "unverified",
-          chargesEnabled: false,
           payoutsEnabled: false,
           stripeAccountId: accountId,
           trigger: "webhook",
@@ -274,7 +269,6 @@ export class ConnectWebhookHandler {
           accountId: accountId || "unknown",
           oldStatus: "verified" as StripeAccountStatus,
           newStatus: "unverified" as StripeAccountStatus,
-          chargesEnabled: false,
           payoutsEnabled: false,
         });
       }
@@ -384,7 +378,6 @@ export class ConnectWebhookHandler {
     oldStatus: StripeAccountStatusLike,
     accountInfo: {
       status: StripeAccountStatusLike;
-      chargesEnabled: boolean;
       payoutsEnabled: boolean;
       requirements?: {
         disabled_reason?: string;
@@ -432,7 +425,6 @@ export class ConnectWebhookHandler {
           ...baseNotificationData,
           oldStatus: oldStatus as StripeAccountStatus,
           newStatus: accountInfo.status as StripeAccountStatus,
-          chargesEnabled: accountInfo.chargesEnabled,
           payoutsEnabled: accountInfo.payoutsEnabled,
         };
 
@@ -470,7 +462,6 @@ export class ConnectWebhookHandler {
     accountInfo: {
       payoutProfileId: string;
       status: string;
-      chargesEnabled: boolean;
       payoutsEnabled: boolean;
       requirements?: {
         disabled_reason?: string;
@@ -495,7 +486,6 @@ export class ConnectWebhookHandler {
           stripe_account_id: accountId,
           oldStatus,
           newStatus: accountInfo.status,
-          chargesEnabled: accountInfo.chargesEnabled,
           payoutsEnabled: accountInfo.payoutsEnabled,
           requirements: accountInfo.requirements,
           timestamp: new Date().toISOString(),

@@ -60,7 +60,6 @@ export interface StripeConnectNotificationData {
 export interface AccountStatusChangeNotification extends StripeConnectNotificationData {
   oldStatus: StripeAccountStatus;
   newStatus: StripeAccountStatus;
-  chargesEnabled: boolean;
   payoutsEnabled: boolean;
 }
 

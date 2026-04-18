@@ -9,7 +9,6 @@ type StripeConnectPayoutProfile = Pick<
   | "owner_user_id"
   | "stripe_account_id"
   | "status"
-  | "charges_enabled"
   | "payouts_enabled"
   | "representative_community_id"
   | "created_at"
@@ -22,7 +21,7 @@ type CurrentCommunityPayoutProfileResolution = {
 };
 
 const PAYOUT_PROFILE_SELECT =
-  "id, owner_user_id, stripe_account_id, status, charges_enabled, payouts_enabled, representative_community_id, created_at, updated_at";
+  "id, owner_user_id, stripe_account_id, status, payouts_enabled, representative_community_id, created_at, updated_at";
 
 export async function getOwnerPayoutProfile(
   supabase: AppSupabaseClient,

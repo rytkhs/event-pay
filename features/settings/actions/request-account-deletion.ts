@@ -72,7 +72,6 @@ export async function requestAccountDeletionAction(formData: FormData): Promise<
       await port.updateAccountStatus({
         userId: user.id,
         status: "unverified",
-        chargesEnabled: false,
         payoutsEnabled: false,
       });
     } catch (e) {

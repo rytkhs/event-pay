@@ -14,7 +14,6 @@ export interface StripeConnectPort {
 
   getAccountInfo(accountId: string): Promise<{
     status: StripeAccountStatusLike;
-    chargesEnabled: boolean;
     payoutsEnabled: boolean;
     requirements?: {
       disabled_reason?: string;
@@ -26,7 +25,6 @@ export interface StripeConnectPort {
       details_submitted: boolean;
       payouts_enabled: boolean;
       transfers_active: boolean;
-      card_payments_active: boolean;
       has_due_requirements: boolean;
       disabled_reason?: string;
     };
@@ -36,7 +34,6 @@ export interface StripeConnectPort {
     userId?: string;
     payoutProfileId?: string;
     status: StripeAccountStatus;
-    chargesEnabled: boolean;
     payoutsEnabled: boolean;
     stripeAccountId?: string;
     classificationMetadata?: {
@@ -44,7 +41,6 @@ export interface StripeConnectPort {
       details_submitted: boolean;
       payouts_enabled: boolean;
       transfers_active: boolean;
-      card_payments_active: boolean;
       has_due_requirements: boolean;
       disabled_reason?: string;
     };

@@ -87,7 +87,6 @@ async function PaymentSettingsContent() {
           accountId: r.data?.accountId,
           dbStatus: r.data?.dbStatus,
           uiStatus: r.data?.uiStatus ?? "no_account",
-          chargesEnabled: r.data?.chargesEnabled ?? false,
           payoutsEnabled: r.data?.payoutsEnabled ?? false,
           requirements: r.data?.requirements,
           capabilities: r.data?.capabilities,

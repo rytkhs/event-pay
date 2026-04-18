@@ -81,10 +81,7 @@ export class UIStatusMapper {
 
     // Capability が pending の場合も審査待ちとみなす
     const capabilities = account.capabilities;
-    const hasPendingCapabilities = Boolean(
-      capabilities &&
-      (capabilities.card_payments === "pending" || capabilities.transfers === "pending")
-    );
+    const hasPendingCapabilities = Boolean(capabilities?.transfers === "pending");
 
     return (hasPendingVerification || hasPendingCapabilities) && hasNoDueItems;
   }

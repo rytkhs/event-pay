@@ -230,7 +230,6 @@ export class StripeConnectService implements IStripeConnectService {
         ...(businessType ? { business_type: businessType } : {}),
         ...(country === "JP" ? { default_currency: "jpy" } : {}),
         capabilities: {
-          card_payments: { requested: true },
           transfers: { requested: true },
         },
         metadata: {
@@ -274,7 +273,6 @@ export class StripeConnectService implements IStripeConnectService {
         owner_user_id: userId,
         stripe_account_id: stripeAccount.id,
         status: "unverified",
-        charges_enabled: false,
         payouts_enabled: false,
         representative_community_id: null,
       });
@@ -450,7 +448,6 @@ export class StripeConnectService implements IStripeConnectService {
       return {
         accountId: account.id,
         status: status,
-        chargesEnabled: account.charges_enabled || false,
         payoutsEnabled: account.payouts_enabled || false,
         stripeAccount: account,
         email: account.email || undefined,
@@ -562,7 +559,6 @@ export class StripeConnectService implements IStripeConnectService {
         userId,
         payoutProfileId,
         status,
-        chargesEnabled,
         payoutsEnabled,
         stripeAccountId,
         classificationMetadata,
@@ -659,7 +655,6 @@ export class StripeConnectService implements IStripeConnectService {
 
       const updateData: StripeConnectAccountUpdate = {
         status: status,
-        charges_enabled: chargesEnabled,
         payouts_enabled: payoutsEnabled,
         updated_at: new Date().toISOString(),
       };
@@ -710,7 +705,6 @@ export class StripeConnectService implements IStripeConnectService {
               previous_status: previousStatus,
               new_status: status,
               trigger,
-              charges_enabled: chargesEnabled,
               payouts_enabled: payoutsEnabled,
             },
           });
@@ -756,7 +750,6 @@ export class StripeConnectService implements IStripeConnectService {
               owner_user_id: userId,
               stripe_account_id: stripeAccountId,
               status: status,
-              charges_enabled: chargesEnabled,
               payouts_enabled: payoutsEnabled,
             },
             { onConflict: "owner_user_id" }
@@ -893,26 +886,6 @@ export class StripeConnectService implements IStripeConnectService {
   }
 
   /**
-   * アカウントが決済受取可能かチェックする
-   */
-  async isChargesEnabled(userId: string): Promise<boolean> {
-    try {
-      const account = await this.getConnectAccountByUser(userId);
-      return account?.charges_enabled || false;
-    } catch (error) {
-      if (error instanceof StripeConnectError) {
-        throw error;
-      }
-      throw new StripeConnectError(
-        StripeConnectErrorType.UNKNOWN_ERROR,
-        "決済受取可能チェック中にエラーが発生しました",
-        error as Error,
-        { userId }
-      );
-    }
-  }
-
-  /**
    * アカウントが送金可能かチェックする
    */
   async isPayoutsEnabled(userId: string): Promise<boolean> {
@@ -957,7 +930,7 @@ export class StripeConnectService implements IStripeConnectService {
    *   - status === 'verified'
    *   - payouts_enabled === true
    *
-   * 注意: destination chargesを使用するため、charges_enabledは不要
+   * 注意: destination chargesを使用するため、connected account 側の決済受取可否は判定しない
    * （プラットフォームが決済処理を行うため）
    */
   async isAccountReadyForPayout(userId: string): Promise<boolean> {

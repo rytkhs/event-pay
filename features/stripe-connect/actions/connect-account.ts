@@ -117,7 +117,6 @@ export async function getConnectAccountStatusAction(): Promise<
       return ok({
         hasAccount: false,
         uiStatus: mapper.mapToUIStatus(null),
-        chargesEnabled: false,
         payoutsEnabled: false,
       });
     }
@@ -140,7 +139,6 @@ export async function getConnectAccountStatusAction(): Promise<
       return ok({
         hasAccount: false,
         uiStatus,
-        chargesEnabled: false,
         payoutsEnabled: false,
       });
     }
@@ -238,7 +236,6 @@ export async function getConnectAccountStatusAction(): Promise<
       accountId: updatedAccount.stripe_account_id,
       dbStatus: updatedAccount.status,
       uiStatus,
-      chargesEnabled: updatedAccount.charges_enabled,
       payoutsEnabled: updatedAccount.payouts_enabled,
       requirements,
       capabilities,
@@ -359,7 +356,6 @@ export async function handleOnboardingReturnAction(): Promise<
         accountInfo = {
           accountId: updatedAccount.stripe_account_id,
           status: updatedAccount.status,
-          chargesEnabled: updatedAccount.charges_enabled,
           payoutsEnabled: updatedAccount.payouts_enabled,
         };
       } catch (syncError) {
@@ -377,7 +373,6 @@ export async function handleOnboardingReturnAction(): Promise<
           accountInfo = {
             accountId: cachedAccount.stripe_account_id,
             status: cachedAccount.status,
-            chargesEnabled: cachedAccount.charges_enabled,
             payoutsEnabled: cachedAccount.payouts_enabled,
           };
         } else {
@@ -392,7 +387,6 @@ export async function handleOnboardingReturnAction(): Promise<
 ユーザーID: ${user.id}
 Stripe Account ID: ${account.stripe_account_id}
 ステータス: ${accountInfo.status}
-Charges Enabled: ${accountInfo.chargesEnabled ? "Yes" : "No"}
 Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
 完了時刻: ${timestamp}`;
 

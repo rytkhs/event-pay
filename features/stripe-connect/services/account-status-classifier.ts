@@ -45,7 +45,7 @@ export class AccountStatusClassifier {
         status,
         3,
         account,
-        "Required capabilities not met (transfers/card_payments/payouts)"
+        "Required capabilities not met (transfers/payouts)"
       );
     }
 
@@ -107,14 +107,13 @@ export class AccountStatusClassifier {
     const capabilities = account.capabilities;
     if (!capabilities) return false;
 
-    // transfers と card_payments が active であること
+    // destination charges では connected account 側は transfers が active であればよい
     const transfersActive = this.getCapabilityStatus(capabilities.transfers) === "active";
-    const cardPaymentsActive = this.getCapabilityStatus(capabilities.card_payments) === "active";
 
     // payouts_enabled も必須
     const payoutsEnabled = account.payouts_enabled === true;
 
-    return transfersActive && cardPaymentsActive && payoutsEnabled;
+    return transfersActive && payoutsEnabled;
   }
 
   /**
@@ -140,8 +139,6 @@ export class AccountStatusClassifier {
     if (capabilities) {
       // transfers capability
       if (!this.isCapabilityHealthy(capabilities.transfers)) return false;
-      // card_payments capability
-      if (!this.isCapabilityHealthy(capabilities.card_payments)) return false;
     }
 
     return true;
@@ -219,8 +216,6 @@ export class AccountStatusClassifier {
       details_submitted: account.details_submitted ?? false,
       payouts_enabled: account.payouts_enabled ?? false,
       transfers_active: this.getCapabilityStatus(account.capabilities?.transfers) === "active",
-      card_payments_active:
-        this.getCapabilityStatus(account.capabilities?.card_payments) === "active",
       has_due_requirements: this.hasDueRequirements(account),
       disabled_reason: account.requirements?.disabled_reason
         ? String(account.requirements.disabled_reason)

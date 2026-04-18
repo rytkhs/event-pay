@@ -28,7 +28,6 @@ export interface StripeConnectAccount {
   owner_user_id: string;
   stripe_account_id: string;
   status: StripeAccountStatus;
-  charges_enabled: boolean;
   payouts_enabled: boolean;
   representative_community_id: string | null;
   created_at: string;
@@ -75,7 +74,6 @@ export interface CreateAccountLinkResult {
 export interface AccountInfo {
   accountId: string;
   status: StripeAccountStatus;
-  chargesEnabled: boolean;
   payoutsEnabled: boolean;
   /**
    * Stripe Account オブジェクト
@@ -110,7 +108,6 @@ export interface AccountInfo {
     details_submitted: boolean;
     payouts_enabled: boolean;
     transfers_active: boolean;
-    card_payments_active: boolean;
     has_due_requirements: boolean;
     disabled_reason?: string;
   };
@@ -121,7 +118,6 @@ export interface UpdateAccountStatusParams {
   userId?: string;
   payoutProfileId?: string;
   status: StripeAccountStatus;
-  chargesEnabled: boolean;
   payoutsEnabled: boolean;
   stripeAccountId?: string;
   /**
@@ -133,7 +129,6 @@ export interface UpdateAccountStatusParams {
     details_submitted: boolean;
     payouts_enabled: boolean;
     transfers_active: boolean;
-    card_payments_active: boolean;
     has_due_requirements: boolean;
     disabled_reason?: string;
   };
@@ -215,7 +210,6 @@ export interface ConnectAccountStatusPayload {
   accountId?: string;
   dbStatus?: StripeAccountStatus; // Database Status (unverified/onboarding/verified/restricted)
   uiStatus: UIStatus; // UI Status (no_account/unverified/requirements_due/pending_review/ready/restricted)
-  chargesEnabled: boolean;
   payoutsEnabled: boolean;
   requirements?: {
     currently_due: string[];

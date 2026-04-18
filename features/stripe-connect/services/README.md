@@ -83,7 +83,6 @@ try {
   const accountInfo = await stripeConnectService.getAccountInfo("acct_xxx");
 
   console.log("Account status:", accountInfo.status);
-  console.log("Charges enabled:", accountInfo.chargesEnabled);
   console.log("Payouts enabled:", accountInfo.payoutsEnabled);
 } catch (error) {
   console.error("Failed to get account info:", error);
@@ -112,11 +111,9 @@ try {
 try {
   const userId = "user-uuid";
 
-  const canReceivePayments = await stripeConnectService.isChargesEnabled(userId);
   const canReceivePayouts = await stripeConnectService.isPayoutsEnabled(userId);
   const isVerified = await stripeConnectService.isAccountVerified(userId);
 
-  console.log("Can receive payments:", canReceivePayments);
   console.log("Can receive payouts:", canReceivePayouts);
   console.log("Account verified:", isVerified);
 } catch (error) {

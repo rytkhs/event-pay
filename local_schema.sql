@@ -3166,7 +3166,6 @@ CREATE TABLE IF NOT EXISTS "public"."payout_profiles" (
     "owner_user_id" "uuid" NOT NULL,
     "stripe_account_id" character varying(255) NOT NULL,
     "status" "public"."stripe_account_status_enum" DEFAULT 'unverified'::"public"."stripe_account_status_enum" NOT NULL,
-    "charges_enabled" boolean DEFAULT false NOT NULL,
     "payouts_enabled" boolean DEFAULT false NOT NULL,
     "representative_community_id" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,

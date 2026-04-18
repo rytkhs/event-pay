@@ -83,11 +83,7 @@ function classifyStripeError(error: Stripe.errors.StripeError): {
     };
   }
 
-  if (
-    lowerMessage.includes("payouts_enabled") ||
-    lowerMessage.includes("charges_enabled") ||
-    lowerMessage.includes("connect account")
-  ) {
+  if (lowerMessage.includes("payouts_enabled") || lowerMessage.includes("connect account")) {
     return {
       type: PaymentErrorType.STRIPE_CONFIG_ERROR,
       classification: "config_error",

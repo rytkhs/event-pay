@@ -99,7 +99,6 @@ export class StatusSyncService {
         await this.stripeConnectService.updateAccountStatus({
           userId,
           status: accountInfo.status,
-          chargesEnabled: accountInfo.chargesEnabled,
           payoutsEnabled: accountInfo.payoutsEnabled,
           stripeAccountId: accountId,
           classificationMetadata: accountInfo.classificationMetadata,

@@ -16,7 +16,6 @@ export function buildConnectAccountStatusPayloadFromCachedAccount(
     accountId: account.stripe_account_id,
     dbStatus: account.status,
     uiStatus: mapper.mapToUIStatus(account.status),
-    chargesEnabled: account.charges_enabled,
     payoutsEnabled: account.payouts_enabled,
   };
 }

@@ -49,8 +49,6 @@ export interface ClassificationMetadata {
   payouts_enabled: boolean;
   /** transfers capabilityがactiveか */
   transfers_active: boolean;
-  /** card_payments capabilityがactiveか */
-  card_payments_active: boolean;
   /** due配列が存在するか */
   has_due_requirements: boolean;
   /** disabled_reasonの値 */
@@ -70,8 +68,6 @@ export interface AccountStatusData {
   dbStatus?: DatabaseStatus;
   /** UI Status */
   uiStatus: UIStatus;
-  /** charges_enabledの値 */
-  chargesEnabled: boolean;
   /** payouts_enabledの値 */
   payoutsEnabled: boolean;
   /** 要件情報 */

@@ -52,7 +52,6 @@ export function registerStripeConnectAdapters(): void {
         const accountInfo = await service.getAccountInfo(accountId);
         return {
           status: accountInfo.status,
-          chargesEnabled: accountInfo.chargesEnabled,
           payoutsEnabled: accountInfo.payoutsEnabled,
           requirements: accountInfo.requirements
             ? {
@@ -94,7 +93,6 @@ export function registerStripeConnectAdapters(): void {
           userId: input.userId,
           payoutProfileId: input.payoutProfileId,
           status: input.status,
-          chargesEnabled: input.chargesEnabled,
           payoutsEnabled: input.payoutsEnabled,
           stripeAccountId: input.stripeAccountId,
           classificationMetadata: input.classificationMetadata,
