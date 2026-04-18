@@ -14,7 +14,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 
 type CreateCommunityPayload = {
   communityId: string;
@@ -145,27 +144,6 @@ export function CreateCommunityForm({
                 サークル、団体、一時的なグループの名前などを入力してください。あとから変更できます。
               </p>
             )}
-          </div>
-
-          {/* 説明 */}
-          <div className="group flex flex-col gap-2">
-            <Label
-              htmlFor="community-description"
-              className="text-[13px] font-semibold text-foreground/80"
-            >
-              コミュニティの説明{" "}
-              <span className="ml-0.5 font-normal text-muted-foreground">(任意)</span>
-            </Label>
-            <Textarea
-              id="community-description"
-              name="description"
-              placeholder="例: サークル・グループの活動やイベント等の企画・運営を行っています..."
-              className="min-h-44 resize-none rounded-xl border-border/60 shadow-sm transition-all focus-visible:ring-primary/20"
-              aria-describedby="community-description-hint"
-            />
-            <p id="community-description-hint" className="text-[11px] text-muted-foreground/75">
-              コミュニティプロフィールに表示されます。
-            </p>
           </div>
         </div>
       </section>
