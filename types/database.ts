@@ -590,33 +590,48 @@ export type Database = {
       };
       payout_profiles: {
         Row: {
+          collection_ready: boolean;
           created_at: string;
           id: string;
           owner_user_id: string;
           payouts_enabled: boolean;
           representative_community_id: string | null;
+          requirements_disabled_reason: string | null;
+          requirements_summary: Json;
           status: Database["public"]["Enums"]["stripe_account_status_enum"];
           stripe_account_id: string;
+          stripe_status_synced_at: string | null;
+          transfers_status: string | null;
           updated_at: string;
         };
         Insert: {
+          collection_ready?: boolean;
           created_at?: string;
           id?: string;
           owner_user_id: string;
           payouts_enabled?: boolean;
           representative_community_id?: string | null;
+          requirements_disabled_reason?: string | null;
+          requirements_summary?: Json;
           status?: Database["public"]["Enums"]["stripe_account_status_enum"];
           stripe_account_id: string;
+          stripe_status_synced_at?: string | null;
+          transfers_status?: string | null;
           updated_at?: string;
         };
         Update: {
+          collection_ready?: boolean;
           created_at?: string;
           id?: string;
           owner_user_id?: string;
           payouts_enabled?: boolean;
           representative_community_id?: string | null;
+          requirements_disabled_reason?: string | null;
+          requirements_summary?: Json;
           status?: Database["public"]["Enums"]["stripe_account_status_enum"];
           stripe_account_id?: string;
+          stripe_status_synced_at?: string | null;
+          transfers_status?: string | null;
           updated_at?: string;
         };
         Relationships: [
