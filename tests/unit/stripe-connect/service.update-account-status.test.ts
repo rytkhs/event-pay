@@ -464,3 +464,52 @@ describe("StripeConnectService.updateAccountStatus", () => {
     );
   });
 });
+
+describe("StripeConnectService.isAccountReadyForPayout", () => {
+  function createServiceWithAccount(account: {
+    status: "verified" | "onboarding" | "unverified" | "restricted";
+    collection_ready: boolean;
+    payouts_enabled: boolean;
+  }) {
+    const service = new StripeConnectService({} as never, createErrorHandlerMock());
+    jest.spyOn(service, "getConnectAccountByUser").mockResolvedValue({
+      id: "profile-1",
+      owner_user_id: "550e8400-e29b-41d4-a716-446655440000",
+      stripe_account_id: "acct_test",
+      representative_community_id: null,
+      requirements_disabled_reason: null,
+      requirements_summary: {},
+      stripe_status_synced_at: null,
+      transfers_status: null,
+      created_at: "2026-04-19T00:00:00.000Z",
+      updated_at: "2026-04-19T00:00:00.000Z",
+      ...account,
+    });
+
+    return service;
+  }
+
+  it("requires collection_ready and payouts_enabled for payout readiness", async () => {
+    const service = createServiceWithAccount({
+      status: "onboarding",
+      collection_ready: true,
+      payouts_enabled: true,
+    });
+
+    await expect(
+      service.isAccountReadyForPayout("550e8400-e29b-41d4-a716-446655440000")
+    ).resolves.toBe(true);
+  });
+
+  it("rejects payout readiness when collection_ready is false even if status is verified", async () => {
+    const service = createServiceWithAccount({
+      status: "verified",
+      collection_ready: false,
+      payouts_enabled: true,
+    });
+
+    await expect(
+      service.isAccountReadyForPayout("550e8400-e29b-41d4-a716-446655440000")
+    ).resolves.toBe(false);
+  });
+});

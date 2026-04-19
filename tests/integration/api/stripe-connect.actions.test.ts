@@ -52,6 +52,7 @@ jest.mock("@features/stripe-connect/services/factories", () => {
     owner_user_id: defaultUserId,
     stripe_account_id: "acct_test",
     status: "unverified",
+    collection_ready: false,
     charges_enabled: false,
     payouts_enabled: false,
     representative_community_id: null,
@@ -403,6 +404,7 @@ describe("Stripe Connect actions", () => {
                     owner_user_id: defaultUserId,
                     stripe_account_id: "acct_test_123",
                     status: "verified",
+                    collection_ready: true,
                     charges_enabled: true,
                     payouts_enabled: true,
                     representative_community_id: null,
@@ -504,6 +506,7 @@ describe("Stripe Connect actions", () => {
         charges_enabled: true,
         payouts_enabled: true,
         status: "verified",
+        collection_ready: true,
       });
 
       __mockStripeConnectService.getConnectAccountForCommunity

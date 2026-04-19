@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
@@ -55,45 +55,18 @@ describe("RLS Authorization for attendances/payments", () => {
     // 管理クライアントで初期データ投入（RLSバイパス）
     // setup.adminClientを使用
     const adminClient = setup.adminClient;
-    const ownerCommunity = await adminClient
+    // createMultiUserTestSetup で既に作成されているため、それらを使用する
+    ownerCommunityId = owner.communityId!;
+    ownerPayoutProfileId = owner.payoutProfileId!;
+
+    // 既存のコミュニティの名前や設定を必要に応じて更新する（オプション）
+    await adminClient
       .from("communities")
-      .insert({
-        created_by: owner.id,
+      .update({
         name: "RLSテストコミュニティ",
-        slug: `rls-auth-community-${Date.now()}`,
         description: "RLS認可テスト用",
       })
-      .select("id")
-      .single();
-    if (ownerCommunity.error || !ownerCommunity.data) {
-      throw new Error(`Community insert failed: ${ownerCommunity.error?.message}`);
-    }
-    ownerCommunityId = ownerCommunity.data.id;
-
-    const ownerPayoutProfile = await adminClient
-      .from("payout_profiles")
-      .insert({
-        owner_user_id: owner.id,
-        stripe_account_id: `acct_rls_auth_${Date.now()}`,
-        status: "verified",
-        charges_enabled: true,
-        payouts_enabled: true,
-        representative_community_id: ownerCommunityId,
-      })
-      .select("id")
-      .single();
-    if (ownerPayoutProfile.error || !ownerPayoutProfile.data) {
-      throw new Error(`Payout profile insert failed: ${ownerPayoutProfile.error?.message}`);
-    }
-    ownerPayoutProfileId = ownerPayoutProfile.data.id;
-
-    const { error: communityUpdateError } = await adminClient
-      .from("communities")
-      .update({ current_payout_profile_id: ownerPayoutProfileId })
       .eq("id", ownerCommunityId);
-    if (communityUpdateError) {
-      throw new Error(`Community update failed: ${communityUpdateError.message}`);
-    }
 
     const now = new Date().toISOString();
     const registrationDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -153,10 +126,12 @@ describe("RLS Authorization for attendances/payments", () => {
       paymentIds: [paymentId],
       attendanceIds: [attendanceId],
       eventIds: [eventId],
-      userEmails: [owner.email, other.email],
+      userEmails: owner && other ? [owner.email, other.email] : [],
     });
     // セットアップのクリーンアップ
-    await setup.cleanup();
+    if (setup) {
+      await setup.cleanup();
+    }
   });
 
   test("主催者は自イベントのattendancesを取得できる", async () => {

@@ -246,6 +246,7 @@ export class TestDataManager {
 
   static async setCurrentPayoutProfileState(options: {
     status: Database["public"]["Enums"]["stripe_account_status_enum"];
+    collectionReady?: boolean;
     payoutsEnabled?: boolean;
     chargesEnabled?: boolean;
     stripeAccountId?: string;
@@ -258,6 +259,7 @@ export class TestDataManager {
       .from("payout_profiles")
       .update({
         status: options.status,
+        collection_ready: options.collectionReady ?? options.status === "verified",
         payouts_enabled: options.payoutsEnabled ?? true,
         charges_enabled: options.chargesEnabled ?? true,
         stripe_account_id: options.stripeAccountId ?? TEST_IDS.CONNECT_ACCOUNT_ID,

@@ -39,7 +39,7 @@ describe("updateEventAction", () => {
     currentCommunityId?: string;
     currentCommunityPayoutProfileId?: string | null;
     payoutProfileReadinessRow?: {
-      status: string;
+      collection_ready: boolean;
     } | null;
   }) {
     const captured = { updateData: undefined as any };
@@ -100,7 +100,7 @@ describe("updateEventAction", () => {
         Promise.resolve({
           data:
             options.payoutProfileReadinessRow === undefined
-              ? { status: "verified" }
+              ? { collection_ready: true }
               : options.payoutProfileReadinessRow,
           error: null,
         })

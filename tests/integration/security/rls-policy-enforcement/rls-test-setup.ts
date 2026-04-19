@@ -4,6 +4,7 @@
  * 共通セットアップ関数を使用してリファクタリング済み
  */
 
+import crypto from "node:crypto";
 import { SecureSupabaseClientFactory } from "@core/security/secure-client-factory.impl";
 import { AdminReason } from "@core/security/secure-client-factory.types";
 
@@ -76,10 +77,9 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
     .from("payout_profiles")
     .insert({
       owner_user_id: testUserId,
-      stripe_account_id: "acct_test_123",
+      stripe_account_id: `acct_test_rls_${crypto.randomBytes(4).toString("hex")}`,
       status: "verified",
-      payouts_enabled: true,
-      charges_enabled: true,
+      collection_ready: true,
       representative_community_id: testCommunity.id,
     })
     .select("id")
@@ -119,6 +119,7 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
   }
 
   // テストイベント1の作成
+  const testInviteToken = `inv_${crypto.randomBytes(16).toString("hex")}`;
   const { data: testEvent, error: testEventError } = await setupClient
     .from("events")
     .insert({
@@ -131,7 +132,7 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
       created_by: testUserId,
       community_id: testCommunity.id,
       payout_profile_id: testPayoutProfile.id,
-      invite_token: "inv_test_rls_token_12345678901234567",
+      invite_token: testInviteToken,
       payment_methods: ["stripe", "cash"],
       registration_deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
       payment_deadline: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(),
@@ -144,9 +145,9 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
     throw new Error("Failed to create test event: " + JSON.stringify(testEventError));
   }
   const testEventId = testEvent.id;
-  const testInviteToken = "inv_test_rls_token_12345678901234567";
 
   // テストイベント2（別のイベント）の作成
+  const anotherInviteToken = `inv_${crypto.randomBytes(16).toString("hex")}`;
   const { data: anotherEvent, error: anotherEventError } = await setupClient
     .from("events")
     .insert({
@@ -158,7 +159,7 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
       capacity: 5,
       created_by: anotherUserId,
       community_id: anotherCommunity.id,
-      invite_token: "inv_another_token_123456789012345678",
+      invite_token: anotherInviteToken,
       payment_methods: ["cash"],
       registration_deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
       payment_deadline: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(),
@@ -180,7 +181,7 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
       nickname: "Test Participant",
       email: "test-participant@example.com",
       status: "attending",
-      guest_token: "gst_test_guest_token_123456789012345",
+      guest_token: `gst_${crypto.randomBytes(16).toString("hex")}`,
     })
     .select("id, guest_token")
     .single();
@@ -198,7 +199,7 @@ export async function setupRLSTest(): Promise<RLSTestSetup> {
       nickname: "Another Participant",
       email: "another-participant@example.com",
       status: "attending",
-      guest_token: "gst_another_guest_token_123456789012",
+      guest_token: `gst_${crypto.randomBytes(16).toString("hex")}`,
     })
     .select("guest_token")
     .single();

@@ -1,10 +1,13 @@
 import { getEventPayoutProfileReadiness } from "@features/events/services/payout-profile-readiness";
 
-function createSupabaseMock(row: { status: string } | null, error: unknown = null) {
+function createSupabaseMock(row: { collection_ready: boolean } | null, error: unknown = null) {
   type QueryMock = {
     select: jest.Mock<QueryMock, [string]>;
     eq: jest.Mock<QueryMock, [string, string]>;
-    maybeSingle: jest.Mock<Promise<{ data: { status: string } | null; error: unknown }>, []>;
+    maybeSingle: jest.Mock<
+      Promise<{ data: { collection_ready: boolean } | null; error: unknown }>,
+      []
+    >;
   };
 
   const query = {} as QueryMock;
@@ -19,8 +22,8 @@ function createSupabaseMock(row: { status: string } | null, error: unknown = nul
 }
 
 describe("getEventPayoutProfileReadiness", () => {
-  it("uses only status for online collection readiness", async () => {
-    const { query, from } = createSupabaseMock({ status: "verified" });
+  it("uses collection_ready for online collection readiness", async () => {
+    const { query, from } = createSupabaseMock({ collection_ready: true });
 
     const result = await getEventPayoutProfileReadiness(
       { from } as any,
@@ -28,11 +31,11 @@ describe("getEventPayoutProfileReadiness", () => {
     );
 
     expect(result).toEqual({ isReady: true });
-    expect(query.select).toHaveBeenCalledWith("status");
+    expect(query.select).toHaveBeenCalledWith("collection_ready");
   });
 
-  it("rejects non-verified payout profiles", async () => {
-    const { from } = createSupabaseMock({ status: "onboarding" });
+  it("rejects collection-unready payout profiles", async () => {
+    const { from } = createSupabaseMock({ collection_ready: false });
 
     const result = await getEventPayoutProfileReadiness(
       { from } as any,
