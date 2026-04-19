@@ -50,7 +50,7 @@ export function ReadyView({
             <div className="min-w-0">
               <p className="text-sm font-semibold">出金設定を確認してください</p>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                集金は可能ですが、売上の出金には追加確認が必要な場合があります。
+                出金に追加確認が必要な場合があります。
               </p>
             </div>
           </div>
@@ -66,7 +66,7 @@ export function ReadyView({
             <div className="min-w-0">
               <p className="text-sm font-semibold">今後必要になる情報があります</p>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                現在は集金可能です。Stripeから案内が届いたら、必要な情報を更新してください。
+                案内に沿って必要な情報を更新してください。
               </p>
             </div>
           </div>

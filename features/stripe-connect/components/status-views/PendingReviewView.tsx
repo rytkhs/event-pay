@@ -26,7 +26,7 @@ export function PendingReviewView({
             <Clock className="h-4 w-4 text-primary" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold">Stripe確認中です</p>
+            <p className="text-sm font-semibold">Stripeが確認中です</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               提出された情報をStripeが確認しています。通常1〜2営業日で完了します。
             </p>
