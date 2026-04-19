@@ -64,7 +64,7 @@ export const SuccessView: React.FC<SuccessViewProps> = ({ data, onRegisterAnothe
           <div className="text-left">
             <h3 className="text-lg font-bold text-slate-900 mb-2 flex items-center">
               <ExternalLink className="w-5 h-5 mr-2 text-slate-500" />
-              参加者マイページ
+              ゲストページ
             </h3>
             <p className="text-sm text-slate-600 mb-4">
               以下のリンクから、いつでもステータスの変更や支払い状況の確認が可能です。
@@ -89,7 +89,7 @@ export const SuccessView: React.FC<SuccessViewProps> = ({ data, onRegisterAnothe
               </Button>
             </div>
             <Button asChild className="mt-4 w-full" size="lg">
-              <Link href={derivedGuestUrl}>参加者マイページに移動する &rarr;</Link>
+              <Link href={derivedGuestUrl}>ゲストページに移動する &rarr;</Link>
             </Button>
             <Button
               variant="outline"

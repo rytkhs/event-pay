@@ -151,7 +151,7 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
             placeholder="例: user@example.com"
           />
           <p className="text-xs text-slate-500 mt-1">
-            ※ 登録完了メールや、参加者マイページURLが送信されます。
+            ※ 登録完了メールや、ゲストページURLが送信されます。
           </p>
           {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
         </div>
