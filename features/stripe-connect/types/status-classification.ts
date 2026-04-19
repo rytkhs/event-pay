@@ -33,9 +33,9 @@ export interface ClassificationResult {
   /** オンライン集金に使えるか */
   collectionReady: boolean;
   /** Stripe transfers capabilityのステータス */
-  transfersStatus?: string;
+  transfersStatus: string | null;
   /** requirements.disabled_reasonの値 */
-  requirementsDisabledReason?: string;
+  requirementsDisabledReason: string | null;
   /** requirements/capability requirements の表示・監査用サマリ */
   requirementsSummary: RequirementsSummary;
   /** 分類理由の説明 */

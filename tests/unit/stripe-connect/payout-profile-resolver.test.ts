@@ -8,20 +8,28 @@ type MaybeSingleResult = {
 function createSupabaseMock(
   resolver: (table: string, column: string, value: string) => MaybeSingleResult
 ) {
-  return {
+  const calls = {
+    selects: [] as Array<{ table: string; columns: string | undefined }>,
+  };
+  const supabase = {
     from: jest.fn((table: string) => ({
-      select: jest.fn(() => ({
-        eq: jest.fn((column: string, value: string) => ({
-          maybeSingle: jest.fn().mockResolvedValue(resolver(table, column, value)),
-        })),
-      })),
+      select: jest.fn((columns?: string) => {
+        calls.selects.push({ table, columns });
+        return {
+          eq: jest.fn((column: string, value: string) => ({
+            maybeSingle: jest.fn().mockResolvedValue(resolver(table, column, value)),
+          })),
+        };
+      }),
     })),
   };
+
+  return { supabase, calls };
 }
 
 describe("resolveCurrentCommunityPayoutProfile", () => {
   it("returns none when current community has no payout profile", async () => {
-    const supabase = createSupabaseMock((table) => {
+    const { supabase } = createSupabaseMock((table) => {
       if (table === "communities") {
         return {
           data: { current_payout_profile_id: null },
@@ -45,7 +53,7 @@ describe("resolveCurrentCommunityPayoutProfile", () => {
   });
 
   it("returns none when current community points to a missing payout profile", async () => {
-    const supabase = createSupabaseMock((table) => {
+    const { supabase } = createSupabaseMock((table) => {
       if (table === "communities") {
         return {
           data: { current_payout_profile_id: "profile-missing" },
@@ -82,13 +90,31 @@ describe("resolveCurrentCommunityPayoutProfile", () => {
       owner_user_id: "user-1",
       stripe_account_id: "acct_123",
       status: "verified",
-      charges_enabled: true,
+      collection_ready: true,
       payouts_enabled: true,
       representative_community_id: "community-1",
+      requirements_disabled_reason: null,
+      requirements_summary: {
+        account: {
+          currently_due: [],
+          past_due: [],
+          eventually_due: [],
+          pending_verification: [],
+        },
+        transfers: {
+          currently_due: [],
+          past_due: [],
+          eventually_due: [],
+          pending_verification: [],
+        },
+        review_state: "none",
+      },
+      stripe_status_synced_at: "2026-04-19T00:00:00.000Z",
+      transfers_status: "active",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    const supabase = createSupabaseMock((table) => {
+    const { supabase, calls } = createSupabaseMock((table) => {
       if (table === "communities") {
         return {
           data: { current_payout_profile_id: payoutProfile.id },
@@ -114,5 +140,21 @@ describe("resolveCurrentCommunityPayoutProfile", () => {
       payoutProfile,
       resolvedBy: "community",
     });
+    expect(calls.selects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          table: "payout_profiles",
+          columns: expect.stringContaining("collection_ready"),
+        }),
+        expect.objectContaining({
+          table: "payout_profiles",
+          columns: expect.stringContaining("requirements_summary"),
+        }),
+        expect.objectContaining({
+          table: "payout_profiles",
+          columns: expect.stringContaining("stripe_status_synced_at"),
+        }),
+      ])
+    );
   });
 });

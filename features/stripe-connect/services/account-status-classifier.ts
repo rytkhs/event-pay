@@ -244,10 +244,10 @@ export class AccountStatusClassifier {
     account: Stripe.Account,
     reason: string
   ): ClassificationResult {
-    const transfersStatus = this.getCapabilityStatus(account.capabilities?.transfers);
+    const transfersStatus = this.getCapabilityStatus(account.capabilities?.transfers) ?? null;
     const requirementsDisabledReason = account.requirements?.disabled_reason
       ? String(account.requirements.disabled_reason)
-      : undefined;
+      : null;
     const requirementsSummary = this.buildRequirementsSummary(account);
     const metadata: ClassificationMetadata = {
       gate,
@@ -255,14 +255,14 @@ export class AccountStatusClassifier {
       payouts_enabled: account.payouts_enabled ?? false,
       collection_ready: collectionReady,
       transfers_active: transfersStatus === "active",
-      transfers_status: transfersStatus,
+      transfers_status: transfersStatus ?? undefined,
       has_currently_due_requirements: this.hasCurrentlyDueRequirements(account),
       has_past_due_requirements: this.hasPastDueRequirements(account),
       has_eventually_due_requirements: this.hasEventuallyDueRequirements(account),
       has_pending_verification: this.hasPendingVerification(account),
       has_due_requirements: this.hasDueRequirements(account),
       review_state: this.getReviewState(account),
-      disabled_reason: requirementsDisabledReason,
+      disabled_reason: requirementsDisabledReason ?? undefined,
     };
 
     logger.info("Account status classified", {

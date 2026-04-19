@@ -49,8 +49,8 @@ export interface StripeConnectPort {
     status: StripeAccountStatusLike;
     collectionReady: boolean;
     payoutsEnabled: boolean;
-    transfersStatus?: string;
-    requirementsDisabledReason?: string;
+    transfersStatus: string | null;
+    requirementsDisabledReason: string | null;
     requirementsSummary: StripeConnectRequirementsSummary;
     requirements?: {
       disabled_reason?: string;
@@ -64,7 +64,11 @@ export interface StripeConnectPort {
     userId?: string;
     payoutProfileId?: string;
     status: StripeAccountStatus;
+    collectionReady?: boolean;
     payoutsEnabled: boolean;
+    transfersStatus?: string | null;
+    requirementsDisabledReason?: string | null;
+    requirementsSummary?: StripeConnectRequirementsSummary;
     stripeAccountId?: string;
     classificationMetadata?: StripeConnectClassificationMetadata;
     trigger?: "webhook" | "ondemand" | "manual";

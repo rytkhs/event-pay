@@ -23,6 +23,7 @@ import type { StripeAccountStatus } from "@core/types/statuses";
 import type { AppSupabaseClient } from "@core/types/supabase";
 import { handleServerError } from "@core/utils/error-handler.server";
 
+import type { RequirementsSummary } from "../../types";
 import { getPayoutProfileByStripeAccountId } from "../payout-profile-resolver";
 
 import type { ConnectWebhookResult } from "./connect-webhook.types";
@@ -112,7 +113,11 @@ export class ConnectWebhookHandler {
         userId,
         payoutProfileId: payoutProfile.id,
         status: classificationResult.status,
+        collectionReady: classificationResult.collectionReady,
         payoutsEnabled: account.payouts_enabled || false,
+        transfersStatus: classificationResult.transfersStatus,
+        requirementsDisabledReason: classificationResult.requirementsDisabledReason,
+        requirementsSummary: classificationResult.requirementsSummary,
         stripeAccountId: account.id,
         classificationMetadata: classificationResult.metadata,
         trigger: "webhook",
@@ -147,7 +152,12 @@ export class ConnectWebhookHandler {
       await this.logAccountUpdate(userId, account.id, oldStatus, {
         payoutProfileId: payoutProfile.id,
         status: classificationResult.status,
+        collectionReady: classificationResult.collectionReady,
         payoutsEnabled: account.payouts_enabled || false,
+        transfersStatus: classificationResult.transfersStatus,
+        requirementsDisabledReason: classificationResult.requirementsDisabledReason,
+        requirementsSummary: classificationResult.requirementsSummary,
+        classificationMetadata: classificationResult.metadata,
         requirements: account.requirements
           ? {
               disabled_reason: account.requirements.disabled_reason
@@ -252,11 +262,31 @@ export class ConnectWebhookHandler {
         }
 
         const stripeConnectPort = getStripeConnectPort();
+        const emptyRequirementsSummary: RequirementsSummary = {
+          account: {
+            currently_due: [],
+            past_due: [],
+            eventually_due: [],
+            pending_verification: [],
+          },
+          transfers: {
+            currently_due: [],
+            past_due: [],
+            eventually_due: [],
+            pending_verification: [],
+          },
+          review_state: "none",
+        };
+
         await stripeConnectPort.updateAccountStatus({
           userId: payoutProfile.owner_user_id,
           payoutProfileId: payoutProfile.id,
           status: "unverified",
+          collectionReady: false,
           payoutsEnabled: false,
+          transfersStatus: null,
+          requirementsDisabledReason: null,
+          requirementsSummary: emptyRequirementsSummary,
           stripeAccountId: accountId,
           trigger: "webhook",
         });
@@ -462,7 +492,12 @@ export class ConnectWebhookHandler {
     accountInfo: {
       payoutProfileId: string;
       status: string;
+      collectionReady: boolean;
       payoutsEnabled: boolean;
+      transfersStatus: string | null;
+      requirementsDisabledReason: string | null;
+      requirementsSummary: RequirementsSummary;
+      classificationMetadata: unknown;
       requirements?: {
         disabled_reason?: string;
         currently_due?: string[];
@@ -486,7 +521,12 @@ export class ConnectWebhookHandler {
           stripe_account_id: accountId,
           oldStatus,
           newStatus: accountInfo.status,
+          collection_ready: accountInfo.collectionReady,
           payoutsEnabled: accountInfo.payoutsEnabled,
+          transfers_status: accountInfo.transfersStatus,
+          requirements_disabled_reason: accountInfo.requirementsDisabledReason,
+          requirements_summary: accountInfo.requirementsSummary,
+          classification_metadata: accountInfo.classificationMetadata,
           requirements: accountInfo.requirements,
           timestamp: new Date().toISOString(),
         },

@@ -9,8 +9,13 @@ type StripeConnectPayoutProfile = Pick<
   | "owner_user_id"
   | "stripe_account_id"
   | "status"
+  | "collection_ready"
   | "payouts_enabled"
   | "representative_community_id"
+  | "requirements_disabled_reason"
+  | "requirements_summary"
+  | "stripe_status_synced_at"
+  | "transfers_status"
   | "created_at"
   | "updated_at"
 >;
@@ -20,8 +25,21 @@ type CurrentCommunityPayoutProfileResolution = {
   resolvedBy: "community" | "none";
 };
 
-const PAYOUT_PROFILE_SELECT =
-  "id, owner_user_id, stripe_account_id, status, payouts_enabled, representative_community_id, created_at, updated_at";
+const PAYOUT_PROFILE_SELECT = [
+  "id",
+  "owner_user_id",
+  "stripe_account_id",
+  "status",
+  "collection_ready",
+  "payouts_enabled",
+  "representative_community_id",
+  "requirements_disabled_reason",
+  "requirements_summary",
+  "stripe_status_synced_at",
+  "transfers_status",
+  "created_at",
+  "updated_at",
+].join(", ");
 
 export async function getOwnerPayoutProfile(
   supabase: AppSupabaseClient,

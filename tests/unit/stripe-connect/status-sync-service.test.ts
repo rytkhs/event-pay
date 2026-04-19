@@ -5,13 +5,13 @@
 
 import Stripe from "stripe";
 
+import type { AccountInfo } from "@features/stripe-connect";
 import {
   StatusSyncService,
   StatusSyncError,
   StatusSyncErrorType,
 } from "@features/stripe-connect/server";
 import type { IStripeConnectService } from "@features/stripe-connect/server";
-import type { AccountInfo } from "@features/stripe-connect";
 
 /**
  * モックStripeConnectServiceを作成
@@ -95,7 +95,11 @@ describe("StatusSyncService", () => {
       expect(mockStripeConnectService.updateAccountStatus).toHaveBeenCalledWith({
         userId,
         status: accountInfo.status,
+        collectionReady: accountInfo.collectionReady,
         payoutsEnabled: accountInfo.payoutsEnabled,
+        transfersStatus: accountInfo.transfersStatus,
+        requirementsDisabledReason: accountInfo.requirementsDisabledReason,
+        requirementsSummary: accountInfo.requirementsSummary,
         stripeAccountId: accountId,
         classificationMetadata: accountInfo.classificationMetadata,
         trigger: "ondemand",

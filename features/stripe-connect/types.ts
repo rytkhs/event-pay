@@ -32,13 +32,13 @@ export interface StripeConnectAccount {
   owner_user_id: string;
   stripe_account_id: string;
   status: StripeAccountStatus;
-  collection_ready?: boolean;
+  collection_ready: boolean;
   payouts_enabled: boolean;
   representative_community_id: string | null;
-  requirements_disabled_reason?: string | null;
-  requirements_summary?: unknown;
-  stripe_status_synced_at?: string | null;
-  transfers_status?: string | null;
+  requirements_disabled_reason: string | null;
+  requirements_summary: unknown;
+  stripe_status_synced_at: string | null;
+  transfers_status: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -85,8 +85,8 @@ export interface AccountInfo {
   status: StripeAccountStatus;
   collectionReady: boolean;
   payoutsEnabled: boolean;
-  transfersStatus?: string;
-  requirementsDisabledReason?: string;
+  transfersStatus: string | null;
+  requirementsDisabledReason: string | null;
   requirementsSummary: RequirementsSummary;
   /**
    * Stripe Account オブジェクト
@@ -124,7 +124,11 @@ export interface UpdateAccountStatusParams {
   userId?: string;
   payoutProfileId?: string;
   status: StripeAccountStatus;
+  collectionReady?: boolean;
   payoutsEnabled: boolean;
+  transfersStatus?: string | null;
+  requirementsDisabledReason?: string | null;
+  requirementsSummary?: RequirementsSummary;
   stripeAccountId?: string;
   /**
    * 分類メタデータ（監査ログ用）

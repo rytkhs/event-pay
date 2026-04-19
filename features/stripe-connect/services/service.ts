@@ -6,6 +6,7 @@ import "server-only";
 
 import Stripe from "stripe";
 
+import type { AppJson } from "@core/types/supabase";
 import { errFrom, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { getStripe, generateIdempotencyKey } from "@core/stripe/client";
@@ -24,6 +25,7 @@ import {
   UpdateAccountStatusParams,
   UpdateBusinessProfileParams,
   UpdateBusinessProfileResult,
+  RequirementsSummary,
   StripeConnectError,
   StripeConnectErrorType,
 } from "../types";
@@ -40,6 +42,25 @@ import {
   validateStripeAccountId,
   validateUserId,
 } from "./validation";
+
+function toRequirementsSummaryJson(summary: RequirementsSummary): AppJson {
+  return {
+    account: toRequirementsStateSummaryJson(summary.account),
+    transfers: toRequirementsStateSummaryJson(summary.transfers),
+    review_state: summary.review_state,
+  };
+}
+
+function toRequirementsStateSummaryJson(summary: RequirementsSummary["account"]): AppJson {
+  return {
+    currently_due: summary.currently_due,
+    past_due: summary.past_due,
+    eventually_due: summary.eventually_due,
+    pending_verification: summary.pending_verification,
+    disabled_reason: summary.disabled_reason ?? null,
+    current_deadline: summary.current_deadline ?? null,
+  };
+}
 
 /**
  * StripeConnectServiceの実装クラス
@@ -564,7 +585,11 @@ export class StripeConnectService implements IStripeConnectService {
         userId,
         payoutProfileId,
         status,
+        collectionReady,
         payoutsEnabled,
+        transfersStatus,
+        requirementsDisabledReason,
+        requirementsSummary,
         stripeAccountId,
         classificationMetadata,
         trigger = "manual",
@@ -657,16 +682,32 @@ export class StripeConnectService implements IStripeConnectService {
       const accountId = stripeAccountId || currentAccount?.stripe_account_id || "";
       const resolvedPayoutProfileId = currentAccount?.id || payoutProfileId || null;
       const resolvedUserId = currentAccount?.owner_user_id || userId || null;
+      const syncedAt = new Date().toISOString();
+      const resolvedCollectionReady = collectionReady ?? status === "verified";
 
       const updateData: StripeConnectAccountUpdate = {
         status: status,
+        collection_ready: resolvedCollectionReady,
         payouts_enabled: payoutsEnabled,
-        updated_at: new Date().toISOString(),
+        stripe_status_synced_at: syncedAt,
+        updated_at: syncedAt,
       };
 
       // Stripe Account IDが指定されている場合は更新
       if (stripeAccountId) {
         updateData.stripe_account_id = stripeAccountId;
+      }
+
+      if (transfersStatus !== undefined) {
+        updateData.transfers_status = transfersStatus;
+      }
+
+      if (requirementsDisabledReason !== undefined) {
+        updateData.requirements_disabled_reason = requirementsDisabledReason;
+      }
+
+      if (requirementsSummary !== undefined) {
+        updateData.requirements_summary = toRequirementsSummaryJson(requirementsSummary);
       }
 
       const { data: updatedRows, error } = await this.supabase
@@ -748,17 +789,34 @@ export class StripeConnectService implements IStripeConnectService {
         }
 
         // 競合に強くするためUPSERT（owner_user_id基準）
+        const upsertData: StripeConnectAccountUpdate & {
+          owner_user_id: string;
+          stripe_account_id: string;
+        } = {
+          owner_user_id: userId,
+          stripe_account_id: stripeAccountId,
+          status: status,
+          collection_ready: resolvedCollectionReady,
+          payouts_enabled: payoutsEnabled,
+          stripe_status_synced_at: syncedAt,
+          updated_at: syncedAt,
+        };
+
+        if (transfersStatus !== undefined) {
+          upsertData.transfers_status = transfersStatus;
+        }
+
+        if (requirementsDisabledReason !== undefined) {
+          upsertData.requirements_disabled_reason = requirementsDisabledReason;
+        }
+
+        if (requirementsSummary !== undefined) {
+          upsertData.requirements_summary = toRequirementsSummaryJson(requirementsSummary);
+        }
+
         const { data: insertedRows, error: insertError } = await this.supabase
           .from("payout_profiles")
-          .upsert(
-            {
-              owner_user_id: userId,
-              stripe_account_id: stripeAccountId,
-              status: status,
-              payouts_enabled: payoutsEnabled,
-            },
-            { onConflict: "owner_user_id" }
-          )
+          .upsert(upsertData, { onConflict: "owner_user_id" })
           .select("id, owner_user_id");
 
         if (insertError) {
