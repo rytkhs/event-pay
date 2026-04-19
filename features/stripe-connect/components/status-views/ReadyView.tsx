@@ -5,7 +5,7 @@
 
 "use client";
 
-import { CheckCircle2, ExternalLink } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, Info } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -17,7 +17,14 @@ interface ReadyViewProps {
   expressDashboardAvailable?: boolean;
 }
 
-export function ReadyView({ expressDashboardAction, expressDashboardAvailable }: ReadyViewProps) {
+export function ReadyView({
+  status,
+  expressDashboardAction,
+  expressDashboardAvailable,
+}: ReadyViewProps) {
+  const hasPayoutWarning = status.collectionReady && !status.payoutsEnabled;
+  const eventuallyDueCount = status.requirements?.eventually_due?.length ?? 0;
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4">
@@ -26,13 +33,45 @@ export function ReadyView({ expressDashboardAction, expressDashboardAvailable }:
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold">設定完了</p>
+            <p className="text-sm font-semibold">オンライン集金を利用できます</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              オンライン集金設定が完了しました。
+              参加者からのオンライン決済を受け付けられます。
             </p>
           </div>
         </div>
       </div>
+
+      {hasPayoutWarning && (
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4">
+          <div className="flex gap-3 items-start">
+            <div className="shrink-0 rounded-lg bg-amber-500/15 p-2 flex items-center justify-center">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">出金設定を確認してください</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                集金は可能ですが、売上の出金には追加確認が必要な場合があります。
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {eventuallyDueCount > 0 && (
+        <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+          <div className="flex gap-3 items-start">
+            <div className="shrink-0 rounded-lg bg-background p-2 flex items-center justify-center">
+              <Info className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">今後必要になる情報があります</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                現在は集金可能です。Stripeから案内が届いたら、必要な情報を更新してください。
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {expressDashboardAvailable && expressDashboardAction && (
         <form action={expressDashboardAction}>

@@ -25,6 +25,23 @@ describe("dashboard stripe summary", () => {
     mockedResolveCurrentCommunityPayoutProfile.mockReset();
   });
 
+  const buildPayoutProfile = (overrides: Record<string, unknown> = {}) => ({
+    id: "profile-1",
+    owner_user_id: "user-1",
+    stripe_account_id: "acct_ready",
+    status: "verified",
+    collection_ready: true,
+    payouts_enabled: true,
+    representative_community_id: "community-1",
+    requirements_disabled_reason: null,
+    requirements_summary: {},
+    stripe_status_synced_at: null,
+    transfers_status: "active",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    ...overrides,
+  });
+
   it("returns no-account CTA and skips balance lookup when no connect account exists", async () => {
     mockedResolveCurrentCommunityPayoutProfile.mockResolvedValue({
       payoutProfile: null,
@@ -45,15 +62,9 @@ describe("dashboard stripe summary", () => {
 
   it("returns setup CTA when representative community is missing", async () => {
     mockedResolveCurrentCommunityPayoutProfile.mockResolvedValue({
-      payoutProfile: {
-        id: "profile-1",
-        owner_user_id: "user-1",
-        stripe_account_id: "acct_ready",
-        status: "verified",
+      payoutProfile: buildPayoutProfile({
         representative_community_id: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
+      }),
       resolvedBy: "community",
     });
 
@@ -83,15 +94,9 @@ describe("dashboard stripe summary", () => {
   it("fetches balance when connect account exists", async () => {
     mockedFetchStripeBalanceByAccountId.mockResolvedValue(4200);
     mockedResolveCurrentCommunityPayoutProfile.mockResolvedValue({
-      payoutProfile: {
-        id: "profile-1",
-        owner_user_id: "user-1",
-        stripe_account_id: "acct_ready",
-        status: "verified",
+      payoutProfile: buildPayoutProfile({
         representative_community_id: "community-5",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
+      }),
       resolvedBy: "community",
     });
 
@@ -104,15 +109,13 @@ describe("dashboard stripe summary", () => {
   it("propagates balance fetch failures without affecting CTA resolution path", async () => {
     mockedFetchStripeBalanceByAccountId.mockRejectedValue(new Error("stripe down"));
     mockedResolveCurrentCommunityPayoutProfile.mockResolvedValue({
-      payoutProfile: {
-        id: "profile-1",
-        owner_user_id: "user-1",
+      payoutProfile: buildPayoutProfile({
         stripe_account_id: "acct_broken",
         status: "onboarding",
+        collection_ready: false,
+        payouts_enabled: false,
         representative_community_id: "community-6",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
+      }),
       resolvedBy: "community",
     });
 
@@ -122,27 +125,100 @@ describe("dashboard stripe summary", () => {
   });
 
   it("returns no CTA when verified and representative community exists", () => {
-    const ctaStatus = resolveDashboardConnectCtaStatus({
-      representative_community_id: "community-7",
-      status: "verified",
-      stripe_account_id: "acct_partial",
-    });
+    const ctaStatus = resolveDashboardConnectCtaStatus(
+      buildPayoutProfile({
+        representative_community_id: "community-7",
+        status: "verified",
+        stripe_account_id: "acct_partial",
+      })
+    );
 
     expect(ctaStatus).toBeUndefined();
   });
 
   it("returns setup CTA when onboarding even if representative community exists", () => {
-    const ctaStatus = resolveDashboardConnectCtaStatus({
-      representative_community_id: "community-8",
-      status: "onboarding",
-      stripe_account_id: "acct_complete",
-    });
+    const ctaStatus = resolveDashboardConnectCtaStatus(
+      buildPayoutProfile({
+        representative_community_id: "community-8",
+        status: "onboarding",
+        collection_ready: false,
+        stripe_account_id: "acct_complete",
+      })
+    );
 
     expect(ctaStatus).toEqual(
       expect.objectContaining({
         statusType: "requirements_due",
-        actionText: "状況を確認",
+        actionText: "情報を更新する",
       })
     );
+  });
+
+  it("returns payout warning CTA when collection is ready but payouts are disabled", () => {
+    const ctaStatus = resolveDashboardConnectCtaStatus(
+      buildPayoutProfile({
+        collection_ready: true,
+        payouts_enabled: false,
+      })
+    );
+
+    expect(ctaStatus).toEqual(
+      expect.objectContaining({
+        statusType: "ready",
+        severity: "warning",
+        actionText: "出金設定を確認",
+      })
+    );
+  });
+
+  it("returns pending review CTA from persisted requirements summary", () => {
+    const ctaStatus = resolveDashboardConnectCtaStatus(
+      buildPayoutProfile({
+        status: "onboarding",
+        collection_ready: false,
+        requirements_summary: {
+          account: {
+            currently_due: [],
+            past_due: [],
+            eventually_due: [],
+            pending_verification: ["individual.verification.document"],
+          },
+          transfers: {
+            currently_due: [],
+            past_due: [],
+            eventually_due: [],
+            pending_verification: [],
+          },
+          review_state: "pending_review",
+        },
+      })
+    );
+
+    expect(ctaStatus).toEqual(expect.objectContaining({ statusType: "pending_review" }));
+  });
+
+  it("does not show dashboard CTA for eventually_due only when collection is ready", () => {
+    const ctaStatus = resolveDashboardConnectCtaStatus(
+      buildPayoutProfile({
+        collection_ready: true,
+        requirements_summary: {
+          account: {
+            currently_due: [],
+            past_due: [],
+            eventually_due: ["company.verification.document"],
+            pending_verification: [],
+          },
+          transfers: {
+            currently_due: [],
+            past_due: [],
+            eventually_due: [],
+            pending_verification: [],
+          },
+          review_state: "none",
+        },
+      })
+    );
+
+    expect(ctaStatus).toBeUndefined();
   });
 });

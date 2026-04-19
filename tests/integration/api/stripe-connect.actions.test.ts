@@ -53,9 +53,12 @@ jest.mock("@features/stripe-connect/services/factories", () => {
     stripe_account_id: "acct_test",
     status: "unverified",
     collection_ready: false,
-    charges_enabled: false,
     payouts_enabled: false,
     representative_community_id: null,
+    requirements_disabled_reason: null,
+    requirements_summary: {},
+    stripe_status_synced_at: null,
+    transfers_status: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     ...overrides,
@@ -349,6 +352,7 @@ describe("Stripe Connect actions", () => {
         userId: defaultUserId,
         email: "u@example.com",
         country: "JP",
+        businessType: "individual",
         businessProfile: {
           productDescription:
             "イベントを企画・運営しています。イベント管理プラットフォームの「みんなの集金」のシステムを利用して、イベント開催時の参加費や会費の事前決済を行います。",
@@ -405,9 +409,12 @@ describe("Stripe Connect actions", () => {
                     stripe_account_id: "acct_test_123",
                     status: "verified",
                     collection_ready: true,
-                    charges_enabled: true,
                     payouts_enabled: true,
                     representative_community_id: null,
+                    requirements_disabled_reason: null,
+                    requirements_summary: {},
+                    stripe_status_synced_at: null,
+                    transfers_status: "active",
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
                   },
@@ -490,7 +497,7 @@ describe("Stripe Connect actions", () => {
       if (result.success) {
         expect(result.data.hasAccount).toBe(false);
         expect(result.data.uiStatus).toBe("no_account");
-        expect(result.data.chargesEnabled).toBe(false);
+        expect(result.data.collectionReady).toBe(false);
         expect(result.data.payoutsEnabled).toBe(false);
       }
     });
@@ -503,7 +510,6 @@ describe("Stripe Connect actions", () => {
         "@features/stripe-connect/services/status-sync-service"
       );
       const readyAccount = __mockStripeConnectService.buildAccount({
-        charges_enabled: true,
         payouts_enabled: true,
         status: "verified",
         collection_ready: true,
@@ -524,7 +530,7 @@ describe("Stripe Connect actions", () => {
         expect(result.data.hasAccount).toBe(true);
         expect(result.data.dbStatus).toBe("verified");
         expect(result.data.uiStatus).toBe("ready");
-        expect(result.data.chargesEnabled).toBe(true);
+        expect(result.data.collectionReady).toBe(true);
         expect(result.data.payoutsEnabled).toBe(true);
       }
     });

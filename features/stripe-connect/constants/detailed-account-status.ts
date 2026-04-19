@@ -20,11 +20,21 @@ export const UNVERIFIED_STATUS: DetailedAccountStatus = {
 
 export const PENDING_REVIEW_STATUS: DetailedAccountStatus = {
   statusType: "pending_review",
-  title: "Stripeが情報を審査中です",
-  description: "通常1〜2営業日で完了します。審査が終わると自動的に有効になります。",
+  title: "Stripeが情報を確認中です",
+  description: "通常1〜2営業日で完了します。確認が終わると自動的に有効になります。",
   actionText: "提出内容を確認",
   actionUrl: "/settings/payments",
   severity: "info",
+};
+
+export const PAYOUTS_DISABLED_STATUS: DetailedAccountStatus = {
+  statusType: "ready",
+  title: "オンライン集金は利用できます",
+  description:
+    "集金は可能ですが、出金設定または入金状況の確認が必要です。Stripeで状況を確認してください。",
+  actionText: "出金設定を確認",
+  actionUrl: "/settings/payments",
+  severity: "warning",
 };
 
 export const RESTRICTED_STATUS: DetailedAccountStatus = {
@@ -50,19 +60,28 @@ export const DASHBOARD_SETUP_INCOMPLETE_STATUS: DetailedAccountStatus = {
 export function buildRequirementsDueStatus(input: {
   hasPastDue: boolean;
   hasCurrentlyDue: boolean;
+  hasBlockingDisabledReason?: boolean;
 }): DetailedAccountStatus {
   return {
     statusType: "requirements_due",
     title: input.hasPastDue
       ? "至急：アカウント情報の更新が必要です"
-      : "アカウント情報の追加が必要です",
+      : input.hasCurrentlyDue || input.hasBlockingDisabledReason
+        ? "アカウント情報の追加が必要です"
+        : "Stripeの案内を確認してください",
     description: input.hasPastDue
       ? "期限超過の書類があります。早急に対応しないと決済機能が停止される可能性があります。"
       : input.hasCurrentlyDue
         ? "決済を継続するために追加の情報提供が必要です。"
-        : "将来的に必要な情報があります。早めの対応をお勧めします。",
+        : input.hasBlockingDisabledReason
+          ? "Stripeで対応が必要な確認事項があります。案内に従って状況を確認してください。"
+          : "将来的に必要な情報があります。早めの対応をお勧めします。",
     actionText: "情報を更新する",
     actionUrl: "/settings/payments",
-    severity: input.hasPastDue ? "error" : input.hasCurrentlyDue ? "warning" : "info",
+    severity: input.hasPastDue
+      ? "error"
+      : input.hasCurrentlyDue || input.hasBlockingDisabledReason
+        ? "warning"
+        : "info",
   };
 }

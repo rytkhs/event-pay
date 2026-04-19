@@ -213,7 +213,9 @@ export interface ConnectAccountStatusPayload {
   accountId?: string;
   dbStatus?: StripeAccountStatus; // Database Status (unverified/onboarding/verified/restricted)
   uiStatus: UIStatus; // UI Status (no_account/unverified/requirements_due/pending_review/ready/restricted)
+  collectionReady: boolean;
   payoutsEnabled: boolean;
+  requirementsSummary?: RequirementsSummary;
   requirements?: {
     currently_due: string[];
     eventually_due: string[];

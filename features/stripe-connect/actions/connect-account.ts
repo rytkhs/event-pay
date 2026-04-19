@@ -117,6 +117,7 @@ export async function getConnectAccountStatusAction(): Promise<
       return ok({
         hasAccount: false,
         uiStatus: mapper.mapToUIStatus(null),
+        collectionReady: false,
         payoutsEnabled: false,
       });
     }
@@ -139,6 +140,7 @@ export async function getConnectAccountStatusAction(): Promise<
       return ok({
         hasAccount: false,
         uiStatus,
+        collectionReady: false,
         payoutsEnabled: false,
       });
     }
@@ -186,26 +188,6 @@ export async function getConnectAccountStatusAction(): Promise<
       throw new Error("アカウント情報の取得に失敗しました");
     }
 
-    // 7. UIStatusMapperを使用してUI Statusを計算（要件 2.1-2.6）
-    const { UIStatusMapper } = await import("../services/ui-status-mapper");
-    const mapper = new UIStatusMapper();
-    const uiStatus = mapper.mapToUIStatus(updatedAccount.status, stripeAccount);
-
-    // 8. requirements と capabilities の整形
-    const requirements = stripeAccount.requirements
-      ? {
-          currently_due: stripeAccount.requirements.currently_due || [],
-          eventually_due: stripeAccount.requirements.eventually_due || [],
-          past_due: stripeAccount.requirements.past_due || [],
-          pending_verification: stripeAccount.requirements.pending_verification || [],
-        }
-      : {
-          currently_due: [],
-          eventually_due: [],
-          past_due: [],
-          pending_verification: [],
-        };
-
     const mapCapabilityStatus = (value: unknown): "active" | "inactive" | "pending" | undefined => {
       if (value === "active" || value === "inactive" || value === "pending") {
         return value;
@@ -213,6 +195,7 @@ export async function getConnectAccountStatusAction(): Promise<
       return undefined;
     };
 
+    const cachedPayload = buildConnectAccountStatusPayloadFromCachedAccount(updatedAccount);
     const capabilities = stripeAccount.capabilities
       ? {
           card_payments:
@@ -232,13 +215,11 @@ export async function getConnectAccountStatusAction(): Promise<
       : undefined;
 
     return ok({
-      hasAccount: true,
-      accountId: updatedAccount.stripe_account_id,
-      dbStatus: updatedAccount.status,
-      uiStatus,
-      payoutsEnabled: updatedAccount.payouts_enabled,
-      requirements,
-      capabilities,
+      ...cachedPayload,
+      capabilities: {
+        ...cachedPayload.capabilities,
+        ...capabilities,
+      },
     });
   } catch (error) {
     if (isNextRedirectError(error)) {

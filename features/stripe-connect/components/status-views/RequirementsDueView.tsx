@@ -27,6 +27,17 @@ export function RequirementsDueView({ status, refreshUrl }: RequirementsDueViewP
   };
 
   const hasPastDue = (requirements.past_due?.length ?? 0) > 0;
+  const hasCurrentDue = (requirements.currently_due?.length ?? 0) > 0;
+  const title = hasPastDue
+    ? "至急、追加情報が必要です"
+    : hasCurrentDue
+      ? "追加情報が必要です"
+      : "Stripeの案内を確認してください";
+  const description = hasPastDue
+    ? "期限を過ぎた確認事項があります。Stripeで状況を確認し、必要な情報を更新してください。"
+    : hasCurrentDue
+      ? "オンライン集金を利用するために、Stripeで不足情報を入力してください。"
+      : "Stripeで対応が必要な確認事項があります。案内に従って状況を確認してください。";
 
   return (
     <div className="space-y-4">
@@ -50,10 +61,8 @@ export function RequirementsDueView({ status, refreshUrl }: RequirementsDueViewP
             />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold">アカウント情報の更新が必要です</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              案内に従って、不足情報を入力してください。
-            </p>
+            <p className="text-sm font-semibold">{title}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
           </div>
         </div>
       </div>

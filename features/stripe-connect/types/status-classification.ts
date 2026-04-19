@@ -107,8 +107,12 @@ export interface AccountStatusData {
   dbStatus?: DatabaseStatus;
   /** UI Status */
   uiStatus: UIStatus;
+  /** オンライン集金に使えるか */
+  collectionReady: boolean;
   /** payouts_enabledの値 */
   payoutsEnabled: boolean;
+  /** requirements/capability requirements の表示・監査用サマリ */
+  requirementsSummary?: RequirementsSummary;
   /** 要件情報 */
   requirements?: {
     currently_due: string[];

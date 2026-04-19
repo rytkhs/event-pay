@@ -59,7 +59,7 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotClass: "bg-destructive",
   },
   ready: {
-    label: "設定完了",
+    label: "集金可能",
     dotClass: "bg-emerald-500",
   },
 };
