@@ -7,8 +7,8 @@ type PayoutProfileReadiness = {
   userMessage?: string;
 };
 
-type PayoutProfileStatusRow = {
-  status: string;
+type PayoutProfileReadinessRow = {
+  collection_ready: boolean;
 };
 
 export async function getEventPayoutProfileReadiness(
@@ -25,9 +25,9 @@ export async function getEventPayoutProfileReadiness(
 
   const { data, error } = await supabase
     .from("payout_profiles")
-    .select("status")
+    .select("collection_ready")
     .eq("id", payoutProfileId)
-    .maybeSingle<PayoutProfileStatusRow>();
+    .maybeSingle<PayoutProfileReadinessRow>();
 
   if (error || !data) {
     return {
@@ -36,7 +36,7 @@ export async function getEventPayoutProfileReadiness(
     };
   }
 
-  if (data.status !== "verified") {
+  if (data.collection_ready !== true) {
     return {
       isReady: false,
       userMessage: "オンライン決済を追加するには受取先プロファイルの設定完了が必要です。",

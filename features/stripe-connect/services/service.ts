@@ -6,13 +6,12 @@ import "server-only";
 
 import Stripe from "stripe";
 
-import type { AppJson } from "@core/types/supabase";
 import { errFrom, okResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { getStripe, generateIdempotencyKey } from "@core/stripe/client";
 import { convertStripeError } from "@core/stripe/error-handler";
 import type { StripeConnectAccountUpdate } from "@core/types/stripe-connect";
-import type { AppSupabaseClient } from "@core/types/supabase";
+import type { AppJson, AppSupabaseClient } from "@core/types/supabase";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 import {
@@ -990,7 +989,7 @@ export class StripeConnectService implements IStripeConnectService {
 
   /**
    * アカウントが送金実行に必要な全条件を満たしているかチェックする
-   *   - status === 'verified'
+   *   - collection_ready === true
    *   - payouts_enabled === true
    *
    * 注意: destination chargesを使用するため、connected account 側の決済受取可否は判定しない
@@ -1001,7 +1000,7 @@ export class StripeConnectService implements IStripeConnectService {
       const account = await this.getConnectAccountByUser(userId);
       if (!account) return false;
       const payouts = account.payouts_enabled ?? false;
-      return account.status === "verified" && payouts;
+      return account.collection_ready === true && payouts;
     } catch (error) {
       if (error instanceof StripeConnectError) {
         throw error;

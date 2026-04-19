@@ -468,6 +468,7 @@ async function setupUserAndCommunity(
           owner_user_id: userId,
           stripe_account_id: demoStripeAccountId,
           status: "verified" as StripeAccountStatus,
+          collection_ready: true,
           payouts_enabled: true,
         },
         { onConflict: "owner_user_id" }

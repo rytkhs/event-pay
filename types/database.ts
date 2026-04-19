@@ -1206,6 +1206,7 @@ export type Database = {
       rpc_public_get_connect_account: {
         Args: { p_event_id: string };
         Returns: {
+          collection_ready: boolean;
           payout_profile_id: string;
           status: string;
           stripe_account_id: string;

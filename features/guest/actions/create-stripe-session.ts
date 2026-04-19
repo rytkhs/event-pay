@@ -17,6 +17,7 @@ type ConnectAccountRpcRow = {
   payout_profile_id: string;
   stripe_account_id: string;
   status: string;
+  collection_ready: boolean;
 };
 
 /**
@@ -179,7 +180,7 @@ export async function createGuestStripeSessionAction(
     });
   }
 
-  if (connectAccount.status !== "verified") {
+  if (connectAccount.collection_ready !== true) {
     return fail("CONNECT_ACCOUNT_RESTRICTED", {
       userMessage:
         "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。",

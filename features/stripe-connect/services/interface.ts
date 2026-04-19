@@ -88,7 +88,7 @@ export interface IStripeConnectService {
   isPayoutsEnabled(userId: string): Promise<boolean>;
 
   /**
-   * アカウントが送金実行に必要な全条件（verified / payouts_enabled）を満たしているか
+   * アカウントが送金実行に必要な全条件（collection_ready / payouts_enabled）を満たしているか
    * @param userId ユーザーID
    */
   isAccountReadyForPayout(userId: string): Promise<boolean>;
