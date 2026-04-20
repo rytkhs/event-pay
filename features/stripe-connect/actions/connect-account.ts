@@ -35,7 +35,7 @@ import {
   updateRepresentativeCommunitySelection,
 } from "../services/representative-community";
 import { type ConnectAccountStatusPayload, StripeConnectError } from "../types";
-import { startOnboardingSchema } from "../validation";
+import { requiredOnboardingCommunityDescriptionSchema, startOnboardingSchema } from "../validation";
 
 type StartOnboardingPayload = Record<string, never>;
 
@@ -610,16 +610,28 @@ export async function startOnboardingAction(
       (representativeCommunity.description?.trim() ?? "").length > 0;
 
     if (!hasRepresentativeCommunityDescription) {
-      const communityDescription = parsedInput.data.communityDescription?.trim() ?? "";
-      if (!communityDescription) {
+      const communityDescriptionResult = requiredOnboardingCommunityDescriptionSchema.safeParse({
+        communityDescription: parsedInput.data.communityDescription,
+      });
+      if (!communityDescriptionResult.success) {
+        const isMissingDescription =
+          (parsedInput.data.communityDescription?.trim() ?? "").length === 0;
         return fail("VALIDATION_ERROR", {
           fieldErrors: {
-            communityDescription: [COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE],
+            communityDescription: [
+              isMissingDescription
+                ? COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE
+                : (communityDescriptionResult.error.flatten().fieldErrors
+                    .communityDescription?.[0] ?? COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE),
+            ],
           },
           retryable: false,
-          userMessage: COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE,
+          userMessage: isMissingDescription
+            ? COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE
+            : "コミュニティ説明を確認してください",
         });
       }
+      const communityDescription = communityDescriptionResult.data.communityDescription;
 
       const descriptionUpdateResult = await updateRepresentativeCommunityDescription(
         supabase,

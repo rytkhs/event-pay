@@ -11,6 +11,12 @@ import {
   StripeConnectErrorType,
 } from "./types";
 
+export const COMMUNITY_DESCRIPTION_MIN_LENGTH = 10;
+export const COMMUNITY_DESCRIPTION_MAX_LENGTH = 1000;
+
+export const COMMUNITY_DESCRIPTION_MIN_LENGTH_MESSAGE = `コミュニティ説明は${COMMUNITY_DESCRIPTION_MIN_LENGTH}文字以上で入力してください`;
+export const COMMUNITY_DESCRIPTION_MAX_LENGTH_MESSAGE = `コミュニティ説明は${COMMUNITY_DESCRIPTION_MAX_LENGTH}文字以内で入力してください`;
+
 /**
  * Express Account作成パラメータのバリデーションスキーマ
  */
@@ -44,13 +50,25 @@ const createAccountLinkSchema = z.object({
 });
 
 export const startOnboardingSchema = z.object({
-  communityDescription: z.string().trim().optional(),
+  communityDescription: z
+    .string()
+    .trim()
+    .max(COMMUNITY_DESCRIPTION_MAX_LENGTH, COMMUNITY_DESCRIPTION_MAX_LENGTH_MESSAGE)
+    .optional(),
   representativeCommunityId: z
     .string({
       required_error: "Stripe アカウント設定に使うコミュニティを選択してください",
       invalid_type_error: "Stripe アカウント設定に使うコミュニティを選択してください",
     })
     .uuid("Stripe アカウント設定に使うコミュニティを選択してください"),
+});
+
+export const requiredOnboardingCommunityDescriptionSchema = z.object({
+  communityDescription: z
+    .string()
+    .trim()
+    .min(COMMUNITY_DESCRIPTION_MIN_LENGTH, COMMUNITY_DESCRIPTION_MIN_LENGTH_MESSAGE)
+    .max(COMMUNITY_DESCRIPTION_MAX_LENGTH, COMMUNITY_DESCRIPTION_MAX_LENGTH_MESSAGE),
 });
 
 /**

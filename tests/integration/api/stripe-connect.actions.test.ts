@@ -423,6 +423,54 @@ describe("Stripe Connect actions", () => {
       expect(redirect).not.toHaveBeenCalled();
     });
 
+    it("コミュニティ説明が10文字未満なら validation error を返す", async () => {
+      mockResolveRepresentativeCommunitySelection.mockResolvedValueOnce({
+        success: true,
+        data: {
+          description: null,
+          id: representativeCommunityId,
+          name: "Community 1",
+          slug: "community-1",
+          publicPageUrl: "http://localhost:3000/c/community-1",
+        },
+      });
+
+      const { startOnboardingAction } = require("@features/stripe-connect/server");
+      const formData = new FormData();
+      formData.set("representativeCommunityId", representativeCommunityId);
+      formData.set("communityDescription", "短い説明");
+
+      const result = await startOnboardingAction(formData);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.fieldErrors?.communityDescription).toEqual([
+          "コミュニティ説明は10文字以上で入力してください",
+        ]);
+      }
+      expect(mockUpdateRepresentativeCommunityDescription).not.toHaveBeenCalled();
+      expect(redirect).not.toHaveBeenCalled();
+    });
+
+    it("コミュニティ説明が1000文字超過なら validation error を返す", async () => {
+      const { startOnboardingAction } = require("@features/stripe-connect/server");
+      const formData = new FormData();
+      formData.set("representativeCommunityId", representativeCommunityId);
+      formData.set("communityDescription", "あ".repeat(1001));
+
+      const result = await startOnboardingAction(formData);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.fieldErrors?.communityDescription).toEqual([
+          "コミュニティ説明は1000文字以内で入力してください",
+        ]);
+      }
+      expect(mockResolveRepresentativeCommunitySelection).not.toHaveBeenCalled();
+      expect(mockUpdateRepresentativeCommunityDescription).not.toHaveBeenCalled();
+      expect(redirect).not.toHaveBeenCalled();
+    });
+
     it("コミュニティ説明が空なら description 保存後に Stripe オンボーディングへリダイレクトする", async () => {
       mockResolveRepresentativeCommunitySelection.mockResolvedValueOnce({
         success: true,
