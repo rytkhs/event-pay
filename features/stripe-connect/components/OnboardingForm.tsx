@@ -274,7 +274,7 @@ export function OnboardingForm({
               <DialogTitle className="text-xl font-bold">コミュニティ説明を入力する</DialogTitle>
             </div>
             <DialogDescription className="text-sm leading-relaxed text-left text-muted-foreground">
-              オンライン集金設定のために、グループやコミュニティの、簡単な集金内容・活動内容の説明の設定が必要です。
+              オンライン集金設定のために、簡単にグループやコミュニティの集金内容・活動内容の説明を入力してください。
               あとから変更できます。
             </DialogDescription>
           </DialogHeader>

@@ -156,7 +156,6 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
     await TestDataManager.setCurrentPayoutProfileState({
       status: "onboarding",
       payoutsEnabled: true,
-      chargesEnabled: true,
     });
 
     const { data: eventData, error: eventError } = await supabase

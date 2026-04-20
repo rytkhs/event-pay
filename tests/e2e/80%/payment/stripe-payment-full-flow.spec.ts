@@ -242,7 +242,6 @@ test.describe("Stripe決済 完全フロー", () => {
           stripe_account_id: testStripeAccountId,
           status: "verified",
           collection_ready: true,
-          charges_enabled: true,
           payouts_enabled: true,
           representative_community_id: eventData.community_id,
         })
@@ -273,7 +272,6 @@ test.describe("Stripe決済 完全フロー", () => {
             stripe_account_id: testStripeAccountId,
             status: "verified",
             collection_ready: true,
-            charges_enabled: true,
             payouts_enabled: true,
             representative_community_id:
               existingPayoutProfile.representative_community_id ?? eventData.community_id,
@@ -291,7 +289,6 @@ test.describe("Stripe決済 完全フロー", () => {
             stripe_account_id: testStripeAccountId,
             status: "verified",
             collection_ready: true,
-            charges_enabled: true,
             payouts_enabled: true,
             representative_community_id: eventData.community_id,
           })

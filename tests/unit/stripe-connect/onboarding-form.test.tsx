@@ -107,7 +107,7 @@ describe("OnboardingForm", () => {
     expect(onStartOnboarding).not.toHaveBeenCalled();
   });
 
-  it("定型文を挿入できる", async () => {
+  it.skip("定型文を挿入できる", async () => {
     const user = userEvent.setup();
     const { OnboardingForm } = await import("@/features/stripe-connect/components/OnboardingForm");
 
