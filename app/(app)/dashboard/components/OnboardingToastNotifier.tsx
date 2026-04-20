@@ -8,7 +8,13 @@ import { toast } from "sonner";
 
 import type { DetailedAccountStatus } from "@features/stripe-connect";
 
-export function OnboardingToastNotifier({ status }: { status?: DetailedAccountStatus }) {
+export function OnboardingToastNotifier({
+  status,
+  statusResolved,
+}: {
+  status?: DetailedAccountStatus;
+  statusResolved: boolean;
+}) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -22,7 +28,16 @@ export function OnboardingToastNotifier({ status }: { status?: DetailedAccountSt
       return;
     }
 
-    if (status) {
+    if (!statusResolved) {
+      toast("Stripe アカウント設定の状態を確認できませんでした", {
+        description: "ダッシュボードを再読み込みして、設定状況を確認してください",
+      });
+    } else if (!status) {
+      // CTA が不要な完全 ready 状態
+      toast.success("設定が完了しました", {
+        description: "さっそくイベントを作成しましょう",
+      });
+    } else if (status) {
       if (status.statusType === "ready") {
         // 1. "ready" の場合 (完了)
         toast.success("設定が完了しました", {
@@ -39,11 +54,6 @@ export function OnboardingToastNotifier({ status }: { status?: DetailedAccountSt
           description: "設定を完了するには、ダッシュボードの通知からいつでも再開できます",
         });
       }
-    } else {
-      // 想定外や未開始
-      toast("Stripe オンボーディングが中断されました", {
-        description: "設定を完了するには、このダッシュボードの通知からいつでも再開できます",
-      });
     }
 
     hasShownRef.current = true;
@@ -54,7 +64,7 @@ export function OnboardingToastNotifier({ status }: { status?: DetailedAccountSt
     const query = newSearchParams.toString();
     const newUrl = query ? `${pathname}?${query}` : pathname;
     router.replace(newUrl, { scroll: false });
-  }, [searchParams, status, pathname, router]);
+  }, [searchParams, status, statusResolved, pathname, router]);
 
   return null;
 }

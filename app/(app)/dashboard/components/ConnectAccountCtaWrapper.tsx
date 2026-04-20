@@ -15,11 +15,11 @@ export async function ConnectAccountCtaWrapper({
 
     return (
       <>
-        <OnboardingToastNotifier status={resolvedStripeCtaStatus} />
+        <OnboardingToastNotifier status={resolvedStripeCtaStatus} statusResolved={true} />
         {resolvedStripeCtaStatus && <ConnectAccountCta status={resolvedStripeCtaStatus} />}
       </>
     );
   } catch {
-    return <OnboardingToastNotifier />;
+    return <OnboardingToastNotifier statusResolved={false} />;
   }
 }
