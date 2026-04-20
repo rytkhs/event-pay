@@ -7,6 +7,9 @@ import "server-only";
 
 import Stripe from "stripe";
 
+/** SDK v22 では Stripe.errors.StripeError はクラス（値）のみ。型として使う場合はこのエイリアスを利用 */
+type StripeError = InstanceType<typeof Stripe.errors.StripeError>;
+
 import {
   type PaymentErrorClassification,
   type PaymentOperation,
@@ -17,7 +20,7 @@ import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 /** Stripeエラー分析結果 */
 interface StripeErrorAnalysis {
   /** 元のStripeエラー */
-  originalError: Stripe.errors.StripeError;
+  originalError: StripeError;
   /** 分類されたPaymentErrorType */
   paymentErrorType: PaymentErrorType;
   /** エラー分類 */
@@ -52,7 +55,7 @@ export interface StripeErrorContext {
  * StripeエラーからPaymentErrorTypeへの分類マッピング
  * issue107で指摘された「No such on_behalf_of」などの具体的なケースに対応
  */
-function classifyStripeError(error: Stripe.errors.StripeError): {
+function classifyStripeError(error: StripeError): {
   type: PaymentErrorType;
   classification: PaymentErrorClassification;
   retryable: boolean;
@@ -320,7 +323,7 @@ class StripeErrorHandler {
   /**
    * StripeエラーをPaymentErrorに変換し、詳細分析を実行
    */
-  handleStripeError(error: Stripe.errors.StripeError, context?: StripeErrorContext): PaymentError {
+  handleStripeError(error: StripeError, context?: StripeErrorContext): PaymentError {
     const analysis = this.analyzeStripeError(error, context);
 
     // 構造化ログでエラーを記録
@@ -355,7 +358,7 @@ class StripeErrorHandler {
    * Stripeエラーの詳細分析
    */
   private analyzeStripeError(
-    error: Stripe.errors.StripeError,
+    error: StripeError,
     context?: StripeErrorContext
   ): StripeErrorAnalysis {
     const classification = classifyStripeError(error);
@@ -386,9 +389,6 @@ const stripeErrorHandler = new StripeErrorHandler();
 /**
  * 便利関数: StripeエラーをPaymentErrorに変換
  */
-export function convertStripeError(
-  error: Stripe.errors.StripeError,
-  context?: StripeErrorContext
-): PaymentError {
+export function convertStripeError(error: StripeError, context?: StripeErrorContext): PaymentError {
   return stripeErrorHandler.handleStripeError(error, context);
 }

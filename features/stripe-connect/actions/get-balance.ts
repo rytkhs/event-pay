@@ -26,9 +26,12 @@ const getCachedBalance = (accountId: string) =>
       });
 
       const stripe = getStripe();
-      const balance = await stripe.balance.retrieve({
-        stripeAccount: accountId,
-      });
+      const balance = await stripe.balance.retrieve(
+        {},
+        {
+          stripeAccount: accountId,
+        }
+      );
 
       // JPYの利用可能残高を取得（available + pending）
       const availableJpy = balance.available.find((b) => b.currency === "jpy");

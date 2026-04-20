@@ -122,7 +122,7 @@ export class StripeConnectErrorHandler implements IStripeConnectErrorHandler {
    * Stripeエラーのクラスに基づいてエラータイプを判定する
    */
   private getStripeErrorTypeByClass(
-    stripeError: Stripe.errors.StripeError
+    stripeError: InstanceType<typeof Stripe.errors.StripeError>
   ): StripeConnectErrorType {
     if (stripeError instanceof Stripe.errors.StripeCardError) {
       return StripeConnectErrorType.VALIDATION_ERROR;

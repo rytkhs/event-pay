@@ -89,7 +89,7 @@ describe("core/stripe/client", () => {
     expect(stripeCtorMock).toHaveBeenCalledWith(
       "sk_test_super_secret_key_value",
       expect.objectContaining({
-        apiVersion: "2025-10-29.clover",
+        apiVersion: "2026-03-25.dahlia",
         maxNetworkRetries: 3,
         timeout: 30000,
       })
@@ -120,7 +120,7 @@ describe("core/stripe/client", () => {
     expect(instance).toBeDefined();
 
     instance.handlers.request({
-      api_version: "2025-10-29.clover",
+      api_version: "2026-03-25.dahlia",
       account: "acct_123",
       idempotency_key: "idem_123",
       method: "POST",
@@ -129,7 +129,7 @@ describe("core/stripe/client", () => {
     });
 
     instance.handlers.response({
-      api_version: "2025-10-29.clover",
+      api_version: "2026-03-25.dahlia",
       account: "acct_123",
       idempotency_key: "idem_123",
       method: "POST",

@@ -235,17 +235,20 @@ export async function createStripeSession(
     // Stripe固有エラーの場合は汎用ハンドラーで詳細分類
     const errorLike = toErrorLike(error);
     if (typeof errorLike.type === "string") {
-      const enhancedError = convertStripeError(error as Stripe.errors.StripeError, {
-        operation: "create_stripe_session",
-        connectAccountId: params.destinationCharges?.destinationAccountId,
-        amount: params.amount,
-        sessionId: undefined,
-        additionalData: {
-          event_id: params.eventId,
-          attendance_id: params.attendanceId,
-          actor_id: params.actorId,
-        },
-      });
+      const enhancedError = convertStripeError(
+        error as InstanceType<typeof Stripe.errors.StripeError>,
+        {
+          operation: "create_stripe_session",
+          connectAccountId: params.destinationCharges?.destinationAccountId,
+          amount: params.amount,
+          sessionId: undefined,
+          additionalData: {
+            event_id: params.eventId,
+            attendance_id: params.attendanceId,
+            actor_id: params.actorId,
+          },
+        }
+      );
       throw enhancedError;
     }
 

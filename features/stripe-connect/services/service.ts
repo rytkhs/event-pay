@@ -222,7 +222,7 @@ export class StripeConnectService implements IStripeConnectService {
         if (typeof maybeSearch === "function") {
           const searchResult = await (
             maybeSearch as (
-              this: Stripe.AccountsResource,
+              this: Stripe.AccountResource,
               params: { query: string }
             ) => Promise<{ data: unknown[] }>
           ).call(stripe.accounts, {
@@ -932,7 +932,7 @@ export class StripeConnectService implements IStripeConnectService {
     } catch (error) {
       const normalizedError =
         error && typeof error === "object" && "type" in error
-          ? convertStripeError(error as Stripe.errors.StripeError, {
+          ? convertStripeError(error as InstanceType<typeof Stripe.errors.StripeError>, {
               operation: "update_business_profile",
               connectAccountId: params.accountId,
               additionalData: {
@@ -1075,9 +1075,12 @@ export class StripeConnectService implements IStripeConnectService {
 
       // Stripe APIで残高を取得
       const stripe = this.getStripeClient();
-      const balance = await stripe.balance.retrieve({
-        stripeAccount: accountId,
-      });
+      const balance = await stripe.balance.retrieve(
+        {},
+        {
+          stripeAccount: accountId,
+        }
+      );
 
       // JPYの利用可能残高を取得（available + pending）
       const availableJpy = balance.available.find((b) => b.currency === "jpy");

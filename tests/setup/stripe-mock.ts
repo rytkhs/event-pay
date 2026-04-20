@@ -69,7 +69,7 @@ export const mockCheckoutSession: Stripe.Checkout.Session = {
     amount_shipping: 0,
     amount_tax: 0,
   },
-  ui_mode: "hosted",
+  ui_mode: "hosted_page",
   url: "https://checkout.stripe.com/c/pay/cs_test_1234567890abcdefghijklmnopqrstuvwxyz#fidkdWxOYHwnPyd1blpxYHZxWjA0VDM0NWdLUGRLYGRfUWNHZklcVlxhSEZyMFRdUmJXc3VdRmJfU1NqVmFOaGFLNzc3VjEwYkx0XEBmbWZPRWZGZzJTSXNLVzJxZTJHYjNxTGhWZDZfVTJLNDNfcnJJSycpJ2N3amhWYHdzYHcnP3F3cGApJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYCkndnF3YHVCJykpZHdxdHVpZmRpYWNmanFxYWBqZGZqY2Rqd2FqZGRrJ3gl",
   adaptive_pricing: null,
   collected_information: null,
