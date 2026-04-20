@@ -232,7 +232,7 @@ test.describe("Stripe決済 完全フロー", () => {
       throw new Error("Failed to fetch event payout context");
     }
 
-    const testStripeAccountId = "acct_1SNbjmCtoNNhKnPZ";
+    const testStripeAccountId = "acct_1TOADDEEczGHQjDD";
     let payoutProfileId = eventData.payout_profile_id;
 
     if (payoutProfileId) {
