@@ -48,5 +48,12 @@
     "middleware.ts",
     "sentry-worker.ts"
   ],
-  "exclude": ["node_modules", "tests/**", "**/*.test.ts", "**/*.test.tsx", "supabase/functions/**"]
+  "exclude": [
+    "node_modules",
+    "tests/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "supabase/functions/**",
+    "app/debug/**"
+  ]
 }
