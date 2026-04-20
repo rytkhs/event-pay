@@ -2,6 +2,8 @@ import type { ReactNode, JSX } from "react";
 
 import { DemoBanner } from "@features/demo";
 
+import { PublicFooter } from "@components/layout/PublicFooter";
+
 /**
  * ゲストページレイアウト
  *
@@ -9,9 +11,10 @@ import { DemoBanner } from "@features/demo";
  */
 export default function GuestLayout({ children }: { children: ReactNode }): JSX.Element {
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       <DemoBanner />
-      {children}
-    </>
+      <div className="flex-1 flex flex-col">{children}</div>
+      <PublicFooter />
+    </div>
   );
 }
