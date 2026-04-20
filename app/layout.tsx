@@ -81,7 +81,7 @@ export default async function RootLayout({
           nonce={nonce}
         />
         <TooltipProvider>{children}</TooltipProvider>
-        <Toaster />
+        <Toaster position="top-right" />
         {ga4Config.enabled && <GoogleAnalytics gaId={ga4Config.measurementId} nonce={nonce} />}
       </body>
     </html>

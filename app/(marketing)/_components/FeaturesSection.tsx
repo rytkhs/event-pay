@@ -35,7 +35,7 @@ export const FeaturesSection: React.FC = () => {
                       <div className="bg-slate-700 rounded-lg p-3 text-sm text-slate-200">
                         <p>飲み会の案内だよ！ここから回答してね👇</p>
                         <Link
-                          href="https://minnano-shukin.com/invite/inv_KUjHINvxBA-NLrmx7u9Mgj5xSUH-kqLz"
+                          href={process.env.NEXT_PUBLIC_DEMO_INVITE_LINK || "#"}
                           className="text-primary underline mt-1 block break-all"
                           target="_blank"
                           rel="noopener noreferrer"

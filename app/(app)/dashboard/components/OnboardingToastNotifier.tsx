@@ -50,8 +50,8 @@ export function OnboardingToastNotifier({
         });
       } else {
         // 3. その他のステータス（REQUIREMENTS_DUE などの途中で戻った場合等）
-        toast.success("設定が中断されました", {
-          description: "設定を完了するには、ダッシュボードの通知からいつでも再開できます",
+        toast("オンライン集金設定が中断されました", {
+          description: "設定からいつでも再開できます",
         });
       }
     }
