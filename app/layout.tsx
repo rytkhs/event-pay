@@ -4,7 +4,7 @@ import { Noto_Sans_JP } from "next/font/google";
 import { headers } from "next/headers";
 
 import { GoogleAnalytics } from "@next/third-parties/google";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import "./globals.css";
 
@@ -52,6 +52,11 @@ export const metadata: Metadata = {
     ],
     other: [{ rel: "mask-icon", url: "/safari-pinned-tab.svg", color: "#24a6b5" }],
   },
+};
+
+export const viewport: Viewport = {
+  colorScheme: "light",
+  themeColor: "#ffffff",
 };
 
 export default async function RootLayout({
