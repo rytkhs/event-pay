@@ -43,7 +43,7 @@ export function OnboardingToastNotifier({ status }: { status?: DetailedAccountSt
         toast({
           title: "設定が中断されました",
           description: "設定を完了するには、ダッシュボードの通知からいつでも再開できます",
-          variant: "destructive",
+          variant: "success",
         });
       }
     } else {
