@@ -16,6 +16,7 @@ import {
   Building2,
   Lock,
   ExternalLink,
+  AlertCircle,
 } from "lucide-react";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
@@ -72,8 +73,8 @@ const initialState: StartOnboardingResult = {
   },
 };
 
-const COMMUNITY_DESCRIPTION_TEMPLATE =
-  "本コミュニティでは、サークル・グループの活動やイベント等の企画・運営を行っています。イベント管理プラットフォーム「みんなの集金」を利用して、イベント開催時の参加費や会費の支払い受付を行っています。詳細な内容や料金、支払方法は各イベントの案内で確認できます。";
+// const COMMUNITY_DESCRIPTION_TEMPLATE =
+//   "本コミュニティでは、サークル・グループの活動やイベント等の企画・運営を行っています。\nイベント管理プラットフォーム「みんなの集金」を利用して、イベント開催時の参加費や会費の支払い受付を行っています。\n詳細な内容や料金、支払方法は各イベントの案内で確認できます。";
 
 const COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE = "コミュニティ説明を入力してください";
 
@@ -144,10 +145,10 @@ export function OnboardingForm({
     }
   }
 
-  function handleInsertTemplate() {
-    setCommunityDescription(COMMUNITY_DESCRIPTION_TEMPLATE);
-    setCommunityDescriptionError(undefined);
-  }
+  // function handleInsertTemplate() {
+  //   setCommunityDescription(COMMUNITY_DESCRIPTION_TEMPLATE);
+  //   setCommunityDescriptionError(undefined);
+  // }
 
   function handleConfirmCommunityDescription() {
     const normalizedDescription = communityDescription.trim();
@@ -261,57 +262,77 @@ export function OnboardingForm({
       </form>
 
       <Dialog open={isDescriptionDialogOpen} onOpenChange={setIsDescriptionDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>コミュニティ説明を入力してください</DialogTitle>
-            <DialogDescription>
-              Stripeでオンライン集金を始める前に、公開ページに表示するコミュニティ説明を設定します。
+        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl duration-500 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-[0.98] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[51%] [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]">
+          <DialogHeader className="p-6 pb-0">
+            <div className="flex items-center gap-3 mb-2 text-left">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <DialogTitle className="text-xl font-bold">コミュニティ説明を入力する</DialogTitle>
+            </div>
+            <DialogDescription className="text-sm leading-relaxed text-left text-muted-foreground">
+              オンライン集金設定のために、グループやコミュニティの、簡単な集金内容・活動内容の説明の設定が必要です。
+              あとから変更できます。
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="onboarding-community-description">コミュニティ説明</Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2 text-xs"
-                onClick={handleInsertTemplate}
-              >
-                定型文を挿入
-              </Button>
+
+          <div className="px-6 pt-4 pb-0 space-y-5">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3 text-left">
+                <Label
+                  htmlFor="onboarding-community-description"
+                  className="text-sm font-semibold text-foreground/90"
+                >
+                  コミュニティ・グループの説明
+                </Label>
+                {/* <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2.5 text-[11px] font-medium gap-1.5 border-primary/20 hover:border-primary/50 hover:bg-primary/5 text-primary transition-all shadow-sm"
+                  onClick={handleInsertTemplate}
+                >
+                  <FileText className="h-3 w-3" />
+                  <span className="hidden sm:inline text-muted-foreground">定型文を挿入</span>
+                  <span className="sm:hidden text-muted-foreground">定型文</span>
+                </Button> */}
+              </div>
+
+              <div className="relative group">
+                <Textarea
+                  id="onboarding-community-description"
+                  value={communityDescription}
+                  onChange={(event) => handleCommunityDescriptionChange(event.target.value)}
+                  placeholder="例: 月に1〜2回集まり、テーマに沿った本や最近読んだ一冊について語り合う読書コミュニティです。小説、ビジネス書、エッセイなどジャンルは幅広く、本を通じて新しい考え方や出会いを楽しむ場を目指しています。"
+                  className="min-h-40 resize-none bg-muted/20 focus:bg-background transition-all border-border/60 focus:border-primary/50 text-sm leading-relaxed p-4 ring-offset-background placeholder:text-muted-foreground/40"
+                  aria-invalid={communityDescriptionError ? true : undefined}
+                />
+              </div>
+
+              {communityDescriptionError && (
+                <div className="flex items-center gap-2 text-destructive animate-in fade-in slide-in-from-top-1">
+                  <AlertCircle className="h-4 w-4" />
+                  <p className="text-[13px] font-medium">{communityDescriptionError}</p>
+                </div>
+              )}
             </div>
-            <Textarea
-              id="onboarding-community-description"
-              value={communityDescription}
-              onChange={(event) => handleCommunityDescriptionChange(event.target.value)}
-              placeholder="活動内容やイベントの内容、参加費を受け付ける目的を入力してください。"
-              className="min-h-36"
-              aria-invalid={communityDescriptionError ? true : undefined}
-              aria-describedby={
-                communityDescriptionError ? "onboarding-community-description-error" : undefined
-              }
-            />
-            {communityDescriptionError ? (
-              <p
-                id="onboarding-community-description-error"
-                className="text-sm font-medium text-destructive"
-                role="alert"
-              >
-                {communityDescriptionError}
-              </p>
-            ) : null}
           </div>
-          <DialogFooter>
+
+          <DialogFooter className="p-6 flex-row sm:justify-between items-center gap-3">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={() => setIsDescriptionDialogOpen(false)}
+              className="text-muted-foreground hover:text-foreground shrink-0 font-medium"
             >
               キャンセル
             </Button>
-            <Button type="button" onClick={handleConfirmCommunityDescription}>
-              設定画面へ進む
+            <Button
+              type="button"
+              onClick={handleConfirmCommunityDescription}
+              className="px-8 shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all font-bold"
+            >
+              保存して設定に進む
             </Button>
           </DialogFooter>
         </DialogContent>
