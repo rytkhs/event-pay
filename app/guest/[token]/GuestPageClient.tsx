@@ -239,9 +239,6 @@ export function GuestPageClient({
             </Link>
           </div>
         )}
-        <div>
-          <p>© みんなの集金</p>
-        </div>
       </footer>
 
       {/* Edit Modal */}
