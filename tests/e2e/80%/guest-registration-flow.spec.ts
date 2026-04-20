@@ -118,8 +118,8 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     await expect(page.getByText(testNickname)).toBeVisible();
     console.log("✓ Registration completion confirmation displayed");
 
-    // Step 11: 参加者マイページセクションが表示されていることを確認
-    await expect(page.getByRole("heading", { name: "参加者マイページ" })).toBeVisible();
+    // Step 11: ゲストページセクションが表示されていることを確認
+    await expect(page.getByRole("heading", { name: "ゲストページ" })).toBeVisible();
 
     // Step 12: ゲスト管理URLが入力欄に表示されることを確認
     const guestUrlInput = page.locator('input[type="text"][readonly]');
@@ -248,8 +248,8 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     await expect(page.getByText("決済が必要")).not.toBeVisible();
     console.log("✓ No payment required confirmed for undecided status");
 
-    // Step 11: 参加者マイページセクションが表示されていることを確認
-    await expect(page.getByRole("heading", { name: "参加者マイページ" })).toBeVisible();
+    // Step 11: ゲストページセクションが表示されていることを確認
+    await expect(page.getByRole("heading", { name: "ゲストページ" })).toBeVisible();
 
     // Step 12: ゲスト管理URLが入力欄に表示され、後から参加変更可能であることを確認
     const guestUrlInput = page.locator('input[type="text"][readonly]');

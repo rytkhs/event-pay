@@ -4,7 +4,8 @@ import { useCallback, useState, useTransition } from "react";
 
 import { useRouter } from "next/navigation";
 
-import { useToast } from "@core/contexts/toast-context";
+import { toast } from "sonner";
+
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
 import { updateCurrentCommunityAction } from "@/app/(app)/actions/current-community";
@@ -25,7 +26,6 @@ export function useWorkspaceMenuActions({
   onMenuClose,
 }: UseWorkspaceMenuActionsParams) {
   const router = useRouter();
-  const { toast } = useToast();
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [pendingCommunityId, setPendingCommunityId] = useState<string | null>(null);
   const [isCommunityPending, startCommunityTransition] = useTransition();
@@ -52,24 +52,20 @@ export function useWorkspaceMenuActions({
         const result = await updateCurrentCommunityAction(communityId);
 
         if (!result.success) {
-          toast({
-            title: "通信に失敗しました",
+          toast.error("通信に失敗しました", {
             description: result.error.userMessage,
-            variant: "destructive",
           });
           setPendingCommunityId(null);
           return;
         }
 
-        toast({
-          title: "コミュニティを切り替えました",
-        });
+        toast("コミュニティを切り替えました");
         setPendingCommunityId(null);
         closeMenu();
         router.refresh();
       });
     },
-    [closeMenu, currentCommunityId, router, toast]
+    [closeMenu, currentCommunityId, router]
   );
 
   const handleStripeDashboard = useCallback(() => {

@@ -228,10 +228,9 @@ export function buildAccountRestrictedTemplate(
 }
 
 export function buildAccountStatusChangedTemplate(
-  params: Pick<
-    AccountStatusChangeNotification,
-    "oldStatus" | "newStatus" | "chargesEnabled" | "payoutsEnabled"
-  > & { userName: string }
+  params: Pick<AccountStatusChangeNotification, "oldStatus" | "newStatus" | "payoutsEnabled"> & {
+    userName: string;
+  }
 ): EmailTemplate {
   const oldLabel = ACCOUNT_STATUS_MAP[params.oldStatus] || params.oldStatus;
   const newLabel = ACCOUNT_STATUS_MAP[params.newStatus] || params.newStatus;
@@ -248,12 +247,6 @@ export function buildAccountStatusChangedTemplate(
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;">
         ${renderKeyValueRows([
           {
-            label: "決済受取",
-            value: params.chargesEnabled
-              ? "有効（決済の受け取りが可能です）"
-              : "無効（決済の受け取りは無効です）",
-          },
-          {
             label: "送金",
             value: params.payoutsEnabled ? "有効（送金が可能です）" : "無効（送金は無効です）",
           },
@@ -267,7 +260,6 @@ export function buildAccountStatusChangedTemplate(
     "",
     "アカウント状態が更新されました",
     `状態: ${oldLabel} → ${newLabel}`,
-    `決済受取: ${params.chargesEnabled ? "有効" : "無効"}`,
     `送金: ${params.payoutsEnabled ? "有効" : "無効"}`,
   ].join("\n");
 

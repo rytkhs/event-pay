@@ -5,10 +5,10 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 
 import { AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 import type { BeginCheckoutParams } from "@core/analytics/event-types";
 import { ga4Client } from "@core/analytics/ga4-client";
-import { useToast } from "@core/contexts/toast-context";
 import type { GuestAttendanceData } from "@core/types/guest";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { getPaymentDeadlineStatus } from "@core/utils/guest-restrictions";
@@ -46,7 +46,6 @@ export function GuestPageClient({
   sessionId,
   guestToken,
 }: GuestPageClientProps) {
-  const { toast } = useToast();
   const { handleError } = useErrorHandler();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -150,12 +149,10 @@ export function GuestPageClient({
         // Stripe Checkoutページにリダイレクト
         window.location.href = result.data.sessionUrl;
       } else {
-        toast({
-          title: "決済エラー",
+        toast.error("決済エラー", {
           description: !result.success
             ? result.error?.userMessage || "決済セッションの作成に失敗しました。"
             : "決済セッションの作成に失敗しました。",
-          variant: "destructive",
         });
         setIsProcessingPayment(false);
       }

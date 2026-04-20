@@ -70,6 +70,39 @@ describe("features/communities/services/update-community", () => {
     });
   });
 
+  it("description は任意のまま1000文字以内に制限する", () => {
+    expect(
+      updateCommunitySchema.parse({
+        name: "ボドゲ会",
+      })
+    ).toEqual({
+      name: "ボドゲ会",
+      description: null,
+    });
+
+    expect(
+      updateCommunitySchema.parse({
+        name: "ボドゲ会",
+        description: "あ".repeat(1000),
+      })
+    ).toEqual({
+      name: "ボドゲ会",
+      description: "あ".repeat(1000),
+    });
+
+    const result = updateCommunitySchema.safeParse({
+      name: "ボドゲ会",
+      description: "あ".repeat(1001),
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.flatten().fieldErrors.description).toEqual([
+        "コミュニティ説明は1000文字以内で入力してください",
+      ]);
+    }
+  });
+
   it("name と description だけを更新する", async () => {
     const { supabase, spies } = createSupabaseMock({
       data: {

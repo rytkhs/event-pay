@@ -15,9 +15,9 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { ga4Client } from "@core/analytics/ga4-client";
-import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import type { GuestAttendanceData, UpdateGuestAttendanceData } from "@core/types/guest";
 import type { AttendanceStatus, PaymentMethod } from "@core/types/statuses";
@@ -87,7 +87,6 @@ export const GuestStatusEditModal: React.FC<GuestStatusEditModalProps> = ({
   updateGuestAttendanceAction,
 }) => {
   const router = useRouter();
-  const { toast } = useToast();
   const { handleError } = useErrorHandler();
 
   // State
@@ -152,10 +151,8 @@ export const GuestStatusEditModal: React.FC<GuestStatusEditModalProps> = ({
           });
         }
 
-        toast({
-          title: "更新完了",
+        toast.success("更新完了", {
           description: "参加状況を保存しました。",
-          variant: "success",
         });
 
         router.refresh();

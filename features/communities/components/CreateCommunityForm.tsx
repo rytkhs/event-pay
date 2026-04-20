@@ -14,7 +14,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 
 type CreateCommunityPayload = {
   communityId: string;
@@ -145,27 +144,6 @@ export function CreateCommunityForm({
                 サークル、団体、一時的なグループの名前などを入力してください。あとから変更できます。
               </p>
             )}
-          </div>
-
-          {/* 説明 */}
-          <div className="group flex flex-col gap-2">
-            <Label
-              htmlFor="community-description"
-              className="text-[13px] font-semibold text-foreground/80"
-            >
-              コミュニティの説明{" "}
-              <span className="ml-0.5 font-normal text-muted-foreground">(任意)</span>
-            </Label>
-            <Textarea
-              id="community-description"
-              name="description"
-              placeholder="例: サークル・グループの活動やイベント等の企画・運営を行っています..."
-              className="min-h-44 resize-none rounded-xl border-border/60 shadow-sm transition-all focus-visible:ring-primary/20"
-              aria-describedby="community-description-hint"
-            />
-            <p id="community-description-hint" className="text-[11px] text-muted-foreground/75">
-              コミュニティプロフィールに表示されます。
-            </p>
           </div>
         </div>
       </section>
@@ -380,7 +358,17 @@ export function CreateCommunityForm({
       </div>
 
       {/* ── 右/下パネル: フォーム ───────────────────────── */}
-      <div className="flex flex-1 items-center justify-center px-6 py-12 sm:px-10 lg:overflow-y-auto lg:py-16">
+      <div className="relative flex flex-1 items-center justify-center px-6 py-12 sm:px-10 lg:overflow-y-auto lg:py-16">
+        {/* ステップインジケーター */}
+        <div className="absolute right-6 top-6 flex items-center gap-3 sm:right-10 sm:top-10 lg:right-12 lg:top-12">
+          <span className="hidden text-[11px] font-medium text-muted-foreground/60 sm:block">
+            セットアップ
+          </span>
+          <span className="rounded-full border border-border/60 bg-background/80 px-3 py-1 text-[11px] font-bold text-foreground/80 shadow-sm backdrop-blur-sm">
+            1 / 2
+          </span>
+        </div>
+
         <div className="w-full max-w-sm">
           {/* ヘッダー */}
           <div className="mb-12">

@@ -31,10 +31,11 @@ import {
 } from "../services/factories";
 import {
   resolveRepresentativeCommunitySelection,
+  updateRepresentativeCommunityDescription,
   updateRepresentativeCommunitySelection,
 } from "../services/representative-community";
 import { type ConnectAccountStatusPayload, StripeConnectError } from "../types";
-import { startOnboardingSchema } from "../validation";
+import { requiredOnboardingCommunityDescriptionSchema, startOnboardingSchema } from "../validation";
 
 type StartOnboardingPayload = Record<string, never>;
 
@@ -42,6 +43,7 @@ type StartOnboardingActionResult = ActionResult<StartOnboardingPayload>;
 
 const CONNECT_BUSINESS_PROFILE_PRODUCT_DESCRIPTION =
   "イベントを企画・運営しています。イベント管理プラットフォームの「みんなの集金」のシステムを利用して、イベント開催時の参加費や会費の事前決済を行います。";
+const COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE = "コミュニティ説明を入力してください";
 
 function getStringFormValue(formData: FormData, key: string): string | undefined {
   const value = formData.get(key);
@@ -117,7 +119,7 @@ export async function getConnectAccountStatusAction(): Promise<
       return ok({
         hasAccount: false,
         uiStatus: mapper.mapToUIStatus(null),
-        chargesEnabled: false,
+        collectionReady: false,
         payoutsEnabled: false,
       });
     }
@@ -140,7 +142,7 @@ export async function getConnectAccountStatusAction(): Promise<
       return ok({
         hasAccount: false,
         uiStatus,
-        chargesEnabled: false,
+        collectionReady: false,
         payoutsEnabled: false,
       });
     }
@@ -188,26 +190,6 @@ export async function getConnectAccountStatusAction(): Promise<
       throw new Error("アカウント情報の取得に失敗しました");
     }
 
-    // 7. UIStatusMapperを使用してUI Statusを計算（要件 2.1-2.6）
-    const { UIStatusMapper } = await import("../services/ui-status-mapper");
-    const mapper = new UIStatusMapper();
-    const uiStatus = mapper.mapToUIStatus(updatedAccount.status, stripeAccount);
-
-    // 8. requirements と capabilities の整形
-    const requirements = stripeAccount.requirements
-      ? {
-          currently_due: stripeAccount.requirements.currently_due || [],
-          eventually_due: stripeAccount.requirements.eventually_due || [],
-          past_due: stripeAccount.requirements.past_due || [],
-          pending_verification: stripeAccount.requirements.pending_verification || [],
-        }
-      : {
-          currently_due: [],
-          eventually_due: [],
-          past_due: [],
-          pending_verification: [],
-        };
-
     const mapCapabilityStatus = (value: unknown): "active" | "inactive" | "pending" | undefined => {
       if (value === "active" || value === "inactive" || value === "pending") {
         return value;
@@ -215,6 +197,7 @@ export async function getConnectAccountStatusAction(): Promise<
       return undefined;
     };
 
+    const cachedPayload = buildConnectAccountStatusPayloadFromCachedAccount(updatedAccount);
     const capabilities = stripeAccount.capabilities
       ? {
           card_payments:
@@ -234,14 +217,11 @@ export async function getConnectAccountStatusAction(): Promise<
       : undefined;
 
     return ok({
-      hasAccount: true,
-      accountId: updatedAccount.stripe_account_id,
-      dbStatus: updatedAccount.status,
-      uiStatus,
-      chargesEnabled: updatedAccount.charges_enabled,
-      payoutsEnabled: updatedAccount.payouts_enabled,
-      requirements,
-      capabilities,
+      ...cachedPayload,
+      capabilities: {
+        ...cachedPayload.capabilities,
+        ...capabilities,
+      },
     });
   } catch (error) {
     if (isNextRedirectError(error)) {
@@ -306,9 +286,9 @@ async function getAuthenticatedUser(
  * エラーハンドリングを強化
  * キャッシュされたステータスを使用してフォールバック
  */
-export async function handleOnboardingReturnAction(): Promise<
-  ActionResult<{ redirectUrl: string }>
-> {
+export async function handleOnboardingReturnAction(
+  intent?: string
+): Promise<ActionResult<{ redirectUrl: string }>> {
   const actionLogger = logger.withContext({
     category: "stripe_connect",
     action: "handle_onboarding_return",
@@ -359,7 +339,6 @@ export async function handleOnboardingReturnAction(): Promise<
         accountInfo = {
           accountId: updatedAccount.stripe_account_id,
           status: updatedAccount.status,
-          chargesEnabled: updatedAccount.charges_enabled,
           payoutsEnabled: updatedAccount.payouts_enabled,
         };
       } catch (syncError) {
@@ -377,7 +356,6 @@ export async function handleOnboardingReturnAction(): Promise<
           accountInfo = {
             accountId: cachedAccount.stripe_account_id,
             status: cachedAccount.status,
-            chargesEnabled: cachedAccount.charges_enabled,
             payoutsEnabled: cachedAccount.payouts_enabled,
           };
         } else {
@@ -392,7 +370,6 @@ export async function handleOnboardingReturnAction(): Promise<
 ユーザーID: ${user.id}
 Stripe Account ID: ${account.stripe_account_id}
 ステータス: ${accountInfo.status}
-Charges Enabled: ${accountInfo.chargesEnabled ? "Yes" : "No"}
 Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
 完了時刻: ${timestamp}`;
 
@@ -432,8 +409,13 @@ Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
       });
     }
 
+    let redirectUrl = "/settings/payments";
+    if (intent === "onboarding") {
+      redirectUrl = "/dashboard?onboarding=stripe_return";
+    }
+
     // 設定ページにリダイレクト用のURLを返す
-    return ok({ redirectUrl: "/settings/payments" });
+    return ok({ redirectUrl });
   } catch (error) {
     handleServerError(error, {
       category: "stripe_connect",
@@ -464,7 +446,7 @@ Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
  * オンボーディングリフレッシュ処理を行うServer Action
  * 認証・認可チェックを強化し、詳細なログ出力を実装
  */
-export async function handleOnboardingRefreshAction(): Promise<void> {
+export async function handleOnboardingRefreshAction(intent?: string): Promise<void> {
   let userId: string | undefined;
   try {
     // 1. 認証チェック
@@ -472,9 +454,10 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
     userId = user.id;
 
     // 2. 必要情報の準備（ベースURL → refresh/return URL）
+    const intentParam = intent ? `?intent=${intent}` : "";
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
-    const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}`;
-    const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}`;
+    const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}${intentParam}`;
+    const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}${intentParam}`;
 
     // 3. StripeConnectServiceを初期化
     const stripeConnectService = await createUserStripeConnectServiceForServerComponent();
@@ -575,6 +558,8 @@ export async function startOnboardingAction(
   let onboardingRedirectUrl: string | undefined;
   try {
     const formData = resolveActionFormData(stateOrFormData, maybeFormData);
+    const intentValue = getStringFormValue(formData, "intent");
+    const intentParam = intentValue ? `?intent=${intentValue}` : "";
 
     // 1. 認証チェック
     const user = await getCurrentUserForServerAction();
@@ -590,6 +575,7 @@ export async function startOnboardingAction(
     userId = user.id;
 
     const parsedInput = startOnboardingSchema.safeParse({
+      communityDescription: getStringFormValue(formData, "communityDescription"),
       representativeCommunityId: getStringFormValue(formData, "representativeCommunityId"),
     });
     if (!parsedInput.success) {
@@ -600,8 +586,8 @@ export async function startOnboardingAction(
 
     // 2. 必要情報の準備（ベースURL → refresh/return URL）
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
-    const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}`;
-    const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}`;
+    const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}${intentParam}`;
+    const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}${intentParam}`;
 
     const supabase = await createServerActionSupabaseClient();
     const representativeCommunityResult = await resolveRepresentativeCommunitySelection(
@@ -619,6 +605,46 @@ export async function startOnboardingAction(
         userMessage: "Stripe アカウント設定に使うコミュニティを確認してください",
       });
     }
+    const representativeCommunity = representativeCommunityResult.data;
+    const hasRepresentativeCommunityDescription =
+      (representativeCommunity.description?.trim() ?? "").length > 0;
+
+    if (!hasRepresentativeCommunityDescription) {
+      const communityDescriptionResult = requiredOnboardingCommunityDescriptionSchema.safeParse({
+        communityDescription: parsedInput.data.communityDescription,
+      });
+      if (!communityDescriptionResult.success) {
+        const isMissingDescription =
+          (parsedInput.data.communityDescription?.trim() ?? "").length === 0;
+        return fail("VALIDATION_ERROR", {
+          fieldErrors: {
+            communityDescription: [
+              isMissingDescription
+                ? COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE
+                : (communityDescriptionResult.error.flatten().fieldErrors
+                    .communityDescription?.[0] ?? COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE),
+            ],
+          },
+          retryable: false,
+          userMessage: isMissingDescription
+            ? COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE
+            : "コミュニティ説明を確認してください",
+        });
+      }
+      const communityDescription = communityDescriptionResult.data.communityDescription;
+
+      const descriptionUpdateResult = await updateRepresentativeCommunityDescription(
+        supabase,
+        user.id,
+        representativeCommunity.id,
+        communityDescription
+      );
+      if (!descriptionUpdateResult.success) {
+        return failFrom(descriptionUpdateResult.error, {
+          userMessage: "コミュニティ説明の保存に失敗しました",
+        });
+      }
+    }
 
     // 3. StripeConnectServiceを初期化
     const stripeConnectService = await createUserStripeConnectServiceForServerAction();
@@ -633,7 +659,7 @@ export async function startOnboardingAction(
         businessType: "individual",
         businessProfile: {
           productDescription: CONNECT_BUSINESS_PROFILE_PRODUCT_DESCRIPTION,
-          url: representativeCommunityResult.data.publicPageUrl,
+          url: representativeCommunity.publicPageUrl,
         },
       });
       account = await stripeConnectService.getConnectAccountByUser(user.id);
@@ -641,8 +667,8 @@ export async function startOnboardingAction(
         actionLogger.error("Stripe Connect account was not found after creation", {
           user_id: user.id,
           resource_type: "community",
-          resource_id: representativeCommunityResult.data.id,
-          communityId: representativeCommunityResult.data.id,
+          resource_id: representativeCommunity.id,
+          communityId: representativeCommunity.id,
           outcome: "failure",
         });
         return fail("INTERNAL_ERROR", { userMessage: "アカウント情報の取得に失敗しました" });
@@ -652,7 +678,7 @@ export async function startOnboardingAction(
     const representativeUpdateResult = await updateRepresentativeCommunitySelection(
       supabase,
       account.id,
-      representativeCommunityResult.data.id
+      representativeCommunity.id
     );
     if (!representativeUpdateResult.success) {
       return failFrom(representativeUpdateResult.error, {
@@ -663,15 +689,15 @@ export async function startOnboardingAction(
     const businessProfileUpdateResult = await stripeConnectService.updateBusinessProfile({
       accountId: account.stripe_account_id,
       businessProfile: {
-        url: representativeCommunityResult.data.publicPageUrl,
+        url: representativeCommunity.publicPageUrl,
       },
     });
     if (!businessProfileUpdateResult.success) {
       actionLogger.error("Stripe business profile update failed during onboarding start", {
         user_id: user.id,
         resource_type: "community",
-        resource_id: representativeCommunityResult.data.id,
-        communityId: representativeCommunityResult.data.id,
+        resource_id: representativeCommunity.id,
+        communityId: representativeCommunity.id,
         payoutProfileId: account.id,
         stripe_account_id: account.stripe_account_id,
         outcome: "failure",
@@ -697,9 +723,9 @@ export async function startOnboardingAction(
     actionLogger.info("Stripe Connect onboarding started", {
       user_id: user.id,
       resource_type: "community",
-      resource_id: representativeCommunityResult.data.id,
-      communityId: representativeCommunityResult.data.id,
-      requestedCommunityId: representativeCommunityResult.data.id,
+      resource_id: representativeCommunity.id,
+      communityId: representativeCommunity.id,
+      requestedCommunityId: representativeCommunity.id,
       payoutProfileId: account.id,
       stripe_account_id: account.stripe_account_id,
       outcome: "success",

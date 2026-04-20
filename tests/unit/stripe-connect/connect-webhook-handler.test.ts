@@ -5,6 +5,7 @@
 import type Stripe from "stripe";
 
 import { okResult } from "@core/errors";
+
 import { ConnectWebhookHandler } from "@features/stripe-connect/server";
 
 jest.mock("@core/logging/app-logger", () => {
@@ -44,7 +45,7 @@ const mockFrom = jest.fn(() => ({
     })),
   })),
 }));
-var mockSupabaseClient = {
+const mockSupabaseClient = {
   from: mockFrom,
 };
 
@@ -149,12 +150,30 @@ describe("ConnectWebhookHandler", () => {
         userId: "test_user_id",
         payoutProfileId: "profile-1",
         status: "unverified",
-        chargesEnabled: false,
+        collectionReady: false,
         payoutsEnabled: false,
+        transfersStatus: "inactive",
+        requirementsDisabledReason: null,
+        requirementsSummary: expect.objectContaining({
+          review_state: "none",
+          account: expect.objectContaining({
+            currently_due: [],
+            past_due: [],
+            eventually_due: [],
+            pending_verification: [],
+          }),
+          transfers: expect.objectContaining({
+            currently_due: [],
+            past_due: [],
+            eventually_due: [],
+            pending_verification: [],
+          }),
+        }),
         stripeAccountId: "acct_test_123",
         classificationMetadata: expect.objectContaining({
-          gate: 3,
+          gate: 2,
           details_submitted: false,
+          collection_ready: false,
         }),
         trigger: "webhook",
       });
@@ -202,18 +221,40 @@ describe("ConnectWebhookHandler", () => {
         userId: "test_user_id",
         payoutProfileId: "profile-1",
         status: "verified",
-        chargesEnabled: true,
+        collectionReady: true,
         payoutsEnabled: true,
+        transfersStatus: "active",
+        requirementsDisabledReason: null,
+        requirementsSummary: expect.objectContaining({
+          review_state: "none",
+        }),
         stripeAccountId: "acct_test_123",
         classificationMetadata: expect.objectContaining({
           gate: 5,
           details_submitted: true,
           payouts_enabled: true,
+          collection_ready: true,
           transfers_active: true,
-          card_payments_active: true,
         }),
         trigger: "webhook",
       });
+      expect(mockLogStripeConnect).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "payout_profile.account_status_observed",
+          metadata: expect.objectContaining({
+            collection_ready: true,
+            transfers_status: "active",
+            requirements_disabled_reason: null,
+            requirements_summary: expect.objectContaining({
+              review_state: "none",
+            }),
+            classification_metadata: expect.objectContaining({
+              collection_ready: true,
+              transfers_status: "active",
+            }),
+          }),
+        })
+      );
     });
 
     test("restricted 状態を payout_profile に反映する", async () => {
@@ -257,11 +298,20 @@ describe("ConnectWebhookHandler", () => {
         userId: "test_user_id",
         payoutProfileId: "profile-1",
         status: "restricted",
-        chargesEnabled: false,
+        collectionReady: false,
         payoutsEnabled: false,
+        transfersStatus: "inactive",
+        requirementsDisabledReason: "platform_paused",
+        requirementsSummary: expect.objectContaining({
+          review_state: "none",
+          account: expect.objectContaining({
+            disabled_reason: "platform_paused",
+          }),
+        }),
         stripeAccountId: "acct_test_123",
         classificationMetadata: expect.objectContaining({
           gate: 1,
+          collection_ready: false,
           disabled_reason: "platform_paused",
         }),
         trigger: "webhook",
@@ -292,8 +342,25 @@ describe("ConnectWebhookHandler", () => {
         userId: "test_user_id",
         payoutProfileId: "profile-1",
         status: "unverified",
-        chargesEnabled: false,
+        collectionReady: false,
         payoutsEnabled: false,
+        transfersStatus: null,
+        requirementsDisabledReason: null,
+        requirementsSummary: {
+          account: {
+            currently_due: [],
+            past_due: [],
+            eventually_due: [],
+            pending_verification: [],
+          },
+          transfers: {
+            currently_due: [],
+            past_due: [],
+            eventually_due: [],
+            pending_verification: [],
+          },
+          review_state: "none",
+        },
         stripeAccountId: "acct_test_123",
         trigger: "webhook",
       });

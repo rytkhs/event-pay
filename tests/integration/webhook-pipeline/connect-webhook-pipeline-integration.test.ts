@@ -376,7 +376,6 @@ describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
         withPayoutProfile: true,
         payoutProfileStatus: "unverified",
         payoutsEnabled: false,
-        chargesEnabled: false,
       });
 
       const adminClient = await createAuditedAdminClient(
@@ -426,13 +425,12 @@ describe("🔗 Connect Webhook パイプライン 統合テスト", () => {
 
       const { data: updatedProfile } = await adminClient
         .from("payout_profiles")
-        .select("status, payouts_enabled, charges_enabled")
+        .select("status, payouts_enabled")
         .eq("id", fixture.payoutProfileId!)
         .single();
 
       expect(updatedProfile?.status).toBe("verified");
       expect(updatedProfile?.payouts_enabled).toBe(true);
-      expect(updatedProfile?.charges_enabled).toBe(true);
     });
 
     test("未知 stripe_account_id の account.updated は 204 で ACK skip する", async () => {

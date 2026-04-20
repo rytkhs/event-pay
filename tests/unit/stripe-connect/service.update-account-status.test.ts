@@ -1,5 +1,6 @@
-import { StripeConnectService } from "@features/stripe-connect/services/service";
-import { StripeConnectError, StripeConnectErrorType } from "@features/stripe-connect/types";
+import type { RequirementsSummary } from "@features/stripe-connect";
+import { StripeConnectError, StripeConnectErrorType } from "@features/stripe-connect";
+import { StripeConnectService } from "@features/stripe-connect/server";
 
 type MaybeSingleResult = {
   data: unknown;
@@ -9,6 +10,42 @@ type MaybeSingleResult = {
 type SelectResult = {
   data: unknown;
   error: unknown;
+};
+
+const sampleRequirementsSummary: RequirementsSummary = {
+  account: {
+    currently_due: [],
+    past_due: [],
+    eventually_due: ["individual.verification.document"],
+    pending_verification: [],
+  },
+  transfers: {
+    currently_due: [],
+    past_due: [],
+    eventually_due: [],
+    pending_verification: [],
+  },
+  review_state: "none",
+};
+
+const sampleRequirementsSummaryJson = {
+  account: {
+    currently_due: [],
+    past_due: [],
+    eventually_due: ["individual.verification.document"],
+    pending_verification: [],
+    disabled_reason: null,
+    current_deadline: null,
+  },
+  transfers: {
+    currently_due: [],
+    past_due: [],
+    eventually_due: [],
+    pending_verification: [],
+    disabled_reason: null,
+    current_deadline: null,
+  },
+  review_state: "none",
 };
 
 function createSupabaseMock(config: {
@@ -78,14 +115,12 @@ function createSupabaseMock(config: {
             calls.upserts.push({ payload, options });
 
             return {
-              select: jest
-                .fn()
-                .mockResolvedValue(
-                  config.upsertResult ?? {
-                    data: [{ id: "profile-inserted", owner_user_id: "user-1" }],
-                    error: null,
-                  }
-                ),
+              select: jest.fn().mockResolvedValue(
+                config.upsertResult ?? {
+                  data: [{ id: "profile-inserted", owner_user_id: "user-1" }],
+                  error: null,
+                }
+              ),
             };
           }),
         };
@@ -181,7 +216,6 @@ describe("StripeConnectService.updateAccountStatus", () => {
         userId: "550e8400-e29b-41d4-a716-446655440000",
         stripeAccountId: "acct_other",
         status: "verified",
-        chargesEnabled: true,
         payoutsEnabled: true,
       }),
       StripeConnectErrorType.VALIDATION_ERROR
@@ -211,7 +245,6 @@ describe("StripeConnectService.updateAccountStatus", () => {
         userId: "770e8400-e29b-41d4-a716-446655440000",
         stripeAccountId: "acct_current",
         status: "verified",
-        chargesEnabled: true,
         payoutsEnabled: true,
       }),
       StripeConnectErrorType.VALIDATION_ERROR
@@ -237,7 +270,6 @@ describe("StripeConnectService.updateAccountStatus", () => {
         userId: "8f0d2d8a-0a9d-452a-bf98-f15fc651c01c",
         stripeAccountId: "acct_missing",
         status: "unverified",
-        chargesEnabled: false,
         payoutsEnabled: false,
       }),
       StripeConnectErrorType.ACCOUNT_NOT_FOUND
@@ -273,16 +305,44 @@ describe("StripeConnectService.updateAccountStatus", () => {
       userId: "550e8400-e29b-41d4-a716-446655440000",
       stripeAccountId: "acct_inserted",
       status: "unverified",
-      chargesEnabled: false,
       payoutsEnabled: false,
+      transfersStatus: "inactive",
+      requirementsDisabledReason: "requirements.past_due",
+      requirementsSummary: sampleRequirementsSummary,
     });
 
     expect(calls.updatePayloads).toHaveLength(1);
+    expect(calls.updatePayloads[0]).toEqual(
+      expect.objectContaining({
+        status: "unverified",
+        collection_ready: false,
+        payouts_enabled: false,
+        transfers_status: "inactive",
+        requirements_disabled_reason: "requirements.past_due",
+        requirements_summary: sampleRequirementsSummaryJson,
+        stripe_status_synced_at: expect.any(String),
+        updated_at: expect.any(String),
+      })
+    );
     expect(calls.updateFilters).toEqual([
       { column: "id", value: "00000000-0000-0000-0000-000000000000" },
     ]);
     expect(calls.conflictChecks).toEqual([{ column: "stripe_account_id", value: "acct_inserted" }]);
     expect(calls.upserts).toHaveLength(1);
+    expect(calls.upserts[0]?.payload).toEqual(
+      expect.objectContaining({
+        owner_user_id: "550e8400-e29b-41d4-a716-446655440000",
+        stripe_account_id: "acct_inserted",
+        status: "unverified",
+        collection_ready: false,
+        payouts_enabled: false,
+        transfers_status: "inactive",
+        requirements_disabled_reason: "requirements.past_due",
+        requirements_summary: sampleRequirementsSummaryJson,
+        stripe_status_synced_at: expect.any(String),
+        updated_at: expect.any(String),
+      })
+    );
     expect(calls.communityUpdates).toHaveLength(1);
   });
 
@@ -309,12 +369,147 @@ describe("StripeConnectService.updateAccountStatus", () => {
       userId: "550e8400-e29b-41d4-a716-446655440000",
       stripeAccountId: "acct_aligned",
       status: "verified",
-      chargesEnabled: true,
+      collectionReady: true,
       payoutsEnabled: true,
+      transfersStatus: "active",
+      requirementsSummary: sampleRequirementsSummary,
     });
 
     expect(calls.updatePayloads).toHaveLength(1);
+    expect(calls.updatePayloads[0]).toEqual(
+      expect.objectContaining({
+        status: "verified",
+        collection_ready: true,
+        payouts_enabled: true,
+        transfers_status: "active",
+        requirements_summary: sampleRequirementsSummaryJson,
+        stripe_status_synced_at: expect.any(String),
+        updated_at: expect.any(String),
+      })
+    );
     expect(calls.upserts).toHaveLength(0);
     expect(calls.communityUpdates).toHaveLength(1);
+  });
+
+  it("clears nullable Stripe state cache columns when null is provided", async () => {
+    const { supabase, calls } = createSupabaseMock({
+      currentAccountResult: {
+        data: {
+          id: "profile-1",
+          owner_user_id: "550e8400-e29b-41d4-a716-446655440000",
+          status: "restricted",
+          stripe_account_id: "acct_aligned",
+        },
+        error: null,
+      },
+      updateResult: {
+        data: [{ id: "profile-1", owner_user_id: "550e8400-e29b-41d4-a716-446655440000" }],
+        error: null,
+      },
+    });
+    const service = new StripeConnectService(supabase as never, createErrorHandlerMock());
+
+    await service.updateAccountStatus({
+      payoutProfileId: "profile-1",
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      stripeAccountId: "acct_aligned",
+      status: "verified",
+      collectionReady: true,
+      payoutsEnabled: true,
+      transfersStatus: null,
+      requirementsDisabledReason: null,
+      requirementsSummary: sampleRequirementsSummary,
+    });
+
+    expect(calls.updatePayloads[0]).toEqual(
+      expect.objectContaining({
+        transfers_status: null,
+        requirements_disabled_reason: null,
+      })
+    );
+  });
+
+  it("derives collection_ready from verified status when collectionReady is omitted", async () => {
+    const { supabase, calls } = createSupabaseMock({
+      currentAccountResult: {
+        data: {
+          id: "profile-1",
+          owner_user_id: "550e8400-e29b-41d4-a716-446655440000",
+          status: "verified",
+          stripe_account_id: "acct_aligned",
+        },
+        error: null,
+      },
+      updateResult: {
+        data: [{ id: "profile-1", owner_user_id: "550e8400-e29b-41d4-a716-446655440000" }],
+        error: null,
+      },
+    });
+    const service = new StripeConnectService(supabase as never, createErrorHandlerMock());
+
+    await service.updateAccountStatus({
+      payoutProfileId: "profile-1",
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      stripeAccountId: "acct_aligned",
+      status: "verified",
+      payoutsEnabled: false,
+    });
+
+    expect(calls.updatePayloads[0]).toEqual(
+      expect.objectContaining({
+        status: "verified",
+        collection_ready: true,
+        payouts_enabled: false,
+      })
+    );
+  });
+});
+
+describe("StripeConnectService.isAccountReadyForPayout", () => {
+  function createServiceWithAccount(account: {
+    status: "verified" | "onboarding" | "unverified" | "restricted";
+    collection_ready: boolean;
+    payouts_enabled: boolean;
+  }) {
+    const service = new StripeConnectService({} as never, createErrorHandlerMock());
+    jest.spyOn(service, "getConnectAccountByUser").mockResolvedValue({
+      id: "profile-1",
+      owner_user_id: "550e8400-e29b-41d4-a716-446655440000",
+      stripe_account_id: "acct_test",
+      representative_community_id: null,
+      requirements_disabled_reason: null,
+      requirements_summary: {},
+      stripe_status_synced_at: null,
+      transfers_status: null,
+      created_at: "2026-04-19T00:00:00.000Z",
+      updated_at: "2026-04-19T00:00:00.000Z",
+      ...account,
+    });
+
+    return service;
+  }
+
+  it("requires collection_ready and payouts_enabled for payout readiness", async () => {
+    const service = createServiceWithAccount({
+      status: "onboarding",
+      collection_ready: true,
+      payouts_enabled: true,
+    });
+
+    await expect(
+      service.isAccountReadyForPayout("550e8400-e29b-41d4-a716-446655440000")
+    ).resolves.toBe(true);
+  });
+
+  it("rejects payout readiness when collection_ready is false even if status is verified", async () => {
+    const service = createServiceWithAccount({
+      status: "verified",
+      collection_ready: false,
+      payouts_enabled: true,
+    });
+
+    await expect(
+      service.isAccountReadyForPayout("550e8400-e29b-41d4-a716-446655440000")
+    ).resolves.toBe(false);
   });
 });

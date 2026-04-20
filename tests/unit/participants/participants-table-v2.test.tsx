@@ -5,14 +5,18 @@ const mockUpdateCashStatus = jest.fn();
 const mockBulkUpdateCashStatus = jest.fn();
 const mockDeleteMistakenAttendance = jest.fn();
 const mockAdminUpdateAttendanceStatus = jest.fn();
-const mockToast = jest.fn();
 const mockConditionalSmartSort = jest.fn((participants) => participants);
 
-jest.mock("@core/contexts/toast-context", () => ({
-  useToast: () => ({
-    toast: mockToast,
+jest.mock("sonner", () => ({
+  toast: Object.assign(jest.fn(), {
+    error: jest.fn(),
   }),
 }));
+
+import { toast as sonnerToast } from "sonner";
+
+const mockToast = sonnerToast as jest.Mock & { error: jest.Mock };
+const mockToastError = mockToast.error;
 
 jest.mock("@core/utils/participant-smart-sort", () => ({
   conditionalSmartSort: mockConditionalSmartSort,
@@ -278,8 +282,7 @@ describe("ParticipantsTableV2", () => {
       });
 
       await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith({
-          title: "決済状況を更新しました",
+        expect(mockToast).toHaveBeenCalledWith("決済状況を更新しました", {
           description: "ステータスを「受領」に変更しました。",
         });
       });
@@ -296,10 +299,8 @@ describe("ParticipantsTableV2", () => {
       await user.click(receiveButton);
 
       await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith({
-          title: "更新に失敗しました",
+        expect(mockToastError).toHaveBeenCalledWith("更新に失敗しました", {
           description: errorMessage,
-          variant: "destructive",
         });
       });
     });
@@ -341,12 +342,7 @@ describe("ParticipantsTableV2", () => {
 
       expect(await screen.findByRole("alert")).toHaveTextContent(errorMessage);
       expect(screen.getByRole("dialog")).toBeInTheDocument();
-      expect(mockToast).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: "削除に失敗しました",
-          variant: "destructive",
-        })
-      );
+      expect(mockToastError).not.toHaveBeenCalledWith("削除に失敗しました", expect.anything());
     });
   });
 

@@ -80,14 +80,6 @@ export interface IStripeConnectService {
   updateBusinessProfile(params: UpdateBusinessProfileParams): Promise<UpdateBusinessProfileResult>;
 
   /**
-   * アカウントが決済受取可能かチェックする
-   * @param userId ユーザーID
-   * @returns 決済受取可能かどうか
-   * @throws StripeConnectError アカウント情報取得に失敗した場合
-   */
-  isChargesEnabled(userId: string): Promise<boolean>;
-
-  /**
    * アカウントが送金可能かチェックする
    * @param userId ユーザーID
    * @returns 送金可能かどうか
@@ -96,7 +88,7 @@ export interface IStripeConnectService {
   isPayoutsEnabled(userId: string): Promise<boolean>;
 
   /**
-   * アカウントが送金実行に必要な全条件（verified / charges_enabled / payouts_enabled）を満たしているか
+   * アカウントが送金実行に必要な全条件（collection_ready / payouts_enabled）を満たしているか
    * @param userId ユーザーID
    */
   isAccountReadyForPayout(userId: string): Promise<boolean>;

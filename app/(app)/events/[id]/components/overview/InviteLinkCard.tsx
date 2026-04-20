@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 
 import { Copy, ExternalLink, RefreshCw, Link, Share2, Check, MoreVertical } from "lucide-react";
+import { toast } from "sonner";
 
 import { ga4Client } from "@core/analytics/ga4-client";
-import { useToast } from "@core/contexts/toast-context";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,7 +31,6 @@ export function InviteLinkCard({ eventId, initialInviteToken }: InviteLinkCardPr
     }
   }, [initialInviteToken]);
 
-  const { toast } = useToast();
   const { copyToClipboard } = useClipboard();
 
   const handleGenerateToken = async (forceRegenerate: boolean = false) => {
@@ -54,19 +53,15 @@ export function InviteLinkCard({ eventId, initialInviteToken }: InviteLinkCardPr
           ? "旧リンクは無効になりました。新しいリンクを参加者に共有してください。"
           : "参加者に共有してイベントに招待しましょう。";
 
-        toast({ title: message, description });
+        toast(message, { description });
       } else {
-        toast({
-          title: "エラー",
+        toast.error("エラー", {
           description: result.error.userMessage || "招待リンクの生成に失敗しました",
-          variant: "destructive",
         });
       }
     } catch {
-      toast({
-        title: "エラー",
+      toast.error("エラー", {
         description: "招待リンクの生成中にエラーが発生しました",
-        variant: "destructive",
       });
     } finally {
       setIsGenerating(false);
@@ -78,20 +73,17 @@ export function InviteLinkCard({ eventId, initialInviteToken }: InviteLinkCardPr
       const success = await copyToClipboard(inviteUrl);
       if (success) {
         setIsCopied(true);
-        toast({
-          title: "コピーしました",
+        toast("コピーしました", {
           description: "招待リンクをクリップボードにコピーしました。",
         });
         setTimeout(() => setIsCopied(false), 2000);
       } else {
-        toast({
-          title: "コピーに失敗しました",
+        toast.error("コピーに失敗しました", {
           description: "手動で招待リンクをコピーしてください。",
-          variant: "destructive",
         });
       }
     }
-  }, [inviteUrl, copyToClipboard, toast]);
+  }, [inviteUrl, copyToClipboard]);
 
   const handleNativeShare = () => {
     if (typeof navigator !== "undefined" && navigator.share && inviteUrl) {

@@ -19,14 +19,14 @@ export async function generateMetadata(): Promise<Metadata> {
       absolute: siteOgTitle,
     },
     description:
-      "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できる、集金 & 出欠確認アプリです。いつもの集金を、キャッシュレスにしませんか?サークル・コミュニティ運営の集金負担を劇的に減らします。",
+      "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できる、集金 & 出欠管理アプリです。いつもの集金を、キャッシュレスにしませんか?サークル・コミュニティ運営の集金負担を劇的に減らします。",
     alternates: {
       canonical: process.env.NEXT_PUBLIC_APP_URL,
     },
     openGraph: buildOpenGraphMetadata({
       title: siteOgTitle,
       description:
-        "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できる、集金 & 出欠確認アプリです。いつもの集金を、キャッシュレスにしませんか?サークル・コミュニティ運営の集金負担を劇的に減らします。",
+        "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できる、集金 & 出欠管理アプリです。いつもの集金を、キャッシュレスにしませんか?サークル・コミュニティ運営の集金負担を劇的に減らします。",
     }),
   };
 }

@@ -1,10 +1,9 @@
 /** @jest-environment jsdom */
 
 import { useRouter } from "next/navigation";
+import { toast as sonnerToast } from "sonner";
 
 import { act, renderHook, waitFor } from "@testing-library/react";
-
-import { useToast } from "@core/contexts/toast-context";
 
 import { updateCurrentCommunityAction } from "@/app/(app)/actions/current-community";
 import { useWorkspaceMenuActions } from "@/components/layout/use-workspace-menu-actions";
@@ -13,9 +12,14 @@ jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),
 }));
 
-jest.mock("@core/contexts/toast-context", () => ({
-  useToast: jest.fn(),
+jest.mock("sonner", () => ({
+  toast: Object.assign(jest.fn(), {
+    error: jest.fn(),
+  }),
 }));
+
+const mockToast = sonnerToast as jest.Mock & { error: jest.Mock };
+const mockToastError = mockToast.error;
 
 jest.mock("@/app/(app)/actions/current-community", () => ({
   updateCurrentCommunityAction: jest.fn(),
@@ -32,7 +36,6 @@ function createDeferred<T>() {
 
 describe("useWorkspaceMenuActions", () => {
   const mockRouter = { refresh: jest.fn() };
-  const mockToast = jest.fn();
   const logoutAction = jest.fn();
   const createExpressDashboardLoginLinkAction = jest.fn();
   const onMenuClose = jest.fn();
@@ -40,7 +43,6 @@ describe("useWorkspaceMenuActions", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
-    (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
   });
 
   function renderSubject() {
@@ -83,9 +85,7 @@ describe("useWorkspaceMenuActions", () => {
     });
 
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "コミュニティを切り替えました" })
-      );
+      expect(mockToast).toHaveBeenCalledWith("コミュニティを切り替えました");
       expect(mockRouter.refresh).toHaveBeenCalledTimes(1);
       expect(onMenuClose).toHaveBeenCalledTimes(1);
       expect(result.current.pendingCommunityId).toBeNull();
@@ -106,11 +106,10 @@ describe("useWorkspaceMenuActions", () => {
     });
 
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(
+      expect(mockToastError).toHaveBeenCalledWith(
+        "通信に失敗しました",
         expect.objectContaining({
-          title: "通信に失敗しました",
           description: "切り替えに失敗しました",
-          variant: "destructive",
         })
       );
     });

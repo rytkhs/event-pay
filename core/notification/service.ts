@@ -186,7 +186,6 @@ export class NotificationService implements INotificationService {
             userName: userInfo.name || "ユーザー",
             oldStatus: data.oldStatus,
             newStatus: data.newStatus,
-            chargesEnabled: data.chargesEnabled,
             payoutsEnabled: data.payoutsEnabled,
           }),
           idempotencyKey: buildEmailIdempotencyKey({
@@ -196,7 +195,6 @@ export class NotificationService implements INotificationService {
               data.accountId,
               data.oldStatus,
               data.newStatus,
-              data.chargesEnabled,
               data.payoutsEnabled,
             ],
           }),

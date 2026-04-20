@@ -117,7 +117,7 @@
 - 責務: 受取先情報と Stripe Connect 状態の保持
 - 主な属性
   - 所有: `owner_user_id`
-  - Connect: `stripe_account_id`, `status`, `charges_enabled`, `payouts_enabled`
+  - Connect: `stripe_account_id`, `status`, `payouts_enabled`
   - 提出URL: `representative_community_id`
 - 不変条件
   - MVP では 1 user = 1 payout profile

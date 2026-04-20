@@ -112,14 +112,13 @@ describe("StripeConnectService with user-scoped Supabase client", () => {
 
     const { data, error } = await client
       .from("payout_profiles")
-      .select("id, status, charges_enabled, payouts_enabled")
+      .select("id, status, payouts_enabled")
       .eq("id", setup.testPayoutProfileId)
       .single();
 
     expect(error).toBeNull();
     expect(data).toBeDefined();
     expect(data?.status).toBe("verified");
-    expect(data?.charges_enabled).toBe(false);
     expect(data?.payouts_enabled).toBe(false);
   });
 });

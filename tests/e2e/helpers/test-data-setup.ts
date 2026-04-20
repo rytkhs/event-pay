@@ -32,7 +32,7 @@ const supabaseAdmin = createClient<Database>(
 export const TEST_IDS = {
   EVENT_ID: "87654321-4321-4321-4321-cba987654321",
   ATTENDANCE_ID: "11111111-2222-3333-4444-555555555555",
-  CONNECT_ACCOUNT_ID: "acct_1SNbjmCtoNNhKnPZ",
+  CONNECT_ACCOUNT_ID: "acct_1TOADDEEczGHQjDD",
 } as const;
 
 // 動的に生成されるテストユーザーID
@@ -65,7 +65,6 @@ export class TestDataManager {
     const testUser = await createTestUserWithConnect(testEmail, testPassword, {
       stripeAccountId: TEST_IDS.CONNECT_ACCOUNT_ID,
       payoutsEnabled: true,
-      chargesEnabled: true,
     });
 
     if (!testUser.communityId) {
@@ -101,7 +100,6 @@ export class TestDataManager {
         user_id: testUser.id,
         stripe_account_id: TEST_IDS.CONNECT_ACCOUNT_ID,
         payouts_enabled: true,
-        charges_enabled: true,
         status: "verified" as const,
         created_at: now.toISOString(),
         updated_at: now.toISOString(),
@@ -246,8 +244,8 @@ export class TestDataManager {
 
   static async setCurrentPayoutProfileState(options: {
     status: Database["public"]["Enums"]["stripe_account_status_enum"];
+    collectionReady?: boolean;
     payoutsEnabled?: boolean;
-    chargesEnabled?: boolean;
     stripeAccountId?: string;
   }) {
     if (!testContext?.payoutProfileId) {
@@ -258,8 +256,8 @@ export class TestDataManager {
       .from("payout_profiles")
       .update({
         status: options.status,
+        collection_ready: options.collectionReady ?? options.status === "verified",
         payouts_enabled: options.payoutsEnabled ?? true,
-        charges_enabled: options.chargesEnabled ?? true,
         stripe_account_id: options.stripeAccountId ?? TEST_IDS.CONNECT_ACCOUNT_ID,
         updated_at: new Date().toISOString(),
       })

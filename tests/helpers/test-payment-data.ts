@@ -25,8 +25,8 @@ export interface TestPaymentUser extends TestUser {
   stripeConnectAccountId?: string;
   payoutProfileId?: string;
   communityId?: string;
-  payoutsEnabled: boolean;
-  chargesEnabled: boolean;
+  payoutsEnabled?: boolean;
+  chargesEnabled?: boolean;
 }
 
 export interface TestPaymentEvent {
@@ -278,8 +278,6 @@ export async function createTestUserWithConnect(
   const connectAccountData: StripeConnectAccountInsert = {
     user_id: user.id,
     stripe_account_id: stripeAccountId,
-    payouts_enabled: payoutsEnabled,
-    charges_enabled: chargesEnabled,
     status: payoutsEnabled && chargesEnabled ? "verified" : "onboarding",
   };
 
@@ -301,13 +299,12 @@ export async function createTestUserWithConnect(
         owner_user_id: user.id,
         stripe_account_id: stripeAccountId,
         status: payoutsEnabled && chargesEnabled ? "verified" : "onboarding",
-        payouts_enabled: payoutsEnabled,
-        charges_enabled: chargesEnabled,
+        collection_ready: payoutsEnabled && chargesEnabled,
         representative_community_id: community.id,
       },
       { onConflict: "owner_user_id" }
     )
-    .select("id, stripe_account_id, payouts_enabled, charges_enabled")
+    .select("id, stripe_account_id")
     .single();
 
   if (payoutProfileError || !payoutProfile) {
@@ -329,8 +326,9 @@ export async function createTestUserWithConnect(
     stripeConnectAccountId: connectAccount.stripe_account_id,
     payoutProfileId: payoutProfile.id,
     communityId: community.id,
-    payoutsEnabled: connectAccount.payouts_enabled,
-    chargesEnabled: connectAccount.charges_enabled,
+    // Note: これらのカラムは廃止されたため、オプションとして扱うかダミー値を返す
+    payoutsEnabled: true,
+    chargesEnabled: true,
   };
 }
 

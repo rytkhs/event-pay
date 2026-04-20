@@ -20,9 +20,9 @@ export const metadata: Metadata = {
   description: "Stripeアカウント設定の完了処理を行っています",
 };
 
-async function ReturnContent() {
+async function ReturnContent({ intent }: { intent?: string }) {
   // オンボーディング完了処理を実行
-  const result = await handleOnboardingReturnAction();
+  const result = await handleOnboardingReturnAction(intent);
 
   if (result.success && result.data?.redirectUrl) {
     redirect(result.data.redirectUrl);
@@ -60,10 +60,17 @@ function LoadingContent() {
   );
 }
 
-export default function PaymentSettingsReturnPage() {
+type PageProps = {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+export default async function PaymentSettingsReturnPage(props: PageProps) {
+  const searchParams = await props.searchParams;
+  const intent = typeof searchParams.intent === "string" ? searchParams.intent : undefined;
+
   return (
     <Suspense fallback={<LoadingContent />}>
-      <ReturnContent />
+      <ReturnContent intent={intent} />
     </Suspense>
   );
 }

@@ -30,6 +30,7 @@ const mockResolveCurrentCommunityForServerAction = jest.fn();
 const mockResolveCurrentCommunityForServerComponent = jest.fn();
 const mockResolveAppWorkspaceForServerComponent = jest.fn();
 const mockResolveRepresentativeCommunitySelection = jest.fn();
+const mockUpdateRepresentativeCommunityDescription = jest.fn();
 const mockUpdateRepresentativeCommunitySelection = jest.fn();
 
 jest.mock("@core/community/current-community", () => ({
@@ -43,6 +44,7 @@ jest.mock("@core/community/app-workspace", () => ({
 
 jest.mock("@features/stripe-connect/services/representative-community", () => ({
   resolveRepresentativeCommunitySelection: mockResolveRepresentativeCommunitySelection,
+  updateRepresentativeCommunityDescription: mockUpdateRepresentativeCommunityDescription,
   updateRepresentativeCommunitySelection: mockUpdateRepresentativeCommunitySelection,
 }));
 
@@ -52,9 +54,13 @@ jest.mock("@features/stripe-connect/services/factories", () => {
     owner_user_id: defaultUserId,
     stripe_account_id: "acct_test",
     status: "unverified",
-    charges_enabled: false,
+    collection_ready: false,
     payouts_enabled: false,
     representative_community_id: null,
+    requirements_disabled_reason: null,
+    requirements_summary: {},
+    stripe_status_synced_at: null,
+    transfers_status: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     ...overrides,
@@ -179,6 +185,10 @@ describe("Stripe Connect actions", () => {
   });
 
   beforeEach(() => {
+    mockResolveRepresentativeCommunitySelection.mockClear();
+    mockUpdateRepresentativeCommunityDescription.mockClear();
+    mockUpdateRepresentativeCommunitySelection.mockClear();
+
     process.env = {
       ...originalEnv,
       NODE_ENV: "test",
@@ -226,6 +236,7 @@ describe("Stripe Connect actions", () => {
     mockResolveRepresentativeCommunitySelection.mockResolvedValue({
       success: true,
       data: {
+        description: "既存のコミュニティ説明",
         id: representativeCommunityId,
         name: "Community 1",
         slug: "community-1",
@@ -235,6 +246,13 @@ describe("Stripe Connect actions", () => {
     mockUpdateRepresentativeCommunitySelection.mockResolvedValue({
       success: true,
       data: undefined,
+    });
+    mockUpdateRepresentativeCommunityDescription.mockResolvedValue({
+      success: true,
+      data: {
+        description: "入力されたコミュニティ説明",
+        id: representativeCommunityId,
+      },
     });
 
     const { __mockStripeConnectService } = jest.requireMock(
@@ -317,6 +335,7 @@ describe("Stripe Connect actions", () => {
         "profile-1",
         representativeCommunityId
       );
+      expect(mockUpdateRepresentativeCommunityDescription).not.toHaveBeenCalled();
       expect(logger.withContext().info).toHaveBeenCalledWith(
         "Stripe Connect onboarding started",
         expect.objectContaining({
@@ -348,6 +367,7 @@ describe("Stripe Connect actions", () => {
         userId: defaultUserId,
         email: "u@example.com",
         country: "JP",
+        businessType: "individual",
         businessProfile: {
           productDescription:
             "イベントを企画・運営しています。イベント管理プラットフォームの「みんなの集金」のシステムを利用して、イベント開催時の参加費や会費の事前決済を行います。",
@@ -373,6 +393,111 @@ describe("Stripe Connect actions", () => {
           "Stripe アカウント設定に使うコミュニティを選択してください",
         ]);
       }
+    });
+
+    it("コミュニティ説明が空なら description 未入力時に validation error を返す", async () => {
+      mockResolveRepresentativeCommunitySelection.mockResolvedValueOnce({
+        success: true,
+        data: {
+          description: null,
+          id: representativeCommunityId,
+          name: "Community 1",
+          slug: "community-1",
+          publicPageUrl: "http://localhost:3000/c/community-1",
+        },
+      });
+
+      const { startOnboardingAction } = require("@features/stripe-connect/server");
+      const formData = new FormData();
+      formData.set("representativeCommunityId", representativeCommunityId);
+
+      const result = await startOnboardingAction(formData);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.fieldErrors?.communityDescription).toEqual([
+          "コミュニティ説明を入力してください",
+        ]);
+      }
+      expect(mockUpdateRepresentativeCommunityDescription).not.toHaveBeenCalled();
+      expect(redirect).not.toHaveBeenCalled();
+    });
+
+    it("コミュニティ説明が10文字未満なら validation error を返す", async () => {
+      mockResolveRepresentativeCommunitySelection.mockResolvedValueOnce({
+        success: true,
+        data: {
+          description: null,
+          id: representativeCommunityId,
+          name: "Community 1",
+          slug: "community-1",
+          publicPageUrl: "http://localhost:3000/c/community-1",
+        },
+      });
+
+      const { startOnboardingAction } = require("@features/stripe-connect/server");
+      const formData = new FormData();
+      formData.set("representativeCommunityId", representativeCommunityId);
+      formData.set("communityDescription", "短い説明");
+
+      const result = await startOnboardingAction(formData);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.fieldErrors?.communityDescription).toEqual([
+          "コミュニティ説明は10文字以上で入力してください",
+        ]);
+      }
+      expect(mockUpdateRepresentativeCommunityDescription).not.toHaveBeenCalled();
+      expect(redirect).not.toHaveBeenCalled();
+    });
+
+    it("コミュニティ説明が1000文字超過なら validation error を返す", async () => {
+      const { startOnboardingAction } = require("@features/stripe-connect/server");
+      const formData = new FormData();
+      formData.set("representativeCommunityId", representativeCommunityId);
+      formData.set("communityDescription", "あ".repeat(1001));
+
+      const result = await startOnboardingAction(formData);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.fieldErrors?.communityDescription).toEqual([
+          "コミュニティ説明は1000文字以内で入力してください",
+        ]);
+      }
+      expect(mockResolveRepresentativeCommunitySelection).not.toHaveBeenCalled();
+      expect(mockUpdateRepresentativeCommunityDescription).not.toHaveBeenCalled();
+      expect(redirect).not.toHaveBeenCalled();
+    });
+
+    it("コミュニティ説明が空なら description 保存後に Stripe オンボーディングへリダイレクトする", async () => {
+      mockResolveRepresentativeCommunitySelection.mockResolvedValueOnce({
+        success: true,
+        data: {
+          description: "",
+          id: representativeCommunityId,
+          name: "Community 1",
+          slug: "community-1",
+          publicPageUrl: "http://localhost:3000/c/community-1",
+        },
+      });
+
+      const { startOnboardingAction } = require("@features/stripe-connect/server");
+      const formData = new FormData();
+      formData.set("representativeCommunityId", representativeCommunityId);
+      formData.set("communityDescription", "  入力されたコミュニティ説明  ");
+
+      const result = await startOnboardingAction(formData);
+
+      expect(result.success).toBe(true);
+      expect(mockUpdateRepresentativeCommunityDescription).toHaveBeenCalledWith(
+        mockSupabase,
+        defaultUserId,
+        representativeCommunityId,
+        "入力されたコミュニティ説明"
+      );
+      expect(redirect).toHaveBeenCalledWith(expect.stringContaining("https://connect.stripe.com"));
     });
   });
 
@@ -403,9 +528,13 @@ describe("Stripe Connect actions", () => {
                     owner_user_id: defaultUserId,
                     stripe_account_id: "acct_test_123",
                     status: "verified",
-                    charges_enabled: true,
+                    collection_ready: true,
                     payouts_enabled: true,
                     representative_community_id: null,
+                    requirements_disabled_reason: null,
+                    requirements_summary: {},
+                    stripe_status_synced_at: null,
+                    transfers_status: "active",
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
                   },
@@ -488,7 +617,7 @@ describe("Stripe Connect actions", () => {
       if (result.success) {
         expect(result.data.hasAccount).toBe(false);
         expect(result.data.uiStatus).toBe("no_account");
-        expect(result.data.chargesEnabled).toBe(false);
+        expect(result.data.collectionReady).toBe(false);
         expect(result.data.payoutsEnabled).toBe(false);
       }
     });
@@ -501,9 +630,9 @@ describe("Stripe Connect actions", () => {
         "@features/stripe-connect/services/status-sync-service"
       );
       const readyAccount = __mockStripeConnectService.buildAccount({
-        charges_enabled: true,
         payouts_enabled: true,
         status: "verified",
+        collection_ready: true,
       });
 
       __mockStripeConnectService.getConnectAccountForCommunity
@@ -521,7 +650,7 @@ describe("Stripe Connect actions", () => {
         expect(result.data.hasAccount).toBe(true);
         expect(result.data.dbStatus).toBe("verified");
         expect(result.data.uiStatus).toBe("ready");
-        expect(result.data.chargesEnabled).toBe(true);
+        expect(result.data.collectionReady).toBe(true);
         expect(result.data.payoutsEnabled).toBe(true);
       }
     });

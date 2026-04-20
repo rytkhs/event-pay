@@ -60,7 +60,6 @@ erDiagram
         uuid owner_user_id FK
         varchar stripe_account_id UK
         enum status
-        boolean charges_enabled
         boolean payouts_enabled
         uuid representative_community_id FK
         timestamptz created_at
@@ -173,7 +172,7 @@ erDiagram
 
 ### 3.3 payout_profiles
 - 役割: 受取先の論理モデル。MVP では Stripe Connect account のラッパ。
-- 主な列: `owner_user_id`, `stripe_account_id`, `status`, `charges_enabled`, `payouts_enabled`, `representative_community_id`
+- 主な列: `owner_user_id`, `stripe_account_id`, `status`, `payouts_enabled`, `representative_community_id`
 - 主な制約:
   - `owner_user_id UNIQUE` により MVP では 1 user = 1 payout profile
   - `representative_community_id` は owner 自身の未削除 community のみを参照できる

@@ -26,7 +26,7 @@ export const HeroSection: React.FC = () => {
           {/* Text Content */}
           <div className="flex-1 text-center md:text-left">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 leading-tight mb-6">
-              集金·出欠確認を
+              集金·出欠管理を
               <br />
               もっとラクに
             </h1>

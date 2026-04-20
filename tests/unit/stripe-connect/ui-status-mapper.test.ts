@@ -6,16 +6,16 @@
  * - 2.1: UI Statusとして no_account、unverified、requirements_due、pending_review、ready、restricted の6つの値を返す
  * - 2.2: Connect Account が存在しないとき、UI Status として no_account を返す
  * - 2.3: Database Status が unverified であるとき、UI Status として unverified を返す
- * - 2.4: Account Object の currently_due、past_due、または eventually_due が非空であるとき、UI Status として requirements_due を返す
+ * - 2.4: currently_due または past_due が非空であるとき、UI Status として requirements_due を返す
  * - 2.4.1: onboarding 状態で pending_verification があり due 項目がない場合は pending_review を返す
  * - 2.5: Database Status が restricted であるとき、UI Status として restricted を返し、requirements_due に統合しない
- * - 2.6: Database Status が verified かつ Account Object の due配列が空かつ disabled_reason が null であるとき、UI Status として ready を返す
+ * - 2.6: collection_ready=true かつ blocking requirements がないとき、UI Status として ready を返す
  */
 
 import type Stripe from "stripe";
 
 import { UIStatusMapper } from "@features/stripe-connect/server";
-import type { DatabaseStatus } from "@features/stripe-connect/types/status-classification";
+import type { RequirementsSummary } from "@features/stripe-connect/types/status-classification";
 
 /**
  * モックStripe Accountオブジェクトを生成するヘルパー関数
@@ -140,6 +140,25 @@ const createMockAccount = (overrides?: Partial<Stripe.Account>): Stripe.Account 
   } as Stripe.Account;
 };
 
+const createSummary = (overrides?: Partial<RequirementsSummary>): RequirementsSummary => ({
+  account: {
+    currently_due: [],
+    past_due: [],
+    eventually_due: [],
+    pending_verification: [],
+    current_deadline: null,
+  },
+  transfers: {
+    currently_due: [],
+    past_due: [],
+    eventually_due: [],
+    pending_verification: [],
+    current_deadline: null,
+  },
+  review_state: "none",
+  ...overrides,
+});
+
 describe("UIStatusMapper", () => {
   let mapper: UIStatusMapper;
 
@@ -243,7 +262,7 @@ describe("UIStatusMapper", () => {
       expect(uiStatus).toBe("requirements_due");
     });
 
-    it("eventually_dueが非空の場合はrequirements_dueを返す", () => {
+    it("eventually_dueのみの場合はreadyを返す", () => {
       const account = createMockAccount({
         requirements: {
           alternatives: [],
@@ -259,10 +278,10 @@ describe("UIStatusMapper", () => {
 
       const uiStatus = mapper.mapToUIStatus("verified", account);
 
-      expect(uiStatus).toBe("requirements_due");
+      expect(uiStatus).toBe("ready");
     });
 
-    it("disabled_reasonが存在する場合はrequirements_dueを返す", () => {
+    it("under_reviewのdisabled_reasonはpending_reviewを返す", () => {
       const account = createMockAccount({
         requirements: {
           alternatives: [],
@@ -278,7 +297,7 @@ describe("UIStatusMapper", () => {
 
       const uiStatus = mapper.mapToUIStatus("verified", account);
 
-      expect(uiStatus).toBe("requirements_due");
+      expect(uiStatus).toBe("pending_review");
     });
 
     it("複数のdue配列が非空の場合はrequirements_dueを返す", () => {
@@ -340,11 +359,11 @@ describe("UIStatusMapper", () => {
       expect(uiStatus).toBe("pending_review");
     });
 
-    it("capabilityがpendingの場合はpending_reviewを返す", () => {
+    it("transfers capabilityがpendingの場合はpending_reviewを返す", () => {
       const account = createMockAccount({
         capabilities: {
-          card_payments: "pending",
-          transfers: "active",
+          card_payments: "active",
+          transfers: "pending",
         },
         requirements: {
           alternatives: [],
@@ -444,6 +463,72 @@ describe("UIStatusMapper", () => {
       const uiStatus = mapper.mapToUIStatus("onboarding");
 
       expect(uiStatus).toBe("requirements_due");
+    });
+  });
+
+  describe("保存済み状態からのUI Status", () => {
+    it("collection_ready=trueならpayouts_enabled=falseでもreadyを返す", () => {
+      const uiStatus = mapper.mapStoredAccountToUIStatus({
+        dbStatus: "onboarding",
+        collectionReady: true,
+        requirementsSummary: createSummary(),
+      });
+
+      expect(uiStatus).toBe("ready");
+    });
+
+    it("eventually_dueのみならreadyを返す", () => {
+      const uiStatus = mapper.mapStoredAccountToUIStatus({
+        dbStatus: "verified",
+        collectionReady: true,
+        requirementsSummary: createSummary({
+          account: {
+            currently_due: [],
+            past_due: [],
+            eventually_due: ["company.verification.document"],
+            pending_verification: [],
+            current_deadline: null,
+          },
+        }),
+      });
+
+      expect(uiStatus).toBe("ready");
+    });
+
+    it("currently_dueがあればrequirements_dueを返す", () => {
+      const uiStatus = mapper.mapStoredAccountToUIStatus({
+        dbStatus: "onboarding",
+        collectionReady: false,
+        requirementsSummary: createSummary({
+          account: {
+            currently_due: ["individual.verification.document"],
+            past_due: [],
+            eventually_due: [],
+            pending_verification: [],
+            current_deadline: null,
+          },
+        }),
+      });
+
+      expect(uiStatus).toBe("requirements_due");
+    });
+
+    it("pending_verificationのみならpending_reviewを返す", () => {
+      const uiStatus = mapper.mapStoredAccountToUIStatus({
+        dbStatus: "onboarding",
+        collectionReady: false,
+        requirementsSummary: createSummary({
+          account: {
+            currently_due: [],
+            past_due: [],
+            eventually_due: [],
+            pending_verification: ["individual.verification.document"],
+            current_deadline: null,
+          },
+        }),
+      });
+
+      expect(uiStatus).toBe("pending_review");
     });
   });
 

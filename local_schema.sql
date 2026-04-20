@@ -1323,7 +1323,7 @@ DECLARE
   v_attendance_id uuid;
   v_payout_profile_id uuid;
   v_stripe_account_id character varying;
-  v_payout_status text;
+  v_collection_ready boolean;
 BEGIN
   IF p_event_id IS NULL THEN
     RAISE EXCEPTION 'Event ID cannot be null';
@@ -1392,8 +1392,8 @@ BEGIN
   END IF;
 
   IF p_status = 'attending' AND p_event_fee > 0 AND p_payment_method = 'stripe' THEN
-    SELECT e.payout_profile_id, pp.stripe_account_id, pp.status
-      INTO v_payout_profile_id, v_stripe_account_id, v_payout_status
+    SELECT e.payout_profile_id, pp.stripe_account_id, pp.collection_ready
+      INTO v_payout_profile_id, v_stripe_account_id, v_collection_ready
     FROM public.events e
     LEFT JOIN public.payout_profiles pp
       ON pp.id = e.payout_profile_id
@@ -1401,7 +1401,7 @@ BEGIN
 
     IF v_payout_profile_id IS NULL
        OR v_stripe_account_id IS NULL
-       OR v_payout_status != 'verified' THEN
+       OR v_collection_ready IS NOT TRUE THEN
       RAISE EXCEPTION 'Online payment is not available for this event';
     END IF;
   ELSE
@@ -1616,8 +1616,7 @@ DECLARE
   v_payment_method public.payment_method_enum := NULL;
   v_payment_effect text := 'none';
   v_stripe_account_id character varying := NULL;
-  v_payout_status public.stripe_account_status_enum := NULL;
-  v_payouts_enabled boolean := false;
+  v_collection_ready boolean := false;
   v_updated_open_count integer := 0;
 BEGIN
   IF current_setting('request.jwt.claims', true) IS NULL THEN
@@ -1743,15 +1742,14 @@ BEGIN
       END IF;
 
       IF p_payment_method = 'stripe' THEN
-        SELECT pp.stripe_account_id, pp.status, pp.payouts_enabled
-          INTO v_stripe_account_id, v_payout_status, v_payouts_enabled
+        SELECT pp.stripe_account_id, pp.collection_ready
+          INTO v_stripe_account_id, v_collection_ready
           FROM public.payout_profiles pp
          WHERE pp.id = v_event.payout_profile_id;
 
         IF v_event.payout_profile_id IS NULL
            OR v_stripe_account_id IS NULL
-           OR v_payout_status != 'verified'
-           OR v_payouts_enabled IS NOT TRUE THEN
+           OR v_collection_ready IS NOT TRUE THEN
           RAISE EXCEPTION 'Online payment is not available for this event'
             USING ERRCODE = 'P0012';
         END IF;
@@ -2225,7 +2223,7 @@ COMMENT ON FUNCTION "public"."rpc_public_get_community_by_slug"("p_slug" "text")
 
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") RETURNS TABLE("payout_profile_id" "uuid", "stripe_account_id" character varying, "status" "text")
+CREATE OR REPLACE FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid") RETURNS TABLE("payout_profile_id" "uuid", "stripe_account_id" character varying, "status" "text", "collection_ready" boolean)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
@@ -2238,7 +2236,8 @@ BEGIN
   SELECT
     pp.id,
     pp.stripe_account_id,
-    pp.status::text
+    pp.status::text,
+    pp.collection_ready
   FROM public.events e
   JOIN public.payout_profiles pp
     ON pp.id = e.payout_profile_id
@@ -2503,7 +2502,7 @@ DECLARE
   v_event_date timestamptz;
   v_payout_profile_id uuid;
   v_stripe_account_id character varying;
-  v_payout_status text;
+  v_collection_ready boolean;
 BEGIN
   SELECT event_id, status INTO v_event_id, v_current_status
   FROM public.attendances
@@ -2550,8 +2549,8 @@ BEGIN
   END IF;
 
   IF p_status = 'attending' AND p_event_fee > 0 AND p_payment_method = 'stripe' THEN
-    SELECT e.payout_profile_id, pp.stripe_account_id, pp.status
-      INTO v_payout_profile_id, v_stripe_account_id, v_payout_status
+    SELECT e.payout_profile_id, pp.stripe_account_id, pp.collection_ready
+      INTO v_payout_profile_id, v_stripe_account_id, v_collection_ready
     FROM public.events e
     LEFT JOIN public.payout_profiles pp
       ON pp.id = e.payout_profile_id
@@ -2559,7 +2558,7 @@ BEGIN
 
     IF v_payout_profile_id IS NULL
        OR v_stripe_account_id IS NULL
-       OR v_payout_status != 'verified' THEN
+       OR v_collection_ready IS NOT TRUE THEN
       RAISE EXCEPTION 'Online payment is not available for this event';
     END IF;
   ELSE
@@ -3166,11 +3165,15 @@ CREATE TABLE IF NOT EXISTS "public"."payout_profiles" (
     "owner_user_id" "uuid" NOT NULL,
     "stripe_account_id" character varying(255) NOT NULL,
     "status" "public"."stripe_account_status_enum" DEFAULT 'unverified'::"public"."stripe_account_status_enum" NOT NULL,
-    "charges_enabled" boolean DEFAULT false NOT NULL,
     "payouts_enabled" boolean DEFAULT false NOT NULL,
     "representative_community_id" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "collection_ready" boolean DEFAULT false NOT NULL,
+    "transfers_status" "text",
+    "requirements_disabled_reason" "text",
+    "requirements_summary" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "stripe_status_synced_at" timestamp with time zone
 );
 
 ALTER TABLE ONLY "public"."payout_profiles" FORCE ROW LEVEL SECURITY;
@@ -3188,6 +3191,26 @@ COMMENT ON COLUMN "public"."payout_profiles"."owner_user_id" IS 'MVPでの受取
 
 
 COMMENT ON COLUMN "public"."payout_profiles"."representative_community_id" IS 'Stripe審査用URLの代表コミュニティ';
+
+
+
+COMMENT ON COLUMN "public"."payout_profiles"."collection_ready" IS 'Stripeオンライン集金可否の暫定キャッシュ。statusとは分離して管理する';
+
+
+
+COMMENT ON COLUMN "public"."payout_profiles"."transfers_status" IS 'Stripe transfers capabilityの最新ステータスキャッシュ';
+
+
+
+COMMENT ON COLUMN "public"."payout_profiles"."requirements_disabled_reason" IS 'Stripe requirements.disabled_reason の最新キャッシュ';
+
+
+
+COMMENT ON COLUMN "public"."payout_profiles"."requirements_summary" IS 'Stripe requirements/capability requirements の表示・監査用サマリキャッシュ';
+
+
+
+COMMENT ON COLUMN "public"."payout_profiles"."stripe_status_synced_at" IS 'Stripe Account状態を最後に同期した日時';
 
 
 

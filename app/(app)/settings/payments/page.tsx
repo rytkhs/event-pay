@@ -23,7 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
   title: "オンライン集金設定",
-  description: "Stripeで売上の受け取り方法を設定します",
+  description: "オンライン集金の受け取り方法を設定します",
 };
 
 async function PaymentSettingsContent() {
@@ -47,6 +47,7 @@ async function PaymentSettingsContent() {
     : null;
   const requiresRepresentativeSelection = !existingAccount || !representativeCommunity;
   const representativeCommunityOptions = workspace.ownedCommunities.map((community) => ({
+    description: community.description ?? null,
     id: community.id,
     name: community.name,
     slug: community.slug,
@@ -87,8 +88,9 @@ async function PaymentSettingsContent() {
           accountId: r.data?.accountId,
           dbStatus: r.data?.dbStatus,
           uiStatus: r.data?.uiStatus ?? "no_account",
-          chargesEnabled: r.data?.chargesEnabled ?? false,
+          collectionReady: r.data?.collectionReady ?? false,
           payoutsEnabled: r.data?.payoutsEnabled ?? false,
+          requirementsSummary: r.data?.requirementsSummary,
           requirements: r.data?.requirements,
           capabilities: r.data?.capabilities,
           expressDashboardAvailable: expressAccess.success && !!expressAccess.data?.hasAccount,

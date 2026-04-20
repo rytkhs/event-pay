@@ -8,7 +8,11 @@ import type { AppResult } from "@core/errors";
 import type { LogLevel } from "@core/logging/app-logger";
 import type { StripeAccountStatus } from "@core/types/statuses";
 
-import type { UIStatus } from "./types/status-classification";
+import type {
+  ClassificationMetadata,
+  RequirementsSummary,
+  UIStatus,
+} from "./types/status-classification";
 
 export interface DetailedAccountStatus {
   statusType: UIStatus;
@@ -28,9 +32,13 @@ export interface StripeConnectAccount {
   owner_user_id: string;
   stripe_account_id: string;
   status: StripeAccountStatus;
-  charges_enabled: boolean;
+  collection_ready: boolean;
   payouts_enabled: boolean;
   representative_community_id: string | null;
+  requirements_disabled_reason: string | null;
+  requirements_summary: unknown;
+  stripe_status_synced_at: string | null;
+  transfers_status: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -75,8 +83,11 @@ export interface CreateAccountLinkResult {
 export interface AccountInfo {
   accountId: string;
   status: StripeAccountStatus;
-  chargesEnabled: boolean;
+  collectionReady: boolean;
   payoutsEnabled: boolean;
+  transfersStatus: string | null;
+  requirementsDisabledReason: string | null;
+  requirementsSummary: RequirementsSummary;
   /**
    * Stripe Account オブジェクト
    * StatusSyncServiceがAPI呼び出しを削減するために返す
@@ -105,15 +116,7 @@ export interface AccountInfo {
   /**
    * 分類メタデータ（監査ログ用）
    */
-  classificationMetadata?: {
-    gate: 1 | 2 | 3 | 4 | 5;
-    details_submitted: boolean;
-    payouts_enabled: boolean;
-    transfers_active: boolean;
-    card_payments_active: boolean;
-    has_due_requirements: boolean;
-    disabled_reason?: string;
-  };
+  classificationMetadata?: ClassificationMetadata;
 }
 
 // アカウントステータス更新パラメータ
@@ -121,22 +124,17 @@ export interface UpdateAccountStatusParams {
   userId?: string;
   payoutProfileId?: string;
   status: StripeAccountStatus;
-  chargesEnabled: boolean;
+  collectionReady?: boolean;
   payoutsEnabled: boolean;
+  transfersStatus?: string | null;
+  requirementsDisabledReason?: string | null;
+  requirementsSummary?: RequirementsSummary;
   stripeAccountId?: string;
   /**
    * 分類メタデータ（監査ログ用）
    * AccountStatusClassifierから取得した分類情報
    */
-  classificationMetadata?: {
-    gate: 1 | 2 | 3 | 4 | 5;
-    details_submitted: boolean;
-    payouts_enabled: boolean;
-    transfers_active: boolean;
-    card_payments_active: boolean;
-    has_due_requirements: boolean;
-    disabled_reason?: string;
-  };
+  classificationMetadata?: ClassificationMetadata;
   /**
    * ステータス変更のトリガー（監査ログ用）
    */
@@ -215,8 +213,9 @@ export interface ConnectAccountStatusPayload {
   accountId?: string;
   dbStatus?: StripeAccountStatus; // Database Status (unverified/onboarding/verified/restricted)
   uiStatus: UIStatus; // UI Status (no_account/unverified/requirements_due/pending_review/ready/restricted)
-  chargesEnabled: boolean;
+  collectionReady: boolean;
   payoutsEnabled: boolean;
+  requirementsSummary?: RequirementsSummary;
   requirements?: {
     currently_due: string[];
     eventually_due: string[];

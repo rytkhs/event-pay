@@ -32,7 +32,6 @@ import { StatusChangeLog } from "../types/audit-log";
  *     details_submitted: true,
  *     payouts_enabled: true,
  *     transfers_active: true,
- *     card_payments_active: true,
  *     has_due_requirements: false,
  *   },
  * });

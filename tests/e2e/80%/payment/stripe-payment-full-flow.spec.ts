@@ -232,7 +232,7 @@ test.describe("Stripe決済 完全フロー", () => {
       throw new Error("Failed to fetch event payout context");
     }
 
-    const testStripeAccountId = "acct_1SNbjmCtoNNhKnPZ";
+    const testStripeAccountId = "acct_1TOADDEEczGHQjDD";
     let payoutProfileId = eventData.payout_profile_id;
 
     if (payoutProfileId) {
@@ -241,7 +241,7 @@ test.describe("Stripe決済 完全フロー", () => {
         .update({
           stripe_account_id: testStripeAccountId,
           status: "verified",
-          charges_enabled: true,
+          collection_ready: true,
           payouts_enabled: true,
           representative_community_id: eventData.community_id,
         })
@@ -271,7 +271,7 @@ test.describe("Stripe決済 完全フロー", () => {
           .update({
             stripe_account_id: testStripeAccountId,
             status: "verified",
-            charges_enabled: true,
+            collection_ready: true,
             payouts_enabled: true,
             representative_community_id:
               existingPayoutProfile.representative_community_id ?? eventData.community_id,
@@ -288,7 +288,7 @@ test.describe("Stripe決済 完全フロー", () => {
             owner_user_id: eventData.created_by,
             stripe_account_id: testStripeAccountId,
             status: "verified",
-            charges_enabled: true,
+            collection_ready: true,
             payouts_enabled: true,
             representative_community_id: eventData.community_id,
           })

@@ -20,7 +20,9 @@ describe("Public Event RPC", () => {
   });
 
   afterAll(async () => {
-    await setup.cleanup();
+    if (setup) {
+      await setup.cleanup();
+    }
   });
 
   test("rpc_public_get_event は招待トークンだけで対象イベントを返す", async () => {
@@ -78,7 +80,9 @@ describe("Public Community RPC", () => {
   });
 
   afterAll(async () => {
-    await setup.cleanup();
+    if (setup) {
+      await setup.cleanup();
+    }
   });
 
   test("rpc_public_get_community_by_slug は未削除 community の最小公開情報を返す", async () => {
@@ -152,7 +156,9 @@ describe("Public Attending Count RPC", () => {
   });
 
   afterAll(async () => {
-    await setup.cleanup();
+    if (setup) {
+      await setup.cleanup();
+    }
   });
 
   test("invite token を渡すと正しい参加人数を返す", async () => {
@@ -233,7 +239,9 @@ describe("Public Connect Account RPC", () => {
   });
 
   afterAll(async () => {
-    await setup.cleanup();
+    if (setup) {
+      await setup.cleanup();
+    }
   });
 
   test("guest can fetch minimal connect account info for event organizer", async () => {
@@ -249,6 +257,7 @@ describe("Public Connect Account RPC", () => {
       expect((row as any).payout_profile_id).toBe(setup.testPayoutProfileId);
       expect((row as any).stripe_account_id).toBeDefined();
       expect((row as any).status).toBe("verified");
+      expect((row as any).collection_ready).toBe(true);
     }
   });
 
@@ -321,7 +330,9 @@ describe("Latest payment via RPC", () => {
   });
 
   afterAll(async () => {
-    await setup.cleanup();
+    if (setup) {
+      await setup.cleanup();
+    }
   });
 
   test("rpc_guest_get_latest_payment returns most recently created amount", async () => {

@@ -99,8 +99,11 @@ export class StatusSyncService {
         await this.stripeConnectService.updateAccountStatus({
           userId,
           status: accountInfo.status,
-          chargesEnabled: accountInfo.chargesEnabled,
+          collectionReady: accountInfo.collectionReady,
           payoutsEnabled: accountInfo.payoutsEnabled,
+          transfersStatus: accountInfo.transfersStatus,
+          requirementsDisabledReason: accountInfo.requirementsDisabledReason,
+          requirementsSummary: accountInfo.requirementsSummary,
           stripeAccountId: accountId,
           classificationMetadata: accountInfo.classificationMetadata,
           trigger: "ondemand",

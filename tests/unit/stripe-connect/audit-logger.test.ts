@@ -13,6 +13,25 @@ jest.mock("@core/logging/system-logger", () => ({
 }));
 
 import { logToSystemLogs } from "@core/logging/system-logger";
+import type { ClassificationMetadata } from "@features/stripe-connect/types/status-classification";
+
+const createClassificationMetadata = (
+  overrides: Partial<ClassificationMetadata> = {}
+): ClassificationMetadata => ({
+  gate: 5,
+  details_submitted: true,
+  payouts_enabled: true,
+  collection_ready: true,
+  transfers_active: true,
+  transfers_status: "active",
+  has_currently_due_requirements: false,
+  has_past_due_requirements: false,
+  has_eventually_due_requirements: false,
+  has_pending_verification: false,
+  has_due_requirements: false,
+  review_state: "none",
+  ...overrides,
+});
 
 describe("logStatusChange", () => {
   beforeEach(() => {
@@ -28,14 +47,7 @@ describe("logStatusChange", () => {
       previous_status: "onboarding",
       new_status: "verified",
       trigger: "webhook",
-      classification_metadata: {
-        gate: 5,
-        details_submitted: true,
-        payouts_enabled: true,
-        transfers_active: true,
-        card_payments_active: true,
-        has_due_requirements: false,
-      },
+      classification_metadata: createClassificationMetadata(),
     };
 
     await logStatusChange(log);
@@ -61,8 +73,8 @@ describe("logStatusChange", () => {
             gate: 5,
             details_submitted: true,
             payouts_enabled: true,
+            collection_ready: true,
             transfers_active: true,
-            card_payments_active: true,
             has_due_requirements: false,
           }),
         }),
@@ -84,14 +96,13 @@ describe("logStatusChange", () => {
       previous_status: null,
       new_status: "unverified",
       trigger: "manual",
-      classification_metadata: {
-        gate: 5,
+      classification_metadata: createClassificationMetadata({
         details_submitted: false,
         payouts_enabled: false,
+        collection_ready: false,
         transfers_active: false,
-        card_payments_active: false,
-        has_due_requirements: false,
-      },
+        transfers_status: "inactive",
+      }),
     };
 
     await logStatusChange(log);
@@ -118,14 +129,15 @@ describe("logStatusChange", () => {
       previous_status: "unverified",
       new_status: "onboarding",
       trigger: "ondemand",
-      classification_metadata: {
+      classification_metadata: createClassificationMetadata({
         gate: 3,
-        details_submitted: true,
         payouts_enabled: false,
+        collection_ready: false,
         transfers_active: false,
-        card_payments_active: false,
+        transfers_status: "inactive",
+        has_currently_due_requirements: true,
         has_due_requirements: true,
-      },
+      }),
     };
 
     await logStatusChange(log);
@@ -150,15 +162,11 @@ describe("logStatusChange", () => {
       previous_status: "verified",
       new_status: "restricted",
       trigger: "webhook",
-      classification_metadata: {
+      classification_metadata: createClassificationMetadata({
         gate: 1,
-        details_submitted: true,
-        payouts_enabled: true,
-        transfers_active: true,
-        card_payments_active: true,
-        has_due_requirements: false,
+        collection_ready: false,
         disabled_reason: "platform_paused",
-      },
+      }),
     };
 
     await logStatusChange(log);
@@ -184,14 +192,15 @@ describe("logStatusChange", () => {
       previous_status: "unverified",
       new_status: "onboarding",
       trigger: "webhook",
-      classification_metadata: {
+      classification_metadata: createClassificationMetadata({
         gate: 3,
-        details_submitted: true,
         payouts_enabled: false,
+        collection_ready: false,
         transfers_active: false,
-        card_payments_active: false,
+        transfers_status: "inactive",
+        has_currently_due_requirements: true,
         has_due_requirements: true,
-      },
+      }),
     };
 
     const log2: StatusChangeLog = {

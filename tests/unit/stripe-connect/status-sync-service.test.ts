@@ -5,13 +5,13 @@
 
 import Stripe from "stripe";
 
+import type { AccountInfo } from "@features/stripe-connect";
 import {
   StatusSyncService,
   StatusSyncError,
   StatusSyncErrorType,
 } from "@features/stripe-connect/server";
 import type { IStripeConnectService } from "@features/stripe-connect/server";
-import type { AccountInfo } from "@features/stripe-connect";
 
 /**
  * モックStripeConnectServiceを作成
@@ -41,8 +41,24 @@ const createMockAccountInfo = (overrides?: Partial<AccountInfo>): AccountInfo =>
   return {
     accountId: "acct_test_123",
     status: "verified",
-    chargesEnabled: true,
+    collectionReady: true,
     payoutsEnabled: true,
+    transfersStatus: "active",
+    requirementsSummary: {
+      account: {
+        currently_due: [],
+        past_due: [],
+        eventually_due: [],
+        pending_verification: [],
+      },
+      transfers: {
+        currently_due: [],
+        past_due: [],
+        eventually_due: [],
+        pending_verification: [],
+      },
+      review_state: "none",
+    },
     stripeAccount: {
       id: "acct_test_123",
       object: "account",
@@ -79,8 +95,11 @@ describe("StatusSyncService", () => {
       expect(mockStripeConnectService.updateAccountStatus).toHaveBeenCalledWith({
         userId,
         status: accountInfo.status,
-        chargesEnabled: accountInfo.chargesEnabled,
+        collectionReady: accountInfo.collectionReady,
         payoutsEnabled: accountInfo.payoutsEnabled,
+        transfersStatus: accountInfo.transfersStatus,
+        requirementsDisabledReason: accountInfo.requirementsDisabledReason,
+        requirementsSummary: accountInfo.requirementsSummary,
         stripeAccountId: accountId,
         classificationMetadata: accountInfo.classificationMetadata,
         trigger: "ondemand",

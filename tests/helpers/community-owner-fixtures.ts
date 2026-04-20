@@ -43,7 +43,6 @@ type CreateCommunityOwnedEventOptions = {
   attachPayoutProfileToEvent?: boolean;
   payoutProfileStatus?: string;
   payoutsEnabled?: boolean;
-  chargesEnabled?: boolean;
 };
 
 type CreateOwnedCommunityOptions = {
@@ -53,7 +52,6 @@ type CreateOwnedCommunityOptions = {
   withPayoutProfile?: boolean;
   payoutProfileStatus?: string;
   payoutsEnabled?: boolean;
-  chargesEnabled?: boolean;
 };
 
 export async function createOwnedCommunityFixture(
@@ -80,7 +78,6 @@ export async function createOwnedCommunityFixture(
     withPayoutProfile = true,
     payoutProfileStatus = "verified",
     payoutsEnabled = true,
-    chargesEnabled = true,
   } = options;
 
   const communityInsert: CommunityInsert = {
@@ -122,8 +119,8 @@ export async function createOwnedCommunityFixture(
         .from("payout_profiles")
         .update({
           status: payoutProfileStatus,
+          collection_ready: payoutProfileStatus === "verified",
           payouts_enabled: payoutsEnabled,
-          charges_enabled: chargesEnabled,
           representative_community_id:
             existingPayoutProfile.representative_community_id ?? community.id,
         })
@@ -141,8 +138,8 @@ export async function createOwnedCommunityFixture(
           owner_user_id: createdBy,
           stripe_account_id: `acct_fixture_${Math.random().toString(36).slice(2, 14)}`,
           status: payoutProfileStatus,
+          collection_ready: payoutProfileStatus === "verified",
           payouts_enabled: payoutsEnabled,
-          charges_enabled: chargesEnabled,
           representative_community_id: community.id,
         })
         .select("id")
@@ -211,14 +208,12 @@ export async function createCommunityOwnedEventFixture(
     attachPayoutProfileToEvent = withPayoutProfile,
     payoutProfileStatus = "verified",
     payoutsEnabled = true,
-    chargesEnabled = true,
   } = options;
 
   const { community, payoutProfileId } = await createOwnedCommunityFixture(createdBy, {
     withPayoutProfile,
     payoutProfileStatus,
     payoutsEnabled,
-    chargesEnabled,
   });
 
   const eventData: EventInsert = {

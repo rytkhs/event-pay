@@ -1,5 +1,7 @@
 import React from "react";
 
+import Link from "next/link";
+
 import { Zap, CreditCard, BellRing, Check } from "lucide-react";
 
 import { ParticipantTableMock } from "./ParticipantTableMock";
@@ -32,9 +34,14 @@ export const FeaturesSection: React.FC = () => {
                       </div>
                       <div className="bg-slate-700 rounded-lg p-3 text-sm text-slate-200">
                         <p>飲み会の案内だよ！ここから回答してね👇</p>
-                        <p className="text-primary underline mt-1">
+                        <Link
+                          href={process.env.NEXT_PUBLIC_DEMO_INVITE_LINK || "#"}
+                          className="text-primary underline mt-1 block break-all"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           https://minnano-shukin.com/inv/xyz123
-                        </p>
+                        </Link>
                       </div>
                     </div>
                   </div>

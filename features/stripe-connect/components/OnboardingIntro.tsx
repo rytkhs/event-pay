@@ -25,14 +25,14 @@ const BENEFITS = [
 export function OnboardingIntro({ hasExistingAccount = false }: OnboardingIntroProps) {
   return (
     <>
-      <div className="text-center mb-8">
-        <p className="text-lg font-semibold tracking-tight mb-2">
+      <div className="mb-10 text-center">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           {hasExistingAccount ? "オンライン集金の設定を再開" : "オンライン集金を始めましょう"}
-        </p>
-        <p className="text-muted-foreground text-sm leading-relaxed max-w-md mx-auto">
-          参加費や会費をオンラインで受け取れるようになります。
+        </h1>
+        <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">
+          参加費や会費をオンラインで安全に受け取れるようになります。
           <br className="hidden sm:block" />
-          現金管理の手間から解放されましょう。
+          現金管理のストレスから解放されましょう。
         </p>
       </div>
 

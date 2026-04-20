@@ -590,36 +590,48 @@ export type Database = {
       };
       payout_profiles: {
         Row: {
-          charges_enabled: boolean;
+          collection_ready: boolean;
           created_at: string;
           id: string;
           owner_user_id: string;
           payouts_enabled: boolean;
           representative_community_id: string | null;
+          requirements_disabled_reason: string | null;
+          requirements_summary: Json;
           status: Database["public"]["Enums"]["stripe_account_status_enum"];
           stripe_account_id: string;
+          stripe_status_synced_at: string | null;
+          transfers_status: string | null;
           updated_at: string;
         };
         Insert: {
-          charges_enabled?: boolean;
+          collection_ready?: boolean;
           created_at?: string;
           id?: string;
           owner_user_id: string;
           payouts_enabled?: boolean;
           representative_community_id?: string | null;
+          requirements_disabled_reason?: string | null;
+          requirements_summary?: Json;
           status?: Database["public"]["Enums"]["stripe_account_status_enum"];
           stripe_account_id: string;
+          stripe_status_synced_at?: string | null;
+          transfers_status?: string | null;
           updated_at?: string;
         };
         Update: {
-          charges_enabled?: boolean;
+          collection_ready?: boolean;
           created_at?: string;
           id?: string;
           owner_user_id?: string;
           payouts_enabled?: boolean;
           representative_community_id?: string | null;
+          requirements_disabled_reason?: string | null;
+          requirements_summary?: Json;
           status?: Database["public"]["Enums"]["stripe_account_status_enum"];
           stripe_account_id?: string;
+          stripe_status_synced_at?: string | null;
+          transfers_status?: string | null;
           updated_at?: string;
         };
         Relationships: [
@@ -1194,6 +1206,7 @@ export type Database = {
       rpc_public_get_connect_account: {
         Args: { p_event_id: string };
         Returns: {
+          collection_ready: boolean;
           payout_profile_id: string;
           status: string;
           stripe_account_id: string;
