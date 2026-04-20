@@ -31,6 +31,7 @@ import {
 } from "../services/factories";
 import {
   resolveRepresentativeCommunitySelection,
+  updateRepresentativeCommunityDescription,
   updateRepresentativeCommunitySelection,
 } from "../services/representative-community";
 import { type ConnectAccountStatusPayload, StripeConnectError } from "../types";
@@ -42,6 +43,7 @@ type StartOnboardingActionResult = ActionResult<StartOnboardingPayload>;
 
 const CONNECT_BUSINESS_PROFILE_PRODUCT_DESCRIPTION =
   "イベントを企画・運営しています。イベント管理プラットフォームの「みんなの集金」のシステムを利用して、イベント開催時の参加費や会費の事前決済を行います。";
+const COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE = "コミュニティ説明を入力してください";
 
 function getStringFormValue(formData: FormData, key: string): string | undefined {
   const value = formData.get(key);
@@ -565,6 +567,7 @@ export async function startOnboardingAction(
     userId = user.id;
 
     const parsedInput = startOnboardingSchema.safeParse({
+      communityDescription: getStringFormValue(formData, "communityDescription"),
       representativeCommunityId: getStringFormValue(formData, "representativeCommunityId"),
     });
     if (!parsedInput.success) {
@@ -594,6 +597,34 @@ export async function startOnboardingAction(
         userMessage: "Stripe アカウント設定に使うコミュニティを確認してください",
       });
     }
+    const representativeCommunity = representativeCommunityResult.data;
+    const hasRepresentativeCommunityDescription =
+      (representativeCommunity.description?.trim() ?? "").length > 0;
+
+    if (!hasRepresentativeCommunityDescription) {
+      const communityDescription = parsedInput.data.communityDescription?.trim() ?? "";
+      if (!communityDescription) {
+        return fail("VALIDATION_ERROR", {
+          fieldErrors: {
+            communityDescription: [COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE],
+          },
+          retryable: false,
+          userMessage: COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE,
+        });
+      }
+
+      const descriptionUpdateResult = await updateRepresentativeCommunityDescription(
+        supabase,
+        user.id,
+        representativeCommunity.id,
+        communityDescription
+      );
+      if (!descriptionUpdateResult.success) {
+        return failFrom(descriptionUpdateResult.error, {
+          userMessage: "コミュニティ説明の保存に失敗しました",
+        });
+      }
+    }
 
     // 3. StripeConnectServiceを初期化
     const stripeConnectService = await createUserStripeConnectServiceForServerAction();
@@ -608,7 +639,7 @@ export async function startOnboardingAction(
         businessType: "individual",
         businessProfile: {
           productDescription: CONNECT_BUSINESS_PROFILE_PRODUCT_DESCRIPTION,
-          url: representativeCommunityResult.data.publicPageUrl,
+          url: representativeCommunity.publicPageUrl,
         },
       });
       account = await stripeConnectService.getConnectAccountByUser(user.id);
@@ -616,8 +647,8 @@ export async function startOnboardingAction(
         actionLogger.error("Stripe Connect account was not found after creation", {
           user_id: user.id,
           resource_type: "community",
-          resource_id: representativeCommunityResult.data.id,
-          communityId: representativeCommunityResult.data.id,
+          resource_id: representativeCommunity.id,
+          communityId: representativeCommunity.id,
           outcome: "failure",
         });
         return fail("INTERNAL_ERROR", { userMessage: "アカウント情報の取得に失敗しました" });
@@ -627,7 +658,7 @@ export async function startOnboardingAction(
     const representativeUpdateResult = await updateRepresentativeCommunitySelection(
       supabase,
       account.id,
-      representativeCommunityResult.data.id
+      representativeCommunity.id
     );
     if (!representativeUpdateResult.success) {
       return failFrom(representativeUpdateResult.error, {
@@ -638,15 +669,15 @@ export async function startOnboardingAction(
     const businessProfileUpdateResult = await stripeConnectService.updateBusinessProfile({
       accountId: account.stripe_account_id,
       businessProfile: {
-        url: representativeCommunityResult.data.publicPageUrl,
+        url: representativeCommunity.publicPageUrl,
       },
     });
     if (!businessProfileUpdateResult.success) {
       actionLogger.error("Stripe business profile update failed during onboarding start", {
         user_id: user.id,
         resource_type: "community",
-        resource_id: representativeCommunityResult.data.id,
-        communityId: representativeCommunityResult.data.id,
+        resource_id: representativeCommunity.id,
+        communityId: representativeCommunity.id,
         payoutProfileId: account.id,
         stripe_account_id: account.stripe_account_id,
         outcome: "failure",
@@ -672,9 +703,9 @@ export async function startOnboardingAction(
     actionLogger.info("Stripe Connect onboarding started", {
       user_id: user.id,
       resource_type: "community",
-      resource_id: representativeCommunityResult.data.id,
-      communityId: representativeCommunityResult.data.id,
-      requestedCommunityId: representativeCommunityResult.data.id,
+      resource_id: representativeCommunity.id,
+      communityId: representativeCommunity.id,
+      requestedCommunityId: representativeCommunity.id,
       payoutProfileId: account.id,
       stripe_account_id: account.stripe_account_id,
       outcome: "success",

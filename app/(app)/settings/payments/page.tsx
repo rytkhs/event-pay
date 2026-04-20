@@ -47,6 +47,7 @@ async function PaymentSettingsContent() {
     : null;
   const requiresRepresentativeSelection = !existingAccount || !representativeCommunity;
   const representativeCommunityOptions = workspace.ownedCommunities.map((community) => ({
+    description: community.description ?? null,
     id: community.id,
     name: community.name,
     slug: community.slug,

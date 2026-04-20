@@ -44,6 +44,7 @@ const createAccountLinkSchema = z.object({
 });
 
 export const startOnboardingSchema = z.object({
+  communityDescription: z.string().trim().optional(),
   representativeCommunityId: z
     .string({
       required_error: "Stripe アカウント設定に使うコミュニティを選択してください",
@@ -101,6 +102,7 @@ export const validateCreateAccountLinkParams = (params: unknown): CreateAccountL
 export const validateStartOnboardingInput = (
   params: unknown
 ): {
+  communityDescription?: string;
   representativeCommunityId: string;
 } => {
   try {

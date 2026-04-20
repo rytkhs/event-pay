@@ -7,12 +7,14 @@ import { getPublicUrl } from "@core/seo/metadata";
 import type { AppSupabaseClient } from "@core/types/supabase";
 
 type RepresentativeCommunityRow = {
+  description: string | null;
   id: string;
   name: string;
   slug: string;
 };
 
 export type RepresentativeCommunitySelection = {
+  description: string | null;
   id: string;
   name: string;
   slug: string;
@@ -24,6 +26,8 @@ const REPRESENTATIVE_COMMUNITY_INVALID_MESSAGE =
 const REPRESENTATIVE_COMMUNITY_LOOKUP_ERROR_MESSAGE = "代表コミュニティの確認に失敗しました";
 const PAYOUT_PROFILE_UPDATE_ERROR_MESSAGE = "代表コミュニティの保存に失敗しました";
 const PAYOUT_PROFILE_NOT_FOUND_MESSAGE = "Stripe の受取設定が見つかりません";
+const REPRESENTATIVE_COMMUNITY_DESCRIPTION_UPDATE_ERROR_MESSAGE =
+  "コミュニティ説明の保存に失敗しました";
 
 function invalidRepresentativeCommunityResult(
   ownerUserId: string,
@@ -57,7 +61,7 @@ export async function resolveRepresentativeCommunitySelection(
 ): Promise<AppResult<RepresentativeCommunitySelection>> {
   const { data, error } = await supabase
     .from("communities")
-    .select("id, name, slug")
+    .select("id, name, slug, description")
     .eq("id", representativeCommunityId)
     .eq("created_by", ownerUserId)
     .eq("is_deleted", false)
@@ -94,10 +98,74 @@ export async function resolveRepresentativeCommunitySelection(
   }
 
   return okResult({
+    description: data.description,
     id: data.id,
     name: data.name,
     slug: data.slug,
     publicPageUrl: getPublicUrl(`/c/${data.slug}`),
+  });
+}
+
+export async function updateRepresentativeCommunityDescription(
+  supabase: AppSupabaseClient,
+  ownerUserId: string,
+  representativeCommunityId: string,
+  description: string
+): Promise<AppResult<{ description: string | null; id: string }>> {
+  const { data, error } = await supabase
+    .from("communities")
+    .update({
+      description,
+    })
+    .eq("id", representativeCommunityId)
+    .eq("created_by", ownerUserId)
+    .eq("is_deleted", false)
+    .select("id, description")
+    .maybeSingle<{ description: string | null; id: string }>();
+
+  if (error) {
+    logger.error("Representative community description update failed", {
+      category: "stripe_connect",
+      action: "stripe_connect.representative_community.description.update",
+      outcome: "failure",
+      resource_type: "community",
+      resource_id: representativeCommunityId,
+      user_id: ownerUserId,
+      communityId: representativeCommunityId,
+      error,
+    });
+
+    return errResult(
+      new AppError("DATABASE_ERROR", {
+        cause: error,
+        details: {
+          operation: "update_representative_community_description",
+          ownerUserId,
+          representativeCommunityId,
+        },
+        retryable: true,
+        userMessage: REPRESENTATIVE_COMMUNITY_DESCRIPTION_UPDATE_ERROR_MESSAGE,
+      })
+    );
+  }
+
+  if (!data) {
+    return invalidRepresentativeCommunityResult(ownerUserId, representativeCommunityId);
+  }
+
+  logger.info("Representative community description updated", {
+    category: "stripe_connect",
+    action: "stripe_connect.representative_community.description.update",
+    outcome: "success",
+    resource_type: "community",
+    resource_id: data.id,
+    user_id: ownerUserId,
+    communityId: data.id,
+  });
+
+  return okResult({
+    description: data.description,
+    id: data.id,
   });
 }
 

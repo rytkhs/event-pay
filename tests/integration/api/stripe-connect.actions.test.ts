@@ -30,6 +30,7 @@ const mockResolveCurrentCommunityForServerAction = jest.fn();
 const mockResolveCurrentCommunityForServerComponent = jest.fn();
 const mockResolveAppWorkspaceForServerComponent = jest.fn();
 const mockResolveRepresentativeCommunitySelection = jest.fn();
+const mockUpdateRepresentativeCommunityDescription = jest.fn();
 const mockUpdateRepresentativeCommunitySelection = jest.fn();
 
 jest.mock("@core/community/current-community", () => ({
@@ -43,6 +44,7 @@ jest.mock("@core/community/app-workspace", () => ({
 
 jest.mock("@features/stripe-connect/services/representative-community", () => ({
   resolveRepresentativeCommunitySelection: mockResolveRepresentativeCommunitySelection,
+  updateRepresentativeCommunityDescription: mockUpdateRepresentativeCommunityDescription,
   updateRepresentativeCommunitySelection: mockUpdateRepresentativeCommunitySelection,
 }));
 
@@ -183,6 +185,10 @@ describe("Stripe Connect actions", () => {
   });
 
   beforeEach(() => {
+    mockResolveRepresentativeCommunitySelection.mockClear();
+    mockUpdateRepresentativeCommunityDescription.mockClear();
+    mockUpdateRepresentativeCommunitySelection.mockClear();
+
     process.env = {
       ...originalEnv,
       NODE_ENV: "test",
@@ -230,6 +236,7 @@ describe("Stripe Connect actions", () => {
     mockResolveRepresentativeCommunitySelection.mockResolvedValue({
       success: true,
       data: {
+        description: "既存のコミュニティ説明",
         id: representativeCommunityId,
         name: "Community 1",
         slug: "community-1",
@@ -239,6 +246,13 @@ describe("Stripe Connect actions", () => {
     mockUpdateRepresentativeCommunitySelection.mockResolvedValue({
       success: true,
       data: undefined,
+    });
+    mockUpdateRepresentativeCommunityDescription.mockResolvedValue({
+      success: true,
+      data: {
+        description: "入力されたコミュニティ説明",
+        id: representativeCommunityId,
+      },
     });
 
     const { __mockStripeConnectService } = jest.requireMock(
@@ -321,6 +335,7 @@ describe("Stripe Connect actions", () => {
         "profile-1",
         representativeCommunityId
       );
+      expect(mockUpdateRepresentativeCommunityDescription).not.toHaveBeenCalled();
       expect(logger.withContext().info).toHaveBeenCalledWith(
         "Stripe Connect onboarding started",
         expect.objectContaining({
@@ -378,6 +393,63 @@ describe("Stripe Connect actions", () => {
           "Stripe アカウント設定に使うコミュニティを選択してください",
         ]);
       }
+    });
+
+    it("コミュニティ説明が空なら description 未入力時に validation error を返す", async () => {
+      mockResolveRepresentativeCommunitySelection.mockResolvedValueOnce({
+        success: true,
+        data: {
+          description: null,
+          id: representativeCommunityId,
+          name: "Community 1",
+          slug: "community-1",
+          publicPageUrl: "http://localhost:3000/c/community-1",
+        },
+      });
+
+      const { startOnboardingAction } = require("@features/stripe-connect/server");
+      const formData = new FormData();
+      formData.set("representativeCommunityId", representativeCommunityId);
+
+      const result = await startOnboardingAction(formData);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.fieldErrors?.communityDescription).toEqual([
+          "コミュニティ説明を入力してください",
+        ]);
+      }
+      expect(mockUpdateRepresentativeCommunityDescription).not.toHaveBeenCalled();
+      expect(redirect).not.toHaveBeenCalled();
+    });
+
+    it("コミュニティ説明が空なら description 保存後に Stripe オンボーディングへリダイレクトする", async () => {
+      mockResolveRepresentativeCommunitySelection.mockResolvedValueOnce({
+        success: true,
+        data: {
+          description: "",
+          id: representativeCommunityId,
+          name: "Community 1",
+          slug: "community-1",
+          publicPageUrl: "http://localhost:3000/c/community-1",
+        },
+      });
+
+      const { startOnboardingAction } = require("@features/stripe-connect/server");
+      const formData = new FormData();
+      formData.set("representativeCommunityId", representativeCommunityId);
+      formData.set("communityDescription", "  入力されたコミュニティ説明  ");
+
+      const result = await startOnboardingAction(formData);
+
+      expect(result.success).toBe(true);
+      expect(mockUpdateRepresentativeCommunityDescription).toHaveBeenCalledWith(
+        mockSupabase,
+        defaultUserId,
+        representativeCommunityId,
+        "入力されたコミュニティ説明"
+      );
+      expect(redirect).toHaveBeenCalledWith(expect.stringContaining("https://connect.stripe.com"));
     });
   });
 

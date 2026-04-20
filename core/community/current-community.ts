@@ -21,6 +21,7 @@ export const CURRENT_COMMUNITY_COOKIE_NAME = "current_community_id";
 export const CURRENT_COMMUNITY_COOKIE_MAX_AGE = 60 * 60 * 24 * 180;
 
 export type CurrentCommunitySummary = {
+  description?: string | null;
   id: string;
   name: string;
   slug: string;
@@ -50,6 +51,7 @@ type ResolveCurrentCommunityContextParams = {
 
 type CommunitiesQueryResult = {
   created_at: string;
+  description?: string | null;
   id: string;
   name: string;
   slug: string;
@@ -59,6 +61,7 @@ const CURRENT_COMMUNITY_ERROR_MESSAGE = "コミュニティ情報の取得に失
 
 function mapCommunitySummary(community: CommunitiesQueryResult): CurrentCommunitySummary {
   return {
+    description: community.description ?? null,
     id: community.id,
     name: community.name,
     slug: community.slug,
@@ -101,7 +104,7 @@ export async function listOwnedCommunities(
 ): Promise<AppResult<CurrentCommunitySummary[]>> {
   const { data, error } = await supabase
     .from("communities")
-    .select("id, name, slug, created_at")
+    .select("id, name, slug, created_at, description")
     .eq("created_by", userId)
     .eq("is_deleted", false)
     .order("created_at", { ascending: true })

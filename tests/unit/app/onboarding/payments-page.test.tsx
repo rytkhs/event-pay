@@ -92,9 +92,8 @@ describe("OnboardingPaymentsPage", () => {
 
     render(ui);
 
-    expect(screen.getByText("コミュニティを作成しました")).toBeInTheDocument();
     expect(screen.getByTestId("onboarding-form")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "あとで設定する" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "今は設定せずにダッシュボードへ" })).toHaveAttribute(
       "href",
       "/dashboard"
     );
@@ -103,6 +102,7 @@ describe("OnboardingPaymentsPage", () => {
       expect.objectContaining({
         communities: [
           {
+            description: null,
             id: "community-1",
             name: "ボドゲ会",
             slug: "board-games",

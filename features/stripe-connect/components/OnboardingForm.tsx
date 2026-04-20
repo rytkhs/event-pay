@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useActionState, useState, type ReactNode } from "react";
+import { useActionState, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import Link from "next/link";
 
@@ -23,8 +23,17 @@ import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
 
 import { OnboardingIntro } from "./OnboardingIntro";
 
@@ -38,6 +47,7 @@ type OnboardingFormAction = (
 ) => Promise<StartOnboardingResult>;
 
 type RepresentativeCommunityOption = {
+  description: string | null;
   id: string;
   name: string;
   publicPageUrl: string;
@@ -62,6 +72,11 @@ const initialState: StartOnboardingResult = {
   },
 };
 
+const COMMUNITY_DESCRIPTION_TEMPLATE =
+  "本コミュニティでは、サークル・グループの活動やイベント等の企画・運営を行っています。イベント管理プラットフォーム「みんなの集金」を利用して、イベント開催時の参加費や会費の支払い受付を行っています。詳細な内容や料金、支払方法は各イベントの案内で確認できます。";
+
+const COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE = "コミュニティ説明を入力してください";
+
 export function OnboardingForm({
   communities,
   defaultRepresentativeCommunityId,
@@ -69,13 +84,83 @@ export function OnboardingForm({
   onStartOnboarding,
   secondaryAction,
 }: OnboardingFormProps) {
+  const formRef = useRef<HTMLFormElement>(null);
   const [selectedCommunityId, setSelectedCommunityId] = useState(defaultRepresentativeCommunityId);
   const [state, formAction, isPending] = useActionState(onStartOnboarding, initialState);
   const [isSupplementOpen, setIsSupplementOpen] = useState(false);
+  const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false);
+  const [isDescriptionConfirmed, setIsDescriptionConfirmed] = useState(false);
+  const [communityDescription, setCommunityDescription] = useState("");
+  const [communityDescriptionError, setCommunityDescriptionError] = useState<string>();
 
   const error = state.success ? undefined : state.error;
   const representativeCommunityError = error?.fieldErrors?.representativeCommunityId?.[0];
+  const communityDescriptionServerError = error?.fieldErrors?.communityDescription?.[0];
   const hasMultipleCommunities = communities.length > 1;
+  const selectedCommunity =
+    communities.find((community) => community.id === selectedCommunityId) ?? communities[0] ?? null;
+  const selectedCommunityNeedsDescription =
+    selectedCommunity !== null && (selectedCommunity.description?.trim() ?? "").length === 0;
+
+  useEffect(() => {
+    if (!communityDescriptionServerError) {
+      return;
+    }
+
+    setCommunityDescriptionError(communityDescriptionServerError);
+    setIsDescriptionConfirmed(false);
+    setIsDescriptionDialogOpen(true);
+  }, [communityDescriptionServerError]);
+
+  useEffect(() => {
+    if (!isDescriptionConfirmed || isDescriptionDialogOpen) {
+      return;
+    }
+
+    formRef.current?.requestSubmit();
+  }, [isDescriptionConfirmed, isDescriptionDialogOpen]);
+
+  function handleRepresentativeCommunityChange(communityId: string) {
+    setSelectedCommunityId(communityId);
+    setIsDescriptionConfirmed(false);
+    setCommunityDescription("");
+    setCommunityDescriptionError(undefined);
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (!selectedCommunityNeedsDescription || isDescriptionConfirmed) {
+      return;
+    }
+
+    event.preventDefault();
+    setCommunityDescriptionError(undefined);
+    setIsDescriptionDialogOpen(true);
+  }
+
+  function handleCommunityDescriptionChange(value: string) {
+    setCommunityDescription(value);
+    if (value.trim().length > 0) {
+      setCommunityDescriptionError(undefined);
+    }
+  }
+
+  function handleInsertTemplate() {
+    setCommunityDescription(COMMUNITY_DESCRIPTION_TEMPLATE);
+    setCommunityDescriptionError(undefined);
+  }
+
+  function handleConfirmCommunityDescription() {
+    const normalizedDescription = communityDescription.trim();
+    if (!normalizedDescription) {
+      setCommunityDescriptionError(COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE);
+      return;
+    }
+
+    setCommunityDescription(normalizedDescription);
+    setCommunityDescriptionError(undefined);
+    setIsDescriptionConfirmed(true);
+    setIsDescriptionDialogOpen(false);
+  }
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -90,7 +175,7 @@ export function OnboardingForm({
       ) : null}
 
       {/* アクションエリア */}
-      <form action={formAction} noValidate>
+      <form ref={formRef} action={formAction} onSubmit={handleSubmit} noValidate>
         {/* 代表コミュニティ選択 — 複数コミュニティ時のみ */}
         {hasMultipleCommunities ? (
           <div className="mb-6">
@@ -103,7 +188,7 @@ export function OnboardingForm({
             </div>
             <RadioGroup
               value={selectedCommunityId}
-              onValueChange={setSelectedCommunityId}
+              onValueChange={handleRepresentativeCommunityChange}
               className="grid gap-2"
               aria-invalid={representativeCommunityError ? true : undefined}
               aria-describedby={
@@ -111,20 +196,22 @@ export function OnboardingForm({
               }
             >
               {communities.map((community) => (
-                <label
+                <div
                   key={community.id}
-                  htmlFor={`community-${community.id}`}
-                  className={`flex items-center gap-3 rounded-xl border p-3.5 cursor-pointer transition-all ${
+                  className={`flex items-center gap-3 rounded-xl border p-3.5 transition-all ${
                     selectedCommunityId === community.id
                       ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                       : "border-border/60 bg-card hover:border-primary/30"
                   }`}
                 >
                   <RadioGroupItem value={community.id} id={`community-${community.id}`} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{community.name}</p>
-                  </div>
-                </label>
+                  <Label
+                    htmlFor={`community-${community.id}`}
+                    className="min-w-0 flex-1 cursor-pointer"
+                  >
+                    <span className="block text-sm font-medium truncate">{community.name}</span>
+                  </Label>
+                </div>
               ))}
             </RadioGroup>
             {/* hidden input で formData に値を送信 */}
@@ -143,6 +230,7 @@ export function OnboardingForm({
           /* 単一コミュニティ — hidden で送信 */
           <input type="hidden" name="representativeCommunityId" value={communities[0]?.id ?? ""} />
         )}
+        <input type="hidden" name="communityDescription" value={communityDescription} />
 
         {/* CTA ボタン */}
         <Button
@@ -171,6 +259,63 @@ export function OnboardingForm({
 
         {secondaryAction ? <div className="mt-4">{secondaryAction}</div> : null}
       </form>
+
+      <Dialog open={isDescriptionDialogOpen} onOpenChange={setIsDescriptionDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>コミュニティ説明を入力してください</DialogTitle>
+            <DialogDescription>
+              Stripeでオンライン集金を始める前に、公開ページに表示するコミュニティ説明を設定します。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="onboarding-community-description">コミュニティ説明</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs"
+                onClick={handleInsertTemplate}
+              >
+                定型文を挿入
+              </Button>
+            </div>
+            <Textarea
+              id="onboarding-community-description"
+              value={communityDescription}
+              onChange={(event) => handleCommunityDescriptionChange(event.target.value)}
+              placeholder="活動内容やイベントの内容、参加費を受け付ける目的を入力してください。"
+              className="min-h-36"
+              aria-invalid={communityDescriptionError ? true : undefined}
+              aria-describedby={
+                communityDescriptionError ? "onboarding-community-description-error" : undefined
+              }
+            />
+            {communityDescriptionError ? (
+              <p
+                id="onboarding-community-description-error"
+                className="text-sm font-medium text-destructive"
+                role="alert"
+              >
+                {communityDescriptionError}
+              </p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDescriptionDialogOpen(false)}
+            >
+              キャンセル
+            </Button>
+            <Button type="button" onClick={handleConfirmCommunityDescription}>
+              設定画面へ進む
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ガイドリンク */}
       <div className="mt-8">

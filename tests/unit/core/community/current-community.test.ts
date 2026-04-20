@@ -32,7 +32,13 @@ jest.mock("@core/auth/auth-utils", () => ({
 
 type CurrentCommunityModule = typeof import("@core/community/current-community");
 type CommunitiesQueryOptions = {
-  data?: Array<{ created_at: string; id: string; name: string; slug: string }>;
+  data?: Array<{
+    created_at: string;
+    description?: string | null;
+    id: string;
+    name: string;
+    slug: string;
+  }>;
   error?: { message: string } | null;
 };
 
@@ -153,6 +159,7 @@ describe("core/community/current-community", () => {
       data: {
         currentCommunity: {
           createdAt: "2026-03-11T00:00:00.000Z",
+          description: null,
           id: "community-2",
           name: "B",
           slug: "b",
@@ -160,12 +167,14 @@ describe("core/community/current-community", () => {
         ownedCommunities: [
           {
             createdAt: "2026-03-10T00:00:00.000Z",
+            description: null,
             id: "community-1",
             name: "A",
             slug: "a",
           },
           {
             createdAt: "2026-03-11T00:00:00.000Z",
+            description: null,
             id: "community-2",
             name: "B",
             slug: "b",
@@ -178,7 +187,7 @@ describe("core/community/current-community", () => {
     });
 
     expect(spies.from).toHaveBeenCalledWith("communities");
-    expect(spies.select).toHaveBeenCalledWith("id, name, slug, created_at");
+    expect(spies.select).toHaveBeenCalledWith("id, name, slug, created_at, description");
     expect(spies.eqCreatedBy).toHaveBeenCalledWith("created_by", "user-1");
     expect(spies.eqIsDeleted).toHaveBeenCalledWith("is_deleted", false);
     expect(spies.orderCreatedAt).toHaveBeenCalledWith("created_at", { ascending: true });
