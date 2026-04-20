@@ -36,6 +36,11 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 
+import {
+  COMMUNITY_DESCRIPTION_MIN_LENGTH,
+  COMMUNITY_DESCRIPTION_MIN_LENGTH_MESSAGE,
+} from "../validation";
+
 import { OnboardingIntro } from "./OnboardingIntro";
 
 type StartOnboardingPayload = Record<string, never>;
@@ -113,7 +118,7 @@ export function OnboardingForm({
     setCommunityDescriptionError(communityDescriptionServerError);
     setIsDescriptionConfirmed(false);
     setIsDescriptionDialogOpen(true);
-  }, [communityDescriptionServerError]);
+  }, [communityDescriptionServerError, state]);
 
   useEffect(() => {
     if (!isDescriptionConfirmed || isDescriptionDialogOpen) {
@@ -156,6 +161,11 @@ export function OnboardingForm({
     const normalizedDescription = communityDescription.trim();
     if (!normalizedDescription) {
       setCommunityDescriptionError(COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE);
+      return;
+    }
+
+    if (normalizedDescription.length < COMMUNITY_DESCRIPTION_MIN_LENGTH) {
+      setCommunityDescriptionError(COMMUNITY_DESCRIPTION_MIN_LENGTH_MESSAGE);
       return;
     }
 
