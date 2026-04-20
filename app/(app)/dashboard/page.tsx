@@ -1,7 +1,5 @@
 import { Suspense } from "react";
 
-import { redirect } from "next/navigation";
-
 import { resolveAppWorkspaceForServerComponent } from "@core/community/app-workspace";
 
 import { createDashboardDataResource } from "./_lib/dashboard-data";
@@ -18,10 +16,6 @@ import { StripeAccountCard } from "./components/StripeAccountCard";
 
 export default async function DashboardPage() {
   const workspace = await resolveAppWorkspaceForServerComponent();
-
-  if (workspace.isCommunityEmptyState) {
-    redirect("/communities/create");
-  }
 
   const currentCommunity = workspace.currentCommunity;
 

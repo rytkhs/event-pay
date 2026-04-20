@@ -80,6 +80,10 @@ export function CreateCommunityForm({
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [isLogoutPending, startLogoutTransition] = useTransition();
 
+  // revalidatePath によって hasOwnedCommunities が送信後に true になり、
+  // リダイレクト前にレイアウトが一瞬切り替わる（新規用 -> 通常用）のを防ぐため、初期値を保持する
+  const [isNewUserFlow] = useState(!hasOwnedCommunities);
+
   useEffect(() => {
     if (state.success && state.redirectUrl) {
       router.push(state.redirectUrl);
@@ -129,6 +133,7 @@ export function CreateCommunityForm({
                 className="h-11 rounded-xl border-border/60 shadow-sm transition-all focus-visible:ring-primary/20"
                 aria-invalid={nameError ? true : undefined}
                 aria-describedby={nameError ? "community-name-error" : "community-name-hint"}
+                disabled={isPending || state.success}
               />
             </div>
             {nameError ? (
@@ -151,7 +156,7 @@ export function CreateCommunityForm({
       {/* 送信ボタン */}
       <Button
         type="submit"
-        disabled={isPending}
+        disabled={isPending || state.success}
         className={cn(
           "relative h-12 w-full rounded-xl text-sm font-bold transition-all duration-200",
           "bg-gradient-to-r from-primary via-primary/90 to-primary/80",
@@ -161,10 +166,10 @@ export function CreateCommunityForm({
           "disabled:opacity-70"
         )}
       >
-        {isPending ? (
+        {isPending || state.success ? (
           <div className="flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span>作成中...</span>
+            <span>{state.success ? "移動中..." : "作成中..."}</span>
           </div>
         ) : (
           <div className="flex items-center justify-center gap-1.5">
@@ -177,7 +182,7 @@ export function CreateCommunityForm({
   );
 
   // 既存ユーザー向け：シンプルな1カラムレイアウト
-  if (hasOwnedCommunities) {
+  if (!isNewUserFlow) {
     return (
       <div className="flex min-h-screen flex-col bg-stone-50/50">
         <header className="relative z-10 flex h-20 shrink-0 items-center px-4 sm:px-8">
