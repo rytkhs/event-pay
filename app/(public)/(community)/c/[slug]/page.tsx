@@ -78,9 +78,17 @@ export default async function PublicCommunityPage({ params }: Props) {
         <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground/80">
           コミュニティについて
         </h2>
-        <div className="text-base leading-relaxed text-muted-foreground">
+        <div className="text-base leading-relaxed text-muted-foreground space-y-6">
           {community.description ? (
-            <p className="whitespace-pre-wrap text-foreground/90">{community.description}</p>
+            <>
+              <p className="whitespace-pre-wrap text-foreground/90">{community.description}</p>
+              <div className="pt-6 border-t border-border/50 text-sm leading-relaxed text-muted-foreground/80">
+                <p>
+                  イベント管理プラットフォーム「みんなの集金」を利用して、イベント開催時の参加費や会費の支払い受付を行っています。
+                </p>
+                <p>詳細な内容や料金、支払方法は各イベントの案内で確認できます。</p>
+              </div>
+            </>
           ) : (
             <p className="italic text-sm opacity-80 pl-3 border-l-2 border-muted">
               説明はまだ設定されていません。
