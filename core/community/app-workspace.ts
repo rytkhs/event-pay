@@ -61,7 +61,7 @@ export async function requireNonEmptyCommunityWorkspaceForServerComponent(): Pro
   const workspace = await resolveAppWorkspaceForServerComponent();
 
   if (workspace.isCommunityEmptyState) {
-    redirect("/dashboard");
+    redirect("/communities/create");
   }
 
   return workspace;

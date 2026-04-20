@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { redirect } from "next/navigation";
+
 import { resolveCommunityAnnouncementForServerComponent } from "@core/announcements/community-announcement";
 import {
   resolveAppWorkspaceForServerComponent,
@@ -28,6 +30,11 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 export default async function AppLayout({ children }: { children: ReactNode }) {
   ensureFeaturesRegistered();
   const workspace = await resolveAppWorkspaceForServerComponent();
+
+  if (workspace.isCommunityEmptyState) {
+    redirect("/communities/create");
+  }
+
   const communityAnnouncement = await resolveCommunityAnnouncementForServerComponent(
     workspace.currentUser.id
   );

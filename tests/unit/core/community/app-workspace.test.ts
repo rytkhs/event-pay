@@ -158,9 +158,9 @@ describe("core/community/app-workspace", () => {
     const { requireNonEmptyCommunityWorkspaceForServerComponent } = await loadAppWorkspaceModule();
 
     await expect(requireNonEmptyCommunityWorkspaceForServerComponent()).rejects.toThrow(
-      "NEXT_REDIRECT:/dashboard"
+      "NEXT_REDIRECT:/communities/create"
     );
-    expect(redirect).toHaveBeenCalledWith("/dashboard");
+    expect(redirect).toHaveBeenCalledWith("/communities/create");
   });
 
   it("requireNonEmptyCommunityWorkspaceForServerComponent は community があれば workspace を返す", async () => {
