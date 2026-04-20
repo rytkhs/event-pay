@@ -2,10 +2,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { useRouter } from "next/navigation";
+import { toast as sonnerToast } from "sonner";
 
 import { CommunitySwitcher } from "@/components/layout/CommunitySwitcher";
 import { updateCurrentCommunityAction } from "@/app/(app)/actions/current-community";
-import { useToast } from "@core/contexts/toast-context";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
 Object.defineProperty(window, "matchMedia", {
@@ -50,9 +50,14 @@ jest.mock("@/app/(app)/actions/current-community", () => ({
   updateCurrentCommunityAction: jest.fn(),
 }));
 
-jest.mock("@core/contexts/toast-context", () => ({
-  useToast: jest.fn(),
+jest.mock("sonner", () => ({
+  toast: Object.assign(jest.fn(), {
+    error: jest.fn(),
+  }),
 }));
+
+const mockToast = sonnerToast as jest.Mock & { error: jest.Mock };
+const mockToastError = mockToast.error;
 
 jest.mock("@/components/ui/dropdown-menu", () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -96,7 +101,6 @@ jest.mock("@/components/ui/dropdown-menu", () => ({
 
 describe("CommunitySwitcher", () => {
   const mockRouter = { refresh: jest.fn() };
-  const mockToast = jest.fn();
   const logoutAction = jest.fn();
   const createExpressDashboardLoginLinkAction = jest.fn();
 
@@ -128,7 +132,6 @@ describe("CommunitySwitcher", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
-    (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
   });
 
   test("renders current community name in workspace trigger", () => {
@@ -162,9 +165,7 @@ describe("CommunitySwitcher", () => {
       expect(updateCurrentCommunityAction).toHaveBeenCalledWith("comm-2");
     });
 
-    expect(mockToast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "コミュニティを切り替えました" })
-    );
+    expect(mockToast).toHaveBeenCalledWith("コミュニティを切り替えました");
     expect(mockRouter.refresh).toHaveBeenCalled();
   });
 
@@ -183,9 +184,9 @@ describe("CommunitySwitcher", () => {
       expect(updateCurrentCommunityAction).toHaveBeenCalledWith("comm-2");
     });
 
-    expect(mockToast).toHaveBeenCalledWith(
+    expect(mockToastError).toHaveBeenCalledWith(
+      "通信に失敗しました",
       expect.objectContaining({
-        title: "通信に失敗しました",
         description: "切り替えに失敗しました",
       })
     );

@@ -9,7 +9,6 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 import { getGA4Config } from "@core/analytics/config";
-import { ToastProvider } from "@core/contexts/toast-context";
 import {
   generateOrganizationSchema,
   generateWebSiteSchema,
@@ -20,7 +19,7 @@ import { buildOpenGraphMetadata, getAppUrl, siteDescription } from "@core/seo/me
 import { GlobalErrorListener } from "@components/errors/GlobalErrorListener";
 import { JsonLd } from "@components/seo/JsonLd";
 
-import { Toaster } from "@/components/ui/toast";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const notoSansJp = Noto_Sans_JP({
@@ -76,9 +75,8 @@ export default async function RootLayout({
           data={[organizationSchema, webSiteSchema, softwareApplicationSchema]}
           nonce={nonce}
         />
-        <TooltipProvider>
-          <ToastProvider ToasterComponent={Toaster}>{children}</ToastProvider>
-        </TooltipProvider>
+        <TooltipProvider>{children}</TooltipProvider>
+        <Toaster />
         {ga4Config.enabled && <GoogleAnalytics gaId={ga4Config.measurementId} nonce={nonce} />}
       </body>
     </html>

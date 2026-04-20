@@ -2,7 +2,8 @@
 
 import { useState, useCallback } from "react";
 
-import { useToast } from "@core/contexts/toast-context";
+import { toast } from "sonner";
+
 import { errResult, okResult, type AppResult } from "@core/errors/app-result";
 import {
   handleClientError,
@@ -29,7 +30,6 @@ interface ErrorState {
  */
 export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
   const { showToast = true, defaultContext = {} } = options;
-  const { toast } = useToast();
   const [errorState, setErrorState] = useState<ErrorState>({
     error: null,
     isError: false,
@@ -55,16 +55,14 @@ export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
 
       // トースト通知を表示
       if (showToast) {
-        toast({
-          title: "エラーが発生しました",
+        toast.error("エラーが発生しました", {
           description: errorDetails.userMessage,
-          variant: "destructive",
         });
       }
 
       return errorDetails;
     },
-    [defaultContext, showToast, toast]
+    [defaultContext, showToast]
   );
 
   /**

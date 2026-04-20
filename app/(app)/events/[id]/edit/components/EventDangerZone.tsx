@@ -5,8 +5,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { Trash2, AlertTriangle } from "lucide-react";
-
-import { useToast } from "@core/contexts/toast-context";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,7 +29,6 @@ interface EventDangerZoneProps {
 
 export function EventDangerZone({ eventId, eventTitle, eventStatus }: EventDangerZoneProps) {
   const router = useRouter();
-  const { toast } = useToast();
   const [isCancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -39,19 +37,15 @@ export function EventDangerZone({ eventId, eventTitle, eventStatus }: EventDange
     startTransition(async () => {
       const result = await cancelEventAction({ eventId });
       if (result.success) {
-        toast({
-          title: "イベントを中止しました",
+        toast.success("イベントを中止しました", {
           description: "必要に応じて参加者へ連絡してください。",
-          variant: "success",
         });
         setCancelDialogOpen(false);
         router.push(`/events/${eventId}`);
         router.refresh();
       } else {
-        toast({
-          title: "中止に失敗しました",
+        toast.error("中止に失敗しました", {
           description: result.error?.userMessage ?? "時間をおいて再度お試しください",
-          variant: "destructive",
         });
       }
     });
@@ -61,19 +55,15 @@ export function EventDangerZone({ eventId, eventTitle, eventStatus }: EventDange
     startTransition(async () => {
       const result = await deleteEventAction(eventId);
       if (result.success) {
-        toast({
-          title: "イベントを削除しました",
+        toast.success("イベントを削除しました", {
           description: "イベント一覧に戻ります",
-          variant: "success",
         });
         setDeleteDialogOpen(false);
         router.push("/events");
       } else {
-        toast({
-          title: "削除に失敗しました",
+        toast.error("削除に失敗しました", {
           description:
             result.error?.userMessage ?? "参加者または決済情報が存在する可能性があります",
-          variant: "destructive",
         });
       }
     });

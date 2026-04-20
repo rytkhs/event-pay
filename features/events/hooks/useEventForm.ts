@@ -6,10 +6,10 @@ import { useRouter } from "next/navigation";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 
 import type { EventCreatedParams } from "@core/analytics/event-types";
 import { ga4Client } from "@core/analytics/ga4-client";
-import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import type { EventRow } from "@core/types/event";
@@ -69,7 +69,6 @@ export const useEventForm = ({
 } => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const { toast } = useToast();
 
   // react-hook-formの初期化
   const form = useForm<EventFormSchemaData>({
@@ -276,10 +275,8 @@ export const useEventForm = ({
           }
 
           // 成功トースト通知を表示
-          toast({
-            title: "イベントを作成しました！",
+          toast.success("イベントを作成しました！", {
             description: `「${data.title}」の作成が完了しました`,
-            variant: "success",
             duration: 3000,
           });
 

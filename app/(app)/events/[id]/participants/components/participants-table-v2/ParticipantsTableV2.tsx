@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 
 import { SortingState, Row } from "@tanstack/react-table";
 import { AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 
-import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import type { EventStatus, PaymentMethod } from "@core/types/statuses";
 import { conditionalSmartSort } from "@core/utils/participant-smart-sort";
@@ -245,7 +245,6 @@ export function ParticipantsTableV2({
   isSelectionMode = false,
   onSelectionModeChange,
 }: ParticipantsTableV2Props) {
-  const { toast } = useToast();
   const isFreeEvent = eventFee === 0;
   const router = useRouter();
 
@@ -424,8 +423,7 @@ export function ParticipantsTableV2({
       try {
         const result = await updateCashStatusAction({ paymentId, status: "received" });
         if (result.success) {
-          toast({
-            title: "決済状況を更新しました",
+          toast("決済状況を更新しました", {
             description: "ステータスを「受領」に変更しました。",
           });
           startTransition(() => router.refresh());
@@ -436,24 +434,20 @@ export function ParticipantsTableV2({
         setLocalParticipants(prev);
         const errorMessage =
           error instanceof Error ? error.message : "予期しないエラーが発生しました";
-        toast({
-          title: "更新に失敗しました",
+        toast.error("更新に失敗しました", {
           description: errorMessage,
-          variant: "destructive",
         });
       } finally {
         setIsUpdating(false);
       }
     },
-    [toast, router, localParticipants, applyLocal, updateCashStatusAction]
+    [router, localParticipants, applyLocal, updateCashStatusAction]
   );
 
   const handleBulkReceive = useCallback(async () => {
     if (validSelectedPaymentIds.length === 0) {
-      toast({
-        title: "選択エラー",
+      toast.error("選択エラー", {
         description: "受領対象の決済を選択してください。",
-        variant: "destructive",
       });
       return;
     }
@@ -476,8 +470,7 @@ export function ParticipantsTableV2({
 
       if (result.success) {
         const { successCount, failedCount } = result.data ?? { successCount: 0, failedCount: 0 };
-        toast({
-          title: "一括受領が完了しました",
+        toast("一括受領が完了しました", {
           description: `${successCount}件受領、${failedCount > 0 ? `${failedCount}件失敗` : "全て成功"}`,
         });
         setSelectedPaymentIds([]);
@@ -488,22 +481,18 @@ export function ParticipantsTableV2({
     } catch (error) {
       setLocalParticipants(prev);
       const errorMessage = error instanceof Error ? error.message : "一括受領に失敗しました";
-      toast({
-        title: "一括更新に失敗しました",
+      toast.error("一括更新に失敗しました", {
         description: errorMessage,
-        variant: "destructive",
       });
     } finally {
       setIsBulkUpdating(false);
     }
-  }, [validSelectedPaymentIds, localParticipants, toast, router, bulkUpdateCashStatusAction]);
+  }, [validSelectedPaymentIds, localParticipants, router, bulkUpdateCashStatusAction]);
 
   const handleBulkWaive = useCallback(async () => {
     if (validSelectedPaymentIds.length === 0) {
-      toast({
-        title: "選択エラー",
+      toast.error("選択エラー", {
         description: "免除対象の決済を選択してください。",
-        variant: "destructive",
       });
       return;
     }
@@ -526,8 +515,7 @@ export function ParticipantsTableV2({
 
       if (result.success) {
         const { successCount, failedCount } = result.data ?? { successCount: 0, failedCount: 0 };
-        toast({
-          title: "一括免除が完了しました",
+        toast("一括免除が完了しました", {
           description: `${successCount}件免除、${failedCount > 0 ? `${failedCount}件失敗` : "全て成功"}`,
         });
         setSelectedPaymentIds([]);
@@ -538,15 +526,13 @@ export function ParticipantsTableV2({
     } catch (error) {
       setLocalParticipants(prev);
       const errorMessage = error instanceof Error ? error.message : "一括免除に失敗しました";
-      toast({
-        title: "一括更新に失敗しました",
+      toast.error("一括更新に失敗しました", {
         description: errorMessage,
-        variant: "destructive",
       });
     } finally {
       setIsBulkUpdating(false);
     }
-  }, [validSelectedPaymentIds, localParticipants, toast, router, bulkUpdateCashStatusAction]);
+  }, [validSelectedPaymentIds, localParticipants, router, bulkUpdateCashStatusAction]);
 
   const handleSelectPayment = useCallback((paymentId: string, checked: boolean) => {
     setSelectedPaymentIds((prev) =>
@@ -567,8 +553,7 @@ export function ParticipantsTableV2({
           notes: "管理者による決済取り消し",
         });
         if (result.success) {
-          toast({
-            title: "受領を取り消しました",
+          toast("受領を取り消しました", {
             description: "ステータスを「未決済」に戻しました。",
           });
           startTransition(() => router.refresh());
@@ -577,16 +562,14 @@ export function ParticipantsTableV2({
         }
       } catch {
         setLocalParticipants(prev);
-        toast({
-          title: "取り消しに失敗しました",
+        toast.error("取り消しに失敗しました", {
           description: "しばらく待ってから再度お試しください。",
-          variant: "destructive",
         });
       } finally {
         setIsUpdating(false);
       }
     },
-    [toast, router, localParticipants, applyLocal, updateCashStatusAction]
+    [router, localParticipants, applyLocal, updateCashStatusAction]
   );
 
   const handleOpenDeleteMistaken = useCallback((participant: ParticipantView) => {
@@ -619,8 +602,7 @@ export function ParticipantsTableV2({
         throw new Error(result.error?.userMessage || "参加者の削除に失敗しました");
       }
 
-      toast({
-        title: "参加者を削除しました",
+      toast("参加者を削除しました", {
         description: "",
       });
       setDeleteTarget(null);
@@ -632,7 +614,7 @@ export function ParticipantsTableV2({
     } finally {
       setIsUpdating(false);
     }
-  }, [deleteMistakenAttendanceAction, deleteTarget, eventId, localParticipants, router, toast]);
+  }, [deleteMistakenAttendanceAction, deleteTarget, eventId, localParticipants, router]);
 
   const requiresPaymentMethodForAttendance = useCallback(
     (participant: ParticipantView, nextStatus: AttendanceStatus) => {
@@ -788,8 +770,7 @@ export function ParticipantsTableV2({
 
       const updateResult = responseData as AdminUpdateAttendanceStatusResult;
       applyLocalAttendanceStatus(updateResult);
-      toast({
-        title: "出欠を更新しました",
+      toast("出欠を更新しました", {
         description: `${attendanceTarget.nickname}を「${getAttendanceStatusLabel(updateResult.newStatus)}」に変更しました。`,
       });
       handleCloseAttendanceUpdate();
@@ -813,7 +794,6 @@ export function ParticipantsTableV2({
     requiresPastEventConfirmation,
     requiresPaymentMethodForAttendance,
     router,
-    toast,
   ]);
 
   // columns

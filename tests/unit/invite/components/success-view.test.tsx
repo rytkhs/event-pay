@@ -11,10 +11,10 @@ import userEvent from "@testing-library/user-event";
 import type { RegisterParticipationData } from "@features/invite/types";
 import { SuccessView } from "@features/invite/components/SuccessView";
 
-const mockToast = jest.fn();
-
-jest.mock("@core/contexts/toast-context", () => ({
-  useToast: () => ({ toast: mockToast }),
+jest.mock("sonner", () => ({
+  toast: Object.assign(jest.fn(), {
+    success: jest.fn(),
+  }),
 }));
 
 describe("SuccessView", () => {

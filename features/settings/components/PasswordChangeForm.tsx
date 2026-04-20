@@ -5,8 +5,8 @@ import { useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 
-import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { changePasswordFormSchema, type ChangePasswordFormInput } from "@core/validation/settings";
 
@@ -29,7 +29,6 @@ interface PasswordChangeFormProps {
 
 export function PasswordChangeForm({ changePasswordAction }: PasswordChangeFormProps) {
   const [isPending, startTransition] = useTransition();
-  const { toast } = useToast();
 
   const form = useForm<ChangePasswordFormInput>({
     resolver: zodResolver(changePasswordFormSchema),
@@ -51,22 +50,17 @@ export function PasswordChangeForm({ changePasswordAction }: PasswordChangeFormP
 
         if (result.success) {
           form.reset();
-          toast({
-            title: "更新完了",
+          toast("更新完了", {
             description: result.message,
           });
         } else {
-          toast({
-            title: "エラー",
+          toast.error("エラー", {
             description: result.error?.userMessage,
-            variant: "destructive",
           });
         }
       } catch (_error) {
-        toast({
-          title: "エラー",
+        toast.error("エラー", {
           description: "パスワードの更新中にエラーが発生しました",
-          variant: "destructive",
         });
       }
     });

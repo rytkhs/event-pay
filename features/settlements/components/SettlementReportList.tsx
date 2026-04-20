@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 
 import { FileDownIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
+import { toast } from "sonner";
 
-import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 
@@ -57,7 +57,6 @@ export function SettlementReportList({
   onExportReports,
   onRegenerateReport,
 }: SettlementReportListProps) {
-  const { toast } = useToast();
   const [reports, setReports] = useState<SettlementReportData[]>(initialReports);
   const [loading, setLoading] = useState(false);
   const [regeneratingEventIds, setRegeneratingEventIds] = useState<Set<string>>(new Set());
@@ -91,17 +90,13 @@ export function SettlementReportList({
       if (result.success) {
         setReports(result.data?.reports || []);
       } else {
-        toast({
-          title: "検索エラー",
+        toast.error("検索エラー", {
           description: result.error.userMessage,
-          variant: "destructive",
         });
       }
     } catch (_error) {
-      toast({
-        title: "検索エラー",
+      toast.error("検索エラー", {
         description: "予期しないエラーが発生しました",
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -121,10 +116,8 @@ export function SettlementReportList({
       const result = await onExportReports(params);
 
       if (!result.success) {
-        toast({
-          title: "エクスポートエラー",
+        toast.error("エクスポートエラー", {
           description: result.error.userMessage,
-          variant: "destructive",
         });
         return;
       }
@@ -134,10 +127,8 @@ export function SettlementReportList({
       const filename = result.data?.filename;
 
       if (!csvContent || !filename) {
-        toast({
-          title: "エクスポートエラー",
+        toast.error("エクスポートエラー", {
           description: "CSVデータまたはファイル名が取得できませんでした",
-          variant: "destructive",
         });
         return;
       }
@@ -152,23 +143,19 @@ export function SettlementReportList({
       link.click();
       document.body.removeChild(link);
 
-      toast({
-        title: "エクスポート完了",
+      toast("エクスポート完了", {
         description: `${filename} をダウンロードしました`,
       });
 
       if (result.data?.truncated) {
-        toast({
-          title: "注意: 一部データを省略",
+        toast("注意: 一部データを省略", {
           description:
             "1,001 件以上のデータが存在したため、先頭 1,000 件のみを出力しました。フィルターで範囲を絞って再度エクスポートしてください。",
         });
       }
     } catch (_error) {
-      toast({
-        title: "エクスポートエラー",
+      toast.error("エクスポートエラー", {
         description: "予期しないエラーが発生しました",
-        variant: "destructive",
       });
     } finally {
       setExporting(false);
@@ -186,25 +173,20 @@ export function SettlementReportList({
       const result = await onRegenerateReport(formData);
 
       if (result.success) {
-        toast({
-          title: "再集計完了",
+        toast("再集計完了", {
           description: "レポートが更新されました",
         });
 
         // レポート一覧を再読み込み
         await handleSearch();
       } else {
-        toast({
-          title: "再集計エラー",
+        toast.error("再集計エラー", {
           description: result.error.userMessage,
-          variant: "destructive",
         });
       }
     } catch (_error) {
-      toast({
-        title: "再集計エラー",
+      toast.error("再集計エラー", {
         description: "予期しないエラーが発生しました",
-        variant: "destructive",
       });
     } finally {
       setRegeneratingEventIds((prev) => {

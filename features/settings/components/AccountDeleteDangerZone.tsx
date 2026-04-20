@@ -3,8 +3,8 @@
 import { useState, useTransition, type JSX } from "react";
 
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
-import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,6 @@ type AccountDeleteDangerZoneProps = {
 export function AccountDeleteDangerZone({
   requestAccountDeletionAction,
 }: AccountDeleteDangerZoneProps): JSX.Element {
-  const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
   const [agreeIrreversible, setAgreeIrreversible] = useState(false);
@@ -38,12 +37,12 @@ export function AccountDeleteDangerZone({
 
       const result = await requestAccountDeletionAction(formData);
       if (result.success) {
-        toast({ title: "処理完了", description: result.message });
+        toast("処理完了", { description: result.message });
         if (result.redirectUrl) {
           window.location.href = result.redirectUrl;
         }
       } else {
-        toast({ title: "エラー", description: result.error?.userMessage, variant: "destructive" });
+        toast.error("エラー", { description: result.error?.userMessage });
       }
     });
   };

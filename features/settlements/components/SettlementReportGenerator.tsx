@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 
 import { CalculatorIcon, FileTextIcon, AlertTriangleIcon } from "lucide-react";
+import { toast } from "sonner";
 
-import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { formatUtcToJstByType } from "@core/utils/timezone";
 
@@ -38,7 +38,6 @@ export function SettlementReportGenerator({
   onReportGenerated,
   onGenerateReport,
 }: SettlementReportGeneratorProps) {
-  const { toast } = useToast();
   const [selectedEventId, setSelectedEventId] = useState("");
   const [generating, setGenerating] = useState(false);
 
@@ -46,10 +45,8 @@ export function SettlementReportGenerator({
 
   const handleGenerate = async () => {
     if (!selectedEventId) {
-      toast({
-        title: "イベント選択エラー",
+      toast.error("イベント選択エラー", {
         description: "レポートを生成するイベントを選択してください",
-        variant: "destructive",
       });
       return;
     }
@@ -67,13 +64,11 @@ export function SettlementReportGenerator({
         // alreadyExistsプロパティは通常のアクションでのみデータ内に存在する
         const hasAlreadyExists = result.data?.alreadyExists === true;
         if (hasAlreadyExists) {
-          toast({
-            title: "レポート生成完了",
+          toast("レポート生成完了", {
             description: "本日のレポートを更新しました",
           });
         } else {
-          toast({
-            title: "レポート生成完了",
+          toast("レポート生成完了", {
             description: "清算レポートが正常に生成されました",
           });
         }
@@ -86,17 +81,13 @@ export function SettlementReportGenerator({
         // フォームリセット
         setSelectedEventId("");
       } else {
-        toast({
-          title: "レポート生成エラー",
+        toast.error("レポート生成エラー", {
           description: result.error.userMessage,
-          variant: "destructive",
         });
       }
     } catch (_error) {
-      toast({
-        title: "レポート生成エラー",
+      toast.error("レポート生成エラー", {
         description: "予期しないエラーが発生しました",
-        variant: "destructive",
       });
     } finally {
       setGenerating(false);

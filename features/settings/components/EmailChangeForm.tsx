@@ -5,8 +5,8 @@ import { useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Mail } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 
-import { useToast } from "@core/contexts/toast-context";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { updateEmailInputSchema, type UpdateEmailInput } from "@core/validation/settings";
 
@@ -31,7 +31,6 @@ type UpdateEmailAction = (formData: FormData) => Promise<ActionResult>;
 
 export function EmailChangeForm({ currentEmail, updateEmailAction }: EmailChangeFormProps) {
   const [isPending, startTransition] = useTransition();
-  const { toast } = useToast();
 
   const form = useForm<UpdateEmailInput>({
     resolver: zodResolver(updateEmailInputSchema),
@@ -52,22 +51,17 @@ export function EmailChangeForm({ currentEmail, updateEmailAction }: EmailChange
 
         if (result.success) {
           form.reset();
-          toast({
-            title: "確認メール送信完了",
+          toast("確認メール送信完了", {
             description: result.message,
           });
         } else {
-          toast({
-            title: "エラー",
+          toast.error("エラー", {
             description: result.error?.userMessage,
-            variant: "destructive",
           });
         }
       } catch (_error) {
-        toast({
-          title: "エラー",
+        toast.error("エラー", {
           description: "メールアドレスの変更中にエラーが発生しました",
-          variant: "destructive",
         });
       }
     });

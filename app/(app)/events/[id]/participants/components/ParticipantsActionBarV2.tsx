@@ -3,8 +3,8 @@
 import { useEffect, useState, type ReactNode, startTransition } from "react";
 
 import { Plus, Download, Search, X, ListTodo, MoreVertical } from "lucide-react";
+import { toast } from "sonner";
 
-import { useToast } from "@core/contexts/toast-context";
 import type { Event } from "@core/types/event";
 import type {
   ExportParticipantsCsvResult,
@@ -58,7 +58,6 @@ export function ParticipantsActionBarV2({
   isSelectionMode = false,
   onToggleSelectionMode,
 }: ParticipantsActionBarV2Props) {
-  const { toast } = useToast();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addNickname, setAddNickname] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
@@ -122,10 +121,8 @@ export function ParticipantsActionBarV2({
       });
 
       if (!result.success) {
-        toast({
-          title: "追加に失敗しました",
+        toast.error("追加に失敗しました", {
           description: result.error?.userMessage || "参加者の追加に失敗しました",
-          variant: "destructive",
         });
         return;
       }
@@ -137,18 +134,15 @@ export function ParticipantsActionBarV2({
           ? "参加者を追加しました（現在オンライン決済が可能です）"
           : "参加者を追加しました（オンライン決済は現在できません）";
 
-      toast({
-        title: "参加者を追加しました",
+      toast("参加者を追加しました", {
         description: successDescription,
       });
       setShowAddDialog(false);
 
       window.location.reload();
     } catch (_error) {
-      toast({
-        title: "エラーが発生しました",
+      toast.error("エラーが発生しました", {
         description: "参加者の追加に失敗しました",
-        variant: "destructive",
       });
     } finally {
       setIsAdding(false);
@@ -160,8 +154,7 @@ export function ParticipantsActionBarV2({
     setIsExporting(true);
 
     try {
-      toast({
-        title: "CSV エクスポート",
+      toast("CSV エクスポート", {
         description: "個人情報の取り扱いには十分注意してください。(最大 1,000 件まで)",
         duration: 3000,
       });
@@ -172,10 +165,8 @@ export function ParticipantsActionBarV2({
       });
 
       if (!result.success) {
-        toast({
-          title: "エクスポート失敗",
+        toast.error("エクスポート失敗", {
           description: result.error.userMessage || "CSVエクスポートに失敗しました。",
-          variant: "destructive",
         });
         return;
       }
@@ -194,16 +185,13 @@ export function ParticipantsActionBarV2({
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
 
-        toast({
-          title: "エクスポート完了",
+        toast("エクスポート完了", {
           description: `${filename} をダウンロードしました。`,
         });
       }
     } catch (_error) {
-      toast({
-        title: "エクスポート失敗",
+      toast.error("エクスポート失敗", {
         description: "CSVエクスポートでエラーが発生しました。",
-        variant: "destructive",
       });
     } finally {
       setIsExporting(false);

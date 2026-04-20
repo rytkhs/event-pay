@@ -5,8 +5,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 
 import { CheckCircle, Copy, ExternalLink } from "lucide-react";
-
-import { useToast } from "@core/contexts/toast-context";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
@@ -18,17 +17,13 @@ interface SuccessViewProps {
 }
 
 export const SuccessView: React.FC<SuccessViewProps> = ({ data, onRegisterAnother }) => {
-  const { toast } = useToast();
   const [isResetting, setIsResetting] = useState(false);
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
   const derivedGuestUrl = `${baseUrl}/guest/${data.guestToken}`;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(derivedGuestUrl);
-    toast({
-      title: "リンクをコピーしました",
-      variant: "success",
-    });
+    toast.success("リンクをコピーしました");
   };
 
   const handleRegisterAnother = async () => {
