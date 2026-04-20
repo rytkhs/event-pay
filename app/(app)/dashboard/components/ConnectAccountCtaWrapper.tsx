@@ -2,6 +2,8 @@ import { ConnectAccountCta } from "@features/stripe-connect";
 
 import type { DashboardDataResource } from "../_lib/dashboard-data";
 
+import { OnboardingToastNotifier } from "./OnboardingToastNotifier";
+
 export async function ConnectAccountCtaWrapper({
   dashboardDataResource,
 }: {
@@ -11,12 +13,13 @@ export async function ConnectAccountCtaWrapper({
     const { stripeCtaStatus } = await dashboardDataResource;
     const resolvedStripeCtaStatus = await stripeCtaStatus;
 
-    if (!resolvedStripeCtaStatus) {
-      return null;
-    }
-
-    return <ConnectAccountCta status={resolvedStripeCtaStatus} />;
+    return (
+      <>
+        <OnboardingToastNotifier status={resolvedStripeCtaStatus} />
+        {resolvedStripeCtaStatus && <ConnectAccountCta status={resolvedStripeCtaStatus} />}
+      </>
+    );
   } catch {
-    return null;
+    return <OnboardingToastNotifier />;
   }
 }

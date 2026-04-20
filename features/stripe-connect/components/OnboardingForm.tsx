@@ -59,6 +59,7 @@ interface OnboardingFormProps {
   communities: RepresentativeCommunityOption[];
   defaultRepresentativeCommunityId: string;
   hasExistingAccount?: boolean;
+  intent?: string;
   onStartOnboarding: OnboardingFormAction;
   secondaryAction?: ReactNode;
 }
@@ -82,6 +83,7 @@ export function OnboardingForm({
   communities,
   defaultRepresentativeCommunityId,
   hasExistingAccount = false,
+  intent,
   onStartOnboarding,
   secondaryAction,
 }: OnboardingFormProps) {
@@ -232,6 +234,7 @@ export function OnboardingForm({
           <input type="hidden" name="representativeCommunityId" value={communities[0]?.id ?? ""} />
         )}
         <input type="hidden" name="communityDescription" value={communityDescription} />
+        <input type="hidden" name="intent" value={intent ?? ""} />
 
         {/* CTA ボタン */}
         <Button

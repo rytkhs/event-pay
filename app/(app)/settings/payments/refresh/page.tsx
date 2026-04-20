@@ -18,9 +18,9 @@ export const metadata: Metadata = {
   description: "Stripeアカウント設定を再開しています",
 };
 
-async function RefreshContent() {
+async function RefreshContent({ intent }: { intent?: string }) {
   // オンボーディングリフレッシュ処理を実行（リダイレクトが発生）
-  await handleOnboardingRefreshAction();
+  await handleOnboardingRefreshAction(intent);
 
   // この部分は通常実行されない（リダイレクトが発生するため）
   return null;
@@ -48,10 +48,17 @@ function LoadingContent() {
   );
 }
 
-export default function PaymentSettingsRefreshPage() {
+type PageProps = {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+export default async function PaymentSettingsRefreshPage(props: PageProps) {
+  const searchParams = await props.searchParams;
+  const intent = typeof searchParams.intent === "string" ? searchParams.intent : undefined;
+
   return (
     <Suspense fallback={<LoadingContent />}>
-      <RefreshContent />
+      <RefreshContent intent={intent} />
     </Suspense>
   );
 }

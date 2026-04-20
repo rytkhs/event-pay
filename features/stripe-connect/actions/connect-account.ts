@@ -286,9 +286,9 @@ async function getAuthenticatedUser(
  * エラーハンドリングを強化
  * キャッシュされたステータスを使用してフォールバック
  */
-export async function handleOnboardingReturnAction(): Promise<
-  ActionResult<{ redirectUrl: string }>
-> {
+export async function handleOnboardingReturnAction(
+  intent?: string
+): Promise<ActionResult<{ redirectUrl: string }>> {
   const actionLogger = logger.withContext({
     category: "stripe_connect",
     action: "handle_onboarding_return",
@@ -409,8 +409,13 @@ Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
       });
     }
 
+    let redirectUrl = "/settings/payments";
+    if (intent === "onboarding") {
+      redirectUrl = "/dashboard?onboarding=stripe_return";
+    }
+
     // 設定ページにリダイレクト用のURLを返す
-    return ok({ redirectUrl: "/settings/payments" });
+    return ok({ redirectUrl });
   } catch (error) {
     handleServerError(error, {
       category: "stripe_connect",
@@ -441,7 +446,7 @@ Payouts Enabled: ${accountInfo.payoutsEnabled ? "Yes" : "No"}
  * オンボーディングリフレッシュ処理を行うServer Action
  * 認証・認可チェックを強化し、詳細なログ出力を実装
  */
-export async function handleOnboardingRefreshAction(): Promise<void> {
+export async function handleOnboardingRefreshAction(intent?: string): Promise<void> {
   let userId: string | undefined;
   try {
     // 1. 認証チェック
@@ -449,9 +454,10 @@ export async function handleOnboardingRefreshAction(): Promise<void> {
     userId = user.id;
 
     // 2. 必要情報の準備（ベースURL → refresh/return URL）
+    const intentParam = intent ? `?intent=${intent}` : "";
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
-    const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}`;
-    const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}`;
+    const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}${intentParam}`;
+    const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}${intentParam}`;
 
     // 3. StripeConnectServiceを初期化
     const stripeConnectService = await createUserStripeConnectServiceForServerComponent();
@@ -552,6 +558,8 @@ export async function startOnboardingAction(
   let onboardingRedirectUrl: string | undefined;
   try {
     const formData = resolveActionFormData(stateOrFormData, maybeFormData);
+    const intentValue = getStringFormValue(formData, "intent");
+    const intentParam = intentValue ? `?intent=${intentValue}` : "";
 
     // 1. 認証チェック
     const user = await getCurrentUserForServerAction();
@@ -578,8 +586,8 @@ export async function startOnboardingAction(
 
     // 2. 必要情報の準備（ベースURL → refresh/return URL）
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
-    const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}`;
-    const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}`;
+    const refreshUrl = `${baseUrl}${CONNECT_REFRESH_PATH}${intentParam}`;
+    const returnUrl = `${baseUrl}${CONNECT_RETURN_PATH}${intentParam}`;
 
     const supabase = await createServerActionSupabaseClient();
     const representativeCommunityResult = await resolveRepresentativeCommunitySelection(

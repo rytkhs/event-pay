@@ -76,6 +76,7 @@ export default async function OnboardingPaymentsPage() {
                 communities={representativeCommunityOptions}
                 defaultRepresentativeCommunityId={currentCommunity.id}
                 hasExistingAccount={!!existingAccount}
+                intent="onboarding"
                 onStartOnboarding={startOnboardingAction}
                 secondaryAction={
                   <Button
