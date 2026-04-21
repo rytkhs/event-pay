@@ -5,7 +5,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
       url: `${appUrl}`,
-      lastModified: "2026-03-09",
+      lastModified: "2026-04-21",
       changeFrequency: "monthly",
       priority: 1.0,
     },
@@ -17,7 +17,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${appUrl}/terms`,
-      lastModified: "2025-11-21",
+      lastModified: "2026-04-21",
       changeFrequency: "yearly",
       priority: 0.2,
     },
@@ -29,7 +29,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${appUrl}/tokushoho/platform`,
-      lastModified: "2026-03-14",
+      lastModified: "2026-04-21",
       changeFrequency: "yearly",
       priority: 0.2,
     },
