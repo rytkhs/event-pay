@@ -35,7 +35,7 @@ export const HeroSection: React.FC = () => {
               <p className="text-lg md:text-xl text-slate-600 mb-8 leading-relaxed">
                 招待リンクを送るだけで出欠確認 ～ 集金まで完了。
                 <br className="hidden md:block" />
-                幹事の負担を劇的に減らす、新しいイベント管理 & 集金ツールです。
+                運営の負担を劇的に減らす、新しいイベント管理 & 集金ツールです。
                 <br className="block" />
                 いつもの集金を、キャッシュレスにしませんか?
               </p>

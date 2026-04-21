@@ -92,9 +92,9 @@ export const PricingSection: React.FC = () => {
                 </div>
 
                 <div className="mt-4 bg-primary/5 border border-primary/20 p-4 rounded-xl text-left">
-                  <p className="text-sm font-bold text-slate-800 mb-1">幹事さんの負担は実質0円に</p>
+                  <p className="text-sm font-bold text-slate-800 mb-1">負担は実質0円</p>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    参加費に手数料分を上乗せして設定すれば、幹事さんの持ち出しはありません。
+                    参加費に手数料分を上乗せして設定すれば持ち出しはありません。
                     <br />
                     <span className="text-xs text-slate-400 mt-1 block">
                       例: 3,800円集めたい場合 → 参加費を4000円に設定
