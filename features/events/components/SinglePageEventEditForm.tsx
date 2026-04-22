@@ -762,7 +762,7 @@ export function SinglePageEventEditForm({
                           )}
                           {!restrictions.isFieldEditable("payment_methods") && (
                             <p className="text-xs text-amber-600 mt-2">
-                              集金済み参加者がいるため、決済方法は変更できません
+                              参加者がいるため、集金方法の解除はできません
                             </p>
                           )}
                           <FormMessage />
