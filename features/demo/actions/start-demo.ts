@@ -78,17 +78,14 @@ export async function startDemoSession(): Promise<ActionResult<{ redirectUrl: st
   const userId = userResult.user.id;
 
   // 2. Seed Data
-  let communityId: string;
-  try {
-    const seedResult = await seedDemoData(adminClient, userId);
-    communityId = seedResult.communityId;
-  } catch (e) {
+  const seedResult = await seedDemoData(adminClient, userId);
+  if (!seedResult.success || !seedResult.data) {
     logger.error("Demo data seeding failed", {
       category: "system",
       action: "demo_seed_data_failed",
       outcome: "failure",
       user_id: userId,
-      error: e instanceof Error ? e.message : String(e),
+      error: !seedResult.success ? seedResult.error.message : "Data missing from success result",
     });
     // ユーザー作成済みだがデータ投入失敗。デモとしては致命的なのでエラーにする
     // 本来はユーザー削除などのクリーンアップが必要だが、Ephemeral環境なので許容
@@ -97,6 +94,8 @@ export async function startDemoSession(): Promise<ActionResult<{ redirectUrl: st
       retryable: true,
     });
   }
+
+  const { communityId } = seedResult.data;
 
   // 3. Login (Set Cookies) & Session Setup
   // ここでは通常のServer Client (middleware連携) を使用してログインし、Cookieをセットする
