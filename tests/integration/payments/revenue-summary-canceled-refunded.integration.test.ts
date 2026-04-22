@@ -152,7 +152,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
       const attendance4 = await createTestAttendance(event.id);
 
       await createPayment(attendance1.id, "pending", 1000);
-      await createPayment(attendance2.id, "canceled", 1000); // キャンセル済み（未決済系）
+      await createPayment(attendance2.id, "canceled", 1000); // キャンセル済み（未集金系）
       await createPayment(attendance3.id, "paid", 1000);
       await createPayment(attendance4.id, "received", 1000);
 
@@ -378,7 +378,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
     });
   });
 
-  describe("設計書準拠: キャンセル（決済済み）の扱い", () => {
+  describe("設計書準拠: キャンセル（集金済み）の扱い", () => {
     it("決済完了後に not_attending に変更しても売上に計上される（会計原則）", async () => {
       const event = await createPaidTestEvent(setup.testUser.id, {
         title: `Accounting Test ${Date.now()}`,
@@ -409,7 +409,7 @@ describe("売上集計: canceled/refunded の扱い（回帰テスト）", () =>
 
       // UI側で内訳を表示:
       // - 参加者分: attendance1 の 1000円
-      // - キャンセル（決済済み）: attendance2 の 1000円
+      // - キャンセル（集金済み）: attendance2 の 1000円
     });
   });
 });

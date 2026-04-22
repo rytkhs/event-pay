@@ -40,9 +40,9 @@ function getPaymentStatusWeight(paymentStatus: PaymentStatus | null): number {
   const simple = toSimplePaymentStatus(paymentStatus);
   switch (simple) {
     case "unpaid":
-      return 0; // 未決済を最優先（要対応）
+      return 0; // 未集金を最優先（要対応）
     case "paid":
-      return 1; // 決済済み
+      return 1; // 集金済み
     case "waived":
       return 2; // 免除
     case "refunded":

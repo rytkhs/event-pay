@@ -222,7 +222,7 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     console.log("🎉 Paid event (unpaid) participation cancellation completed successfully");
   });
 
-  test("【参加→不参加】有料イベント（現金決済済み）での参加キャンセル", async ({ page }) => {
+  test("【参加→不参加】有料イベント（現金集金済み）での参加キャンセル", async ({ page }) => {
     console.log("🧪 Testing participation cancellation for paid event (cash paid)");
 
     // 有料イベントを作成

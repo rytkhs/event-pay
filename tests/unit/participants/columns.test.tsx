@@ -124,15 +124,15 @@ describe("buildParticipantsColumns", () => {
   });
 
   describe("決済状況列", () => {
-    it("未決済バッジが表示される", () => {
+    it("未集金バッジが表示される", () => {
       render(<TestTableRow participant={mockParticipant} eventFee={1000} />);
-      expect(screen.getByText("未決済")).toBeInTheDocument();
+      expect(screen.getByText("未集金")).toBeInTheDocument();
     });
 
-    it("決済済みバッジが表示される", () => {
+    it("集金済みバッジが表示される", () => {
       const paidParticipant = { ...mockParticipant, payment_status: "paid" as const };
       render(<TestTableRow participant={paidParticipant} eventFee={1000} />);
-      expect(screen.getByText("決済済")).toBeInTheDocument();
+      expect(screen.getByText("集金済")).toBeInTheDocument();
     });
 
     it("無料イベントでは決済状況が表示されない", () => {
@@ -142,7 +142,7 @@ describe("buildParticipantsColumns", () => {
   });
 
   describe("アクション列", () => {
-    it("現金決済で未決済の場合、受領ボタンが表示される", () => {
+    it("現金決済で未集金の場合、受領ボタンが表示される", () => {
       render(<TestTableRow participant={mockParticipant} eventFee={1000} />);
 
       expect(screen.getByTitle("受領済みにする")).toBeInTheDocument();

@@ -584,7 +584,7 @@ export function SinglePageEventEditForm({
                         </FormControl>
                         {!restrictions.isFieldEditable("fee") ? (
                           <FormDescription className="text-xs text-amber-600">
-                            決済済み参加者がいるため、参加費は変更できません
+                            集金済み参加者がいるため、参加費は変更できません
                           </FormDescription>
                         ) : (
                           <FormDescription>
@@ -762,7 +762,7 @@ export function SinglePageEventEditForm({
                           )}
                           {!restrictions.isFieldEditable("payment_methods") && (
                             <p className="text-xs text-amber-600 mt-2">
-                              決済済み参加者がいるため、決済方法は変更できません
+                              集金済み参加者がいるため、決済方法は変更できません
                             </p>
                           )}
                           <FormMessage />

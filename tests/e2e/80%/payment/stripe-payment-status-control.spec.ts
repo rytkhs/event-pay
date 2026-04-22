@@ -4,7 +4,7 @@
  * 仕様書 docs/spec/test/e2e/stripe.md の「2-2. 決済ステータスによる制御」に対応
  *
  * テストケース:
- * - ケース2-2-1: 決済済み（paid）時の再決済ボタン非表示
+ * - ケース2-2-1: 集金済み（paid）時の再決済ボタン非表示
  * - ケース2-2-2: 払い戻し済み（refunded）時の再決済可能
  *
  * 前提条件:
@@ -30,7 +30,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
     await TestDataManager.cleanup();
   });
 
-  test("ケース2-2-1: 決済済み（paid）時の再決済ボタン非表示", async ({ page }) => {
+  test("ケース2-2-1: 集金済み（paid）時の再決済ボタン非表示", async ({ page }) => {
     /**
      * テストID: PAYMENT-E2E-006 (ケース2-2-1)
      * 優先度: P0
@@ -44,7 +44,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
      * - 「決済完了」バッジが表示される
      */
 
-    console.log("=== ケース2-2-1: 決済済み（paid）時の再決済ボタン非表示 ===");
+    console.log("=== ケース2-2-1: 集金済み（paid）時の再決済ボタン非表示 ===");
 
     // === 1. テストデータの作成 ===
     console.log("📝 テストデータ作成中...");
@@ -54,7 +54,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
 
     console.log("✓ ユーザー・Connect・イベント作成完了");
 
-    // === 2. 決済済み状態の参加者を作成 ===
+    // === 2. 集金済み状態の参加者を作成 ===
     const attendanceData = await TestDataManager.createAttendance({
       status: "attending",
       existingPayment: {
@@ -63,7 +63,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
       },
     });
 
-    console.log("✓ 参加者作成完了（決済済み状態）");
+    console.log("✓ 参加者作成完了（集金済み状態）");
 
     // === 3. ゲストページにアクセス ===
     const guestPageUrl = `http://localhost:3000/guest/${attendanceData.guest_token}`;
@@ -95,7 +95,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
 
     console.log("✓ 決済金額が正しく表示されている");
 
-    console.log("🎉 ケース2-2-1: テスト成功（決済済み時の再決済ボタン非表示）");
+    console.log("🎉 ケース2-2-1: テスト成功（集金済み時の再決済ボタン非表示）");
   });
 
   test("ケース2-2-2: 払い戻し済み（refunded）時の再決済可能", async ({ page }) => {

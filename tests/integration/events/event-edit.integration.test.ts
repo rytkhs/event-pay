@@ -3,7 +3,7 @@
  *
  * カバレッジ指向のケース設計:
  * - 正常系: 基本項目の更新、空欄クリア、fee=0→payment_methods=[]
- * - 制約系: 参加者/決済済み存在時の制限、定員と参加者数の関係、締切相関・上限、猶予上限
+ * - 制約系: 参加者/集金済み存在時の制限、定員と参加者数の関係、締切相関・上限、猶予上限
  * - 挙動系: 未認証、権限なし、存在しないID
  */
 
@@ -231,7 +231,7 @@ describe("イベント編集 統合テスト", () => {
     }
   });
 
-  test("制約: 決済済み参加者がいると fee/payment_methods はロックされる", async () => {
+  test("制約: 集金済み参加者がいると fee/payment_methods はロックされる", async () => {
     // 有料イベント + 参加者 + paid決済
     const fixture = await createTrackedEvent(getUserA().id, {
       fee: 1000,

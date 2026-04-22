@@ -554,7 +554,7 @@ export function ParticipantsTableV2({
         });
         if (result.success) {
           toast("受領を取り消しました", {
-            description: "ステータスを「未決済」に戻しました。",
+            description: "ステータスを「未集金」に戻しました。",
           });
           startTransition(() => router.refresh());
         } else {

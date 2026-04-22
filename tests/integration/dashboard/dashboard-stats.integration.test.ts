@@ -632,7 +632,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
         event.id,
         [],
         "attending",
-        "未決済参加者"
+        "未集金参加者"
       );
       cleanupHelper.trackAttendance(attendance.id);
 

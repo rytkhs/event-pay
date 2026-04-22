@@ -1331,7 +1331,7 @@ BEGIN
       paid_at = CASE
         WHEN p_new_status = 'received' THEN now()
         WHEN p_new_status = 'waived' THEN paid_at  -- 免除時はpaid_atは変更しない
-        WHEN p_new_status = 'pending' THEN NULL    -- 未決済時はpaid_atをクリア
+        WHEN p_new_status = 'pending' THEN NULL    -- 未集金時はpaid_atをクリア
         ELSE paid_at
       END,
       version = version + 1

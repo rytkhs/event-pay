@@ -246,7 +246,7 @@ describe("リマインダー送信 統合テスト", () => {
   });
 
   describe("決済期限リマインダー", () => {
-    test("翌日が決済期限のStripe未決済者にリマインダーが送信される", async () => {
+    test("翌日が決済期限のStripe未集金者にリマインダーが送信される", async () => {
       const tomorrowDeadline = getTomorrowJstDateTime();
       const eventDate = getFutureDateTime(7);
       const registrationDeadline = addDays(tomorrowDeadline, -1);
@@ -262,7 +262,7 @@ describe("リマインダー送信 統合テスト", () => {
       cleanupHelper.trackEvent(event.id);
 
       const attendance1 = await createTestAttendance(event.id, {
-        nickname: "未決済参加者",
+        nickname: "未集金参加者",
         status: "attending",
       });
       cleanupHelper.trackAttendance(attendance1.id);
@@ -274,7 +274,7 @@ describe("リマインダー送信 統合テスト", () => {
       cleanupHelper.trackPayment(payment1.id);
 
       const attendance2 = await createTestAttendance(event.id, {
-        nickname: "決済済み参加者",
+        nickname: "集金済み参加者",
         status: "attending",
       });
       cleanupHelper.trackAttendance(attendance2.id);
@@ -282,7 +282,7 @@ describe("リマインダー送信 統合テスト", () => {
         amount: 3000,
         status: "paid",
         method: "stripe",
-      }); // 決済済みなので送信されない
+      }); // 集金済みなので送信されない
       cleanupHelper.trackPayment(payment2.id);
 
       const request = createMockRequest({ cronSecret: "test-cron-secret-12345" });
@@ -442,7 +442,7 @@ describe("リマインダー送信 統合テスト", () => {
       });
       cleanupHelper.trackEvent(event2.id);
       const attendance2 = await createTestAttendance(event2.id, {
-        nickname: "未決済者",
+        nickname: "未集金者",
         status: "attending",
       });
       cleanupHelper.trackAttendance(attendance2.id);

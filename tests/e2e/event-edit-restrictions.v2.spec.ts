@@ -56,7 +56,7 @@ test.describe("イベント編集 V2（E2E）", () => {
     await expect(page.getByText("編集後の説明")).toBeVisible();
   });
 
-  test("Stripe決済済みがいると fee/payment_methods が編集不可", async ({ page }) => {
+  test("Stripe集金済みがいると fee/payment_methods が編集不可", async ({ page }) => {
     // 有料イベントを作成
     const paid = await createPaidEventForPayments(testUser.id, { fee: 1200 });
     const event: TestEvent = {

@@ -26,7 +26,7 @@ export const GuestStatusCard: React.FC<GuestStatusCardProps> = ({
           textColor: "text-white",
           subColor: "bg-emerald-700",
           icon: <CheckCircle2 className="w-12 h-12 mb-2" />,
-          title: "参加予定・決済済み",
+          title: "参加予定・集金済み",
           message: "",
           priceLabel: "参加費",
         };

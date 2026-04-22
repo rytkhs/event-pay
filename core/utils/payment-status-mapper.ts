@@ -10,7 +10,7 @@ import type { PaymentStatus } from "@core/types/statuses";
  * UI 表示用の簡略化された決済ステータス
  */
 export const SIMPLE_PAYMENT_STATUS_VALUES = [
-  "unpaid", // pending / failed - 未決済（支払待ち + 失敗）
+  "unpaid", // pending / failed - 未集金（支払待ち + 失敗）
   "paid", // paid / received - 決済完了（方法問わず）
   "refunded", // refunded - 返金済み
   "waived", // waived - 免除（無料参加など主催者判断）
@@ -45,7 +45,7 @@ export const toSimplePaymentStatus = (
 };
 
 /**
- * 未決済ステータス（ハイライト表示対象）かどうかの判定
+ * 未集金ステータス（ハイライト表示対象）かどうかの判定
  * canceled/refunded は会計上の終端であり、未収金ではないため false を返す
  */
 export const isPaymentUnpaid = (status: PaymentStatus | null | undefined): boolean => {

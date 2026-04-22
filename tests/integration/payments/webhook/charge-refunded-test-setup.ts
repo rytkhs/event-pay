@@ -172,7 +172,7 @@ export async function setupChargeRefundedTest(): Promise<ChargeRefundedTestSetup
   }
 
   /**
-   * 決済済みのテスト決済レコードを作成
+   * 集金済みのテスト決済レコードを作成
    */
   async function createPaidPayment(
     attendanceId: string,

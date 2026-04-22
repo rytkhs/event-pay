@@ -121,7 +121,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
 
   const attendeeCount = calculateAttendeeCount(event.attendances);
 
-  // Stripe 決済済み参加者の有無を算出
+  // Stripe 集金済み参加者の有無を算出
   const { data: stripePaid, error: stripePaidError } = await supabase
     .from("payments")
     .select("id, attendances!inner(event_id)")

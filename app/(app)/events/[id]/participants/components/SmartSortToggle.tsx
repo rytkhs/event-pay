@@ -133,7 +133,7 @@ function SmartSortDescription() {
               <div className="flex gap-2.5">
                 <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-500" />
                 <div className="space-y-0.5">
-                  <p className="text-xs font-medium text-foreground">要対応（未決済）</p>
+                  <p className="text-xs font-medium text-foreground">要対応（未集金）</p>
                   <p className="text-[10px] text-muted-foreground">
                     「参加」で未払いの方を最上位に。手渡しが必要な現金を優先表示します。
                   </p>
@@ -143,7 +143,7 @@ function SmartSortDescription() {
               <div className="flex gap-2.5">
                 <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
                 <div className="space-y-0.5">
-                  <p className="text-xs font-medium text-foreground">完了（決済済・免除）</p>
+                  <p className="text-xs font-medium text-foreground">完了（集金済・免除）</p>
                   <p className="text-[10px] text-muted-foreground">
                     支払いが終わった方や、集金が不要な方は下位にまとめます。
                   </p>

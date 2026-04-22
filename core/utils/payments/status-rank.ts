@@ -32,7 +32,7 @@ export function canPromoteStatus(current: PaymentStatus, target: PaymentStatus):
   // 基本的に降格は禁止
   if (targetRank < currentRank) return false;
 
-  // canceled は未決済系（pending/failed）からのみ遷移可能
+  // canceled は未集金系（pending/failed）からのみ遷移可能
   if (target === "canceled") {
     return current === "pending" || current === "failed";
   }
