@@ -264,7 +264,7 @@ export function KpiCardsGrid({
         </Card>
       )}
 
-      {/* 無料イベントまたは未決済なしの場合、2列目を埋めるための空スペース調整 */}
+      {/* 無料イベントまたは未集金なしの場合、2列目を埋めるための空スペース調整 */}
       {isFreeEvent && (
         <Card className="border-0 shadow-sm bg-gradient-to-br from-gray-50 to-gray-100/50">
           <CardContent className="p-4">

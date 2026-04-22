@@ -214,7 +214,7 @@ describe("canPromoteStatus関数", () => {
   });
 
   describe("canceled に関する特殊な遷移", () => {
-    test("canceled → refunded への遷移を拒否（canceledは未決済系の終端）", () => {
+    test("canceled → refunded への遷移を拒否（canceledは未集金系の終端）", () => {
       expect(canPromoteStatus("canceled", "refunded")).toBe(false);
     });
 

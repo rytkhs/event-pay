@@ -66,7 +66,7 @@ describe("エッジケース", () => {
         stripeAccountId: setup.testUser.stripeConnectAccountId,
       });
 
-      // received ステータスに更新（現金決済済み）
+      // received ステータスに更新（現金集金済み）
       await setup.supabase
         .from("payments")
         .update({

@@ -245,8 +245,8 @@ export async function updateEventAction(
       }
     }
 
-    // Stripe決済済み参加者の存在を確認（有無だけで良いので軽量に取得）
-    // 注意: 現金決済済みはここには含まれない（仕様：Stripe決済完了者がいる場合のみ金銭系をロック）
+    // Stripe集金済み参加者の存在を確認（有無だけで良いので軽量に取得）
+    // 注意: 現金集金済みはここには含まれない（仕様：Stripe決済完了者がいる場合のみ金銭系をロック）
     const { data: stripePayments, error: paymentsError } = await supabase
       .from("payments")
       .select("id, attendances!inner(event_id)")
@@ -256,7 +256,7 @@ export async function updateEventAction(
       .limit(1);
 
     // 決済状況取得エラー時はフェイルクローズ（UI側と統一）
-    // エラー時は安全側に倒して、Stripe決済済み参加者がいるものとして扱う
+    // エラー時は安全側に倒して、Stripe集金済み参加者がいるものとして扱う
     const hasStripePaid = paymentsError ? true : (stripePayments?.length || 0) > 0;
 
     // 現在の参加者数（attending のみ）を算出 - 共通ユーティリティを使用

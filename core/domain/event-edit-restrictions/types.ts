@@ -28,7 +28,7 @@ export interface RestrictionContext {
   hasAttendees: boolean;
   /** 参加者数 */
   attendeeCount: number;
-  /** Stripe決済済み参加者が存在するか */
+  /** Stripe集金済み参加者が存在するか */
   hasStripePaid: boolean;
   /** イベントの現在状態 */
   eventStatus: "upcoming" | "ongoing" | "past" | "canceled";

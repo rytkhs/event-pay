@@ -301,8 +301,8 @@ function generateCsvContent(participants: CsvParticipant[], columns: string[]): 
         case "payment_status":
           if (latestPayment?.status) {
             const statusMap: Record<string, string> = {
-              pending: "未決済",
-              paid: "決済済",
+              pending: "未集金",
+              paid: "集金済",
               failed: "決済失敗",
               received: "受領済",
               refunded: "返金済み",

@@ -158,7 +158,7 @@ function getEventScenarios(
       fee: 4000,
       capacity: 120,
       description:
-        "（開催終了）新入生歓迎イベント。オンライン決済済みと、現地での現金回収（受領済み）のデータが混在している状態を確認できます。",
+        "（開催終了）新入生歓迎イベント。オンライン集金済みと、現地での現金回収（受領済み）のデータが混在している状態を確認できます。",
       registration_deadline: day(-45),
       payment_deadline: day(-40),
       payment_methods: ["stripe", "cash"],
@@ -307,7 +307,7 @@ function getBookClubEventScenarios(
       fee: 4000,
       capacity: 120,
       description:
-        "（開催終了）新メンバー向け歓迎イベントです。オンライン決済済みと、当日の現金回収（受領済み）が混在している状態を確認できます。",
+        "（開催終了）新メンバー向け歓迎イベントです。オンライン集金済みと、当日の現金回収（受領済み）が混在している状態を確認できます。",
       registration_deadline: day(-45),
       payment_deadline: day(-40),
       payment_methods: ["stripe", "cash"],

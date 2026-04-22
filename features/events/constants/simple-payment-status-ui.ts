@@ -1,8 +1,8 @@
 import type { SimplePaymentStatus } from "@core/utils/payment-status-mapper";
 
 export const SIMPLE_PAYMENT_STATUS_LABELS: Record<SimplePaymentStatus, string> = {
-  unpaid: "未決済",
-  paid: "決済済",
+  unpaid: "未集金",
+  paid: "集金済",
   refunded: "返金済",
   waived: "免除",
   canceled: "キャンセル済",

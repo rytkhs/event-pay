@@ -41,7 +41,7 @@ const createTestFormData = (overrides: Partial<FormDataSnapshot> = {}): FormData
 // =============================================================================
 
 describe("STRIPE_PAID_FEE_RESTRICTION", () => {
-  it("決済済み参加者がいない場合は制限なし", async () => {
+  it("集金済み参加者がいない場合は制限なし", async () => {
     const context = createTestContext({ hasStripePaid: false });
     const formData = createTestFormData({ fee: 1000 });
 
@@ -51,7 +51,7 @@ describe("STRIPE_PAID_FEE_RESTRICTION", () => {
     expect(result.message).toBe("制限なし");
   });
 
-  it("決済済み参加者がいて参加費が変更されている場合は制限あり", async () => {
+  it("集金済み参加者がいて参加費が変更されている場合は制限あり", async () => {
     const context = createTestContext({
       hasStripePaid: true,
       attendeeCount: 5,
@@ -62,11 +62,11 @@ describe("STRIPE_PAID_FEE_RESTRICTION", () => {
     const result = await Promise.resolve(STRIPE_PAID_FEE_RESTRICTION.evaluate(context, formData));
 
     expect(result.isRestricted).toBe(true);
-    expect(result.message).toBe("決済済み参加者がいるため、参加費は変更できません");
+    expect(result.message).toBe("集金済み参加者がいるため、参加費は変更できません");
     expect(result.details).toContain("5名の参加者");
   });
 
-  it("決済済み参加者がいる場合は参加費が変更されていなくても制限あり", async () => {
+  it("集金済み参加者がいる場合は参加費が変更されていなくても制限あり", async () => {
     const context = createTestContext({
       hasStripePaid: true,
       attendeeCount: 3,
@@ -77,7 +77,7 @@ describe("STRIPE_PAID_FEE_RESTRICTION", () => {
     const result = await Promise.resolve(STRIPE_PAID_FEE_RESTRICTION.evaluate(context, formData));
 
     expect(result.isRestricted).toBe(true);
-    expect(result.message).toBe("決済済み参加者がいるため、参加費は変更できません");
+    expect(result.message).toBe("集金済み参加者がいるため、参加費は変更できません");
     expect(result.details).toContain("3名の参加者");
   });
 });

@@ -5,7 +5,7 @@
  *
  * 目的:
  * - update_guest_attendance_with_payment RPC関数のキャンセル処理を包括的に検証
- * - 未決済系（pending/failed）→ canceled への遷移
+ * - 未集金系（pending/failed）→ canceled への遷移
  * - 決済完了（paid/received）→ ステータス維持
  * - waived → 維持
  * - 無料イベント → レコード作成なし
@@ -59,7 +59,7 @@ describe("決済キャンセル処理統合テスト", () => {
     return data || [];
   }
 
-  describe("未決済系（pending/failed）のキャンセル", () => {
+  describe("未集金系（pending/failed）のキャンセル", () => {
     test("pending → canceled: 参加キャンセル時に pending は canceled に遷移", async () => {
       // Arrange
       const attendance = await createTestAttendance(setup.testEvent.id, {
