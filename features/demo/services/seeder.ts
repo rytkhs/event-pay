@@ -3,6 +3,7 @@ import { randomBytes } from "crypto";
 
 import { fakerJA as faker } from "@faker-js/faker";
 
+import { type AppResult, errFrom, okResult } from "@core/errors/app-result";
 import type { AttendanceInsert, AttendanceRow, EventInsert, EventRow } from "@core/types/event";
 import type { PaymentInsert } from "@core/types/payment";
 import type { AttendanceStatus, PaymentMethod, PaymentStatus } from "@core/types/statuses";
@@ -15,7 +16,7 @@ const CONFIG = {
   DB: {
     CHUNK_SIZE: 500,
     RETRY_WAIT_MS: 200,
-    RETRY_MAX_ATTEMPTS: 15,
+    RETRY_MAX_ATTEMPTS: 50,
   },
   // 生成数設定
   COUNTS: {
@@ -823,16 +824,18 @@ async function processPaymentsAndCancellations(
     const updateTime = iso(addHours(now, 2));
 
     if (notAttendingIds.length) {
-      await client
+      const { error } = await client
         .from("attendances")
         .update({ status: "not_attending", updated_at: updateTime })
         .in("id", notAttendingIds);
+      if (error) throw error;
     }
     if (maybeIds.length) {
-      await client
+      const { error } = await client
         .from("attendances")
         .update({ status: "maybe", updated_at: updateTime })
         .in("id", maybeIds);
+      if (error) throw error;
     }
   }
 }
@@ -842,72 +845,82 @@ async function processPaymentsAndCancellations(
 export async function seedDemoData(
   adminClient: AppSupabaseClient,
   userId: string
-): Promise<{ communityId: string }> {
-  // シードの初期化
-  faker.seed(Number.parseInt(userId.replace(/\+/g, "-").slice(0, 8), 16));
-  const now = new Date();
+): Promise<AppResult<{ communityId: string }>> {
+  try {
+    // シードの初期化
+    faker.seed(Number.parseInt(userId.replace(/\+/g, "-").slice(0, 8), 16));
+    const now = new Date();
 
-  // 1. ユーザー＆コミュニティのセットアップ
-  const { communityId, bookClubCommunityId, payoutProfileId } = await setupUserAndCommunity(
-    adminClient,
-    userId,
-    now
-  );
+    // 1. ユーザー＆コミュニティのセットアップ
+    const { communityId, bookClubCommunityId, payoutProfileId } = await setupUserAndCommunity(
+      adminClient,
+      userId,
+      now
+    );
 
-  // 2. イベント
-  const insertedEvents = await insertEvents(adminClient, userId, now, communityId, payoutProfileId);
-  const primaryEvent = assertNonNull(
-    insertedEvents.find((e) => e.title.includes("創立10周年記念")),
-    "Primary event not found"
-  );
+    // 2. イベント
+    const insertedEvents = await insertEvents(
+      adminClient,
+      userId,
+      now,
+      communityId,
+      payoutProfileId
+    );
+    const primaryEvent = assertNonNull(
+      insertedEvents.find((e) => e.title.includes("創立10周年記念")),
+      "Primary event not found"
+    );
 
-  // 3. 出欠参加データ
-  const insertedAttendances = await insertAttendances(
-    adminClient,
-    insertedEvents,
-    primaryEvent.id,
-    now
-  );
+    // 3. 出欠参加データ
+    const insertedAttendances = await insertAttendances(
+      adminClient,
+      insertedEvents,
+      primaryEvent.id,
+      now
+    );
 
-  // 4. 決済＆キャンセル
-  await processPaymentsAndCancellations(
-    adminClient,
-    insertedAttendances,
-    insertedEvents,
-    now,
-    payoutProfileId
-  );
+    // 4. 決済＆キャンセル
+    await processPaymentsAndCancellations(
+      adminClient,
+      insertedAttendances,
+      insertedEvents,
+      now,
+      payoutProfileId
+    );
 
-  // 5. 読書会コミュニティのイベント
-  const insertedBookClubEvents = await insertEvents(
-    adminClient,
-    userId,
-    now,
-    bookClubCommunityId,
-    payoutProfileId,
-    getBookClubEventScenarios
-  );
-  const bookClubPrimaryEvent = assertNonNull(
-    insertedBookClubEvents.find((e) => e.title.includes("読書会1周年記念")),
-    "Book club primary event not found"
-  );
+    // 5. 読書会コミュニティのイベント
+    const insertedBookClubEvents = await insertEvents(
+      adminClient,
+      userId,
+      now,
+      bookClubCommunityId,
+      payoutProfileId,
+      getBookClubEventScenarios
+    );
+    const bookClubPrimaryEvent = assertNonNull(
+      insertedBookClubEvents.find((e) => e.title.includes("読書会1周年記念")),
+      "Book club primary event not found"
+    );
 
-  // 6. 読書会コミュニティの出欠参加データ
-  const insertedBookClubAttendances = await insertAttendances(
-    adminClient,
-    insertedBookClubEvents,
-    bookClubPrimaryEvent.id,
-    now
-  );
+    // 6. 読書会コミュニティの出欠参加データ
+    const insertedBookClubAttendances = await insertAttendances(
+      adminClient,
+      insertedBookClubEvents,
+      bookClubPrimaryEvent.id,
+      now
+    );
 
-  // 7. 読書会コミュニティの決済＆キャンセル
-  await processPaymentsAndCancellations(
-    adminClient,
-    insertedBookClubAttendances,
-    insertedBookClubEvents,
-    now,
-    payoutProfileId
-  );
+    // 7. 読書会コミュニティの決済＆キャンセル
+    await processPaymentsAndCancellations(
+      adminClient,
+      insertedBookClubAttendances,
+      insertedBookClubEvents,
+      now,
+      payoutProfileId
+    );
 
-  return { communityId };
+    return okResult({ communityId });
+  } catch (error) {
+    return errFrom(error);
+  }
 }
