@@ -4,6 +4,9 @@ import Link from "next/link";
 
 import { cn } from "@core/utils";
 
+import { NoteIcon } from "@/components/ui/icons/note-icon";
+import { XIcon } from "@/components/ui/icons/x-icon";
+
 import { FooterLink } from "./types";
 
 /**
@@ -59,6 +62,28 @@ export function FooterLinks({
           )}
         </div>
       ))}
+
+      {/* ソーシャルアイコン */}
+      <div className="flex items-center gap-3 mt-4 md:mt-0 md:ml-4">
+        <a
+          href="https://x.com/minnano_shukin"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(linkBaseStyles, "p-1")}
+          aria-label="X (Twitter)"
+        >
+          <XIcon className="w-3.5 h-3.5" />
+        </a>
+        <a
+          href="https://note.com/minnano_shukin"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(linkBaseStyles, "p-1")}
+          aria-label="note"
+        >
+          <NoteIcon className="h-2.5 w-auto" />
+        </a>
+      </div>
     </nav>
   );
 }
