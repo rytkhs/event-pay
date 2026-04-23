@@ -378,9 +378,7 @@ export function CreateCommunityForm({
           {/* ヘッダー */}
           <div className="mb-12">
             <p className="mt-4 text-xl font-semibold">
-              まずは管理の土台となる
-              <br />
-              最初のコミュニティを作成してください。
+              まずは最初のコミュニティを作成してください。
             </p>
           </div>
 
