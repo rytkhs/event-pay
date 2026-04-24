@@ -20,6 +20,12 @@ export const footerNavigationLinks: FooterLink[] = [
     ariaLabel: "みんなの集金プラットフォームの特定商取引法に基づく表記",
   },
   {
+    label: "運営元",
+    href: "https://project.tklab.workers.dev/",
+    external: true,
+    ariaLabel: "みんなの集金の運営元を確認する",
+  },
+  {
     label: "お問い合わせ",
     href: "/contact",
     ariaLabel: "みんなの集金へのお問い合わせフォーム",
