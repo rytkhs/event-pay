@@ -14,7 +14,10 @@ import { footerConfig } from "./navigation-config";
 export function GlobalFooter({ className }: { className?: string }): JSX.Element {
   const displaySettings = footerConfig.displaySettings;
 
-  const footerStyles = cn("bg-background text-foreground py-6", className);
+  const footerStyles = cn(
+    "bg-muted/30 border-t border-border/50 text-foreground py-6 md:py-10",
+    className
+  );
 
   const containerStyles = cn("container mx-auto px-4 sm:px-6 lg:px-8", "max-w-7xl");
 
