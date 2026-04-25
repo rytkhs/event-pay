@@ -30,6 +30,11 @@ export const footerNavigationLinks: FooterLink[] = [
     href: "/contact",
     ariaLabel: "みんなの集金へのお問い合わせフォーム",
   },
+  {
+    label: "フィードバック",
+    href: "/feedback",
+    ariaLabel: "みんなの集金へのフィードバックフォーム",
+  },
 ];
 
 /**

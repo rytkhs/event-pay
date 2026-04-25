@@ -364,6 +364,45 @@ export type Database = {
         };
         Relationships: [];
       };
+      feedbacks: {
+        Row: {
+          category: string;
+          created_at: string;
+          email: string | null;
+          fingerprint_hash: string;
+          id: string;
+          ip_hash: string | null;
+          message: string;
+          name: string | null;
+          page_context: string | null;
+          user_agent: string | null;
+        };
+        Insert: {
+          category: string;
+          created_at?: string;
+          email?: string | null;
+          fingerprint_hash: string;
+          id?: string;
+          ip_hash?: string | null;
+          message: string;
+          name?: string | null;
+          page_context?: string | null;
+          user_agent?: string | null;
+        };
+        Update: {
+          category?: string;
+          created_at?: string;
+          email?: string | null;
+          fingerprint_hash?: string;
+          id?: string;
+          ip_hash?: string | null;
+          message?: string;
+          name?: string | null;
+          page_context?: string | null;
+          user_agent?: string | null;
+        };
+        Relationships: [];
+      };
       line_accounts: {
         Row: {
           auth_user_id: string;
