@@ -2981,6 +2981,24 @@ COMMENT ON COLUMN "public"."fee_config"."is_tax_included" IS 'Whether platform f
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."feedbacks" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "category" "text" NOT NULL,
+    "message" "text" NOT NULL,
+    "page_context" "text",
+    "name" "text",
+    "email" "text",
+    "fingerprint_hash" "text" NOT NULL,
+    "user_agent" "text",
+    "ip_hash" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "feedbacks_category_check" CHECK (("category" = ANY (ARRAY['feature_request'::"text", 'bug_report'::"text", 'usability'::"text", 'other'::"text"])))
+);
+
+
+ALTER TABLE "public"."feedbacks" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."line_accounts" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "auth_user_id" "uuid" NOT NULL,
@@ -3598,6 +3616,11 @@ ALTER TABLE ONLY "public"."fee_config"
 
 
 
+ALTER TABLE ONLY "public"."feedbacks"
+    ADD CONSTRAINT "feedbacks_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."line_accounts"
     ADD CONSTRAINT "line_accounts_channel_id_line_sub_key" UNIQUE ("channel_id", "line_sub");
 
@@ -3747,6 +3770,14 @@ CREATE INDEX "idx_events_invite_token" ON "public"."events" USING "btree" ("invi
 
 
 CREATE INDEX "idx_events_payout_profile_id" ON "public"."events" USING "btree" ("payout_profile_id");
+
+
+
+CREATE INDEX "idx_feedbacks_category_created_at" ON "public"."feedbacks" USING "btree" ("category", "created_at" DESC);
+
+
+
+CREATE INDEX "idx_feedbacks_created_at" ON "public"."feedbacks" USING "btree" ("created_at" DESC);
 
 
 
@@ -3995,6 +4026,10 @@ CREATE UNIQUE INDEX "ux_community_contacts_community_fingerprint" ON "public"."c
 
 
 CREATE UNIQUE INDEX "ux_contacts_fingerprint" ON "public"."contacts" USING "btree" ("fingerprint_hash");
+
+
+
+CREATE UNIQUE INDEX "ux_feedbacks_fingerprint" ON "public"."feedbacks" USING "btree" ("fingerprint_hash");
 
 
 
@@ -4307,6 +4342,17 @@ ALTER TABLE "public"."fee_config" ENABLE ROW LEVEL SECURITY;
 
 
 CREATE POLICY "fee_config_read_only" ON "public"."fee_config" FOR SELECT TO "authenticated", "service_role" USING (true);
+
+
+
+ALTER TABLE "public"."feedbacks" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "feedbacks_insert_public" ON "public"."feedbacks" FOR INSERT TO "authenticated", "anon" WITH CHECK (true);
+
+
+
+CREATE POLICY "feedbacks_no_select" ON "public"."feedbacks" FOR SELECT USING (false);
 
 
 
@@ -4889,6 +4935,12 @@ GRANT ALL ON TABLE "public"."fee_config" TO "anon";
 GRANT ALL ON TABLE "public"."fee_config" TO "service_role";
 GRANT SELECT ON TABLE "public"."fee_config" TO "app_definer";
 GRANT SELECT ON TABLE "public"."fee_config" TO "authenticated";
+
+
+
+GRANT ALL ON TABLE "public"."feedbacks" TO "anon";
+GRANT ALL ON TABLE "public"."feedbacks" TO "authenticated";
+GRANT ALL ON TABLE "public"."feedbacks" TO "service_role";
 
 
 

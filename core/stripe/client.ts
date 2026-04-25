@@ -6,7 +6,7 @@ import { logger } from "@core/logging/app-logger";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 // 明示固定: Stripe APIバージョン（SDK更新時はこの値を意図的に見直す）
-const FIXED_STRIPE_API_VERSION: typeof Stripe.API_VERSION = "2026-03-25.dahlia";
+export const FIXED_STRIPE_API_VERSION: typeof Stripe.API_VERSION = "2026-03-25.dahlia";
 
 let stripeInstance: Stripe | null = null;
 

@@ -5,40 +5,41 @@ import { useState, useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
-import type { ActionResult } from "@core/errors/adapters/server-actions";
-import {
-  CommunityContactInputSchema,
-  type CommunityContactInput,
-} from "@core/validation/community-contact";
+import type { ActionResult } from "@core/errors";
+import { FeedbackInputSchema, type FeedbackInput } from "@core/validation/feedback";
 
-import { submitCommunityContact } from "./actions";
+import { submitFeedback } from "./actions";
 
-export { CommunityContactInputSchema };
-export type { CommunityContactInput };
+export { FeedbackInputSchema };
+export type { FeedbackInput };
 
-export function useCommunityContactForm(communitySlug: string) {
+const defaultValues: FeedbackInput = {
+  category: "feature_request",
+  message: "",
+  pageContext: "",
+  name: "",
+  email: "",
+  consent: false,
+};
+
+export function useFeedbackForm() {
   const [isPending, startTransition] = useTransition();
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const form = useForm<CommunityContactInput>({
-    resolver: zodResolver(CommunityContactInputSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      message: "",
-      consent: false,
-    },
+  const form = useForm<FeedbackInput>({
+    resolver: zodResolver(FeedbackInputSchema),
+    defaultValues,
     mode: "onBlur",
   });
 
   const onSubmit = form.handleSubmit((data) => {
     startTransition(async () => {
       try {
-        const result = (await submitCommunityContact(communitySlug, data)) as ActionResult<void>;
+        const result = (await submitFeedback(data)) as ActionResult;
 
         if (result.success) {
           setIsSuccess(true);
-          form.reset();
+          form.reset(defaultValues);
           return;
         }
 
@@ -50,7 +51,7 @@ export function useCommunityContactForm(communitySlug: string) {
         if (error.fieldErrors) {
           Object.entries(error.fieldErrors).forEach(([field, messages]) => {
             if (messages && messages.length > 0) {
-              form.setError(field as keyof CommunityContactInput, {
+              form.setError(field as keyof FeedbackInput, {
                 type: "server",
                 message: messages[0],
               });

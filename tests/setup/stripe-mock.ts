@@ -10,6 +10,8 @@
 
 import type Stripe from "stripe";
 
+import { FIXED_STRIPE_API_VERSION } from "@core/stripe/client";
+
 // Stripe Checkout Session のモックデータ
 export const mockCheckoutSession: Stripe.Checkout.Session = {
   id: "cs_test_1234567890abcdefghijklmnopqrstuvwxyz",
@@ -248,7 +250,7 @@ export const createMockWebhookEvent = (type: string, data: Record<string, unknow
     id: `evt_test_${Math.random().toString(36).substring(2, 15)}`,
     object: "event",
     account: "acct_1TOADDEEczGHQjDD",
-    api_version: "2024-04-10",
+    api_version: FIXED_STRIPE_API_VERSION,
     created: Math.floor(Date.now() / 1000),
     data: {
       object: data,

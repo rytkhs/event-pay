@@ -42,6 +42,9 @@ export function useContactForm() {
           form.reset();
         } else {
           const error = result.error;
+          const hasFieldErrors = Object.values(error.fieldErrors ?? {}).some(
+            (messages) => messages.length > 0
+          );
 
           if (error.fieldErrors) {
             Object.entries(error.fieldErrors).forEach(([field, messages]) => {
@@ -62,10 +65,12 @@ export function useContactForm() {
               ? `${baseMessage}（約${retryAfterSec}秒後に再度お試しください）`
               : baseMessage;
 
-          form.setError("root", {
-            type: "server",
-            message: composed,
-          });
+          if (!hasFieldErrors) {
+            form.setError("root", {
+              type: "server",
+              message: composed,
+            });
+          }
         }
       } catch (_err) {
         // 予期せぬエラー

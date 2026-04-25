@@ -5,7 +5,16 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Check, CreditCard, ExternalLink, Loader2, LogOut, SquareMenu, Plus } from "lucide-react";
+import {
+  Check,
+  CreditCard,
+  ExternalLink,
+  Loader2,
+  LogOut,
+  MessageSquare,
+  SquareMenu,
+  Plus,
+} from "lucide-react";
 
 import type { AppWorkspaceShellData } from "@core/community/app-workspace";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
@@ -219,6 +228,21 @@ export function MobileAppChrome({
                   <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/50" />
                 )}
               </button>
+            </section>
+
+            <section className="space-y-2">
+              <p className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                サポート
+              </p>
+
+              <Link
+                href="/feedback"
+                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
+                onClick={() => setIsMoreOpen(false)}
+              >
+                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                フィードバックを送る
+              </Link>
             </section>
 
             <section className="space-y-2">

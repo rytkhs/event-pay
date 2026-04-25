@@ -8,10 +8,10 @@ import { promisify } from "util";
 import { createClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
 
+export { FIXED_STRIPE_API_VERSION } from "@core/stripe/client";
 import type { Database } from "@/types/database";
 
 const execAsync = promisify(exec);
-const FIXED_STRIPE_API_VERSION: Stripe.LatestApiVersion = "2025-10-29.clover";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -64,7 +64,7 @@ export async function waitForPaymentStatus(
 
     const payment = payments && payments.length > 0 ? payments[0] : null;
 
-    if (payment && payment.status === expectedStatus) {
+    if (payment?.status === expectedStatus) {
       return true;
     }
 
@@ -325,7 +325,7 @@ export async function completeCheckoutSessionViaWebhook(
   let paymentIntent: Stripe.PaymentIntent | null = null;
 
   const ensurePaymentIntent = async () => {
-    if (paymentIntent && paymentIntent.status === "succeeded") {
+    if (paymentIntent?.status === "succeeded") {
       return paymentIntent;
     }
 
@@ -392,7 +392,6 @@ export async function completeCheckoutSessionViaWebhook(
       .eq("attendance_id", attendanceId);
 
     if (updateError) {
-      // eslint-disable-next-line no-console
       console.warn("⚠️ Failed to update payment with PaymentIntent ID:", updateError.message);
     }
 
@@ -546,7 +545,7 @@ export async function completeCheckoutSessionViaWebhook(
     console.log("✓ All webhook events triggered via Stripe CLI");
   } catch (error) {
     // Stripe CLIが利用できない場合は、フォールバック（後方互換性）
-    // eslint-disable-next-line no-console
+
     console.warn("⚠️ Stripe CLI not available, falling back to manual webhook trigger:", error);
 
     // 手動でWebhookをトリガー（従来の方法）
@@ -713,7 +712,7 @@ export async function sendStripeWebhook(
     },
     created: Math.floor(Date.now() / 1000),
     livemode: false,
-    api_version: "2024-04-10",
+    api_version: FIXED_STRIPE_API_VERSION,
   });
 
   // Stripe署名を生成

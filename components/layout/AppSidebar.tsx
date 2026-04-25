@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Plus } from "lucide-react";
+import { MessageSquare, Plus } from "lucide-react";
 
 import type { AppWorkspaceShellData } from "@core/community/app-workspace";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
@@ -13,6 +13,7 @@ import type { ActionResult } from "@core/errors/adapters/server-actions";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -151,6 +152,27 @@ export function AppSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="border-t border-sidebar-border/60 px-2.5 py-3">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              tooltip="フィードバック"
+              className={[
+                "h-9 rounded-xl px-3 text-[13px] font-medium transition-all duration-150",
+                "text-sidebar-foreground/55 hover:bg-sidebar-accent/65 hover:text-sidebar-foreground",
+                "group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0",
+              ].join(" ")}
+            >
+              <Link href="/feedback">
+                <MessageSquare className="size-4 text-sidebar-foreground/45" />
+                <span className="group-data-[collapsible=icon]:hidden">フィードバック</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>
