@@ -27,17 +27,19 @@ export function ContactForm() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="p-4 sm:p-6">
         <CardTitle as="h2" className="text-xl sm:text-2xl">
           お問い合わせフォーム
         </CardTitle>
-        <CardDescription>フォームに必要事項をご記入の上、送信してください。</CardDescription>
+        <CardDescription className="text-xs sm:text-sm">
+          フォームに必要事項をご記入の上、送信してください。
+        </CardDescription>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
         {isSuccess ? (
           // 送信完了メッセージ
-          <div className="space-y-6 text-center py-8">
+          <div className="space-y-6 py-6 text-center sm:py-8">
             <div className="flex justify-center">
               <CheckCircle2 className="h-16 w-16 text-green-600" aria-hidden="true" />
             </div>
@@ -142,10 +144,10 @@ export function ContactForm() {
                         />
                         <Textarea
                           {...field}
-                          placeholder="お問い合わせ内容をご記入ください&#10;&#10;例：&#10;・機能に関する質問&#10;・不具合の報告&#10;・新機能のご要望"
+                          placeholder="お問い合わせ内容をご記入ください"
                           disabled={isPending}
-                          rows={8}
-                          className="pl-9 resize-none"
+                          rows={6}
+                          className="min-h-[120px] pl-9 resize-none sm:min-h-[200px]"
                           data-testid="contact-message-input"
                         />
                       </div>
@@ -161,7 +163,7 @@ export function ContactForm() {
                 control={form.control}
                 name="consent"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 sm:p-4">
                     <FormControl>
                       <Checkbox
                         checked={field.value}
