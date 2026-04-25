@@ -2,6 +2,8 @@ import type { JSX } from "react";
 
 import Link from "next/link";
 
+import { MessageSquare } from "lucide-react";
+
 import { cn } from "@core/utils";
 
 import { FooterLinkGroup } from "./types";
@@ -22,12 +24,6 @@ export function FooterLinks({
     return <div className={className} />;
   }
 
-  const linkBaseStyles = cn(
-    "text-muted-foreground hover:text-primary transition-all duration-300",
-    "text-sm relative group w-fit flex items-center gap-1",
-    "focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-sm"
-  );
-
   const containerStyles = cn(
     "grid gap-x-8 gap-y-10",
     "grid-cols-2", // デフォルトで2列（非常に小さい画面でも2列維持）
@@ -44,36 +40,59 @@ export function FooterLinks({
             {group.title}
           </h3>
           <ul className="flex flex-col gap-3.5">
-            {group.links.map((link) => (
-              <li key={link.href}>
-                {link.external ? (
-                  <a
-                    href={link.href}
-                    className={linkBaseStyles}
-                    aria-label={link.ariaLabel}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <span className="relative">
-                      {link.label}
-                      <span className="absolute -bottom-1 left-0 w-0 h-[1.5px] bg-primary/60 transition-all duration-300 group-hover:w-full" />
-                    </span>
-                  </a>
-                ) : (
-                  <Link
-                    href={link.href}
-                    prefetch={false}
-                    className={linkBaseStyles}
-                    aria-label={link.ariaLabel}
-                  >
-                    <span className="relative">
-                      {link.label}
-                      <span className="absolute -bottom-1 left-0 w-0 h-[1.5px] bg-primary/60 transition-all duration-300 group-hover:w-full" />
-                    </span>
-                  </Link>
-                )}
-              </li>
-            ))}
+            {group.links.map((link) => {
+              const isFeedback = link.label === "フィードバック";
+              const linkStyles = cn(
+                "text-sm relative group w-fit flex items-center gap-1.5 transition-all duration-300",
+                isFeedback
+                  ? "text-primary font-semibold hover:text-primary/80"
+                  : "text-muted-foreground hover:text-primary",
+                "focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-sm"
+              );
+
+              return (
+                <li key={link.href}>
+                  {link.external ? (
+                    <a
+                      href={link.href}
+                      className={linkStyles}
+                      aria-label={link.ariaLabel}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <span className="relative flex items-center gap-1.5">
+                        {isFeedback && <MessageSquare className="w-3.5 h-3.5" />}
+                        {link.label}
+                        <span
+                          className={cn(
+                            "absolute -bottom-1 left-0 w-0 h-[1.5px] transition-all duration-300 group-hover:w-full",
+                            isFeedback ? "bg-primary/40" : "bg-primary/60"
+                          )}
+                        />
+                      </span>
+                    </a>
+                  ) : (
+                    <Link
+                      href={link.href}
+                      prefetch={false}
+                      className={linkStyles}
+                      aria-label={link.ariaLabel}
+                    >
+                      <span className="relative flex items-center gap-1.5">
+                        {isFeedback && <MessageSquare className="w-3.5 h-3.5" />}
+                        {link.label}
+                        <span
+                          className={cn(
+                            "absolute -bottom-1 left-0 w-0 h-[1.5px] transition-all duration-300 group-hover:w-full",
+                            isFeedback ? "bg-primary/40" : "bg-primary/60"
+                          )}
+                        />
+                      </span>
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ))}

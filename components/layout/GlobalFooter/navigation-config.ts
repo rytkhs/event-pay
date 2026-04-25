@@ -8,10 +8,9 @@ export const footerNavigationGroups: FooterLinkGroup[] = [
     title: "Support",
     links: [
       {
-        label: "運営元",
-        href: "https://project.tklab.workers.dev/",
-        external: true,
-        ariaLabel: "みんなの集金の運営元を確認する",
+        label: "フィードバック",
+        href: "/feedback",
+        ariaLabel: "みんなの集金へのフィードバックフォーム",
       },
       {
         label: "お問い合わせ",
@@ -19,9 +18,10 @@ export const footerNavigationGroups: FooterLinkGroup[] = [
         ariaLabel: "みんなの集金へのお問い合わせフォーム",
       },
       {
-        label: "フィードバック",
-        href: "/feedback",
-        ariaLabel: "みんなの集金へのフィードバックフォーム",
+        label: "運営元",
+        href: "https://project.tklab.workers.dev/",
+        external: true,
+        ariaLabel: "みんなの集金の運営元を確認する",
       },
     ],
   },
