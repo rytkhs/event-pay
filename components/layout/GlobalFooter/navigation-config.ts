@@ -5,26 +5,6 @@ import { FooterLinkGroup } from "./types";
  */
 export const footerNavigationGroups: FooterLinkGroup[] = [
   {
-    title: "Service",
-    links: [
-      {
-        label: "はじめての方へ",
-        href: "/about",
-        ariaLabel: "みんなの集金の使い方を確認する",
-      },
-      {
-        label: "機能一覧",
-        href: "/features",
-        ariaLabel: "みんなの集金の機能を確認する",
-      },
-      {
-        label: "料金プラン",
-        href: "/pricing",
-        ariaLabel: "みんなの集金の料金プランを確認する",
-      },
-    ],
-  },
-  {
     title: "Support",
     links: [
       {

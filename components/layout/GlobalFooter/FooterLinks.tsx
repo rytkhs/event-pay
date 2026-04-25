@@ -4,9 +4,6 @@ import Link from "next/link";
 
 import { cn } from "@core/utils";
 
-import { NoteIcon } from "@/components/ui/icons/note-icon";
-import { XIcon } from "@/components/ui/icons/x-icon";
-
 import { FooterLinkGroup } from "./types";
 
 /**
@@ -26,19 +23,27 @@ export function FooterLinks({
   }
 
   const linkBaseStyles = cn(
-    "text-muted-foreground hover:text-primary transition-all duration-200",
-    "text-sm relative group w-fit",
+    "text-muted-foreground hover:text-primary transition-all duration-300",
+    "text-sm relative group w-fit flex items-center gap-1",
     "focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-sm"
   );
 
-  const containerStyles = cn("grid grid-cols-2 sm:grid-cols-3 gap-8 md:gap-12", className);
+  const containerStyles = cn(
+    "grid gap-x-8 gap-y-10",
+    "grid-cols-2", // デフォルトで2列（非常に小さい画面でも2列維持）
+    groups.length >= 3 ? "sm:grid-cols-3" : "",
+    "md:flex md:gap-16 md:justify-end", // デスクトップでは右寄せのFlex
+    className
+  );
 
   return (
     <nav className={containerStyles} role="navigation" aria-label="フッターナビゲーション">
       {groups.map((group) => (
-        <div key={group.title} className="flex flex-col gap-4">
-          <h3 className="font-semibold text-foreground text-sm tracking-wider">{group.title}</h3>
-          <ul className="flex flex-col gap-3">
+        <div key={group.title} className="flex flex-col gap-5 min-w-[120px]">
+          <h3 className="font-bold text-foreground text-xs uppercase tracking-[0.15em]">
+            {group.title}
+          </h3>
+          <ul className="flex flex-col gap-3.5">
             {group.links.map((link) => (
               <li key={link.href}>
                 {link.external ? (
@@ -49,8 +54,10 @@ export function FooterLinks({
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    {link.label}
-                    <span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
+                    <span className="relative">
+                      {link.label}
+                      <span className="absolute -bottom-1 left-0 w-0 h-[1.5px] bg-primary/60 transition-all duration-300 group-hover:w-full" />
+                    </span>
                   </a>
                 ) : (
                   <Link
@@ -59,8 +66,10 @@ export function FooterLinks({
                     className={linkBaseStyles}
                     aria-label={link.ariaLabel}
                   >
-                    {link.label}
-                    <span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
+                    <span className="relative">
+                      {link.label}
+                      <span className="absolute -bottom-1 left-0 w-0 h-[1.5px] bg-primary/60 transition-all duration-300 group-hover:w-full" />
+                    </span>
                   </Link>
                 )}
               </li>
@@ -68,31 +77,6 @@ export function FooterLinks({
           </ul>
         </div>
       ))}
-
-      {/* ソーシャルアイコン */}
-      <div className="flex flex-col gap-4 sm:hidden">
-        <h3 className="font-semibold text-foreground text-sm tracking-wider">Follow Us</h3>
-        <div className="flex items-center gap-4">
-          <a
-            href="https://x.com/minnano_shukin"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-muted-foreground hover:text-primary transition-colors"
-            aria-label="X (Twitter)"
-          >
-            <XIcon className="w-5 h-5" />
-          </a>
-          <a
-            href="https://note.com/minnano_shukin"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-muted-foreground hover:text-primary transition-colors"
-            aria-label="note"
-          >
-            <NoteIcon className="h-4 w-auto" />
-          </a>
-        </div>
-      </div>
     </nav>
   );
 }

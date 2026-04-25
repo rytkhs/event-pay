@@ -13,7 +13,7 @@ import { footerConfig } from "./navigation-config";
  */
 export function FooterBranding({ className }: { className?: string }): JSX.Element {
   return (
-    <div className={cn("flex flex-col items-center md:items-start gap-2", className)}>
+    <div className={cn("flex flex-col items-start gap-2", className)}>
       <div className="footer-logo">
         <Link
           href="/"

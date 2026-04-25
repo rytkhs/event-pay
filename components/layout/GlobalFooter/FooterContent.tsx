@@ -17,55 +17,89 @@ import { footerNavigationGroups, footerConfig } from "./navigation-config";
 export function FooterContent({ className }: { className?: string }): JSX.Element {
   const displaySettings = footerConfig.displaySettings;
 
-  const containerStyles = cn("grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8", className);
+  const containerStyles = cn("flex flex-col gap-12 md:gap-16", className);
 
   return (
     <div className={containerStyles}>
-      {/* 左側: ブランド・SNS・コピーライト */}
-      {(displaySettings.showBranding || displaySettings.showCopyright) && (
-        <div className="md:col-span-4 flex flex-col items-center md:items-start justify-between gap-8 h-full">
-          <div className="flex flex-col items-center md:items-start gap-6">
-            {displaySettings.showBranding && <FooterBranding />}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8">
+        {/* 左側: ブランド・SNS */}
+        {displaySettings.showBranding && (
+          <div className="md:col-span-4 flex flex-col items-start gap-8">
+            <FooterBranding />
 
-            {/* デスクトップ用SNSアイコン */}
-            <div className="hidden md:flex items-center gap-4">
-              <a
+            {/* デスクトップ・タブレット用SNSアイコン (md以上) */}
+            <div className="hidden md:flex items-center gap-5">
+              <SocialIcon
                 href="https://x.com/minnano_shukin"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-primary transition-colors duration-200"
-                aria-label="X (Twitter)"
-              >
-                <XIcon className="w-5 h-5" />
-              </a>
-              <a
+                ariaLabel="X (Twitter)"
+                icon={<XIcon className="w-5 h-5" />}
+              />
+              <SocialIcon
                 href="https://note.com/minnano_shukin"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-primary transition-colors duration-200"
-                aria-label="note"
-              >
-                <NoteIcon className="h-4 w-auto" />
-              </a>
+                ariaLabel="note"
+                icon={<NoteIcon className="h-4 w-auto" />}
+              />
             </div>
           </div>
+        )}
 
-          <div className="flex flex-col items-center md:items-start gap-4">
-            {displaySettings.showCopyright && (
-              <p className="text-xs text-muted-foreground/60 font-medium">
-                {footerConfig.brand.copyright}
-              </p>
-            )}
+        {/* 右側: リンクグループ */}
+        {displaySettings.showNavigation && (
+          <div className="md:col-span-8">
+            <FooterLinks groups={footerNavigationGroups} className="md:justify-self-end" />
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* 右側: リンクグループ */}
-      {displaySettings.showNavigation && (
-        <div className="md:col-span-8">
-          <FooterLinks groups={footerNavigationGroups} className="justify-self-end" />
+      {/* 下部: コピーライト & モバイルSNS */}
+      {(displaySettings.showCopyright || displaySettings.showBranding) && (
+        <div className="pt-8 border-t border-border/40 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          {displaySettings.showCopyright && (
+            <p className="text-xs text-muted-foreground/60 font-medium">
+              {footerConfig.brand.copyright}
+            </p>
+          )}
+
+          {/* モバイル用SNSアイコン (md未満) */}
+          <div className="flex md:hidden items-center gap-6">
+            <SocialIcon
+              href="https://x.com/minnano_shukin"
+              ariaLabel="X (Twitter)"
+              icon={<XIcon className="w-5 h-5" />}
+            />
+            <SocialIcon
+              href="https://note.com/minnano_shukin"
+              ariaLabel="note"
+              icon={<NoteIcon className="h-4 w-auto" />}
+            />
+          </div>
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * SNSアイコン用ヘルパーコンポーネント
+ */
+function SocialIcon({
+  href,
+  ariaLabel,
+  icon,
+}: {
+  href: string;
+  ariaLabel: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-muted-foreground hover:text-primary transition-all duration-300 hover:scale-110 active:scale-95"
+      aria-label={ariaLabel}
+    >
+      {icon}
+    </a>
   );
 }
