@@ -25,6 +25,7 @@ import {
   getPaymentFromDB,
   callVerifySessionAPI,
   getAttendanceFromDB,
+  FIXED_STRIPE_API_VERSION,
 } from "../../helpers/payment-helpers";
 import { TestDataManager, TEST_IDS } from "../../helpers/test-data-setup";
 
@@ -109,7 +110,7 @@ test.describe("Stripe決済 ケース3-2: セッション検証API", () => {
     }
 
     const stripe = await import("stripe").then(
-      (m) => new m.default(stripeSecretKey, { apiVersion: "2025-10-29.clover" })
+      (m) => new m.default(stripeSecretKey, { apiVersion: FIXED_STRIPE_API_VERSION })
     );
 
     // Checkout Sessionを取得
