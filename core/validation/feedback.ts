@@ -21,9 +21,15 @@ export const feedbackCategoryLabels: Record<FeedbackCategory, string> = {
 const OptionalEmailSchema = z
   .string()
   .max(320, "メールアドレスは320文字以内で入力してください")
-  .refine((value) => value.trim() === "" || z.string().email().safeParse(value).success, {
-    message: "有効なメールアドレスを入力してください",
-  });
+  .refine(
+    (value) => {
+      const trimmed = value.trim();
+      return trimmed === "" || z.string().email().safeParse(trimmed).success;
+    },
+    {
+      message: "有効なメールアドレスを入力してください",
+    }
+  );
 
 export const FeedbackInputSchema = z.object({
   category: FeedbackCategorySchema,
