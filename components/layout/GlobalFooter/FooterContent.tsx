@@ -24,7 +24,7 @@ export function FooterContent({ className }: { className?: string }): JSX.Elemen
       <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8">
         {/* 左側: ブランド・SNS */}
         {displaySettings.showBranding && (
-          <div className="md:col-span-4 flex flex-col items-start gap-8">
+          <div className="md:col-span-5 flex flex-col items-start gap-8">
             <FooterBranding />
 
             {/* デスクトップ・タブレット用SNSアイコン (md以上) */}
@@ -45,7 +45,7 @@ export function FooterContent({ className }: { className?: string }): JSX.Elemen
 
         {/* 右側: リンクグループ */}
         {displaySettings.showNavigation && (
-          <div className="md:col-span-8">
+          <div className="md:col-span-7">
             <FooterLinks groups={footerNavigationGroups} className="md:justify-self-end" />
           </div>
         )}
