@@ -96,7 +96,7 @@ function SocialIcon({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-muted-foreground hover:text-primary transition-all duration-300 hover:scale-110 active:scale-95"
+      className="text-muted-foreground hover:text-primary transition-all duration-300"
       aria-label={ariaLabel}
     >
       {icon}

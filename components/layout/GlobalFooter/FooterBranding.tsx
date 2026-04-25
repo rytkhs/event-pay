@@ -17,12 +17,7 @@ export function FooterBranding({ className }: { className?: string }): JSX.Eleme
       <div className="footer-logo">
         <Link
           href="/"
-          className={cn(
-            "font-bold text-foreground transition-all duration-300",
-            "text-xl md:text-2xl",
-            "hover:text-primary hover:tracking-tight",
-            "bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70"
-          )}
+          className={cn("font-bold text-foreground", "text-xl md:text-2xl")}
           aria-label="みんなの集金トップページへ"
         >
           {footerConfig.brand.name}
