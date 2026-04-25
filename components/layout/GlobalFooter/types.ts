@@ -17,3 +17,13 @@ export interface FooterLink {
   /** アイコン（オプション） */
   icon?: React.ComponentType<{ className?: string }>;
 }
+
+/**
+ * フッターリンクグループの定義
+ */
+export interface FooterLinkGroup {
+  /** グループのタイトル */
+  title: string;
+  /** グループ内のリンク */
+  links: FooterLink[];
+}
