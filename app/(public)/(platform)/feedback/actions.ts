@@ -14,15 +14,15 @@ import { maskEmail } from "@core/utils/mask";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
 import { formatDateToJstYmd } from "@core/utils/timezone";
 import {
-  FeedbackInputSchema,
-  feedbackCategoryLabels,
-  type FeedbackInput,
-} from "@core/validation/feedback";
-import {
   canonicalizeContactMessageForFingerprint,
   hasValidContactMessageContent,
   normalizeContactMessageForStorage,
 } from "@core/validation/contact-message";
+import {
+  FeedbackInputSchema,
+  feedbackCategoryLabels,
+  type FeedbackInput,
+} from "@core/validation/feedback";
 
 function nullableSanitizedText(input: string): string | null {
   const sanitized = sanitizeForEventPay(input).trim();
