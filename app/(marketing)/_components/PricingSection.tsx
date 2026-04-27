@@ -86,9 +86,8 @@ export const PricingSection: React.FC = () => {
                   </span>
                 </div>
                 <div className="flex items-baseline justify-center md:justify-start gap-1">
-                  <span className="text-5xl font-bold text-primary">1.3</span>
+                  <span className="text-5xl font-bold text-primary">4.9</span>
                   <span className="text-2xl font-bold text-slate-700">%</span>
-                  <span className="text-sm text-slate-500 ml-2">+ Stripe手数料 3.6%</span>
                 </div>
 
                 <div className="mt-4 bg-primary/5 border border-primary/20 p-4 rounded-xl text-left">
