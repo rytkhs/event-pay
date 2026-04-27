@@ -1,7 +1,11 @@
 import type { MetadataRoute } from "next";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+import { getPublishedArticles } from "@core/articles/article.repository";
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const articles = await getPublishedArticles();
+
   return [
     {
       url: `${appUrl}`,
@@ -33,5 +37,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "yearly",
       priority: 0.2,
     },
+    {
+      url: `${appUrl}/articles`,
+      lastModified: "2026-04-26",
+      changeFrequency: "weekly",
+      priority: 0.6,
+    },
+    ...articles.map((article) => ({
+      url: `${appUrl}${article.path}`,
+      lastModified: article.updatedAt ?? article.publishedAt,
+      changeFrequency: "monthly" as const,
+      priority: 0.5,
+    })),
   ];
 }
