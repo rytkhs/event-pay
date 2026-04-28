@@ -36,9 +36,7 @@ export function FooterLinks({
     <nav className={containerStyles} role="navigation" aria-label="フッターナビゲーション">
       {groups.map((group) => (
         <div key={group.title} className="flex flex-col gap-5 min-w-[120px]">
-          <h3 className="font-bold text-foreground text-xs uppercase tracking-[0.15em]">
-            {group.title}
-          </h3>
+          <h3 className="font-bold text-foreground text-xs tracking-[0.15em]">{group.title}</h3>
           <ul className="flex flex-col gap-3.5">
             {group.links.map((link) => {
               const isFeedback = link.label === "フィードバック";

@@ -81,14 +81,10 @@ export const PricingSection: React.FC = () => {
                   <p className="text-sm text-slate-500 font-bold uppercase tracking-wider">
                     オンライン集金の手数料
                   </p>
-                  <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full font-bold">
-                    業界最安水準
-                  </span>
                 </div>
                 <div className="flex items-baseline justify-center md:justify-start gap-1">
-                  <span className="text-5xl font-bold text-primary">1.3</span>
+                  <span className="text-5xl font-bold text-primary">4.9</span>
                   <span className="text-2xl font-bold text-slate-700">%</span>
-                  <span className="text-sm text-slate-500 ml-2">+ Stripe手数料 3.6%</span>
                 </div>
 
                 <div className="mt-4 bg-primary/5 border border-primary/20 p-4 rounded-xl text-left">

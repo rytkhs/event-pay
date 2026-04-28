@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { createServerComponentSupabaseClient } from "@core/supabase/factory";
-import { renderMarkdownFromPublic } from "@core/utils/markdown";
+import { renderMarkdownFromFile } from "@core/utils/markdown";
 
 import { getPublicCommunityByLegalSlug } from "@features/communities/server";
 
@@ -44,7 +44,9 @@ export default async function Page({ params }: Props) {
   const community = communityResult.data;
 
   try {
-    const { html, frontmatter } = await renderMarkdownFromPublic("/legal/tokushoho/organizer.md");
+    const { html, frontmatter } = await renderMarkdownFromFile(
+      "public/legal/tokushoho/organizer.md"
+    );
     const heading = frontmatter.title ?? "特定商取引法に基づく表記";
 
     return (

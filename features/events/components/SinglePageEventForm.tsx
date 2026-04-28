@@ -16,7 +16,6 @@ import {
   CheckIcon,
 } from "lucide-react";
 
-import { calculateNetAmount, formatCurrency } from "@core/utils/fee-calculator";
 import { getCurrentJstTime } from "@core/utils/timezone";
 
 import { useMobileBottomOverlay } from "@/components/layout/mobile-chrome-context";
@@ -40,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useEventForm, type CreateEventAction } from "../hooks/useEventForm";
 
 import { EventFormTimeline } from "./EventFormTimeline";
+import { FeeCalculatorDisplay } from "./FeeCalculatorDisplay";
 
 type FormSectionProps = {
   title: string;
@@ -363,14 +363,8 @@ function SinglePageEventForm({
                         0円（無料）または100円以上で設定してください
                       </FormDescription>
                       {feeAmount >= 100 && canUseOnlinePayments && (
-                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                          <p className="text-sm text-blue-900">
-                            オンライン集金時の予想手取り:{" "}
-                            {formatCurrency(calculateNetAmount(feeAmount))}円
-                          </p>
-                          <p className="text-xs text-blue-700 mt-1">
-                            （参加費 {formatCurrency(feeAmount)}円 - 手数料）
-                          </p>
+                        <div className="mt-4">
+                          <FeeCalculatorDisplay fee={feeAmount} />
                         </div>
                       )}
                       <FormMessage />

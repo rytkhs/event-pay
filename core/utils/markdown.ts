@@ -43,15 +43,3 @@ async function renderMarkdownFromString(content: string) {
     frontmatter: (parsed.data || {}) as MarkdownFrontmatter,
   };
 }
-
-export async function renderMarkdownFromPublic(pathFromPublicRoot: string) {
-  // Build absolute URL for same-origin fetch in server context
-  const base = process.env.NEXT_PUBLIC_APP_URL;
-  const url = new URL(pathFromPublicRoot, base);
-  const res = await fetch(url.toString(), { next: { revalidate: 60 * 60 * 24 } });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch ${url.toString()}: ${res.status}`);
-  }
-  const md = await res.text();
-  return renderMarkdownFromString(md);
-}
