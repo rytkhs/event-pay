@@ -35,68 +35,95 @@ export default async function ArticlesPage() {
   const articles = await getPublishedArticles();
 
   return (
-    <div className="min-h-screen bg-[#f7fbfa]">
-      <section className="border-b border-slate-200 bg-white">
-        <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 pb-12 pt-14 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:pb-16 lg:pt-20">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-md border border-teal-200 bg-teal-50 px-3 py-1 text-sm font-medium text-teal-800">
-              <BookOpenText className="h-4 w-4" />
-              集金と運営の実践ノート
+    <div className="min-h-screen bg-slate-50">
+      {/* Hero */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary/8 via-white to-secondary/5 border-b border-slate-200">
+        {/* 背景の装飾 */}
+        <div
+          className="pointer-events-none absolute -top-24 right-0 h-80 w-80 translate-x-1/3 rounded-full bg-primary/15 blur-3xl"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute -bottom-16 left-0 h-64 w-64 -translate-x-1/4 rounded-full bg-secondary/15 blur-3xl"
+          aria-hidden="true"
+        />
+
+        <div className="relative mx-auto w-full max-w-7xl px-4 pb-14 pt-24 sm:px-6 lg:px-8 lg:pb-20 lg:pt-28">
+          <div className="flex flex-col items-start gap-5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/8 px-4 py-1.5 text-sm font-semibold text-primary">
+              <BookOpenText className="h-4 w-4" aria-hidden="true" />
+              実践ガイド
             </div>
-            <h1 className="mt-6 text-4xl font-bold tracking-normal text-slate-950 sm:text-5xl">
-              イベント集金を、手作業から仕組みに変える。
+            <h1 className="text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl">
+              コミュニティ運営を
+              <br className="hidden sm:block" />
+              もっとラクにする記事
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
-              サークル、勉強会、同窓会などの小規模イベントで起きやすい出欠確認・未払い管理・現金集金の悩みを、実務目線で整理します。
+            <p className="max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
+              クローズドコミュニティの出欠管理・イベント集金・現金管理をラクにするための実践的なヒントをお届けします。
             </p>
-          </div>
-          <div className="self-end border-l-4 border-amber-300 bg-amber-50 px-5 py-5 text-sm leading-7 text-slate-700">
-            幹事や会計担当者が、次のイベントからすぐ見直せる運用を中心にまとめています。
-            参加者に負担をかけず、管理側の確認作業を減らすことを重視しています。
           </div>
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+      {/* 記事一覧 */}
+      <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         {articles.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-6 md:grid-cols-2">
             {articles.map((article) => (
               <article
                 key={article.slug}
-                className="group relative rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-md"
+                className="group relative flex flex-col rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-md"
               >
-                <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500">
+                {/* メタ情報 */}
+                <div className="flex flex-wrap items-center gap-2.5 text-xs font-medium">
                   {article.category ? (
-                    <span className="rounded-md bg-teal-50 px-2 py-1 text-teal-800">
+                    <span className="rounded-full bg-primary/10 px-3 py-1 text-primary">
                       {article.category}
                     </span>
                   ) : null}
-                  <span className="inline-flex items-center gap-1">
-                    <CalendarDays className="h-3.5 w-3.5" />
+                  <span className="inline-flex items-center gap-1 text-slate-400">
+                    <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
                     {formatArticleDate(article.publishedAt)}
                   </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5" />
+                  <span className="inline-flex items-center gap-1 text-slate-400">
+                    <Clock className="h-3.5 w-3.5" aria-hidden="true" />
                     {article.readingMinutes}分
                   </span>
                 </div>
-                <h2 className="mt-4 text-xl font-bold leading-8 text-slate-950">
+
+                {/* タイトル */}
+                <h2 className="mt-4 text-xl font-bold leading-snug text-slate-900">
                   <Link href={article.path} className="focus-visible:outline-none">
-                    <span className="absolute inset-0" aria-hidden="true" />
+                    {/* カード全体をクリック可能に */}
+                    <span className="absolute inset-0 rounded-2xl" aria-hidden="true" />
                     {article.title}
                   </Link>
                 </h2>
-                <p className="mt-3 text-sm leading-7 text-slate-600">{article.description}</p>
-                <div className="relative mt-5 inline-flex items-center gap-2 text-sm font-semibold text-teal-700">
+
+                {/* 概要 */}
+                <p className="mt-3 flex-1 text-sm leading-7 text-slate-500">
+                  {article.description}
+                </p>
+
+                {/* 読む CTA */}
+                <div className="relative mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
                   記事を読む
-                  <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  <ArrowUpRight
+                    className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                    aria-hidden="true"
+                  />
                 </div>
               </article>
             ))}
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-600">
-            公開中の記事はまだありません。
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">
+            <BookOpenText className="mx-auto mb-4 h-10 w-10 text-slate-300" aria-hidden="true" />
+            <p className="text-base font-medium text-slate-500">公開中の記事はまだありません。</p>
+            <p className="mt-1 text-sm text-slate-400">
+              近日公開予定です。しばらくお待ちください。
+            </p>
           </div>
         )}
       </section>
