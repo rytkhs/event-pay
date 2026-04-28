@@ -195,6 +195,75 @@ describe("ParticipantsTableV2", () => {
     });
   });
 
+  describe("フィルター", () => {
+    it("決済方法フィルターでは canceled の支払いを除外し、不参加でも会計処理済みの支払いは表示する", () => {
+      const participants: ParticipantView[] = [
+        {
+          ...buildParticipantsArray(2)[0],
+          attendance_id: "att-cash-pending",
+          nickname: "現金未集金",
+          payment_id: "pay-cash-pending",
+          payment_method: "cash",
+          payment_status: "pending",
+          status: "attending",
+        },
+        {
+          ...buildParticipantsArray(2)[0],
+          attendance_id: "att-cash-canceled",
+          nickname: "現金キャンセル",
+          payment_id: "pay-cash-canceled",
+          payment_method: "cash",
+          payment_status: "canceled",
+          status: "not_attending",
+        },
+        {
+          ...buildParticipantsArray(2)[0],
+          attendance_id: "att-cash-received-not-attending",
+          nickname: "不参加現金受領済み",
+          payment_id: "pay-cash-received-not-attending",
+          payment_method: "cash",
+          payment_status: "received",
+          status: "not_attending",
+        },
+      ];
+
+      render(
+        <ParticipantsTableV2
+          {...defaultProps}
+          allParticipants={participants}
+          query={{
+            ...defaultProps.query,
+            paymentMethod: "cash",
+          }}
+        />
+      );
+
+      expect(screen.getByText("2名を表示中")).toBeInTheDocument();
+      expect(screen.getByText("現金未集金")).toBeInTheDocument();
+      expect(screen.getByText("不参加現金受領済み")).toBeInTheDocument();
+      expect(screen.queryByText("現金キャンセル")).not.toBeInTheDocument();
+    });
+
+    it("決済方法フィルターなしでは canceled の支払いを持つ参加者も一覧に残す", () => {
+      const participants: ParticipantView[] = [
+        {
+          ...buildParticipantsArray(2)[0],
+          attendance_id: "att-cash-canceled",
+          nickname: "現金キャンセル",
+          payment_id: "pay-cash-canceled",
+          payment_method: "cash",
+          payment_status: "canceled",
+          status: "not_attending",
+        },
+      ];
+
+      render(<ParticipantsTableV2 {...defaultProps} allParticipants={participants} />);
+
+      expect(screen.getByText("1名を表示中")).toBeInTheDocument();
+      expect(screen.getByText("現金キャンセル")).toBeInTheDocument();
+    });
+  });
+
   describe("ソート機能", () => {
     it("ニックネーム列でソートできる", async () => {
       const user = userEvent.setup();

@@ -319,7 +319,9 @@ export function ParticipantsTableV2({
     // 決済方法フィルタ
     const paymentMethod = query.paymentMethod;
     if (paymentMethod) {
-      result = result.filter((p) => p.payment_method === paymentMethod);
+      result = result.filter(
+        (p) => p.payment_method === paymentMethod && p.payment_status !== "canceled"
+      );
     }
 
     // 決済ステータスフィルタ (SimplePaymentStatus)
