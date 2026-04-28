@@ -375,14 +375,17 @@ export class StripeConnectService implements IStripeConnectService {
         type: type as "account_onboarding" | "account_update",
       };
 
-      // Collection Optionsが指定されている場合は追加
-      if (validatedParams.collectionOptions) {
-        // Stripeの型定義では fields が必須のため、デフォルト値を "eventually_due" に統一（アップフロント収集）
+      // Collection Optionsが明示指定されている場合のみ追加する
+      if (
+        validatedParams.collectionOptions?.fields ||
+        validatedParams.collectionOptions?.futureRequirements
+      ) {
+        // Stripeの型定義では fields が必須のため、未指定時はStripeのデフォルトと同じ currently_due を使う
         const collectionOptions: Stripe.AccountLinkCreateParams.CollectionOptions = {
-          fields: validatedParams.collectionOptions.fields ?? "eventually_due",
+          fields: validatedParams.collectionOptions.fields ?? "currently_due",
         };
 
-        if (validatedParams.collectionOptions.futureRequirements) {
+        if (validatedParams.collectionOptions?.futureRequirements) {
           collectionOptions.future_requirements =
             validatedParams.collectionOptions.futureRequirements;
         }

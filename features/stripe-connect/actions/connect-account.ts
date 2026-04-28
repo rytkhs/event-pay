@@ -507,7 +507,6 @@ export async function handleOnboardingRefreshAction(intent?: string): Promise<vo
       refreshUrl,
       returnUrl,
       type: "account_onboarding",
-      collectionOptions: { fields: "eventually_due" },
     });
     redirect(accountLink.url);
   } catch (error) {
@@ -716,7 +715,6 @@ export async function startOnboardingAction(
       refreshUrl,
       returnUrl,
       type: "account_onboarding",
-      collectionOptions: { fields: "eventually_due" },
     });
 
     // 6. ログ記録
