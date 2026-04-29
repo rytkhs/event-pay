@@ -37,7 +37,11 @@ export const ALLOWED_ORIGINS = {
 
   /** Google Tag Manager / Analytics */
   gtm: ["https://*.googletagmanager.com"],
-  ga: ["https://*.google-analytics.com", "https://*.analytics.google.com"],
+  ga: [
+    "https://*.google-analytics.com",
+    "https://*.analytics.google.com",
+    "https://www.google.com",
+  ],
 
   /** Google Maps */
   maps: [
