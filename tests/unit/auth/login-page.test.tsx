@@ -120,6 +120,21 @@ describe("Login Page - LINE Error Display", () => {
     ).toBeInTheDocument();
   });
 
+  it("should display LINE cancelled message", async () => {
+    mockUseSearchParams.mockReturnValue({
+      get: (key: string) => {
+        if (key === "error") return "line_auth_cancelled";
+        if (key === "redirectTo") return null;
+        return null;
+      },
+    });
+
+    const LoginPage = (await import("@/app/(auth)/login/page")).default;
+    render(<LoginPage />);
+
+    expect(await screen.findByText("LINEログインがキャンセルされました。")).toBeInTheDocument();
+  });
+
   it("should display LINE state mismatch error message", async () => {
     mockUseSearchParams.mockReturnValue({
       get: (key: string) => {
