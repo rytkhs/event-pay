@@ -15,6 +15,8 @@ import { LineTokenResponse, LineVerifyResponse } from "@/types/line";
 
 export const dynamic = "force-dynamic";
 
+const LINE_ACCESS_DENIED_ERROR = "ACCESS_DENIED";
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
@@ -31,6 +33,10 @@ export async function GET(request: Request) {
 
   // 1. エラーハンドリングとCSRF検証
   if (error) {
+    if (error.toUpperCase() === LINE_ACCESS_DENIED_ERROR) {
+      return NextResponse.redirect(`${origin}/login?error=${LINE_ERROR_CODES.CANCELLED}`);
+    }
+
     handleServerError("LINE_LOGIN_ERROR", {
       category: "authentication",
       action: "line_auth_callback_error_param",

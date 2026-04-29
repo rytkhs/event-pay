@@ -28,6 +28,7 @@ export const LINE_OAUTH_CONFIG = {
 export const LINE_ERROR_CODES = {
   CONFIG_ERROR: "line_config_error",
   AUTH_FAILED: "line_auth_failed",
+  CANCELLED: "line_auth_cancelled",
   STATE_MISMATCH: "line_state_mismatch",
   TOKEN_FAILED: "line_token_failed",
   EMAIL_REQUIRED: "line_email_required",

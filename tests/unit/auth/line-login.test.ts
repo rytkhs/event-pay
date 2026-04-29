@@ -12,11 +12,16 @@ const mockCookies = {
 const mockHeaders = {
   get: jest.fn(),
 };
+const mockHandleServerError = jest.fn();
 const originalEnv = process.env;
 
 jest.mock("next/headers", () => ({
   cookies: () => mockCookies,
   headers: () => mockHeaders,
+}));
+
+jest.mock("@core/utils/error-handler.server", () => ({
+  handleServerError: (...args: unknown[]) => mockHandleServerError(...args),
 }));
 
 // ロガーのモック
@@ -162,13 +167,31 @@ describe("LINE Login Auth Flow", () => {
       global.fetch = jest.fn();
     });
 
-    it("should redirect to error page if error param exists", async () => {
+    it("should redirect to cancelled message without error logging if access is denied", async () => {
       const request = new Request("http://localhost:3000/auth/callback/line?error=access_denied");
       const response = await authCallbackLineGet(request);
 
       expect(response.status).toBe(307);
       expect(response.headers.get("Location")).toBe(
+        "http://localhost:3000/login?error=line_auth_cancelled"
+      );
+      expect(mockHandleServerError).not.toHaveBeenCalled();
+    });
+
+    it("should redirect to error page if unexpected error param exists", async () => {
+      const request = new Request("http://localhost:3000/auth/callback/line?error=invalid_request");
+      const response = await authCallbackLineGet(request);
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get("Location")).toBe(
         "http://localhost:3000/login?error=line_auth_failed"
+      );
+      expect(mockHandleServerError).toHaveBeenCalledWith(
+        "LINE_LOGIN_ERROR",
+        expect.objectContaining({
+          action: "line_auth_callback_error_param",
+          additionalData: { error: "invalid_request" },
+        })
       );
     });
 

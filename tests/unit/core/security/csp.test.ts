@@ -100,6 +100,15 @@ describe("buildCsp", () => {
       expect(csp).toContain("https://maps.googleapis.com");
     });
 
+    test("Google Analyticsの送信先がconnect-srcに含まれる", () => {
+      const csp = buildCsp({ mode: "static" });
+      const connectSrc = csp.split(";").find((s) => s.trim().startsWith("connect-src "));
+
+      ALLOWED_ORIGINS.ga.forEach((origin) => {
+        expect(connectSrc).toContain(origin);
+      });
+    });
+
     test("レポート設定が含まれる", () => {
       const csp = buildCsp({ mode: "static" });
 

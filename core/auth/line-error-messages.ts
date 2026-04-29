@@ -8,6 +8,7 @@ export const LINE_ERROR_MESSAGES: Record<string, string> = {
   [LINE_ERROR_CODES.EMAIL_REQUIRED]:
     "メールアドレスが取得できませんでした。ログインをやり直してメールアドレスの提供を許可してください。",
   [LINE_ERROR_CODES.AUTH_FAILED]: "LINE認証に失敗しました。もう一度お試しください。",
+  [LINE_ERROR_CODES.CANCELLED]: "LINEログインがキャンセルされました。",
   [LINE_ERROR_CODES.STATE_MISMATCH]: "セキュリティ検証に失敗しました。もう一度お試しください。",
   [LINE_ERROR_CODES.TOKEN_FAILED]: "LINE認証トークンの取得に失敗しました。もう一度お試しください。",
   [LINE_ERROR_CODES.SERVER_ERROR]:
