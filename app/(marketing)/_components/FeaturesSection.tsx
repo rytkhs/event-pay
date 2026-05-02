@@ -2,7 +2,7 @@ import React from "react";
 
 import Link from "next/link";
 
-import { Zap, CreditCard, BellRing, Check } from "lucide-react";
+import { Share2, CreditCard, BellRing, Check } from "lucide-react";
 
 import { ParticipantTableMock } from "./ParticipantTableMock";
 import { FadeIn } from "./ui/FadeIn";
@@ -13,20 +13,24 @@ export const FeaturesSection: React.FC = () => {
       <div className="container mx-auto px-4 md:px-6">
         <div className="text-center mb-16">
           <FadeIn direction="up">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">
-              その悩み、「みんなの集金」なら解決できます。
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              集金に必要な作業を、ひとつの画面にまとめます。
             </h2>
-            <div className="w-20 h-1.5 bg-primary mx-auto rounded-full" aria-hidden="true"></div>
+            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+              出欠確認、支払い状況の確認、現金受領の記録、未払いの把握まで。
+              <br className="hidden md:block" />
+              スプレッドシートや個別メッセージに散らばりがちな情報を、イベントごとに整理できます。
+            </p>
           </FadeIn>
         </div>
 
         <div className="space-y-24">
-          {/* Feature 1 */}
+          {/* Feature 1: 招待リンクを共有するだけ */}
           <div className="flex flex-col md:flex-row items-center gap-10">
             <div className="flex-1 order-2 md:order-1">
               <FadeIn direction="right" delay={0.2}>
-                <div className="bg-white/5 rounded-2xl p-8 border border-white/10 relative overflow-hidden">
-                  {/* Abstract UI for "Simple Link" */}
+                <div className="bg-white/5 rounded-2xl p-8 border border-white/10">
+                  {/* LINE-style UI */}
                   <div className="bg-slate-800 rounded-lg p-4 max-w-sm mx-auto shadow-2xl border border-slate-700">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="w-8 h-8 bg-success rounded-full flex items-center justify-center text-xs font-bold p-2">
@@ -51,18 +55,22 @@ export const FeaturesSection: React.FC = () => {
             <div className="flex-1 order-1 md:order-2">
               <FadeIn direction="left" delay={0.2}>
                 <div className="flex items-center gap-3 text-primary font-bold mb-3">
-                  <Zap size={24} aria-hidden="true" />
-                  <span>圧倒的な手軽さ</span>
+                  <Share2 size={24} aria-hidden="true" />
+                  <span>招待リンクを共有するだけ</span>
                 </div>
-                <h3 className="text-2xl md:text-3xl font-bold mb-4">アプリ不要・登録不要。</h3>
+                <h3 className="text-2xl md:text-3xl font-bold mb-4">
+                  LINEやSlackで送るだけ。
+                  <br />
+                  個別連絡は不要です。
+                </h3>
                 <p className="text-slate-300 text-lg leading-relaxed">
-                  参加者に新しいアプリを入れてもらう必要はありません。招待リンクをLINEやSlackに貼るだけ。参加者は「ニックネーム」と「メールアドレス」だけで、10秒で参加表明が完了します。
+                  イベントを作成したら、招待リンクを普段使っている連絡手段で共有。出欠確認のために個別連絡する必要はありません。参加者はアカウント登録なしで回答できます。
                 </p>
               </FadeIn>
             </div>
           </div>
 
-          {/* Feature 2 */}
+          {/* Feature 2: オンラインも現金も同じリストで */}
           <div className="flex flex-col md:flex-row items-center gap-10">
             <div className="flex-1">
               <FadeIn direction="right" delay={0.2}>
@@ -71,26 +79,26 @@ export const FeaturesSection: React.FC = () => {
                   <span>ハイブリッド決済</span>
                 </div>
                 <h3 className="text-2xl md:text-3xl font-bold mb-4">
-                  「クレカ払い」も「現金払い」も、
+                  オンライン決済も現金も、
                   <br />
-                  一つのリストで。
+                  同じリストで管理。
                 </h3>
                 <p className="text-slate-300 text-lg leading-relaxed mb-6">
-                  完全キャッシュレス化が難しいコミュニティでも安心。「事前に払いたい人」はオンライン決済で、「当日払いたい人」は現金で。管理画面では両方のステータスを一元管理できます。
+                  オンラインで払う人も、当日現金で払う人も、同じイベント内でまとめて管理できます。支払い方法が混在しても、管理を分ける必要はありません。
                 </p>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-3">
                     <div className="bg-primary/20 p-1 rounded-full text-primary mt-0.5">
                       <Check size={14} strokeWidth={3} aria-hidden="true" />
                     </div>
-                    <span className="text-slate-200 text-md">オンライン決済は自動で入金確認</span>
+                    <span className="text-slate-200">オンライン決済は自動で入金確認</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="bg-primary/20 p-1 rounded-full text-primary mt-0.5">
                       <Check size={14} strokeWidth={3} aria-hidden="true" />
                     </div>
-                    <span className="text-slate-200 text-md">
-                      現金集金も「受領」ボタン一つで管理
+                    <span className="text-slate-200">
+                      現金は「受領」ボタンひとつで記録
                     </span>
                   </li>
                 </ul>
@@ -99,19 +107,17 @@ export const FeaturesSection: React.FC = () => {
             <div className="flex-1">
               <FadeIn direction="left" delay={0.2}>
                 <div className="bg-white/5 rounded-2xl px-4 py-8 border border-white/10 flex justify-center">
-                  {/* Abstract UI for Hybrid Payment - Participant Table Mock */}
                   <ParticipantTableMock />
                 </div>
               </FadeIn>
             </div>
           </div>
 
-          {/* Feature 3 */}
+          {/* Feature 3: 未払い確認・催促のストレスを軽減 */}
           <div className="flex flex-col md:flex-row items-center gap-10">
             <div className="flex-1 order-2 md:order-1">
               <FadeIn direction="right" delay={0.2}>
-                <div className="bg-white/5 rounded-2xl p-8 border border-white/10 relative">
-                  {/* Abstract UI for Notification */}
+                <div className="bg-white/5 rounded-2xl p-8 border border-white/10">
                   <div className="bg-white rounded-xl shadow-2xl max-w-sm mx-auto p-4 flex gap-3 items-start">
                     <div className="bg-primary/10 p-2 rounded-full">
                       <BellRing className="text-primary w-5 h-5" aria-hidden="true" />
@@ -134,20 +140,32 @@ export const FeaturesSection: React.FC = () => {
               <FadeIn direction="left" delay={0.2}>
                 <div className="flex items-center gap-3 text-primary font-bold mb-3">
                   <BellRing size={24} aria-hidden="true" />
-                  <span>自動化で負担軽減</span>
+                  <span>自動リマインド</span>
                 </div>
                 <h3 className="text-2xl md:text-3xl font-bold mb-4">
-                  催促のストレスから解放。
+                  未払い確認もリマインドも、
                   <br />
-                  リマインドは自動で。
+                  システムにおまかせ。
                 </h3>
                 <p className="text-slate-300 text-lg leading-relaxed">
-                  開催日前日や決済締切前に、システムが自動でメールを送信。「お金払って」と個別に連絡する気まずさは、もう必要ありません。
+                  誰が未払いかを一覧で確認できます。開催日前日や決済締切前にはリマインドメールが自動送信されるため、個別に「お金払って」と連絡する必要はありません。
                 </p>
               </FadeIn>
             </div>
           </div>
         </div>
+
+        {/* 文脈リンク */}
+        <FadeIn direction="up" delay={0.2}>
+          <div className="mt-16 text-center">
+            <Link
+              href="/guide/participant-flow"
+              className="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
+            >
+              参加者画面の流れを見る →
+            </Link>
+          </div>
+        </FadeIn>
       </div>
     </section>
   );

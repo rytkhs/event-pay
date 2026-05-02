@@ -1,33 +1,50 @@
 import React from "react";
 
+import Link from "next/link";
+
 import { FadeIn } from "./ui/FadeIn";
 import { StaggerContainer, StaggerItem } from "./ui/StaggerContainer";
 
 export const FAQSection: React.FC = () => {
   const faqs = [
     {
-      q: "参加者もアカウント登録が必要ですか？",
-      a: "いいえ、必要ありません。参加者はメールアドレスとニックネームだけで参加登録・決済が可能です。アプリのインストールも不要です。",
+      q: "参加者はアカウント登録が必要ですか？",
+      a: "不要です。参加者は招待リンクから、ニックネームとメールアドレスを入力して参加登録できます。アプリのインストールや専用アカウントの作成は必要ありません。",
     },
     {
-      q: "利用料金はいくらですか？",
-      a: "基本料金はありません。オンライン決済された参加費に対し、オンライン決済手数料(4.9%)を申し受けます。現金集金は完全無料です。",
+      q: "オンライン払いと現金払いを同じイベントで管理できますか？",
+      a: "できます。オンライン決済を選んだ参加者と、現金払いを選んだ参加者を同じイベント内で管理できます。現金払いの参加者は、主催者が受領済みに変更できます。",
     },
     {
-      q: "参加者は「未定」でも登録できますか？",
-      a: "はい、可能です。「未定」で登録しておくことで参加申込締め切りのリマインダーメールを受信することができます。「参加」に変更後、決済手続きへ進めます。",
+      q: "オンライン集金を使うには何が必要ですか？",
+      a: "主催者によるStripeアカウントの連携が必要です。本人確認・審査が完了するまで、オンライン決済や出金を利用できない場合があります。",
+      link: { label: "オンライン集金のしくみを見る", href: "/guide/online-collection" },
     },
     {
-      q: "現金とオンラインの両方で集金できますか？",
-      a: "はい。現金の場合は対面で集金する必要がありますが、入金状況を1つの画面で管理できます。",
+      q: "集めたお金はどこに入りますか？",
+      a: "オンライン決済された参加費はStripeで処理され、手数料差引後に主催者のStripeアカウント経由で口座へ入金されます。",
     },
     {
-      q: "リマインドのタイミングは？",
-      a: "参加締切、オンライン決済締切、イベント開催日を設定している場合、それぞれ前日の午前9時頃に自動でリマインドメールが送信されます。",
+      q: "入金はいつ行われますか？",
+      a: "入金タイミングは、Stripeの審査状況、アカウント設定、運用ルールに従います。",
     },
     {
-      q: "セキュリティは大丈夫ですか？",
-      a: "クレジットカード情報は世界的な決済基盤「Stripe」が管理し、当サービスでは一切保持しません。通信はすべて暗号化されています。",
+      q: "返金はできますか？",
+      a: "現時点では、みんなの集金のアプリ内に返金機能はありません。返金が必要な場合は、主催者と参加者の間で個別に対応してください。",
+      link: { label: "キャンセル・返金時の扱い", href: "/guide/cancellation" },
+    },
+    {
+      q: "カード情報は保存されますか？",
+      a: "カード情報は本サービスでは保持しません。オンライン決済にはStripeを利用しており、カード情報はStripeが安全に管理します。",
+    },
+    {
+      q: "主催者は参加費に手数料を上乗せできますか？",
+      a: "できます。主催者が受け取りたい金額をもとに、手数料を考慮した参加費を設定できます。自動計算ツールも内蔵しています。",
+      link: { label: "料金と手数料について", href: "/guide/pricing-and-fees" },
+    },
+    {
+      q: "どんな集まりに向いていますか？",
+      a: "サークル合宿、OB会、同窓会、懇親会、研究会、講習会など、参加費や会費を事前に集める場面に向いています。少人数の割り勘や、金額が後から変わる精算、公開して広く参加を募るイベントには向いていません。",
     },
   ];
 
@@ -43,8 +60,8 @@ export const FAQSection: React.FC = () => {
             <StaggerItem key={index}>
               <details className="group bg-slate-50 rounded-xl">
                 <summary className="flex justify-between items-center font-medium cursor-pointer list-none p-6">
-                  <span className="text-lg font-bold text-slate-800">Q. {item.q}</span>
-                  <span className="transition group-open:rotate-180">
+                  <span className="text-lg font-bold text-slate-800 pr-4">Q. {item.q}</span>
+                  <span className="transition group-open:rotate-180 flex-shrink-0">
                     <svg
                       aria-hidden="true"
                       fill="none"
@@ -61,7 +78,17 @@ export const FAQSection: React.FC = () => {
                     </svg>
                   </span>
                 </summary>
-                <div className="text-slate-600 px-6 pb-6 leading-relaxed">A. {item.a}</div>
+                <div className="text-slate-600 px-6 pb-6 leading-relaxed">
+                  <p>A. {item.a}</p>
+                  {item.link && (
+                    <Link
+                      href={item.link.href}
+                      className="inline-block mt-2 text-primary hover:text-primary/80 text-sm font-medium transition-colors"
+                    >
+                      {item.link.label} →
+                    </Link>
+                  )}
+                </div>
               </details>
             </StaggerItem>
           ))}
