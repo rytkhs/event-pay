@@ -15,9 +15,9 @@ export const CTASection: React.FC = () => {
             次の集金から、もっとシンプルに。
           </h2>
           <p className="text-slate-500 text-lg mb-8 leading-relaxed">
-            まずは無料でイベントを作成できます。
+            まずは無料でイベントを作成。
             <br />
-            参加者に送る前に、デモで主催者画面と参加者画面を確認できます。
+            もしくはデモで管理画面を体験できます。
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-6">
@@ -33,14 +33,12 @@ export const CTASection: React.FC = () => {
               className="w-full sm:w-auto bg-white hover:bg-primary/5 text-primary border-2 border-primary text-lg font-bold px-8 py-4 rounded-full transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-primary/10"
             >
               <PlayCircle size={24} aria-hidden="true" />
-              デモを見る
+              デモを試す
             </a>
           </div>
 
           {/* 補助ラベル（再掲） */}
-          <p className="text-sm text-slate-400">
-            初期費用・月額費用はかかりません。
-          </p>
+          <p className="text-sm text-slate-400">初期費用・月額費用はかかりません。</p>
         </FadeIn>
       </div>
     </section>

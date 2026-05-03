@@ -58,13 +58,9 @@ export const FeaturesSection: React.FC = () => {
                   <Share2 size={24} aria-hidden="true" />
                   <span>招待リンクを共有するだけ</span>
                 </div>
-                <h3 className="text-2xl md:text-3xl font-bold mb-4">
-                  LINEやSlackで送るだけ。
-                  <br />
-                  個別連絡は不要です。
-                </h3>
+                <h3 className="text-2xl md:text-3xl font-bold mb-4">LINEやSlackで送るだけ。</h3>
                 <p className="text-slate-300 text-lg leading-relaxed">
-                  イベントを作成したら、招待リンクを普段使っている連絡手段で共有。出欠確認のために個別連絡する必要はありません。参加者はアカウント登録なしで回答できます。
+                  イベントを作成したら、招待リンクをグループに共有。個別で出欠を確認する必要はありません。参加者はアカウント登録なしで回答できます。
                 </p>
               </FadeIn>
             </div>

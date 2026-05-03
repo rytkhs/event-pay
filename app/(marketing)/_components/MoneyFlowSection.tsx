@@ -23,7 +23,7 @@ export const MoneyFlowSection: React.FC = () => {
     {
       number: "3",
       title: "支払い状況が自動で反映",
-      desc: "主催者は、参加者ごとの支払い状況をイベント画面で確認できます。",
+      desc: "主催者は、参加者ごとの支払い状況を管理画面で確認できます。",
     },
     {
       number: "4",

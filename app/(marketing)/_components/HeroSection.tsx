@@ -25,7 +25,7 @@ export const HeroSection: React.FC = () => {
           {/* Text Content */}
           <div className="md:w-5/12 text-center md:text-left">
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-800 leading-snug mb-6">
-              参加費・会費の集金を、
+              出欠確認から集金まで、
               <br />
               リンク1本でまとめて管理。
             </h1>
@@ -54,7 +54,7 @@ export const HeroSection: React.FC = () => {
                   className="w-full sm:w-auto bg-white hover:bg-primary/5 text-primary border-2 border-primary text-lg font-bold px-8 py-4 rounded-full transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-primary/10"
                 >
                   <PlayCircle size={24} aria-hidden="true" />
-                  デモを見る
+                  デモを試す
                 </a>
               </div>
 

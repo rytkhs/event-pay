@@ -226,7 +226,7 @@ export const ParticipantFlowSection: React.FC = () => {
             </h3>
             <p className="text-slate-500 text-base leading-relaxed mb-6">
               主催者から共有された招待リンクを開くだけで、イベントの詳細を確認できます。
-              名前・メール・出欠・支払い方法を1つのフォームで入力したら、参加登録は完了です。
+              名前・メール・出欠・支払い方法をフォームに入力したら、参加登録は完了です。
             </p>
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2.5 text-slate-600">
@@ -245,7 +245,7 @@ export const ParticipantFlowSection: React.FC = () => {
                 <div className="bg-primary/10 p-1 rounded-full text-primary mt-0.5 shrink-0">
                   <CheckCircle2 size={12} strokeWidth={3} />
                 </div>
-                オンライン決済・現金払いから支払い方法を選択
+                オンライン・現金から支払い方法を選択
               </li>
             </ul>
           </FadeIn>
@@ -314,7 +314,7 @@ export const ParticipantFlowSection: React.FC = () => {
                 <div className="bg-emerald-500/10 p-1 rounded-full text-emerald-600 mt-0.5 shrink-0">
                   <CalendarCheck size={12} strokeWidth={3} />
                 </div>
-                出欠や支払い方法をいつでも変更可能
+                出欠や支払い方法を、設定した締切まではいつでも変更可能
               </li>
             </ul>
           </FadeIn>

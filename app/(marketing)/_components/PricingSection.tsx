@@ -15,12 +15,12 @@ export const PricingSection: React.FC = () => {
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
               初期費用・月額費用は0円。
               <br className="md:hidden" />
-              オンライン集金を使ったときだけ手数料。
+              手数料はオンライン決済で集金したときだけ。
             </h2>
             <p className="text-slate-400">
               固定費なしで始められます。
               <br className="hidden md:block" />
-              現金払いの管理には費用はかかりません。オンライン集金を利用した場合のみ、決済金額に応じた手数料が発生します。
+              現金払いの管理には費用はかかりません。オンライン決済で集金した場合のみ、決済金額に応じた手数料が発生します。
             </p>
           </FadeIn>
 

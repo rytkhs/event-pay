@@ -21,7 +21,7 @@ export const footerNavigationGroups: FooterLinkGroup[] = [
         label: "デモ",
         href: `${process.env.NEXT_PUBLIC_DEMO_URL || "https://demo.minnano-shukin.com"}/start-demo`,
         external: true,
-        ariaLabel: "みんなの集金のデモを見る",
+        ariaLabel: "みんなの集金のデモを試す",
       },
     ],
   },
