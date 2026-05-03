@@ -14,12 +14,6 @@ jest.mock("@core/community/app-workspace", () => ({
   toAppWorkspaceShellData,
 }));
 
-jest.mock("@core/announcements/community-announcement", () => ({
-  resolveCommunityAnnouncementForServerComponent: jest.fn().mockResolvedValue({
-    shouldShow: false,
-  }),
-}));
-
 jest.mock("@features/demo", () => ({
   DemoBanner: () => <div data-testid="demo-banner" />,
 }));
