@@ -5,8 +5,8 @@ import Link from "next/link";
 
 import { ArrowRight, PlayCircle } from "lucide-react";
 
-import { FadeIn } from "./ui/FadeIn";
 import { DashboardMock } from "./DashboardMock";
+import { FadeIn } from "./ui/FadeIn";
 
 export const HeroSection: React.FC = () => {
   return (
@@ -24,14 +24,14 @@ export const HeroSection: React.FC = () => {
       <div className="container max-w-7xl mx-auto px-4 md:px-6 relative z-10">
         <div className="flex flex-col md:flex-row items-center gap-12 lg:gap-20">
           {/* Text Content */}
-          <div className="flex-1 text-center md:text-left">
+          <div className="md:w-5/12 text-center md:text-left">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 leading-tight mb-6">
               参加費・会費の集金を、
               <br />
               リンク1本でまとめて管理。
             </h1>
 
-            <FadeIn delay={0.3}>
+            <FadeIn delay={0.3} className="w-full">
               <p className="text-lg md:text-xl text-slate-600 mb-8 leading-relaxed">
                 招待リンクを送るだけ。
                 <br className="hidden md:block" />
@@ -41,7 +41,7 @@ export const HeroSection: React.FC = () => {
               </p>
             </FadeIn>
 
-            <FadeIn delay={0.4}>
+            <FadeIn delay={0.4} className="w-full">
               <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4">
                 <Link
                   href="/register"
@@ -120,8 +120,12 @@ export const HeroSection: React.FC = () => {
           </div>
 
           {/* Dashboard Mock Visual */}
-          <div className="flex-1 w-full max-w-lg md:max-w-none flex justify-center">
-            <FadeIn direction="up" delay={0.5}>
+          <div className="md:w-7/12 w-full flex justify-center md:justify-end">
+            <FadeIn
+              direction="up"
+              delay={0.5}
+              className="w-full flex justify-center md:justify-end"
+            >
               <DashboardMock />
             </FadeIn>
           </div>
