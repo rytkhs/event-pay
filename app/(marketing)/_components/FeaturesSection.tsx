@@ -10,7 +10,7 @@ import { FadeIn } from "./ui/FadeIn";
 export const FeaturesSection: React.FC = () => {
   return (
     <section id="features" className="py-20 bg-slate-900 text-white overflow-hidden">
-      <div className="container mx-auto px-4 md:px-6">
+      <div className="container mx-auto px-4 md:px-6 max-w-7xl">
         <div className="text-center mb-16">
           <FadeIn direction="up">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
