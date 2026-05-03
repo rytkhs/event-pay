@@ -327,7 +327,7 @@ export const ParticipantFlowSection: React.FC = () => {
               href="/guide/participant-flow"
               className="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
             >
-              詳しい参加者画面の流れ →
+              参加者の登録・支払いの流れを詳しく見る →
             </Link>
           </div>
         </FadeIn>

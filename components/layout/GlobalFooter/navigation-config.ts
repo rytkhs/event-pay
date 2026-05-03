@@ -29,24 +29,24 @@ export const footerNavigationGroups: FooterLinkGroup[] = [
     title: "ガイド",
     links: [
       {
-        label: "参加者画面の流れ",
-        href: "/guide/participant-flow",
-        ariaLabel: "参加者画面の流れを確認する",
+        label: "主催者のはじめ方",
+        href: "/guide/getting-started",
+        ariaLabel: "主催者のはじめ方を確認する",
       },
       {
-        label: "オンライン集金のしくみ",
+        label: "参加者の登録・支払いの流れ",
+        href: "/guide/participant-flow",
+        ariaLabel: "参加者の登録・支払いの流れを確認する",
+      },
+      {
+        label: "オンライン集金・入金のしくみ",
         href: "/guide/online-collection",
-        ariaLabel: "オンライン集金のしくみを確認する",
+        ariaLabel: "オンライン集金・入金のしくみを確認する",
       },
       {
         label: "料金と手数料",
         href: "/guide/pricing-and-fees",
         ariaLabel: "料金と手数料の詳細を確認する",
-      },
-      {
-        label: "キャンセル・返金時の扱い",
-        href: "/guide/cancellation",
-        ariaLabel: "キャンセル・返金時の扱いを確認する",
       },
       {
         label: "よくある質問",

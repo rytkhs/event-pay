@@ -187,7 +187,7 @@ export const MoneyFlowSection: React.FC = () => {
                 href="/guide/online-collection"
                 className="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
               >
-                オンライン集金のしくみを見る →
+                オンライン集金・入金のしくみを見る →
               </Link>
             </div>
           </FadeIn>

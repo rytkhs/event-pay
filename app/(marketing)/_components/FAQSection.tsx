@@ -18,7 +18,7 @@ export const FAQSection: React.FC = () => {
     {
       q: "オンライン集金を使うには何が必要ですか？",
       a: "主催者によるStripeアカウントの設定が必要です。Stripeのページで入金先の銀行口座の登録や本人確認を行います。",
-      link: { label: "オンライン集金のしくみを見る", href: "/guide/online-collection" },
+      link: { label: "オンライン集金・入金のしくみを見る", href: "/guide/online-collection" },
     },
     {
       q: "集めたお金はどこに入りますか？",

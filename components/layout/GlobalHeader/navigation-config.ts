@@ -93,23 +93,23 @@ export const navigationConfig: NavigationConfig = {
  */
 export const guideNavigation: NavItem[] = [
   {
-    label: "参加者画面の流れ",
+    label: "主催者のはじめ方",
+    href: "/guide/getting-started",
+    exactMatch: false,
+  },
+  {
+    label: "参加者の登録・支払いの流れ",
     href: "/guide/participant-flow",
     exactMatch: false,
   },
   {
-    label: "オンライン集金のしくみ",
+    label: "オンライン集金・入金のしくみ",
     href: "/guide/online-collection",
     exactMatch: false,
   },
   {
     label: "料金と手数料",
     href: "/guide/pricing-and-fees",
-    exactMatch: false,
-  },
-  {
-    label: "キャンセル・返金時の扱い",
-    href: "/guide/cancellation",
     exactMatch: false,
   },
 ];
