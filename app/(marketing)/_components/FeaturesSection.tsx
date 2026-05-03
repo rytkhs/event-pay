@@ -76,7 +76,7 @@ export const FeaturesSection: React.FC = () => {
               <FadeIn direction="right" delay={0.2}>
                 <div className="flex items-center gap-3 text-primary font-bold mb-3">
                   <CreditCard size={24} aria-hidden="true" />
-                  <span>ハイブリッド決済</span>
+                  <span>ハイブリッド集金</span>
                 </div>
                 <h3 className="text-2xl md:text-3xl font-bold mb-4">
                   オンライン決済も現金も、
