@@ -161,13 +161,21 @@ export const MoneyFlowSection: React.FC = () => {
                 <span className="text-slate-200 hidden md:inline" aria-hidden="true">
                   |
                 </span>
-                <Image
-                  src="/images/powered-by-stripe.svg"
-                  alt="Powered by Stripe"
-                  width={100}
-                  height={26}
-                  className="h-[1.4rem] w-auto"
-                />
+                <a
+                  href="https://stripe.com/jp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+                  aria-label="Stripeのウェブサイトへ（新しいタブで開きます）"
+                >
+                  <Image
+                    src="/images/powered-by-stripe.svg"
+                    alt="Powered by Stripe"
+                    width={100}
+                    height={26}
+                    className="h-[1.4rem] w-auto"
+                  />
+                </a>
               </div>
             </div>
           </FadeIn>

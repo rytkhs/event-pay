@@ -33,9 +33,7 @@ export const PricingSection: React.FC = () => {
                     <div className="bg-success/10 p-1 rounded-full">
                       <Check size={16} className="text-success" aria-hidden="true" />
                     </div>
-                    <span className="font-medium">
-                      イベント作成数：<span className="font-bold">無制限</span>
-                    </span>
+                    <span className="font-medium">イベントの作成</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="bg-green-100 p-1 rounded-full">
@@ -47,7 +45,7 @@ export const PricingSection: React.FC = () => {
                     <div className="bg-green-100 p-1 rounded-full">
                       <Check size={16} className="text-green-600" aria-hidden="true" />
                     </div>
-                    <span className="font-medium">Stripe連携によるオンライン決済</span>
+                    <span className="font-medium">オンライン決済による集金</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="bg-green-100 p-1 rounded-full">
