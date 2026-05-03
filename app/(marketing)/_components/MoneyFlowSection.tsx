@@ -33,26 +33,10 @@ export const MoneyFlowSection: React.FC = () => {
   ];
 
   const trustItems = [
-    {
-      icon: Shield,
-      title: "カード情報の非保持",
-      desc: "カード情報は当サービスでは保持しません。Stripeが安全に管理します。",
-    },
-    {
-      icon: CreditCard,
-      title: "Stripeによる決済処理",
-      desc: "世界的な決済基盤Stripeを利用。PCI DSS Level 1に準拠しています。",
-    },
-    {
-      icon: Lock,
-      title: "通信の暗号化",
-      desc: "すべての通信はSSL/TLSで暗号化されています。",
-    },
-    {
-      icon: Landmark,
-      title: "入金はStripeに準拠",
-      desc: "入金タイミングはStripeの審査状況・運用ルールに従います。",
-    },
+    { icon: Shield, title: "カード情報の非保持" },
+    { icon: CreditCard, title: "Stripeによる決済処理" },
+    { icon: Lock, title: "通信の暗号化" },
+    { icon: Landmark, title: "入金はStripeに準拠" },
   ];
 
   return (
@@ -93,29 +77,96 @@ export const MoneyFlowSection: React.FC = () => {
             </div>
           </FadeIn>
 
-          {/* 信頼要素 */}
+          {/* 対応支払い方法 + 信頼要素 */}
           <FadeIn direction="up" delay={0.3}>
-            <div className="mt-16 pt-12 border-t border-slate-100">
-              <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {trustItems.map((item) => (
-                  <StaggerItem key={item.title} className="text-center">
-                    <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                      <item.icon className="text-slate-600 w-5 h-5" aria-hidden="true" />
-                    </div>
-                    <h4 className="font-bold text-slate-700 text-xs mb-1">{item.title}</h4>
-                    <p className="text-xs text-slate-500 leading-relaxed">{item.desc}</p>
-                  </StaggerItem>
-                ))}
-              </StaggerContainer>
+            <div className="mt-12 pt-8 border-t border-slate-100">
+              {/* 対応している支払い方法 */}
+              <p className="text-center text-slate-400 text-sm mb-6">対応している支払い方法</p>
+              <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-4 mb-8">
+                <div className="flex items-center gap-4">
+                  <Image
+                    src="/images/cards/visa.svg"
+                    alt="Visa"
+                    width={48}
+                    height={32}
+                    className="h-7 w-auto"
+                  />
+                  <Image
+                    src="/images/cards/mastercard.svg"
+                    alt="Mastercard"
+                    width={48}
+                    height={32}
+                    className="h-7 w-auto"
+                  />
+                  <Image
+                    src="/images/cards/jcb.webp"
+                    alt="JCB"
+                    width={73}
+                    height={56}
+                    className="h-7 w-auto"
+                  />
+                  <Image
+                    src="/images/cards/amex.webp"
+                    alt="Amex"
+                    width={56}
+                    height={56}
+                    className="h-7 w-auto"
+                  />
+                  <Image
+                    src="/images/cards/diners.webp"
+                    alt="Diners"
+                    width={76}
+                    height={56}
+                    className="h-7 w-auto"
+                  />
+                  <Image
+                    src="/images/cards/discover.webp"
+                    alt="Discover"
+                    width={88}
+                    height={56}
+                    className="h-7 w-auto"
+                  />
+                </div>
 
-              {/* Powered by Stripe */}
-              <div className="mt-8 flex justify-center">
+                {/* Divider for desktop */}
+                <div className="hidden lg:block h-8 w-px bg-slate-200" aria-hidden="true"></div>
+
+                {/* Wallets */}
+                <div className="flex items-center gap-5">
+                  <Image
+                    src="/images/cards/apple-pay.svg"
+                    alt="Apple Pay"
+                    width={56}
+                    height={32}
+                    className="h-7 w-auto"
+                  />
+                  <Image
+                    src="/images/cards/google-pay.webp"
+                    alt="Google Pay"
+                    width={105}
+                    height={56}
+                    className="h-7 w-auto"
+                  />
+                </div>
+              </div>
+
+              {/* セキュリティ・信頼バッジ */}
+              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+                {trustItems.map((item) => (
+                  <div key={item.title} className="flex items-center gap-1.5 text-slate-400">
+                    <item.icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                    <span className="text-xs font-medium">{item.title}</span>
+                  </div>
+                ))}
+                <span className="text-slate-200 hidden md:inline" aria-hidden="true">
+                  |
+                </span>
                 <Image
                   src="/images/powered-by-stripe.svg"
                   alt="Powered by Stripe"
-                  width={120}
-                  height={32}
-                  className="h-7 w-auto opacity-70"
+                  width={100}
+                  height={26}
+                  className="h-[1.4rem] w-auto"
                 />
               </div>
             </div>

@@ -1,6 +1,5 @@
 import React from "react";
 
-import Image from "next/image";
 import Link from "next/link";
 
 import { Check } from "lucide-react";
@@ -101,88 +100,6 @@ export const PricingSection: React.FC = () => {
                       （自動計算ツール内蔵）
                     </span>
                   </p>
-                </div>
-              </div>
-            </div>
-          </FadeIn>
-
-          {/* Payment Methods Trust Badge */}
-          <FadeIn direction="up" delay={0.4}>
-            <div className="mt-12 pt-8 border-t border-slate-700">
-              <p className="text-center text-slate-400 text-sm mb-6">対応している支払い方法</p>
-              <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-4 opacity-90">
-                <div className="flex items-center gap-4">
-                  <Image
-                    src="/images/cards/visa.svg"
-                    alt="Visa"
-                    width={48}
-                    height={32}
-                    className="h-7 w-auto brightness-0 invert"
-                  />
-                  <Image
-                    src="/images/cards/mastercard.svg"
-                    alt="Mastercard"
-                    width={48}
-                    height={32}
-                    className="h-7 w-auto"
-                  />
-                  <Image
-                    src="/images/cards/jcb.webp"
-                    alt="JCB"
-                    width={73}
-                    height={56}
-                    className="h-7 w-auto"
-                  />
-                  <Image
-                    src="/images/cards/amex.webp"
-                    alt="Amex"
-                    width={56}
-                    height={56}
-                    className="h-7 w-auto"
-                  />
-                  <Image
-                    src="/images/cards/diners.webp"
-                    alt="Diners"
-                    width={76}
-                    height={56}
-                    className="h-7 w-auto"
-                  />
-                  <Image
-                    src="/images/cards/discover.webp"
-                    alt="Discover"
-                    width={88}
-                    height={56}
-                    className="h-7 w-auto"
-                  />
-                </div>
-
-                {/* Divider for desktop */}
-                <div className="hidden lg:block h-8 w-px bg-slate-600" aria-hidden="true"></div>
-
-                {/* Wallets & Stripe */}
-                <div className="flex items-center gap-5">
-                  <Image
-                    src="/images/cards/apple-pay.svg"
-                    alt="Apple Pay"
-                    width={56}
-                    height={32}
-                    className="h-7 w-auto"
-                  />
-                  <Image
-                    src="/images/cards/google-pay.webp"
-                    alt="Google Pay"
-                    width={105}
-                    height={56}
-                    className="h-7 w-auto"
-                  />
-                  <div className="h-6 w-px bg-slate-600 mx-1" aria-hidden="true"></div>
-                  <Image
-                    src="/images/powered-by-stripe.svg"
-                    alt="Powered by Stripe"
-                    width={120}
-                    height={32}
-                    className="h-7 w-auto brightness-0 invert opacity-90"
-                  />
                 </div>
               </div>
             </div>
