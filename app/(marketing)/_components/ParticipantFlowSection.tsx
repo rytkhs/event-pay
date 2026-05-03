@@ -32,13 +32,13 @@ export const ParticipantFlowSection: React.FC = () => {
       visual: (
         <div className="bg-white rounded-xl shadow-lg p-4 border border-slate-100 space-y-3">
           <div>
-            <label className="text-xs font-bold text-slate-600 block mb-1">ニックネーム</label>
+            <span className="text-xs font-bold text-slate-600 block mb-1">ニックネーム</span>
             <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700">
               山田 太郎
             </div>
           </div>
           <div>
-            <label className="text-xs font-bold text-slate-600 block mb-1">メールアドレス</label>
+            <span className="text-xs font-bold text-slate-600 block mb-1">メールアドレス</span>
             <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-400">
               taro@example.com
             </div>

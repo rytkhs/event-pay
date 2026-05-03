@@ -37,7 +37,7 @@ export const FeaturesSection: React.FC = () => {
                         LINE
                       </div>
                       <div className="bg-slate-700 rounded-lg p-3 text-sm text-slate-200">
-                        <p>飲み会の案内だよ！ここから回答してね👇</p>
+                        <p>イベントの案内だよ！ここから回答してね👇</p>
                         <Link
                           href={process.env.NEXT_PUBLIC_DEMO_INVITE_LINK || "#"}
                           className="text-primary underline mt-1 block break-all"
@@ -97,9 +97,7 @@ export const FeaturesSection: React.FC = () => {
                     <div className="bg-primary/20 p-1 rounded-full text-primary mt-0.5">
                       <Check size={14} strokeWidth={3} aria-hidden="true" />
                     </div>
-                    <span className="text-slate-200">
-                      現金は「受領」ボタンひとつで記録
-                    </span>
+                    <span className="text-slate-200">現金は「受領」ボタンひとつで記録</span>
                   </li>
                 </ul>
               </FadeIn>

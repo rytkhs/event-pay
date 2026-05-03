@@ -1,6 +1,5 @@
 import React from "react";
 
-import Image from "next/image";
 import Link from "next/link";
 
 import { ArrowRight, PlayCircle } from "lucide-react";
@@ -10,7 +9,7 @@ import { FadeIn } from "./ui/FadeIn";
 
 export const HeroSection: React.FC = () => {
   return (
-    <section className="relative pt-24 pb-20 md:pt-28 md:pb-32 overflow-hidden bg-gradient-to-br from-primary/5 via-white to-secondary/5">
+    <section className="relative pt-32 pb-20 md:pt-40 md:pb-32 overflow-hidden bg-gradient-to-br from-primary/5 via-white to-secondary/5">
       {/* Decorative Background Shapes */}
       <div
         className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-primary/20 rounded-full blur-3xl"
@@ -25,7 +24,7 @@ export const HeroSection: React.FC = () => {
         <div className="flex flex-col md:flex-row items-center gap-12 lg:gap-20">
           {/* Text Content */}
           <div className="md:w-5/12 text-center md:text-left">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 leading-tight mb-6">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-800 leading-snug mb-6">
               参加費・会費の集金を、
               <br />
               リンク1本でまとめて管理。
@@ -76,46 +75,6 @@ export const HeroSection: React.FC = () => {
               <p className="mt-3 text-xs text-slate-400">
                 ※ オンライン集金の利用には、主催者によるStripe連携が必要です。
               </p>
-
-              {/* 決済ブランド（簡潔版） */}
-              <div className="mt-5 flex flex-wrap justify-center md:justify-start items-center gap-4">
-                <Image
-                  src="/images/cards/visa.svg"
-                  alt="Visa"
-                  width={48}
-                  height={32}
-                  className="h-6 w-auto"
-                />
-                <Image
-                  src="/images/cards/mastercard.svg"
-                  alt="Mastercard"
-                  width={48}
-                  height={32}
-                  className="h-6 w-auto"
-                />
-                <Image
-                  src="/images/cards/jcb.webp"
-                  alt="JCB"
-                  width={73}
-                  height={56}
-                  className="h-6 w-auto"
-                />
-                <Image
-                  src="/images/cards/apple-pay.svg"
-                  alt="Apple Pay"
-                  width={56}
-                  height={32}
-                  className="h-6 w-auto"
-                />
-                <div className="h-5 w-px bg-slate-300" aria-hidden="true"></div>
-                <Image
-                  src="/images/powered-by-stripe.svg"
-                  alt="Powered by Stripe"
-                  width={120}
-                  height={32}
-                  className="h-6 w-auto"
-                />
-              </div>
             </FadeIn>
           </div>
 
