@@ -1,7 +1,7 @@
 # みんなの集金 (EventPay)
 
 > クローズドコミュニティ向けのイベント出欠管理・集金ツール。
-> 出欠確認〜集金まで「招待リンクを共有するだけ」で完了。
+> 出欠確認から集金まで、リンク1本でまとめて管理。
 
 [![Production](https://img.shields.io/badge/production-minnano--shukin.com-blue)](https://minnano-shukin.com)
 
