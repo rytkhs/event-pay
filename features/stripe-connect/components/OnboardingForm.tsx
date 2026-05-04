@@ -21,6 +21,7 @@ import {
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
+import { cn } from "@/components/ui/_lib/cn";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -176,25 +177,22 @@ export function OnboardingForm({
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full">
       <OnboardingIntro hasExistingAccount={hasExistingAccount} />
 
-      {/* エラー表示 */}
       {!state.success && error?.userMessage ? (
-        <Alert variant="destructive" className="mb-6">
+        <Alert variant="destructive" className="mb-5 sm:mb-6">
           <AlertTitle>設定を開始できませんでした</AlertTitle>
           <AlertDescription>{error.userMessage}</AlertDescription>
         </Alert>
       ) : null}
 
-      {/* アクションエリア */}
       <form ref={formRef} action={formAction} onSubmit={handleSubmit} noValidate>
-        {/* 代表コミュニティ選択 — 複数コミュニティ時のみ */}
         {hasMultipleCommunities ? (
-          <div className="mb-6">
-            <div className="mb-3">
+          <div className="mb-5 sm:mb-6">
+            <div className="mb-3 flex flex-col gap-1">
               <Label className="text-sm font-semibold">代表コミュニティを選択</Label>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs leading-5 text-muted-foreground">
                 Stripeに登録する情報の代表として使用されます。
                 どれを選んでも、すべてのコミュニティで集金機能を利用できます。
               </p>
@@ -211,11 +209,12 @@ export function OnboardingForm({
               {communities.map((community) => (
                 <div
                   key={community.id}
-                  className={`flex items-center gap-3 rounded-xl border p-3.5 transition-all ${
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg border p-3 transition-colors sm:p-3.5",
                     selectedCommunityId === community.id
-                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                      : "border-border/60 bg-card hover:border-primary/30"
-                  }`}
+                      ? "border-primary/40 bg-primary/5"
+                      : "border-border/60 bg-background hover:border-primary/30 hover:bg-muted/30"
+                  )}
                 >
                   <RadioGroupItem value={community.id} id={`community-${community.id}`} />
                   <Label
@@ -240,22 +239,20 @@ export function OnboardingForm({
             ) : null}
           </div>
         ) : (
-          /* 単一コミュニティ — hidden で送信 */
           <input type="hidden" name="representativeCommunityId" value={communities[0]?.id ?? ""} />
         )}
         <input type="hidden" name="communityDescription" value={communityDescription} />
         <input type="hidden" name="intent" value={intent ?? ""} />
 
-        {/* CTA ボタン */}
         <Button
           type="submit"
-          className="w-full h-12 text-base font-semibold shadow-md hover:shadow-lg transition-shadow"
+          className="h-11 w-full text-sm font-semibold sm:h-12 sm:text-base"
           size="lg"
           disabled={isPending || communities.length === 0}
         >
           {isPending ? (
             <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              <Loader2 className="size-5 animate-spin motion-reduce:animate-none" />
               設定画面を準備しています…
             </>
           ) : hasExistingAccount ? (
@@ -265,23 +262,24 @@ export function OnboardingForm({
           )}
         </Button>
 
-        {/* セキュリティ補足 — CTA直下 */}
-        <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mt-3">
-          <Lock className="h-3 w-3" />
+        <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
+          <Lock className="size-3" />
           Stripeの安全な画面で設定します・約3分で完了
         </p>
 
-        {secondaryAction ? <div className="mt-4">{secondaryAction}</div> : null}
+        {secondaryAction ? <div className="mt-3 sm:mt-4">{secondaryAction}</div> : null}
       </form>
 
       <Dialog open={isDescriptionDialogOpen} onOpenChange={setIsDescriptionDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl duration-500 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-[0.98] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[51%] [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]">
-          <DialogHeader className="p-6 pb-0">
-            <div className="flex items-center gap-3 mb-2 text-left">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                <Building2 className="h-5 w-5" />
+        <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto p-0 sm:max-w-[500px]">
+          <DialogHeader className="p-5 pb-0 sm:p-6 sm:pb-0">
+            <div className="mb-2 flex items-center gap-3 text-left">
+              <div className="rounded-md border border-border/60 p-2 text-primary">
+                <Building2 className="size-5" />
               </div>
-              <DialogTitle className="text-xl font-bold">コミュニティ説明を入力する</DialogTitle>
+              <DialogTitle className="text-lg font-semibold sm:text-xl">
+                コミュニティ説明を入力する
+              </DialogTitle>
             </div>
             <DialogDescription className="text-sm leading-relaxed text-left text-muted-foreground">
               オンライン集金設定のために、グループやコミュニティについて、主にどのようなイベント・活動を行うか、主にどのような費用を集金するかの簡単な説明を入力してください。
@@ -297,8 +295,8 @@ export function OnboardingForm({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="px-6 pt-4 pb-0 space-y-5">
-            <div className="space-y-3">
+          <div className="flex flex-col gap-5 px-5 pb-0 pt-4 sm:px-6">
+            <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-3 text-left">
                 <Label
                   htmlFor="onboarding-community-description"
@@ -319,42 +317,42 @@ export function OnboardingForm({
                 </Button> */}
               </div>
 
-              <div className="relative group">
+              <div className="relative">
                 <Textarea
                   id="onboarding-community-description"
                   value={communityDescription}
                   onChange={(event) => handleCommunityDescriptionChange(event.target.value)}
                   placeholder="例: 月に1〜2回集まり、テーマに沿った本や最近読んだ一冊について語り合う読書コミュニティです。小説、ビジネス書、エッセイなどジャンルは幅広く、本を通じて新しい考え方や出会いを楽しむ場を目指しています。"
-                  className="min-h-40 resize-none bg-muted/20 focus:bg-background transition-all border-border/60 focus:border-primary/50 text-sm leading-relaxed p-4 ring-offset-background placeholder:text-muted-foreground/40"
+                  className="min-h-36 resize-none border-border/60 bg-muted/20 p-3.5 text-sm leading-relaxed transition-colors placeholder:text-muted-foreground/40 focus:bg-background sm:min-h-40 sm:p-4"
                   aria-invalid={communityDescriptionError ? true : undefined}
                 />
               </div>
 
               {communityDescriptionError && (
                 <div
-                  className="flex items-center gap-2 text-destructive animate-in fade-in slide-in-from-top-1"
+                  className="flex items-center gap-2 text-destructive animate-in fade-in slide-in-from-top-1 motion-reduce:animate-none"
                   role="alert"
                 >
-                  <AlertCircle className="h-4 w-4" />
+                  <AlertCircle className="size-4" />
                   <p className="text-[13px] font-medium">{communityDescriptionError}</p>
                 </div>
               )}
             </div>
           </div>
 
-          <DialogFooter className="p-6 flex-row sm:justify-between items-center gap-3">
+          <DialogFooter className="flex-col-reverse items-stretch gap-2 p-5 sm:flex-row sm:items-center sm:gap-3 sm:p-6 sm:justify-between">
             <Button
               type="button"
               variant="ghost"
               onClick={() => setIsDescriptionDialogOpen(false)}
-              className="text-muted-foreground hover:text-foreground shrink-0 font-medium"
+              className="w-full shrink-0 font-medium text-muted-foreground hover:text-foreground sm:w-auto"
             >
               キャンセル
             </Button>
             <Button
               type="button"
               onClick={handleConfirmCommunityDescription}
-              className="px-8 shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all font-bold"
+              className="w-full px-4 font-semibold sm:w-auto sm:px-8"
             >
               保存して設定に進む
             </Button>
@@ -362,24 +360,23 @@ export function OnboardingForm({
         </DialogContent>
       </Dialog>
 
-      {/* ガイドリンク */}
-      <div className="mt-8">
+      <div className="mt-6 sm:mt-8">
         <Link
           href="/settings/payments/guide#community-profile"
           target="_blank"
           rel="noopener noreferrer"
-          className="group block rounded-xl border border-border/60 bg-muted/30 p-4 transition-all hover:bg-muted/50"
+          className="group block rounded-lg border border-border/60 bg-muted/30 p-3.5 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-4"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-background border border-border/40 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
-              <BookOpen className="h-4.5 w-4.5" />
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border/40 bg-background text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary sm:size-9">
+              <BookOpen className="size-4" />
             </div>
-            <div className="flex-1 space-y-0.5">
-              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground/80 group-hover:text-primary transition-colors">
+            <div className="flex flex-1 flex-col gap-0.5">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground/80 transition-colors group-hover:text-primary">
                 設定に迷ったら
-                <ExternalLink className="h-3 w-3 opacity-40 group-hover:opacity-70" />
+                <ExternalLink className="size-3 opacity-40 group-hover:opacity-70" />
               </div>
-              <p className="text-xs text-muted-foreground/70 leading-relaxed">
+              <p className="text-xs leading-relaxed text-muted-foreground/70">
                 どのように入力すべきか迷ったときの参考ガイドです。
               </p>
             </div>
@@ -388,32 +385,35 @@ export function OnboardingForm({
       </div>
 
       {/* ④ 補足情報（Collapsible） */}
-      <Collapsible open={isSupplementOpen} onOpenChange={setIsSupplementOpen} className="mt-4">
+      <Collapsible
+        open={isSupplementOpen}
+        onOpenChange={setIsSupplementOpen}
+        className="mt-3 sm:mt-4"
+      >
         <CollapsibleTrigger asChild>
           <button
             type="button"
-            className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/50"
+            className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
           >
             設定に必要なもの
             <ChevronDown
-              className={`h-3.5 w-3.5 transition-transform duration-200 ${
+              className={`size-3.5 transition-transform duration-200 motion-reduce:transition-none ${
                 isSupplementOpen ? "rotate-180" : ""
               }`}
             />
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="mt-2 rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
-            {/* 準備物 */}
-            <div className="space-y-2.5">
+          <div className="mt-2 rounded-lg border border-border/60 bg-muted/20 p-3.5 sm:p-4">
+            <div className="flex flex-col gap-2.5">
               <p className="text-xs font-semibold text-foreground">ご準備いただくもの</p>
-              <ul className="space-y-2">
+              <ul className="flex flex-col gap-2">
                 <li className="flex items-start gap-2.5 text-xs text-muted-foreground">
-                  <FileCheck className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
+                  <FileCheck className="mt-0.5 size-3.5 shrink-0 text-primary" />
                   本人確認書類（運転免許証、パスポートなど）
                 </li>
                 <li className="flex items-start gap-2.5 text-xs text-muted-foreground">
-                  <Building2 className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
+                  <Building2 className="mt-0.5 size-3.5 shrink-0 text-primary" />
                   銀行口座情報（入金先として登録します）
                 </li>
               </ul>

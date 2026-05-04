@@ -103,20 +103,17 @@ async function PaymentSettingsContent() {
 
 function LoadingSkeleton() {
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-8">
-      {/* ヒーロー部分 */}
-      <div className="flex flex-col items-center gap-3">
-        <Skeleton className="h-14 w-14 rounded-2xl" />
+    <div className="flex w-full flex-col gap-5 sm:gap-8">
+      <div className="flex flex-col gap-3">
+        <Skeleton className="size-10 rounded-md" />
         <Skeleton className="h-7 w-64" />
         <Skeleton className="h-4 w-48" />
       </div>
-      {/* メリットグリッド */}
       <div className="grid grid-cols-3 gap-3">
-        <Skeleton className="h-28 rounded-xl" />
-        <Skeleton className="h-28 rounded-xl" />
-        <Skeleton className="h-28 rounded-xl" />
+        <Skeleton className="h-28 rounded-lg" />
+        <Skeleton className="h-28 rounded-lg" />
+        <Skeleton className="h-28 rounded-lg" />
       </div>
-      {/* CTA */}
       <Skeleton className="h-12 w-full rounded-md" />
     </div>
   );

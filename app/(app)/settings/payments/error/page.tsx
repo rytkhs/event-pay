@@ -11,7 +11,6 @@ import type { Metadata } from "next";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
   title: "設定エラー",
@@ -36,51 +35,50 @@ function ErrorContent({ searchParams }: ErrorContentProps) {
     : "Stripeアカウント設定中に予期しないエラーが発生しました";
 
   return (
-    <div className="container mx-auto py-16 px-4">
-      <div className="max-w-md mx-auto">
-        <Card>
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-              <AlertTriangle className="h-6 w-6 text-red-600" />
-            </div>
-            <CardTitle className="text-xl">設定エラー</CardTitle>
-            <CardDescription>Stripeアカウントの設定中にエラーが発生しました</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{errorMessage}</AlertDescription>
-            </Alert>
+    <div className="rounded-lg border border-border/60 bg-background p-4 sm:p-6">
+      <div className="flex flex-col gap-5">
+        <div className="flex items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-destructive/25 text-destructive">
+            <AlertTriangle className="size-5" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold">設定エラー</h2>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Stripeアカウントの設定中にエラーが発生しました。
+            </p>
+          </div>
+        </div>
 
-            <div className="space-y-2">
-              <Button asChild className="w-full">
-                <Link href="/settings/payments">
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  設定を再試行
-                </Link>
-              </Button>
+        <Alert variant="destructive">
+          <AlertTriangle className="size-4" />
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
 
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/dashboard">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  ホームに戻る
-                </Link>
-              </Button>
-            </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button asChild className="sm:w-auto">
+            <Link href="/settings/payments">
+              <RefreshCw className="mr-2 size-4" />
+              設定を再試行
+            </Link>
+          </Button>
 
-            <div className="text-sm text-muted-foreground space-y-2">
-              <p>
-                <strong>よくある原因：</strong>
-              </p>
-              <ul className="space-y-1 text-xs">
-                <li>• ネットワーク接続の問題</li>
-                <li>• ブラウザの設定（Cookie、JavaScript）</li>
-                <li>• 一時的なサービス障害</li>
-              </ul>
-              <p className="text-xs">問題が続く場合は、サポートまでお問い合わせください。</p>
-            </div>
-          </CardContent>
-        </Card>
+          <Button asChild variant="outline" className="sm:w-auto">
+            <Link href="/dashboard">
+              <ArrowLeft className="mr-2 size-4" />
+              ホームに戻る
+            </Link>
+          </Button>
+        </div>
+
+        <div className="flex flex-col gap-2 border-t border-border/60 pt-5 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">よくある原因</p>
+          <ul className="flex flex-col gap-1 text-xs">
+            <li>ネットワーク接続の問題</li>
+            <li>ブラウザの設定（Cookie、JavaScript）</li>
+            <li>一時的なサービス障害</li>
+          </ul>
+          <p className="text-xs">問題が続く場合は、サポートまでお問い合わせください。</p>
+        </div>
       </div>
     </div>
   );

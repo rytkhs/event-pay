@@ -37,7 +37,7 @@ function GuideSection({ children, icon: Icon, id, title }: GuideSectionProps) {
       id={id}
       className="scroll-mt-24 grid gap-6 border-t border-border/50 py-10 lg:grid-cols-[190px_minmax(0,1fr)] lg:gap-10"
     >
-      <div className="flex items-center gap-2 lg:items-start">
+      <div className="flex items-center gap-1 lg:items-start">
         <Icon className="mt-0.5 size-4 text-muted-foreground" />
         <h2 className="text-base font-bold text-slate-900 lg:text-sm">{title}</h2>
       </div>
@@ -158,11 +158,11 @@ export default function OnboardingGuidePage() {
             </div>
           </GuideSection>
 
-          <GuideSection id="community-profile" icon={FileText} title="プロフィール">
+          <GuideSection id="community-profile" icon={FileText} title="コミュニティプロフィール">
             <div className="max-w-2xl">
               <p className="text-sm leading-7 text-slate-700">
-                オンライン集金を利用する場合、Stripeの確認のために、プロフィールページが必要になります。
-                みんなの集金では、コミュニティ作成時にプロフィールページのURLを自動で作成しています。
+                オンライン集金を利用する場合、Stripe設定でウェブサイトのURLが必要になります。
+                みんなの集金では、コミュニティ作成時にコミュニティプロフィールのURLを自動で作成しています。
               </p>
 
               <div className="mt-6 divide-y divide-border/50 border-y border-border/50">
@@ -187,7 +187,7 @@ export default function OnboardingGuidePage() {
                   オンライン集金設定で必要になります。
                 </p>
                 <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                  現金集金だけを利用する場合は入力不要です。 入力した内容は、あとから変更できます。
+                  現金集金だけを利用する場合は入力不要です。 説明文はあとから変更できます。
                 </p>
               </div>
             </div>
