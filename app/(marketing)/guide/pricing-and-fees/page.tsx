@@ -8,7 +8,6 @@ import {
   ExternalLink,
   JapaneseYen,
   Landmark,
-  RotateCcw,
   WalletCards,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -115,12 +114,6 @@ const payerItems: ExplanationItem[] = [
     body: "オンライン決済はStripeを通じて処理されます。残高、入金可能額、入金履歴はStripeの売上・入金確認画面で確認します。",
     icon: Landmark,
   },
-];
-
-const refundNotes = [
-  "みんなの集金は、現時点でアプリ内の返金機能を提供していません。",
-  "返金やキャンセルの条件は、原則として主催者が参加者へ案内します。",
-  "オンライン決済時に発生したオンライン決済手数料は、原則として返還されません。",
 ];
 
 const guideLinks: GuideLink[] = [
@@ -314,33 +307,6 @@ export default function PricingAndFeesGuidePage() {
               );
             })}
           </div>
-        </div>
-      </section>
-
-      <section className="mx-auto grid w-full max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:px-8 lg:py-24">
-        <SectionHeading
-          eyebrow="Refund notes"
-          title="返金やキャンセル時の扱いも、事前に確認してください。"
-          body="オンライン決済を受け付けるイベントでは、キャンセルや返金が発生したときの案内を主催者側で用意しておくと、参加者とのやりとりがスムーズです。"
-        />
-
-        <div className="border-y border-slate-900/10 bg-white/60">
-          {refundNotes.map((note, index) => (
-            <article
-              key={note}
-              className="grid gap-4 border-b border-slate-900/10 px-5 py-6 last:border-b-0 sm:grid-cols-[56px_minmax(0,1fr)] sm:px-7"
-            >
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-950 text-white">
-                <RotateCcw className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-primary">
-                  Note {String(index + 1).padStart(2, "0")}
-                </p>
-                <p className="mt-2 text-base leading-8 text-slate-700">{note}</p>
-              </div>
-            </article>
-          ))}
         </div>
       </section>
 

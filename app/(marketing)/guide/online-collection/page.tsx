@@ -43,7 +43,7 @@ type FlowStep = {
   icon: LucideIcon;
 };
 
-type DashboardItem = {
+type PayoutDetail = {
   title: string;
   body: string;
   icon: LucideIcon;
@@ -76,55 +76,34 @@ const flowSteps: FlowStep[] = [
     icon: ReceiptText,
   },
   {
-    title: "Stripe残高を確認する",
-    body: "オンライン集金分は、主催者用のStripeアカウントの残高として確認できます。",
-    detail:
-      "残高には、すぐ入金できる金額と、まだ処理中の金額があります。入金操作前にStripeの売上・入金確認画面で状態を確認します。",
+    title: "Stripe残高に反映される",
+    body: "オンライン集金分は、主催者用のStripeアカウント残高に反映されます。",
+    detail: "決済直後は処理中の残高として扱われ、Stripe側の処理後に利用可能残高へ移ります。",
     icon: Wallet,
   },
   {
     title: "口座に入金する",
-    body: "利用可能残高になったら、Stripeの売上・入金確認画面で入金操作を行います。",
+    body: "利用可能残高になったら、Stripeダッシュボードで手動入金します。",
     detail:
-      "みんなの集金の管理画面にあるリンクからStripeダッシュボードへ移動し、主催者自身が入金先口座への入金を実行します。",
+      "みんなの集金の管理画面にあるリンクからStripeへ移動して、主催者自身が入金操作を行います。",
     icon: BanknoteArrowDown,
   },
 ];
 
-const timingNotes = [
+const payoutDetails: PayoutDetail[] = [
   {
-    title: "決済直後に銀行へ入るわけではありません",
-    body: "支払い完了後、Stripe側で売上処理が行われ、残高が利用可能になるまで待つ必要があります。",
-  },
-  {
-    title: "初回入金は7〜14日程度が目安です",
-    body: "初めてオンライン集金を使う場合、本人確認や口座確認のため、通常より時間がかかることがあります。",
-  },
-  {
-    title: "2回目以降も状況により変わります",
-    body: "入金タイミングはStripeの処理状況、銀行営業日、追加確認の有無によって前後します。",
-  },
-];
-
-const dashboardItems: DashboardItem[] = [
-  {
-    title: "残高と入金可能額",
-    body: "現在の残高、利用可能になった金額、まだ処理中の金額を確認します。",
-    icon: Wallet,
-  },
-  {
-    title: "入金予定と入金履歴",
-    body: "銀行口座への入金予定日や、過去の入金履歴を確認します。",
+    title: "処理中の残高があります",
+    body: "支払い完了後すぐに銀行口座へ入るわけではありません。Stripe側の処理が終わると、利用可能残高として入金できる状態になります。",
     icon: Clock,
   },
   {
-    title: "支払い履歴",
-    body: "参加者のオンライン決済がStripe上でどのように処理されたかを確認します。",
-    icon: ReceiptText,
+    title: "入金タイミング",
+    body: "通常、決済完了から数営業日で残高が利用可能になります。ただし、初回入金に関しては7〜14日程度が目安です。銀行営業日やStripeの状況によって前後する場合があります。",
+    icon: BanknoteArrowDown,
   },
   {
-    title: "銀行口座と追加確認",
-    body: "入金先口座や、Stripeから求められている追加確認事項を確認します。",
+    title: "確認と入金操作はStripeで行います",
+    body: "残高、入金可能額、入金予定、入金履歴、入金先口座はStripeダッシュボードで確認します。",
     icon: Landmark,
   },
 ];
@@ -240,53 +219,27 @@ export default function OnlineCollectionGuidePage() {
       <section className="border-y border-slate-900/10 bg-white">
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
           <SectionHeading
-            eyebrow="Payout timing"
-            title="Stripe残高と銀行口座への入金"
-            body="オンライン決済が完了しても、すぐに銀行口座へ入るわけではありません。Stripe上で残高が利用可能になってから、主催者が入金操作を行います。"
+            eyebrow="Payout"
+            title="Stripeで残高を確認し、口座へ入金します。"
+            body="オンライン集金分はStripeダッシュボードで確認します。決済直後は処理中の残高として扱われ、利用可能残高になってから主催者が銀行口座へ手動で入金します。"
           />
 
           <div className="grid gap-4">
-            {timingNotes.map((note, index) => (
-              <article
-                key={note.title}
-                className="grid gap-4 border border-slate-200 bg-[#f7f5f0] p-5 sm:grid-cols-[48px_minmax(0,1fr)]"
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-primary shadow-sm">
-                  <Clock className="h-5 w-5" aria-hidden="true" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-primary">
-                    Timing {String(index + 1).padStart(2, "0")}
-                  </p>
-                  <h3 className="mt-1 text-lg font-bold text-slate-950">{note.title}</h3>
-                  <p className="mt-2 text-sm leading-7 text-slate-600">{note.body}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto grid w-full max-w-7xl gap-12 px-4 py-16 sm:px-6　lg:px-8 lg:py-24">
-        <div>
-          <SectionHeading
-            eyebrow="Payout dashboard"
-            title="売上と入金は、Stripeで確認します。"
-            body="みんなの集金の管理画面からStripeの売上・入金確認画面へ移動すると、オンライン集金分の残高、入金、支払い履歴を確認できます。"
-          />
-          <div className="mt-10 grid gap-4 sm:grid-cols-2">
-            {dashboardItems.map((item) => {
+            {payoutDetails.map((item) => {
               const Icon = item.icon;
 
               return (
-                <article key={item.title} className="border-b border-slate-900/10 py-5">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <Icon className="h-4 w-4" aria-hidden="true" />
-                    </div>
-                    <h3 className="text-base font-bold text-slate-950">{item.title}</h3>
+                <article
+                  key={item.title}
+                  className="grid gap-4 border border-slate-200 bg-[#f7f5f0] p-5 sm:grid-cols-[48px_minmax(0,1fr)]"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-primary shadow-sm">
+                    <Icon className="h-5 w-5" aria-hidden="true" />
                   </div>
-                  <p className="mt-3 text-sm leading-7 text-slate-600">{item.body}</p>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-950">{item.title}</h3>
+                    <p className="mt-2 text-sm leading-7 text-slate-600">{item.body}</p>
+                  </div>
                 </article>
               );
             })}
