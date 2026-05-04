@@ -284,8 +284,16 @@ export function OnboardingForm({
               <DialogTitle className="text-xl font-bold">コミュニティ説明を入力する</DialogTitle>
             </div>
             <DialogDescription className="text-sm leading-relaxed text-left text-muted-foreground">
-              オンライン集金設定のために、簡単にグループやコミュニティの集金内容・活動内容の説明を入力してください。
-              あとから変更できます。
+              オンライン集金設定のために、グループやコミュニティについて、主にどのようなイベント・活動を行うか、主にどのような費用を集金するかの簡単な説明を入力してください。
+              あとから変更できます。{" "}
+              <Link
+                href="/settings/payments/guide#community-profile"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                詳しく見る
+              </Link>
             </DialogDescription>
           </DialogHeader>
 
@@ -296,7 +304,7 @@ export function OnboardingForm({
                   htmlFor="onboarding-community-description"
                   className="text-sm font-semibold text-foreground/90"
                 >
-                  コミュニティ・グループの説明
+                  コミュニティ説明
                 </Label>
                 {/* <Button
                   type="button"
@@ -323,7 +331,10 @@ export function OnboardingForm({
               </div>
 
               {communityDescriptionError && (
-                <div className="flex items-center gap-2 text-destructive animate-in fade-in slide-in-from-top-1">
+                <div
+                  className="flex items-center gap-2 text-destructive animate-in fade-in slide-in-from-top-1"
+                  role="alert"
+                >
                   <AlertCircle className="h-4 w-4" />
                   <p className="text-[13px] font-medium">{communityDescriptionError}</p>
                 </div>
@@ -354,7 +365,7 @@ export function OnboardingForm({
       {/* ガイドリンク */}
       <div className="mt-8">
         <Link
-          href="/settings/payments/guide"
+          href="/settings/payments/guide#community-profile"
           target="_blank"
           rel="noopener noreferrer"
           className="group block rounded-xl border border-border/60 bg-muted/30 p-4 transition-all hover:bg-muted/50"

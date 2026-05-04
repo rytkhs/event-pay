@@ -17,8 +17,8 @@ const BENEFITS = [
   },
   {
     icon: Zap,
-    title: "自動送金",
-    description: "集金は自動であなたの銀行口座に入金されます",
+    title: "入金確認",
+    description: "Stripe上の残高と入金状況を確認できます",
   },
 ] as const;
 

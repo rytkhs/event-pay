@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 
+import Link from "next/link";
+
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
@@ -109,7 +111,15 @@ export function UpdateCommunityForm({
               className="min-h-28 resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              空欄で保存すると説明文は未設定になります。
+              コミュニティプロフィールに表示されます。{" "}
+              <Link
+                href="/settings/payments/guide#community-profile"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                詳しく見る
+              </Link>
             </p>
           </div>
 
