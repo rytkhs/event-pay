@@ -156,7 +156,7 @@ export const FeaturesSection: React.FC = () => {
               href="/guide/participant-flow"
               className="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
             >
-              参加者の登録・支払いの流れを見る →
+              参加者の登録と支払いの流れを見る →
             </Link>
           </div>
         </FadeIn>

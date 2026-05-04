@@ -8,7 +8,6 @@ import {
   ExternalLink,
   JapaneseYen,
   Landmark,
-  ReceiptText,
   RotateCcw,
   WalletCards,
 } from "lucide-react";
@@ -66,19 +65,13 @@ type GuideLink = {
 
 const pricePoints: PricePoint[] = [
   {
-    title: "初期費用",
+    title: "初期費用・固定費用",
     value: "0円",
     body: "アカウント作成、コミュニティ作成、イベント作成に初期費用はかかりません。",
     icon: JapaneseYen,
   },
   {
-    title: "月額費用",
-    value: "0円",
-    body: "イベントがない月も固定費は発生しません。必要なときだけ使えます。",
-    icon: ReceiptText,
-  },
-  {
-    title: "現金払いの管理",
+    title: "現金集金の管理",
     value: "0円",
     body: "現金の受け渡しに、みんなの集金のシステム手数料はかかりません。",
     icon: Banknote,
@@ -94,26 +87,22 @@ const pricePoints: PricePoint[] = [
 const feeExamples: FeeExample[] = [
   {
     amount: 1000,
-    note: "少額の会費",
+    note: "",
   },
   {
     amount: 3000,
-    note: "飲み会や交流会",
+    note: "",
   },
   {
     amount: 3155,
     note: "3,000円を受け取りたい場合の目安",
-  },
-  {
-    amount: 5000,
-    note: "合宿や講座費",
   },
 ];
 
 const payerItems: ExplanationItem[] = [
   {
     title: "参加者は、表示された参加費を支払います",
-    body: "イベントページに表示された参加費が、参加者にとっての支払額です。オンライン決済だからといって、参加者側へ別建てのサービス手数料を上乗せする設計ではありません。",
+    body: "イベントページに表示された参加費が、参加者にとっての支払額です。オンライン決済だからといって、参加者側へ別建てのサービス手数料を上乗せされません。",
     icon: WalletCards,
   },
   {
@@ -125,24 +114,6 @@ const payerItems: ExplanationItem[] = [
     title: "入金と残高確認はStripeで行います",
     body: "オンライン決済はStripeを通じて処理されます。残高、入金可能額、入金履歴はStripeの売上・入金確認画面で確認します。",
     icon: Landmark,
-  },
-];
-
-const methodItems: ExplanationItem[] = [
-  {
-    title: "現金集金だけなら無料で管理できます",
-    body: "参加者一覧、出欠、現金の受領状況を管理できます。現金そのものの受け渡しは、主催者と参加者の間で行います。",
-    icon: Banknote,
-  },
-  {
-    title: "オンライン集金は事前回収に向いています",
-    body: "カードやウォレットで事前に支払ってもらえるため、当日の現金管理や未払い確認を減らせます。",
-    icon: CreditCard,
-  },
-  {
-    title: "無料イベントでは手数料は発生しません",
-    body: "参加費を0円にしたイベントでは、支払い方法の選択や決済は不要です。出欠管理だけに使えます。",
-    icon: JapaneseYen,
   },
 ];
 
@@ -159,7 +130,7 @@ const guideLinks: GuideLink[] = [
     href: "/guide/getting-started",
   },
   {
-    title: "参加者の登録・支払いの流れ",
+    title: "参加者の登録と支払いの流れ",
     body: "参加者に見える画面、入力項目、オンライン支払いまでの流れを確認できます。",
     href: "/guide/participant-flow",
   },
@@ -205,9 +176,9 @@ export default function PricingAndFeesGuidePage() {
         <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 pb-16 pt-24 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(360px,0.55fr)] lg:px-8 lg:pb-24 lg:pt-32">
           <div className="max-w-3xl">
             <p className="text-sm font-bold text-primary">Pricing and fees</p>
-            <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-6xl">
+            <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
               料金と
-              <span className="block text-primary">手数料</span>
+              <span className="text-primary">手数料</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-9 text-slate-700">
               みんなの集金は、初期費用・月額費用なしで始められます。
@@ -238,7 +209,7 @@ export default function PricingAndFeesGuidePage() {
               <span className="pb-2 text-2xl font-bold text-slate-900">%</span>
             </div>
             <p className="mt-5 text-sm leading-7 text-slate-600">
-              参加者がオンライン決済で支払った参加費に対して発生します。現金払いの記録や無料イベントにはかかりません。
+              オンラインで支払われた参加費に対して発生し、主催者の受取額から差し引かれます。現金払いの記録や無料イベントにはかかりません。
             </p>
             <div className="mt-6 border-t border-slate-900/10 pt-5">
               <p className="text-xs font-bold uppercase text-slate-400">Example</p>
@@ -257,7 +228,7 @@ export default function PricingAndFeesGuidePage() {
           body="主催者アカウント、コミュニティ、イベント作成には固定費がかかりません。オンライン集金を使ったときだけ、決済金額に応じた手数料が発生します。"
         />
 
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-12 grid gap-4 sm:grid-cols-3">
           {pricePoints.map((point) => {
             const Icon = point.icon;
 
@@ -279,7 +250,7 @@ export default function PricingAndFeesGuidePage() {
         <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8 lg:py-24">
           <SectionHeading
             eyebrow="Fee examples"
-            title="受取目安は、参加費から4.9%を差し引いて考えます。"
+            title="参加費から4.9%を差し引い額が受取目安です。"
             body="オンライン決済時の手数料は、参加費に4.9%を掛けて円単位に丸めます。受け取りたい金額がある場合は、イベント作成時に参加費を調整できます。"
           />
 
@@ -319,11 +290,11 @@ export default function PricingAndFeesGuidePage() {
         </div>
       </section>
 
-      <section className="mx-auto grid w-full max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(320px,0.65fr)] lg:px-8 lg:py-24">
+      <section className="mx-auto grid w-full max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <div>
           <SectionHeading
             eyebrow="Who pays"
-            title="参加者の支払額と、主催者の受取額を分けて確認します。"
+            title="参加者の支払額と主催者の受取額"
             body="オンライン決済の手数料は主催者負担です。参加者には、イベントに設定された参加費が支払額として表示されます。"
           />
           <div className="mt-10 grid gap-4">
@@ -339,53 +310,6 @@ export default function PricingAndFeesGuidePage() {
                     <h3 className="text-base font-bold text-slate-950">{item.title}</h3>
                   </div>
                   <p className="mt-3 text-sm leading-7 text-slate-600">{item.body}</p>
-                </article>
-              );
-            })}
-          </div>
-        </div>
-
-        <aside className="bg-slate-950 p-6 text-white sm:p-8">
-          <Calculator className="h-9 w-9 text-primary" aria-hidden="true" />
-          <h3 className="mt-6 text-2xl font-bold leading-tight">
-            受け取りたい金額から、参加費を逆算できます。
-          </h3>
-          <p className="mt-4 text-sm leading-7 text-slate-300">
-            例えば3,000円を受け取りたい場合、参加費を3,155円にすると、手数料155円を差し引いた受取目安が3,000円になります。
-          </p>
-          <div className="mt-8 border-t border-white/15 pt-6">
-            <p className="text-sm font-bold text-white">表示は目安です</p>
-            <p className="mt-2 text-sm leading-7 text-slate-300">
-              実際の残高や入金履歴は、Stripeの売上・入金確認画面で確認してください。
-            </p>
-          </div>
-        </aside>
-      </section>
-
-      <section className="border-y border-slate-900/10 bg-white">
-        <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
-          <SectionHeading
-            eyebrow="Payment methods"
-            title="現金管理とオンライン集金で、料金の考え方が変わります。"
-            body="現金払いは記録管理のための機能です。オンライン集金はStripeを通じて決済され、手数料差引後の金額が主催者の残高に反映されます。"
-          />
-
-          <div className="grid gap-4">
-            {methodItems.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <article
-                  key={item.title}
-                  className="grid gap-4 border border-slate-200 bg-[#f7f5f0] p-5 sm:grid-cols-[48px_minmax(0,1fr)]"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-primary shadow-sm">
-                    <Icon className="h-5 w-5" aria-hidden="true" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-950">{item.title}</h3>
-                    <p className="mt-2 text-sm leading-7 text-slate-600">{item.body}</p>
-                  </div>
                 </article>
               );
             })}
@@ -423,11 +347,7 @@ export default function PricingAndFeesGuidePage() {
       <section className="border-y border-slate-900/10 bg-[#e9f2ef]">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
           <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
-            <SectionHeading
-              eyebrow="Next guides"
-              title="関連するガイドも確認できます。"
-              body="料金の考え方を把握したら、主催者側の準備、参加者側の支払い導線、オンライン集金のしくみもあわせて確認できます。"
-            />
+            <SectionHeading eyebrow="Next guides" title="関連ガイド" body="" />
 
             <div className="divide-y divide-slate-900/10 border-y border-slate-900/10 bg-white/70">
               {guideLinks.map((guide) => (

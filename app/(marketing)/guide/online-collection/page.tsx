@@ -5,7 +5,6 @@ import {
   BanknoteArrowDown,
   Clock,
   CreditCard,
-  ExternalLink,
   Landmark,
   ReceiptText,
   ShieldCheck,
@@ -61,20 +60,19 @@ const flowSteps: FlowStep[] = [
     title: "オンライン集金を有効にする",
     body: "主催者がStripe連携を完了すると、イベントでオンライン決済を選べるようになります。",
     detail:
-      "本人確認情報、入金先銀行口座、コミュニティ情報をStripeの安全な画面で登録します。現金集金だけのイベントでは、この設定は不要です。",
+      "コミュニティの説明を入力後、本人確認情報、入金先銀行口座、コミュニティ情報をStripeの安全な画面で登録します。",
     icon: ShieldCheck,
   },
   {
-    title: "参加者がStripeで支払う",
+    title: "参加者がオンラインで支払う",
     body: "参加者はゲストページからStripeの決済画面へ進み、カードやウォレットで支払います。",
-    detail: "カード情報はみんなの集金では保持しません。決済画面と決済処理はStripeが提供します。",
+    detail: "決済画面と決済処理はStripeが提供します。カード情報は当サービスでは保持しません。",
     icon: CreditCard,
   },
   {
     title: "支払い状況が反映される",
     body: "決済が完了すると、参加者一覧やゲストページの支払い状況が更新されます。",
-    detail:
-      "反映はStripeからの通知をもとに行われます。通信状況によって、画面更新まで少し時間がかかる場合があります。",
+    detail: "オンラインでの集金は集金状況が自動で更新されます。",
     icon: ReceiptText,
   },
   {
@@ -88,7 +86,7 @@ const flowSteps: FlowStep[] = [
     title: "口座に入金する",
     body: "利用可能残高になったら、Stripeの売上・入金確認画面で入金操作を行います。",
     detail:
-      "みんなの集金の管理画面にあるリンクからStripeへ移動し、主催者自身が入金先口座への入金を実行します。",
+      "みんなの集金の管理画面にあるリンクからStripeダッシュボードへ移動し、主催者自身が入金先口座への入金を実行します。",
     icon: BanknoteArrowDown,
   },
 ];
@@ -138,7 +136,7 @@ const guideLinks: GuideLink[] = [
     href: "/guide/getting-started",
   },
   {
-    title: "参加者の登録・支払いの流れ",
+    title: "参加者の登録と支払いの流れ",
     body: "参加者に見える画面、入力項目、オンライン支払いまでの流れを確認できます。",
     href: "/guide/participant-flow",
   },
@@ -176,9 +174,9 @@ export default function OnlineCollectionGuidePage() {
         <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 pb-16 pt-24 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,0.7fr)] lg:px-8 lg:pb-24 lg:pt-32">
           <div className="max-w-3xl">
             <p className="text-sm font-bold text-primary">Online collection</p>
-            <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-6xl">
+            <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
               オンライン集金・
-              <span className="block text-primary">入金のしくみ</span>
+              <span className="text-primary">入金のしくみ</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-9 text-slate-700">
               参加者がオンラインで支払った参加費は、Stripeを通じて主催者の残高に反映されます。
@@ -243,7 +241,7 @@ export default function OnlineCollectionGuidePage() {
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
           <SectionHeading
             eyebrow="Payout timing"
-            title="入金には、処理時間があります。"
+            title="Stripe残高と銀行口座への入金"
             body="オンライン決済が完了しても、すぐに銀行口座へ入るわけではありません。Stripe上で残高が利用可能になってから、主催者が入金操作を行います。"
           />
 
@@ -269,7 +267,7 @@ export default function OnlineCollectionGuidePage() {
         </div>
       </section>
 
-      <section className="mx-auto grid w-full max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(320px,0.65fr)] lg:px-8 lg:py-24">
+      <section className="mx-auto grid w-full max-w-7xl gap-12 px-4 py-16 sm:px-6　lg:px-8 lg:py-24">
         <div>
           <SectionHeading
             eyebrow="Payout dashboard"
@@ -294,31 +292,11 @@ export default function OnlineCollectionGuidePage() {
             })}
           </div>
         </div>
-
-        <aside className="bg-slate-950 p-6 text-white sm:p-8">
-          <ExternalLink className="h-9 w-9 text-primary" aria-hidden="true" />
-          <h3 className="mt-6 text-2xl font-bold leading-tight">
-            入金操作はStripeの売上・入金確認画面で行います。
-          </h3>
-          <p className="mt-4 text-sm leading-7 text-slate-300">
-            みんなの集金はStripeへの入口を用意します。実際の残高確認、入金先口座の確認、入金操作はStripe上で進めます。
-          </p>
-          <div className="mt-8 border-t border-white/15 pt-6">
-            <p className="text-sm font-bold text-white">安全性について</p>
-            <p className="mt-2 text-sm leading-7 text-slate-300">
-              カード情報や銀行口座情報はStripeの画面で扱います。みんなの集金はカード番号を保持しません。
-            </p>
-          </div>
-        </aside>
       </section>
 
       <section className="bg-[#e9f2ef]">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24 grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
-          <SectionHeading
-            eyebrow="Next guides"
-            title="関連するガイドも確認できます。"
-            body="オンライン集金の全体像を把握したら、主催者側の始め方、参加者側の支払い導線、料金と手数料もあわせて確認できます。"
-          />
+          <SectionHeading eyebrow="Next guides" title="関連ガイド" body="" />
 
           <div className="divide-y divide-slate-900/10 border-y border-slate-900/10 bg-white/70">
             {guideLinks.map((guide) => (

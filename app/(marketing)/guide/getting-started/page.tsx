@@ -62,22 +62,21 @@ const steps: Step[] = [
   {
     title: "アカウントを作成する",
     body: "LINE、Google、メールアドレスで主催者アカウントを作成します。",
-    detail:
-      "メールアドレスはログインや重要なお知らせに使います。サークル用の共有アドレスではなく、実際に確認できるアドレスで始めてください。",
+    detail: "メールアドレスはログインや重要なお知らせに使います。",
     icon: UsersRound,
   },
   {
     title: "コミュニティを作成する",
     body: "サークル、読書会、勉強会など、イベントを管理する単位を登録します。",
     detail:
-      "最初に必要なのはコミュニティ名だけです。説明文などは、オンライン集金の設定や公開プロフィールを整えるタイミングで追加できます。",
+      "最初のコミュニティを作成します。コミュニティとは、イベントをまとめて管理するための運営単位です。グループ名、サークル名や勉強会名など、参加者に伝わる名前で作成します。コミュニティを複数作成して切り替えることもできます。",
     icon: ClipboardList,
   },
   {
     title: "必要な場合だけオンライン集金を設定する",
-    body: "カード決済やApple Pay、Google Payを受け付けたい場合は、Stripeの設定を行います。",
+    body: "クレジットカード決済やApple Pay、Google Payによる集金を有効にしたい場合は設定を行います。",
     detail:
-      "本人確認書類と入金先口座を用意して、Stripeの安全な画面で進めます。現金集金だけで運用する場合、この手順は後回しにできます。",
+      "コミュニティの簡単な説明を入力後、本人確認書類と入金先口座を用意して、Stripeの安全な画面で進めます。設定はあとからでも可能です。",
     icon: ShieldCheck,
   },
   {
@@ -91,21 +90,20 @@ const steps: Step[] = [
     title: "招待リンクを共有する",
     body: "イベント作成後、管理画面で招待リンクを発行して参加者へ送ります。",
     detail:
-      "LINEグループ、メール、チャットなど、いつもの連絡手段に貼るだけです。リンクを作り直すと古いリンクは使えなくなります。",
+      "LINEグループ、メール、チャットなど、いつもの連絡手段に貼るだけです。リンクが漏洩した場合は再生成することができます。古いリンクは使えなくなるので新しいリンクを案内してください。",
     icon: Link2,
   },
   {
     title: "参加状況と集金状況を見る",
     body: "参加者一覧で、出欠、支払い方法、支払い状況をまとめて確認します。",
-    detail:
-      "未回答、未払い、現金予定、オンライン支払い済みを一覧で追えるため、個別メモやスプレッドシートへの転記を減らせます。",
+    detail: "未回答、未払い、現金予定、オンライン支払い済みを一覧で追えます。",
     icon: CheckCircle2,
   },
   {
     title: "現金集金に対応する",
     body: "現金で受け取った参加費は、管理画面から受領済みに変更します。",
     detail:
-      "現金の未払いだけを絞り込んだり、まとめて受領済みにしたりできます。必要に応じてCSVで参加者一覧も出力できます。",
+      "集金したら「受領」を押下して集金済みにすることで現金集金を管理します。現金の未払いだけを絞り込んだり、まとめて受領済みにしたりできます。必要に応じてCSVで参加者一覧も出力できます。",
     icon: Banknote,
   },
 ];
@@ -130,19 +128,19 @@ const scenarios: Scenario[] = [
 
 const eventFields = [
   "イベント名",
+  "説明・備考（任意）",
+  "場所（任意）",
+  "定員（任意）",
   "開催日時",
-  "申込締切",
+  "出欠回答期限",
   "参加費",
   "支払い方法",
   "オンライン支払期限",
-  "定員",
-  "場所",
-  "説明文",
 ];
 
 const guideLinks: GuideLink[] = [
   {
-    title: "参加者の登録・支払いの流れ",
+    title: "参加者の登録と支払いの流れ",
     body: "参加者に見える画面、入力項目、オンライン支払いまでの流れを確認できます。",
     href: "/guide/participant-flow",
   },
@@ -185,9 +183,9 @@ export default function OrganizerGettingStartedPage() {
         <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 pb-16 pt-24 sm:px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:px-8 lg:pb-24 lg:pt-32">
           <div className="max-w-3xl">
             <p className="text-sm font-bold text-primary">Organizer guide</p>
-            <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-6xl">
+            <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
               主催者の
-              <span className="block text-primary">はじめ方</span>
+              <span className="text-primary">はじめ方</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-9 text-slate-700">
               アカウント作成からイベント公開、招待リンクの共有、参加状況と集金状況の確認まで。
@@ -252,8 +250,8 @@ export default function OrganizerGettingStartedPage() {
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
           <SectionHeading
             eyebrow="Payment setup"
-            title="オンライン集金は、必要になってからで大丈夫です。"
-            body="現金だけのイベント、無料イベント、オンライン集金ありのイベントで、最初に必要な準備が変わります。"
+            title="まずは現金集金の管理に使ってみるのも。"
+            body="現金だけのイベント、無料イベント、オンライン集金ありのイベント、様々対応できます。"
           />
 
           <div className="grid gap-4">
@@ -284,7 +282,7 @@ export default function OrganizerGettingStartedPage() {
           <SectionHeading
             eyebrow="Event form"
             title="イベント作成で決めること。"
-            body="必須項目を先に決めておくと、作成は短時間で終わります。場所、定員、説明文はイベントの性質に合わせて入力します。"
+            body="イベント作成フォームでは以下を入力することができます。"
           />
           <div className="mt-10 grid gap-3 sm:grid-cols-2">
             {eventFields.map((field) => (
@@ -306,7 +304,7 @@ export default function OrganizerGettingStartedPage() {
           </h3>
           <p className="mt-4 text-sm leading-7 text-slate-300">
             参加者はリンクから、ニックネーム、メールアドレス、参加ステータス、支払い方法を入力します。
-            オンライン支払いを選んだ場合は、そのまま決済画面へ進めます。
+            オンライン支払いを選んだ場合は、ゲストページから決済画面へ進めます。
           </p>
           <div className="mt-8 border-t border-white/15 pt-6">
             <p className="text-sm font-bold text-white">自動で届く案内</p>
@@ -320,11 +318,7 @@ export default function OrganizerGettingStartedPage() {
       <section className="border-y border-slate-900/10 bg-[#e9f2ef]">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
           <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
-            <SectionHeading
-              eyebrow="Next guides"
-              title="詳しい説明は、目的別ガイドで確認できます。"
-              body="このページは最初の全体像に絞っています。参加者側の画面、オンライン集金、手数料の細かい説明は別ページに分けます。"
-            />
+            <SectionHeading eyebrow="Next guides" title="関連ガイド" body="" />
 
             <div className="divide-y divide-slate-900/10 border-y border-slate-900/10 bg-white/70">
               {guideLinks.map((guide) => (
@@ -374,7 +368,7 @@ export default function OrganizerGettingStartedPage() {
               size="lg"
               className="h-12 rounded-full border-white/20 bg-transparent px-6 text-white hover:bg-white hover:text-slate-950"
             >
-              <Link href="/start-demo">デモで試す</Link>
+              <Link href="/start-demo">デモを試す</Link>
             </Button>
           </div>
         </div>

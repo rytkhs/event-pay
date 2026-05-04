@@ -208,9 +208,9 @@ export const ParticipantFlowSection: React.FC = () => {
         </FadeIn>
 
         {/* ─── Phase 1: 招待ページ ─── */}
-        <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-20 md:mb-24 ">
+        <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-16 md:mb-20">
           {/* テキスト */}
-          <FadeIn direction="right" delay={0.1} className="flex-1 order-2 md:order-1">
+          <FadeIn direction="right" delay={0.1} className="flex-1 order-1 md:order-1">
             <div className="flex items-center gap-3 mb-4">
               <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0">
                 1
@@ -251,7 +251,7 @@ export const ParticipantFlowSection: React.FC = () => {
           </FadeIn>
 
           {/* スマホモック */}
-          <FadeIn direction="up" delay={0.3} className="order-1 md:order-2 shrink-0">
+          <FadeIn direction="up" delay={0.3} className="order-2 md:order-2 shrink-0">
             <PhoneMockup>
               <InviteScreenMock />
             </PhoneMockup>
@@ -259,7 +259,7 @@ export const ParticipantFlowSection: React.FC = () => {
         </div>
 
         {/* ─── 矢印コネクタ ─── */}
-        <FadeIn direction="up" className="flex justify-center mb-20 md:mb-24">
+        <FadeIn direction="up" className="flex justify-center mb-16 md:mb-20">
           <div className="flex flex-col items-center gap-2 text-slate-300">
             <div className="w-px h-8 bg-gradient-to-b from-transparent via-slate-300 to-slate-300" />
             <div className="bg-white border-2 border-slate-200 rounded-full px-5 py-2 text-xs font-bold text-slate-500 shadow-sm">
@@ -272,14 +272,14 @@ export const ParticipantFlowSection: React.FC = () => {
         {/* ─── Phase 2: ゲストページ ─── */}
         <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16">
           {/* スマホモック */}
-          <FadeIn direction="up" delay={0.3} className="shrink-0">
+          <FadeIn direction="up" delay={0.3} className="order-2 md:order-1 shrink-0">
             <PhoneMockup>
               <GuestScreenMock />
             </PhoneMockup>
           </FadeIn>
 
           {/* テキスト */}
-          <FadeIn direction="left" delay={0.1} className="flex-1">
+          <FadeIn direction="left" delay={0.1} className="flex-1 order-1 md:order-2">
             <div className="flex items-center gap-3 mb-4">
               <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0">
                 2
@@ -327,7 +327,7 @@ export const ParticipantFlowSection: React.FC = () => {
               href="/guide/participant-flow"
               className="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
             >
-              参加者の登録・支払いの流れを詳しく見る →
+              参加者の登録と支払いの流れを詳しく見る →
             </Link>
           </div>
         </FadeIn>

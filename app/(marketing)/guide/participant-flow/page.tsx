@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-static";
 
-const title = "参加者の登録・支払いの流れ";
+const title = "参加者の登録と支払いの流れ";
 const description =
   "みんなの集金で参加者が招待リンクから出欠を回答し、オンライン決済または現金払いを選び、ゲストページで支払い状況を確認するまでの流れをまとめました。";
 
@@ -310,12 +310,12 @@ export default function ParticipantFlowGuidePage() {
   return (
     <div className="min-h-screen bg-[#f7f5f0] text-slate-950">
       <section className="border-b border-slate-900/10 bg-[#f7f5f0]">
-        <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 pb-16 pt-24 sm:px-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(520px,1fr)] lg:px-8 lg:pb-24 lg:pt-32">
+        <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 pb-16 pt-24 sm:px-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(520px,1fr)] lg:px-8 lg:pb-12 lg:pt-32">
           <div className="max-w-3xl">
             <p className="text-sm font-bold text-primary">Participant guide</p>
-            <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-6xl">
-              参加者の登録・
-              <span className="block text-primary">支払いの流れ</span>
+            <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
+              参加者の登録と
+              <span className="text-primary">支払いの流れ</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-9 text-slate-700">
               招待リンクを開いて、イベント内容を確認し、出欠を回答するまで。
@@ -380,11 +380,7 @@ export default function ParticipantFlowGuidePage() {
 
       <section className="bg-[#e9f2ef]">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24 grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
-          <SectionHeading
-            eyebrow="Next guides"
-            title="関連するガイドも確認できます。"
-            body="参加者向けの流れを把握したら、主催者側の準備やオンライン集金のしくみもあわせて確認できます。"
-          />
+          <SectionHeading eyebrow="Next guides" title="関連ガイド" body="" />
 
           <div className="divide-y divide-slate-900/10 border-y border-slate-900/10 bg-white/70">
             {guideLinks.map((guide) => (
