@@ -5,7 +5,6 @@ import {
   Banknote,
   Calculator,
   CreditCard,
-  ExternalLink,
   JapaneseYen,
   Landmark,
   WalletCards,
@@ -16,6 +15,8 @@ import type { Metadata } from "next";
 import { buildOpenGraphMetadata, getPublicUrl } from "@core/seo/metadata";
 
 import { Button } from "@/components/ui/button";
+
+import { GuideBottomCTA } from "../_components/GuideBottomCTA";
 
 export const dynamic = "force-static";
 
@@ -339,47 +340,13 @@ export default function PricingAndFeesGuidePage() {
         </div>
       </section>
 
-      <section className="bg-slate-950 px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-20">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-sm font-bold text-primary">Start with no fixed cost</p>
-            <h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
-              固定費なしで、次のイベントから始められます。
-            </h2>
-            <p className="mt-4 text-base leading-8 text-slate-300">
-              現金集金だけでも使えます。オンライン集金が必要になったら、Stripe連携を設定して事前回収を始められます。
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg" className="h-12 rounded-full px-6">
-              <Link href="/register">
-                無料ではじめる
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="h-12 rounded-full border-white/20 bg-transparent px-6 text-white hover:bg-white hover:text-slate-950"
-            >
-              <Link href="/guide/getting-started">主催者ガイドを見る</Link>
-            </Button>
-          </div>
-
-          <div className="lg:hidden">
-            <a
-              href="https://stripe.com/jp/pricing"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 underline-offset-4 hover:text-white hover:underline"
-            >
-              Stripe公式料金ページ
-              <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-            </a>
-          </div>
-        </div>
-      </section>
+      <GuideBottomCTA
+        eyebrow="Start with no fixed cost"
+        title="固定費なしで、次のイベントから始められます。"
+        body="現金集金だけでも使えます。オンライン集金が必要になったら、Stripe連携を設定して事前回収を始められます。"
+        secondaryHref="/guide/getting-started"
+        secondaryLabel="主催者ガイドを見る"
+      />
     </div>
   );
 }

@@ -20,6 +20,8 @@ import { buildOpenGraphMetadata, getPublicUrl } from "@core/seo/metadata";
 
 import { Button } from "@/components/ui/button";
 
+import { GuideBottomCTA } from "../_components/GuideBottomCTA";
+
 export const dynamic = "force-static";
 
 const title = "参加者の登録と支払いの流れ";
@@ -403,36 +405,13 @@ export default function ParticipantFlowGuidePage() {
         </div>
       </section>
 
-      <section className="bg-slate-950 px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-20">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-sm font-bold text-primary">Share the link</p>
-            <h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
-              参加者には、招待リンクを送るだけ。
-            </h2>
-            <p className="mt-4 text-base leading-8 text-slate-300">
-              回答、支払い方法の選択、ゲストページでの確認まで、参加者自身で進められます。
-              主催者は参加者一覧で出欠と支払い状況をまとめて確認できます。
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg" className="h-12 rounded-full px-6">
-              <Link href="/register">
-                無料ではじめる
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="h-12 rounded-full border-white/20 bg-transparent px-6 text-white hover:bg-white hover:text-slate-950"
-            >
-              <Link href="/guide/getting-started">主催者ガイドを見る</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
+      <GuideBottomCTA
+        eyebrow="Share the link"
+        title="参加者には、招待リンクを送るだけ。"
+        body="回答、支払い方法の選択、ゲストページでの確認まで、参加者自身で進められます。主催者は参加者一覧で出欠と支払い状況をまとめて確認できます。"
+        secondaryHref="/guide/getting-started"
+        secondaryLabel="主催者ガイドを見る"
+      />
     </div>
   );
 }
