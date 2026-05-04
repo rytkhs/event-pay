@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { cn } from "@core/utils";
 
@@ -24,6 +25,7 @@ import { MarketingHeaderProps } from "./types";
  */
 export function MarketingHeader({ className }: MarketingHeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
+  const pathname = usePathname();
 
   // スクロールによるヘッダーの見た目変更
   useEffect(() => {
@@ -37,6 +39,10 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
 
   // スムーズスクロール機能（既存のランディングページ機能を再現）
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+    if (pathname !== "/") {
+      return;
+    }
+
     e.preventDefault();
     const element = document.querySelector(targetId);
     if (element) {
