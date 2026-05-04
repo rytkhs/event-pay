@@ -119,7 +119,7 @@ const guideLinks: GuideLink[] = [
   },
   {
     title: "料金と手数料",
-    body: "オンライン決済時の手数料や、参加者・主催者に関係する料金を確認できます。",
+    body: "オンライン集金手数料や、参加者・主催者に関係する料金を確認できます。",
     href: "/guide/pricing-and-fees",
   },
 ];

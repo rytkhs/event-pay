@@ -11,7 +11,7 @@ interface FeeCalculatorDisplayProps {
 
 /**
  * 参加費の手取り額を表示するコンポーネント
- * オンライン決済手数料を差し引いた実際の受取額を視覚的に表示
+ * オンライン集金手数料を差し引いた実際の受取額を視覚的に表示
  */
 export function FeeCalculatorDisplay({ fee, className = "" }: FeeCalculatorDisplayProps) {
   // 100円未満の場合は非表示

@@ -28,7 +28,7 @@ export const MoneyFlowSection: React.FC = () => {
     {
       number: "4",
       title: "主催者の口座へ入金",
-      desc: "オンライン集金分は、手数料差引後にStripe経由で主催者の口座へ入金されます。",
+      desc: "オンラインで支払われた参加費は、オンライン集金手数料を差し引いた後にStripe経由で主催者の口座へ入金されます。",
     },
   ];
 

@@ -73,7 +73,7 @@ const pricePoints: PricePoint[] = [
   {
     title: "現金集金の管理",
     value: "0円",
-    body: "現金の受け渡しに、みんなの集金のシステム手数料はかかりません。",
+    body: "現金の受け渡しにシステム手数料はかかりません。",
     icon: Banknote,
   },
   {
@@ -102,12 +102,12 @@ const feeExamples: FeeExample[] = [
 const payerItems: ExplanationItem[] = [
   {
     title: "参加者は、表示された参加費を支払います",
-    body: "イベントページに表示された参加費が、参加者にとっての支払額です。オンライン決済だからといって、参加者側へ別建てのサービス手数料を上乗せされません。",
+    body: "イベントページに表示された参加費が、参加者にとっての支払額です。オンライン支払いを選んでも、参加者側へ別建てのサービス手数料は上乗せされません。",
     icon: WalletCards,
   },
   {
-    title: "オンライン決済手数料は主催者負担です",
-    body: "オンライン集金で支払われた参加費から、オンライン決済手数料が差し引かれます。主催者は、受け取りたい金額に合わせて参加費を設定できます。",
+    title: "オンライン集金手数料は主催者負担です",
+    body: "オンラインで支払われた参加費から、オンライン集金手数料が差し引かれます。主催者は、受け取りたい金額に合わせて参加費を設定できます。",
     icon: Calculator,
   },
   {
@@ -176,7 +176,7 @@ export default function PricingAndFeesGuidePage() {
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-9 text-slate-700">
               みんなの集金は、初期費用・月額費用なしで始められます。
-              現金払いの管理は無料です。オンライン集金を使った場合だけ、決済された参加費に対して手数料が発生します。
+              現金払いの管理は無料です。オンラインで支払われた参加費に対してのみ、オンライン集金手数料が発生します。
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg" className="h-12 rounded-full px-6">
@@ -219,7 +219,7 @@ export default function PricingAndFeesGuidePage() {
         <SectionHeading
           eyebrow="Overview"
           title="固定費なし。必要なイベントから使えます。"
-          body="主催者アカウント、コミュニティ、イベント作成には固定費がかかりません。オンライン集金を使ったときだけ、決済金額に応じた手数料が発生します。"
+          body="主催者アカウント、コミュニティ、イベント作成には固定費がかかりません。オンラインで支払われた参加費に対してのみ、決済金額に応じたオンライン集金手数料が発生します。"
         />
 
         <div className="mt-12 grid gap-4 sm:grid-cols-3">
@@ -244,8 +244,8 @@ export default function PricingAndFeesGuidePage() {
         <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8 lg:py-24">
           <SectionHeading
             eyebrow="Fee examples"
-            title="参加費から4.9%を差し引い額が受取目安です。"
-            body="オンライン決済時の手数料は、参加費に4.9%を掛けて円単位に丸めます。受け取りたい金額がある場合は、イベント作成時に参加費を調整できます。"
+            title="参加費から4.9%を差し引いた額が受取目安です。"
+            body="オンライン集金手数料は、オンラインで支払われた参加費に4.9%を掛けて円単位に丸めます。受け取りたい金額がある場合は、イベント作成時に参加費を調整できます。"
           />
 
           <div className="overflow-hidden border border-slate-900/10">
@@ -289,7 +289,7 @@ export default function PricingAndFeesGuidePage() {
           <SectionHeading
             eyebrow="Who pays"
             title="参加者の支払額と主催者の受取額"
-            body="オンライン決済の手数料は主催者負担です。参加者には、イベントに設定された参加費が支払額として表示されます。"
+            body="オンライン集金手数料は主催者負担です。参加者には、イベントに設定された参加費が支払額として表示されます。"
           />
           <div className="mt-10 grid gap-4">
             {payerItems.map((item) => {

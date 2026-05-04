@@ -20,7 +20,7 @@ export const PricingSection: React.FC = () => {
             <p className="text-slate-400">
               固定費なしで始められます。
               <br className="hidden md:block" />
-              現金払いの管理には費用はかかりません。オンライン決済で集金した場合のみ、決済金額に応じた手数料が発生します。
+              現金払いの管理には費用はかかりません。オンラインで支払われた参加費に対してのみ、決済金額に応じたオンライン集金手数料が発生します。
             </p>
           </FadeIn>
 
