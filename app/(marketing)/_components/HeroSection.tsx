@@ -27,7 +27,11 @@ export const HeroSection: React.FC = () => {
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-800 leading-snug mb-6">
               出欠確認から集金まで、
               <br />
-              リンク1本でまとめて管理。
+              <span className="text-[#04a6b8ef]">
+                リンク1本で
+                <br className="md:hidden" />
+                まとめて管理。
+              </span>
             </h1>
 
             <FadeIn delay={0.3} className="w-full">
