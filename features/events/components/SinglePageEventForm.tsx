@@ -20,6 +20,7 @@ import { getCurrentJstTime } from "@core/utils/timezone";
 
 import { useMobileBottomOverlay } from "@/components/layout/mobile-chrome-context";
 import { cn } from "@/components/ui/_lib/cn";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
@@ -53,28 +54,30 @@ function FormSection({ title, description, icon, children, className }: FormSect
   return (
     <Card
       className={cn(
-        "border-0 shadow-lg shadow-slate-200/40 ring-1 ring-slate-100 overflow-hidden",
+        "overflow-hidden rounded-lg border border-border/70 bg-card shadow-none",
         className
       )}
     >
-      <div className="bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 p-4 md:p-6">
-        <div className="flex items-start gap-4">
+      <div className="border-b border-border/70 bg-muted/20 p-4 sm:p-5">
+        <div className="flex items-start gap-3 sm:gap-4">
           {icon && (
-            <div className="p-2.5 bg-white shadow-sm ring-1 ring-slate-200/50 rounded-xl text-primary shrink-0">
+            <div className="hidden size-10 shrink-0 items-center justify-center rounded-md border border-border bg-background text-primary sm:flex">
               {icon}
             </div>
           )}
           <div>
-            <CardTitle className="text-base md:text-lg font-bold text-slate-900 tracking-tight">
+            <CardTitle className="text-base font-semibold tracking-tight text-foreground md:text-lg">
               {title}
             </CardTitle>
             {description && (
-              <CardDescription className="mt-1.5 text-slate-500">{description}</CardDescription>
+              <CardDescription className="mt-1 text-sm text-muted-foreground">
+                {description}
+              </CardDescription>
             )}
           </div>
         </div>
       </div>
-      <CardContent className="p-4 md:p-6 space-y-6">{children}</CardContent>
+      <CardContent className="flex flex-col gap-5 p-4 sm:gap-6 sm:p-5">{children}</CardContent>
     </Card>
   );
 }
@@ -139,20 +142,41 @@ function SinglePageEventForm({
   );
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 mb-32">
-      {/* Header */}
-      <header className="mb-6">
-        <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-          新しいイベントを作成
-        </h1>
-        <p className="mt-2 text-sm text-slate-500">{currentCommunityName} のイベントを作成します</p>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-3 pb-28 pt-3 sm:gap-6 sm:px-6 sm:pb-32 lg:px-8 lg:pt-8">
+      <header className="flex flex-col gap-3 border-b border-border/70 pb-4 sm:gap-4 sm:pb-5 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-2">
+          <p className="truncate text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.16em]">
+            {currentCommunityName}
+          </p>
+          <div className="flex flex-col gap-1">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
+              新しいイベントを作成
+            </h1>
+          </div>
+        </div>
+        <div
+          className={cn(
+            "inline-flex w-fit max-w-full items-center gap-2 rounded-md border px-3 py-2 text-xs font-medium",
+            canUseOnlinePayments
+              ? "border-primary/20 bg-primary/5 text-primary"
+              : "border-border bg-background text-muted-foreground"
+          )}
+        >
+          <span
+            className={cn(
+              "size-2 rounded-full",
+              canUseOnlinePayments ? "bg-primary" : "bg-muted-foreground/40"
+            )}
+          />
+          {canUseOnlinePayments ? "オンライン集金 利用可" : "オンライン集金 未設定"}
+        </div>
       </header>
 
       <Form {...form}>
         <form onSubmit={onSubmit} className="space-y-0" noValidate>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="grid grid-cols-1 items-start gap-5 sm:gap-6 lg:grid-cols-12 lg:gap-8">
             {/* 左カラム: 入力フォーム */}
-            <div className="lg:col-span-7 xl:col-span-8 space-y-8">
+            <div className="flex flex-col gap-5 sm:gap-6 lg:col-span-7 xl:col-span-8">
               {/* ============================================= */}
               {/* Section 1: 基本情報 */}
               {/* ============================================= */}
@@ -175,7 +199,7 @@ function SinglePageEventForm({
                           placeholder="例：勉強会、夏合宿、会費の集金など"
                           disabled={isPending}
                           maxLength={100}
-                          className="h-12"
+                          className="h-11 bg-background"
                         />
                       </FormControl>
                       <FormMessage />
@@ -196,7 +220,7 @@ function SinglePageEventForm({
                           disabled={isPending}
                           rows={4}
                           maxLength={1000}
-                          className="resize-none"
+                          className="min-h-28 resize-none bg-background"
                         />
                       </FormControl>
                       <FormMessage />
@@ -218,7 +242,7 @@ function SinglePageEventForm({
                             placeholder="例：〇〇会議室、〇〇居酒屋など"
                             disabled={isPending}
                             maxLength={200}
-                            className="h-12 pl-10"
+                            className="h-11 bg-background pl-10"
                           />
                         </div>
                       </FormControl>
@@ -234,7 +258,7 @@ function SinglePageEventForm({
                     <FormItem>
                       <FormLabel className="text-sm font-medium">定員（任意）</FormLabel>
                       <FormControl>
-                        <div className="relative max-w-xs">
+                        <div className="relative w-full sm:max-w-xs">
                           <UsersIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <Input
                             {...field}
@@ -243,7 +267,7 @@ function SinglePageEventForm({
                             disabled={isPending}
                             min="1"
                             max="10000"
-                            className="h-12 pl-10 pr-10"
+                            className="h-11 bg-background pl-10 pr-10"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
                             人
@@ -344,7 +368,7 @@ function SinglePageEventForm({
                         参加費 <span className="text-red-500">*</span>
                       </FormLabel>
                       <FormControl>
-                        <div className="relative max-w-xs">
+                        <div className="relative w-full sm:max-w-xs">
                           <Input
                             {...field}
                             type="number"
@@ -352,7 +376,7 @@ function SinglePageEventForm({
                             disabled={isPending}
                             min="0"
                             max="1000000"
-                            className="h-12 pr-10"
+                            className="h-11 bg-background pr-10"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
                             円
@@ -384,17 +408,17 @@ function SinglePageEventForm({
                         </FormLabel>
 
                         <div
-                          className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3"
+                          className="mt-3 flex flex-col gap-3 sm:grid sm:grid-cols-2"
                           data-testid="payment-methods"
                         >
                           {/* 現金払い */}
                           <label
                             className={cn(
-                              "relative flex items-center p-4 rounded-xl border-2 transition-all",
+                              "relative flex min-h-[5.25rem] items-center rounded-lg border p-4 transition-colors sm:min-h-24",
                               isPending ? "opacity-70 cursor-not-allowed" : "cursor-pointer",
                               Array.isArray(field.value) && field.value.includes("cash")
-                                ? "border-primary bg-primary/5"
-                                : "border-slate-200 hover:border-slate-300 bg-white"
+                                ? "border-primary/50 bg-primary/5"
+                                : "border-border bg-background hover:border-primary/30"
                             )}
                           >
                             <input
@@ -410,28 +434,28 @@ function SinglePageEventForm({
                               }}
                               disabled={isPending}
                             />
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 pr-8">
                               <div
                                 className={cn(
-                                  "p-2 rounded-lg",
+                                  "flex size-10 items-center justify-center rounded-md border",
                                   Array.isArray(field.value) && field.value.includes("cash")
-                                    ? "bg-primary/20 text-primary"
-                                    : "bg-slate-100 text-slate-500"
+                                    ? "border-primary/20 bg-primary/10 text-primary"
+                                    : "border-border bg-muted/40 text-muted-foreground"
                                 )}
                               >
                                 <WalletIcon className="w-5 h-5" />
                               </div>
                               <div>
-                                <span className="block font-semibold text-sm text-slate-900">
+                                <span className="block text-sm font-semibold text-foreground">
                                   現金
                                 </span>
-                                <span className="block text-xs text-slate-500">
+                                <span className="mt-0.5 block text-xs text-muted-foreground">
                                   当日現地などで集金
                                 </span>
                               </div>
                             </div>
                             {Array.isArray(field.value) && field.value.includes("cash") && (
-                              <div className="absolute top-3 right-3 h-5 w-5 bg-primary rounded-full flex items-center justify-center text-white animate-in zoom-in-50 duration-200">
+                              <div className="absolute right-3 top-3 flex size-5 animate-in items-center justify-center rounded-full bg-primary text-primary-foreground duration-200 zoom-in-50">
                                 <CheckIcon className="w-3.5 h-3.5 stroke-[3]" />
                               </div>
                             )}
@@ -440,13 +464,13 @@ function SinglePageEventForm({
                           {/* オンライン決済 */}
                           <label
                             className={cn(
-                              "relative flex items-center p-4 rounded-xl border-2 transition-all",
+                              "relative flex min-h-[5.25rem] items-center rounded-lg border p-4 transition-colors sm:min-h-24",
                               !canUseOnlinePayments || isPending
                                 ? "opacity-60 cursor-not-allowed"
                                 : "cursor-pointer",
                               Array.isArray(field.value) && field.value.includes("stripe")
-                                ? "border-primary bg-primary/5"
-                                : "border-slate-200 hover:border-slate-300 bg-white"
+                                ? "border-primary/50 bg-primary/5"
+                                : "border-border bg-background hover:border-primary/30"
                             )}
                           >
                             <input
@@ -462,28 +486,28 @@ function SinglePageEventForm({
                               }}
                               disabled={isPending || !canUseOnlinePayments}
                             />
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 pr-8">
                               <div
                                 className={cn(
-                                  "p-2 rounded-lg",
+                                  "flex size-10 items-center justify-center rounded-md border",
                                   Array.isArray(field.value) && field.value.includes("stripe")
-                                    ? "bg-primary/20 text-primary"
-                                    : "bg-slate-100 text-slate-500"
+                                    ? "border-primary/20 bg-primary/10 text-primary"
+                                    : "border-border bg-muted/40 text-muted-foreground"
                                 )}
                               >
                                 <CreditCardIcon className="w-5 h-5" />
                               </div>
                               <div>
-                                <span className="block font-semibold text-sm text-slate-900">
+                                <span className="block text-sm font-semibold text-foreground">
                                   オンライン
                                 </span>
-                                <span className="block text-xs text-slate-500">
+                                <span className="mt-0.5 block text-xs text-muted-foreground">
                                   クレジットカード、Apple Pay、Google Payなど
                                 </span>
                               </div>
                             </div>
                             {Array.isArray(field.value) && field.value.includes("stripe") && (
-                              <div className="absolute top-3 right-3 h-5 w-5 bg-primary rounded-full flex items-center justify-center text-white animate-in zoom-in-50 duration-200">
+                              <div className="absolute right-3 top-3 flex size-5 animate-in items-center justify-center rounded-full bg-primary text-primary-foreground duration-200 zoom-in-50">
                                 <CheckIcon className="w-3.5 h-3.5 stroke-[3]" />
                               </div>
                             )}
@@ -491,11 +515,11 @@ function SinglePageEventForm({
                         </div>
 
                         {!canUseOnlinePayments && (
-                          <p className="text-xs text-muted-foreground mt-2">
-                            「オンライン」を選択するにはオンライン集金設定が必要です。
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            「オンライン決済」を選択するにはオンライン集金設定が必要です。
                             <Link
                               href={connectStatus?.actionUrl ?? "/settings/payments"}
-                              className="underline ml-1"
+                              className="ml-1 font-medium underline underline-offset-4"
                             >
                               設定に進む
                             </Link>
@@ -506,25 +530,29 @@ function SinglePageEventForm({
                     )}
                   />
                 ) : (
-                  <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 text-blue-800 px-6 py-4 rounded-lg">
-                    <p className="font-medium">✓ 参加費が0円のため、決済方法の設定は不要です</p>
-                    <p className="text-sm mt-1 text-blue-700">
+                  <Alert
+                    variant="success"
+                    className="border-primary/20 bg-primary/5 text-foreground"
+                  >
+                    <CheckIcon className="size-4" />
+                    <AlertTitle>参加費が0円のため、決済方法の設定は不要です</AlertTitle>
+                    <AlertDescription className="text-muted-foreground">
                       参加者は無料でイベントに参加できます
-                    </p>
-                  </div>
+                    </AlertDescription>
+                  </Alert>
                 )}
 
                 {/* オンライン決済設定（Stripe選択時のみ表示） */}
                 {!isFreeEvent && isOnlineSelected && (
                   <div
                     className={cn(
-                      "border border-blue-200 rounded-lg p-6 bg-blue-50/30 space-y-6",
-                      "transition-all duration-300 ease-in-out"
+                      "flex flex-col gap-6 rounded-lg border border-primary/20 bg-primary/5 p-4 md:p-5",
+                      "transition-all duration-300 ease-in-out animate-in fade-in slide-in-from-top-1"
                     )}
                   >
-                    <div className="flex items-start gap-2 mb-3">
-                      <InfoIcon className="w-4 h-4 text-blue-500 mt-0.5" />
-                      <p className="text-xs text-blue-700">
+                    <div className="flex items-start gap-2">
+                      <InfoIcon className="mt-0.5 h-4 w-4 text-primary" />
+                      <p className="text-xs text-muted-foreground">
                         オンライン集金を選択した場合、決済期限を設定できます。
                       </p>
                     </div>
@@ -560,13 +588,13 @@ function SinglePageEventForm({
                     />
 
                     {/* 締切後決済許可設定 */}
-                    <div className="border border-gray-200 rounded-lg p-5 bg-white">
+                    <div className="rounded-lg border border-border bg-background p-4 md:p-5">
                       <FormField
                         control={form.control}
                         name="allow_payment_after_deadline"
                         render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between space-x-3 space-y-0">
-                            <div className="space-y-1 leading-none">
+                          <FormItem className="flex flex-row items-center justify-between gap-4 space-y-0">
+                            <div className="flex flex-col gap-1 leading-none">
                               <FormLabel className="text-sm font-medium">
                                 締切後も決済を許可
                               </FormLabel>
@@ -586,7 +614,7 @@ function SinglePageEventForm({
                       />
 
                       {form.watch("allow_payment_after_deadline") && (
-                        <div className="mt-4">
+                        <div className="mt-4 border-t border-border pt-4">
                           <FormField
                             control={form.control}
                             name="grace_period_days"
@@ -605,7 +633,7 @@ function SinglePageEventForm({
                                     step="1"
                                     placeholder="7"
                                     disabled={isPending}
-                                    className="h-12 max-w-xs"
+                                    className="h-11 w-full bg-background sm:max-w-xs"
                                     onChange={(e) => {
                                       const v = e.target.value;
                                       field.onChange(v);
@@ -626,23 +654,32 @@ function SinglePageEventForm({
                   </div>
                 )}
               </FormSection>
+
+              {/* モバイル用: 決済締切まで入力した後にタイムライン表示 */}
+              <div className="lg:hidden">
+                {watchedDate && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                    {TimelinePreview}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 右カラム: タイムライン & 補足情報 */}
-            <div className="hidden lg:block lg:col-span-5 xl:col-span-4 space-y-6 sticky top-24">
+            <div className="sticky top-24 hidden flex-col gap-4 lg:col-span-5 lg:flex xl:col-span-4">
               {/* タイムラインプレビュー (デスクトップ) */}
               {watchedDate && (
-                <div className="transition-all duration-500 ease-in-out animate-in fade-in slide-in-from-right-4">
+                <div className="animate-in fade-in slide-in-from-right-3 duration-300">
                   {TimelinePreview}
                 </div>
               )}
 
               {/* Tipsなどをここに配置可能 */}
               {!watchedDate && (
-                <Card className="border-dashed border-2 border-slate-200 bg-slate-50/50 shadow-none">
-                  <CardContent className="flex flex-col items-center justify-center p-12 text-center text-slate-400">
-                    <ClockIcon className="w-12 h-12 mb-4 opacity-20" />
-                    <p className="text-sm font-medium">
+                <Card className="rounded-lg border border-dashed border-border bg-background/70 shadow-none">
+                  <CardContent className="flex min-h-64 flex-col items-center justify-center p-8 text-center text-muted-foreground">
+                    <ClockIcon className="mb-4 h-10 w-10 opacity-30" />
+                    <p className="text-sm font-medium leading-6">
                       日時を入力すると
                       <br />
                       タイムラインプレビューが表示されます
@@ -651,45 +688,46 @@ function SinglePageEventForm({
                 </Card>
               )}
             </div>
-
-            {/* モバイル用: フォーム下部へのタイムライン表示 */}
-            <div className="lg:hidden col-span-1 mt-8">{watchedDate && TimelinePreview}</div>
           </div>
 
           {/* 全体のエラーメッセージ */}
           {form.formState.errors.root && (
-            <div className="mt-8 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-3">
-              <div className="w-2 h-2 bg-red-500 rounded-full" />
-              {form.formState.errors.root.message}
-            </div>
+            <Alert variant="destructive" className="mt-6">
+              <AlertDescription>{form.formState.errors.root.message}</AlertDescription>
+            </Alert>
           )}
 
           {/* Footer Actions */}
-          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 md:left-[var(--sidebar-width)]">
-            <div className="max-w-7xl mx-auto flex items-center justify-end gap-4">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => (window.location.href = "/dashboard")}
-                disabled={isPending}
-                className="text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-              >
-                キャンセル
-              </Button>
-              <Button
-                type="submit"
-                disabled={isPending}
-                className="h-12 px-8 rounded-xl bg-secondary text-white hover:bg-secondary/90 shadow-lg shadow-blue-500/20 text-sm md:text-base font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
-              >
-                {isPending ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-                    作成中...
-                  </>
-                ) : (
-                  "イベントを作成"
-                )}
-              </Button>
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_24px_-20px_hsl(var(--foreground)/0.35)] backdrop-blur sm:px-4 sm:pb-[calc(1rem+env(safe-area-inset-bottom))] md:left-[var(--sidebar-width)]">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+              <p className="hidden text-xs text-muted-foreground sm:block">
+                入力内容を確認してイベントを作成します。
+              </p>
+              <div className="ml-auto grid w-full grid-cols-[6.5rem_1fr] items-center gap-2 sm:flex sm:w-auto sm:gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => (window.location.href = "/events")}
+                  disabled={isPending}
+                  className="h-11 text-muted-foreground"
+                >
+                  キャンセル
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  className="h-11 min-w-0 rounded-md px-4 text-sm font-semibold transition-transform active:scale-[0.98] sm:min-w-36 sm:px-6"
+                >
+                  {isPending ? (
+                    <>
+                      <div className="mr-2 size-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-b-primary-foreground" />
+                      作成中...
+                    </>
+                  ) : (
+                    "イベントを作成"
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </form>

@@ -257,9 +257,6 @@ export function DateTimePicker({
           </div>
         </PopoverContent>
       </Popover>
-      {selectedDate && (
-        <p className="text-sm text-muted-foreground">選択中: {formatDisplayDate(selectedDate)}</p>
-      )}
     </div>
   );
 }

@@ -25,9 +25,9 @@ export const HeroSection: React.FC = () => {
           {/* Text Content */}
           <div className="md:w-5/12 text-center md:text-left">
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-800 leading-snug mb-6">
-              出欠確認から集金まで、
+              出欠確認から<span className="">集金</span>まで、
               <br />
-              リンク1本でまとめて管理。
+              <span className="text-[#24A6B5]">リンク1本でまとめて管理。</span>
             </h1>
 
             <FadeIn delay={0.3} className="w-full">

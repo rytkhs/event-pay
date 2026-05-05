@@ -31,15 +31,13 @@ export default async function CreateEventPage() {
   const canUseOnlinePayments = payoutResolution.isReady;
 
   return (
-    <div className="min-h-screen ">
-      <div className="container mx-auto">
-        <SinglePageEventForm
-          canUseOnlinePayments={canUseOnlinePayments}
-          connectStatus={connectStatus}
-          currentCommunityName={currentCommunity.name}
-          createEventAction={createEventAction}
-        />
-      </div>
+    <div className="min-h-screen bg-muted/30">
+      <SinglePageEventForm
+        canUseOnlinePayments={canUseOnlinePayments}
+        connectStatus={connectStatus}
+        currentCommunityName={currentCommunity.name}
+        createEventAction={createEventAction}
+      />
     </div>
   );
 }
