@@ -68,11 +68,10 @@ export function EmailChangeForm({ currentEmail, updateEmailAction }: EmailChange
   };
 
   return (
-    <div className="rounded-xl border border-border/60 bg-card shadow-sm">
-      <div className="p-6 space-y-5">
-        {/* 現在のメールアドレス */}
-        <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
-          <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+    <div className="rounded-lg border border-border/60 bg-background">
+      <div className="flex flex-col gap-4 p-4 sm:gap-5 sm:p-6">
+        <div className="flex items-center gap-3 rounded-md border border-border/60 bg-muted/30 px-3.5 py-3 sm:px-4">
+          <Mail className="size-4 shrink-0 text-muted-foreground" />
           <div className="min-w-0">
             <p className="text-xs font-medium text-muted-foreground">現在のメールアドレス</p>
             <p className="truncate text-sm font-medium text-foreground">{currentEmail}</p>
@@ -80,7 +79,11 @@ export function EmailChangeForm({ currentEmail, updateEmailAction }: EmailChange
         </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5" noValidate>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col gap-4 sm:gap-5"
+            noValidate
+          >
             <FormField
               control={form.control}
               name="newEmail"
@@ -124,11 +127,11 @@ export function EmailChangeForm({ currentEmail, updateEmailAction }: EmailChange
               )}
             />
 
-            <div className="flex justify-end border-t border-border/60 pt-5">
-              <Button type="submit" disabled={isPending} className="min-w-32">
+            <div className="flex justify-end border-t border-border/60 pt-4 sm:pt-5">
+              <Button type="submit" disabled={isPending} className="w-full sm:w-auto sm:min-w-32">
                 {isPending ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
                     変更中...
                   </>
                 ) : (

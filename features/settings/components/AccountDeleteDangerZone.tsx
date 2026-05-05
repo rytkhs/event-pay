@@ -48,16 +48,16 @@ export function AccountDeleteDangerZone({
   };
 
   return (
-    <div className="rounded-xl border border-destructive/40 bg-destructive/[0.03] shadow-sm">
-      <div className="p-6 space-y-5">
-        <div className="space-y-1.5">
+    <div className="rounded-lg border border-destructive/30 bg-destructive/[0.03]">
+      <div className="flex flex-col gap-4 p-4 sm:gap-5 sm:p-6">
+        <div className="flex flex-col gap-1.5">
           <p className="text-sm font-semibold text-destructive">アカウントを削除</p>
           <p className="text-xs leading-relaxed text-muted-foreground">
             この操作は取り消せません。Stripe連携は無効化/解除されます。
           </p>
         </div>
 
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           <div className="flex items-start gap-2.5">
             <Checkbox
               id="agreeIrreversible"
@@ -83,7 +83,7 @@ export function AccountDeleteDangerZone({
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           <Label htmlFor="confirmText" className="text-xs font-medium text-muted-foreground">
             確認のため「削除します」と入力してください
           </Label>
@@ -97,17 +97,17 @@ export function AccountDeleteDangerZone({
           />
         </div>
 
-        <div className="flex justify-end border-t border-destructive/20 pt-5">
+        <div className="flex justify-end border-t border-destructive/20 pt-4 sm:pt-5">
           <Button
             variant="destructive"
             size="sm"
             disabled={!canSubmit || isPending}
             onClick={onSubmit}
-            className="min-w-32"
+            className="w-full sm:w-auto sm:min-w-32"
           >
             {isPending ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
                 処理中...
               </>
             ) : (

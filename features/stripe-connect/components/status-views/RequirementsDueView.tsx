@@ -40,26 +40,24 @@ export function RequirementsDueView({ status, refreshUrl }: RequirementsDueViewP
       : "Stripeで対応が必要な確認事項があります。案内に従って状況を確認してください。";
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       <div
         className={
           hasPastDue
-            ? "rounded-xl border border-destructive/25 bg-destructive/5 p-4"
-            : "rounded-xl border border-amber-500/25 bg-amber-500/5 p-4"
+            ? "rounded-lg border border-destructive/25 bg-destructive/5 p-3.5 sm:p-4"
+            : "rounded-lg border border-amber-500/25 bg-amber-500/5 p-3.5 sm:p-4"
         }
       >
-        <div className="flex gap-3 items-start">
-          <div
+        <div className="flex items-start gap-3">
+          <span
             className={
               hasPastDue
-                ? "shrink-0 rounded-lg bg-destructive/15 p-2 flex items-center justify-center"
-                : "shrink-0 rounded-lg bg-amber-500/15 p-2 flex items-center justify-center"
+                ? "flex size-8 shrink-0 items-center justify-center rounded-md border border-destructive/20 text-destructive"
+                : "flex size-8 shrink-0 items-center justify-center rounded-md border border-amber-500/20 text-amber-600"
             }
           >
-            <TriangleAlert
-              className={hasPastDue ? "h-4 w-4 text-destructive" : "h-4 w-4 text-amber-600"}
-            />
-          </div>
+            <TriangleAlert className="size-4" />
+          </span>
           <div className="min-w-0">
             <p className="text-sm font-semibold">{title}</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
@@ -69,16 +67,12 @@ export function RequirementsDueView({ status, refreshUrl }: RequirementsDueViewP
 
       <Button
         asChild
-        className={
-          hasPastDue
-            ? "group relative h-11 w-full rounded-xl border border-destructive/25 bg-gradient-to-r from-destructive/10 via-destructive/5 to-transparent text-sm font-semibold text-red-700 dark:text-red-400 transition-all duration-300 hover:border-destructive/40 hover:from-destructive/20 hover:via-destructive/10 hover:to-destructive/5 hover:text-red-800 dark:hover:text-red-300 shadow-[inset_0_1px_0_hsl(var(--destructive-foreground)/0.4),0_8px_16px_-12px_hsl(var(--destructive)/0.4)] hover:shadow-[inset_0_1px_0_hsl(var(--destructive-foreground)/0.5),0_12px_24px_-12px_hsl(var(--destructive)/0.6)]"
-            : "group relative h-11 w-full rounded-xl border border-amber-500/25 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent text-sm font-semibold text-amber-800 dark:text-amber-400 transition-all duration-300 hover:border-amber-500/40 hover:from-amber-500/20 hover:via-amber-500/10 hover:to-amber-500/5 hover:text-amber-900 dark:hover:text-amber-300 shadow-[inset_0_1px_0_hsl(var(--background)/0.4),0_8px_16px_-12px_rgba(245,158,11,0.2)] hover:shadow-[inset_0_1px_0_hsl(var(--background)/0.5),0_12px_24px_-12px_rgba(245,158,11,0.4)]"
-        }
-        variant="outline"
+        className="group h-11 w-full text-sm font-semibold"
+        variant={hasPastDue ? "destructive" : "outline"}
       >
         <Link href={refreshUrl} prefetch={false}>
           Stripeで設定を続行
-          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+          <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
         </Link>
       </Button>
     </div>

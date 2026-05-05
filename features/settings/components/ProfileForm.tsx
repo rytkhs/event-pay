@@ -66,10 +66,14 @@ export function ProfileForm({ currentName, updateProfileAction }: ProfileFormPro
   const isDirty = form.formState.isDirty;
 
   return (
-    <div className="rounded-xl border border-border/60 bg-card shadow-sm">
-      <div className="p-6">
+    <div className="rounded-lg border border-border/60 bg-background">
+      <div className="p-4 sm:p-6">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5" noValidate>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col gap-4 sm:gap-5"
+            noValidate
+          >
             <FormField
               control={form.control}
               name="name"
@@ -88,11 +92,15 @@ export function ProfileForm({ currentName, updateProfileAction }: ProfileFormPro
               )}
             />
 
-            <div className="flex justify-end border-t border-border/60 pt-5">
-              <Button type="submit" disabled={isPending || !isDirty} className="min-w-32">
+            <div className="flex justify-end border-t border-border/60 pt-4 sm:pt-5">
+              <Button
+                type="submit"
+                disabled={isPending || !isDirty}
+                className="w-full sm:w-auto sm:min-w-32"
+              >
                 {isPending ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
                     更新中...
                   </>
                 ) : (

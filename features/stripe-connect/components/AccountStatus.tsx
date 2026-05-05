@@ -106,9 +106,8 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
   };
 
   return (
-    <div className="space-y-5">
-      {/* ステータスインジケーター */}
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-4 sm:gap-5">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-border/60 bg-background px-3.5 py-3 sm:px-4">
         <span className="relative flex h-2 w-2">
           {config.pulse && (
             <span
@@ -120,31 +119,29 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
           )}
           <span className={cn("relative inline-flex h-2 w-2 rounded-full", config.dotClass)} />
         </span>
-        <span className="text-xs font-medium text-foreground/70">{config.label}</span>
-        <span className="text-xs text-muted-foreground/60">— 現在のStripe連携状況</span>
+        <span className="text-xs font-medium text-foreground">{config.label}</span>
+        <span className="text-xs text-muted-foreground/60">現在のStripe連携状況</span>
       </div>
 
-      {/* UI Status別のビューを表示 */}
       {renderStatusView()}
 
-      {/* ガイドリンク */}
-      <div className="pt-2">
+      <div className="pt-1 sm:pt-2">
         <Link
           href="/settings/payments/guide"
           target="_blank"
           rel="noopener noreferrer"
-          className="group block rounded-xl border border-border/60 bg-muted/30 p-4 transition-all hover:bg-muted/50"
+          className="group block rounded-lg border border-border/60 bg-muted/30 p-3.5 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-4"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-background border border-border/40 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
-              <BookOpen className="h-4.5 w-4.5" />
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border/40 bg-background text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary sm:size-9">
+              <BookOpen className="size-4" />
             </div>
-            <div className="flex-1 space-y-0.5">
-              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground/80 group-hover:text-primary transition-colors">
+            <div className="flex flex-1 flex-col gap-0.5">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground/80 transition-colors group-hover:text-primary">
                 設定に迷ったら
-                <ExternalLink className="h-3 w-3 opacity-40 group-hover:opacity-70" />
+                <ExternalLink className="size-3 opacity-40 group-hover:opacity-70" />
               </div>
-              <p className="text-xs text-muted-foreground/70 leading-relaxed">
+              <p className="text-xs leading-relaxed text-muted-foreground/70">
                 どのように入力すべきか迷ったときの参考ガイドです。
               </p>
             </div>

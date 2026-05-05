@@ -5,7 +5,58 @@ import { FooterLinkGroup } from "./types";
  */
 export const footerNavigationGroups: FooterLinkGroup[] = [
   {
-    title: "Support",
+    title: "サービス",
+    links: [
+      {
+        label: "機能",
+        href: "/#features",
+        ariaLabel: "みんなの集金の機能を見る",
+      },
+      {
+        label: "料金",
+        href: "/#pricing",
+        ariaLabel: "みんなの集金の料金を見る",
+      },
+      {
+        label: "デモ",
+        href: `${process.env.NEXT_PUBLIC_DEMO_URL || "https://demo.minnano-shukin.com"}/start-demo`,
+        external: true,
+        ariaLabel: "みんなの集金のデモを試す",
+      },
+    ],
+  },
+  {
+    title: "ガイド",
+    links: [
+      {
+        label: "主催者のはじめ方",
+        href: "/guide/getting-started",
+        ariaLabel: "主催者のはじめ方を確認する",
+      },
+      {
+        label: "参加者の登録と支払いの流れ",
+        href: "/guide/participant-flow",
+        ariaLabel: "参加者の登録と支払いの流れを確認する",
+      },
+      {
+        label: "オンライン集金・入金のしくみ",
+        href: "/guide/online-collection",
+        ariaLabel: "オンライン集金・入金のしくみを確認する",
+      },
+      {
+        label: "料金と手数料",
+        href: "/guide/pricing-and-fees",
+        ariaLabel: "料金と手数料の詳細を確認する",
+      },
+      {
+        label: "よくある質問",
+        href: "/#faq",
+        ariaLabel: "よくある質問を確認する",
+      },
+    ],
+  },
+  {
+    title: "サポート",
     links: [
       {
         label: "フィードバック",
@@ -26,7 +77,7 @@ export const footerNavigationGroups: FooterLinkGroup[] = [
     ],
   },
   {
-    title: "Legal",
+    title: "法的情報",
     links: [
       {
         label: "利用規約",
@@ -56,7 +107,7 @@ export const footerConfig = {
    */
   brand: {
     name: "みんなの集金",
-    tagline: "集金をもっとラクに",
+    tagline: "参加費・会費の集金をまとめて管理",
     copyright: "© 2025 みんなの集金. All rights reserved.",
   },
 

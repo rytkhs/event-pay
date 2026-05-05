@@ -3,10 +3,19 @@
 import { useState, useEffect } from "react";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { cn } from "@core/utils";
 
-import { navigationConfig, marketingCTA } from "./navigation-config";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+import { navigationConfig, marketingCTA, guideNavigation } from "./navigation-config";
 import { NavLink } from "./NavLink";
 import { MarketingHeaderProps } from "./types";
 
@@ -16,6 +25,7 @@ import { MarketingHeaderProps } from "./types";
  */
 export function MarketingHeader({ className }: MarketingHeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
+  const pathname = usePathname();
 
   // スクロールによるヘッダーの見た目変更
   useEffect(() => {
@@ -29,6 +39,10 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
 
   // スムーズスクロール機能（既存のランディングページ機能を再現）
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+    if (pathname !== "/") {
+      return;
+    }
+
     e.preventDefault();
     const element = document.querySelector(targetId);
     if (element) {
@@ -65,7 +79,7 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
             </div>
 
             {/* デスクトップナビゲーション */}
-            <nav className="hidden md:flex items-center space-x-1">
+            <nav className="hidden items-center gap-1 md:flex">
               {navigationConfig.marketing.map((item) => {
                 // ハッシュリンクかどうか判定
                 const isHashLink = item.href.startsWith("/#");
@@ -96,6 +110,45 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
                 );
               })}
 
+              {/* ガイドドロップダウン */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 hover:bg-primary/5 hover:text-primary data-[state=open]:bg-primary/5 data-[state=open]:text-primary"
+                  >
+                    ガイド
+                    <svg
+                      className="size-3.5 transition-transform duration-200"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      aria-hidden="true"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  sideOffset={4}
+                  className="w-56 border-border/50 shadow-xl"
+                >
+                  <DropdownMenuGroup>
+                    {guideNavigation.map((item) => (
+                      <DropdownMenuItem
+                        key={item.href}
+                        asChild
+                        className="cursor-pointer px-3 py-2.5 text-sm text-foreground transition-colors focus:bg-primary/5 focus:text-primary"
+                      >
+                        <Link href={item.href}>{item.label}</Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               {/* ログインリンク */}
               <NavLink
                 href="/login"
@@ -114,7 +167,7 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
             </nav>
 
             {/* モバイル用ナビゲーション */}
-            <div className="md:hidden flex items-center space-x-1">
+            <div className="flex items-center gap-1 md:hidden">
               {/* モバイル用ログインリンク */}
               <NavLink
                 href="/login"

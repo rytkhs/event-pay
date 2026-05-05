@@ -22,17 +22,15 @@ export function CurrentCommunitySettingsOverview({
   updateCommunityAction,
 }: CurrentCommunitySettingsOverviewProps) {
   return (
-    <div className="space-y-10">
-      {/* 基本情報編集セクション */}
+    <div className="flex flex-col gap-6 sm:gap-10">
       <section aria-labelledby="community-basic-heading">
-        <div className="mb-5">
-          <h2
-            id="community-basic-heading"
-            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground"
-          >
-            <span className="inline-block h-3.5 w-0.5 rounded-full bg-primary" aria-hidden="true" />
+        <div className="mb-3 flex flex-col gap-1 sm:mb-4">
+          <h2 id="community-basic-heading" className="text-sm font-semibold">
             基本情報
           </h2>
+          <p className="text-xs leading-5 text-muted-foreground">
+            招待ページと公開プロフィールに表示される情報です。
+          </p>
         </div>
         <UpdateCommunityForm
           defaultDescription={settings.community.description}
@@ -41,24 +39,19 @@ export function CurrentCommunitySettingsOverview({
         />
       </section>
 
-      {/* コミュニティプロフィールセクション */}
       <section aria-labelledby="community-profile-heading">
-        <div className="mb-5">
-          <h2
-            id="community-profile-heading"
-            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground"
-          >
-            <span className="inline-block h-3.5 w-0.5 rounded-full bg-primary" aria-hidden="true" />
+        <div className="mb-3 flex flex-col gap-1 sm:mb-4">
+          <h2 id="community-profile-heading" className="text-sm font-semibold">
             コミュニティプロフィール
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-xs leading-5 text-muted-foreground">
             Stripe アカウント作成に利用可能なコミュニティプロフィールです
           </p>
         </div>
-        <div className="rounded-xl border border-border/60 bg-card shadow-sm">
+        <div className="rounded-lg border border-border/60 bg-background">
           <div className="divide-y divide-border/60">
-            <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0 space-y-1">
+            <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+              <div className="flex min-w-0 flex-col gap-1">
                 <p className="text-xs font-medium text-muted-foreground">
                   コミュニティプロフィール URL
                 </p>
@@ -66,7 +59,7 @@ export function CurrentCommunitySettingsOverview({
                   {settings.publicPageUrl}
                 </p>
               </div>
-              <Button variant="outline" size="sm" className="shrink-0" asChild>
+              <Button variant="outline" size="sm" className="w-full shrink-0 sm:w-auto" asChild>
                 <Link href={settings.publicPageUrl} rel="noopener noreferrer" target="_blank">
                   <ExternalLink className="h-3.5 w-3.5" />
                   開く
@@ -94,16 +87,13 @@ export function CurrentCommunitySettingsOverview({
       </section>
 
       {/* 危険ゾーン区切り */}
-      <div className="flex items-center gap-4 pt-2">
+      <div className="flex items-center gap-3 pt-1 sm:gap-4 sm:pt-2">
         <Separator className="flex-1" />
-        <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
-          危険な操作
-        </span>
+        <span className="text-xs font-medium text-muted-foreground">危険な操作</span>
         <Separator className="flex-1" />
       </div>
 
-      {/* 削除セクション */}
-      <section aria-labelledby="community-danger-heading" className="-mt-4">
+      <section aria-labelledby="community-danger-heading" className="-mt-3 sm:-mt-4">
         <DeleteCommunityDangerZone
           communityName={settings.community.name}
           deleteCommunityAction={deleteCommunityAction}

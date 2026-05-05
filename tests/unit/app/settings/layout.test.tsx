@@ -58,7 +58,7 @@ describe("SettingsLayout", () => {
 
     render(<SettingsLayout>child</SettingsLayout>);
 
-    expect(screen.getByText("コミュニティ")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "コミュニティ" })).toBeInTheDocument();
     expect(screen.getByText("選択中のコミュニティの設定")).toBeInTheDocument();
   });
 });

@@ -17,38 +17,40 @@ const BENEFITS = [
   },
   {
     icon: Zap,
-    title: "自動送金",
-    description: "集金は自動であなたの銀行口座に入金されます",
+    title: "入金確認",
+    description: "Stripe上の残高と入金状況を確認できます",
   },
 ] as const;
 
 export function OnboardingIntro({ hasExistingAccount = false }: OnboardingIntroProps) {
   return (
     <>
-      <div className="mb-10 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+      <div className="mb-5 flex flex-col gap-2 sm:mb-8 sm:gap-3">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
           {hasExistingAccount ? "オンライン集金の設定を再開" : "オンライン集金を始めましょう"}
-        </h1>
-        <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">
-          参加費や会費をオンラインで安全に受け取れるようになります。
-          <br className="hidden sm:block" />
-          現金管理のストレスから解放されましょう。
+        </h2>
+        <p className="max-w-xl text-sm leading-6 text-muted-foreground">
+          参加費や会費をオンラインで受け取るため、Stripeの安全な画面で受取先を設定します。
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+      <div className="mb-5 grid grid-cols-1 gap-2 sm:mb-8 sm:grid-cols-3">
         {BENEFITS.map((benefit) => {
           const Icon = benefit.icon;
           return (
             <div
               key={benefit.title}
-              className="flex flex-col items-center text-center rounded-xl border border-border/60 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-primary/[0.02]"
+              className="flex items-start gap-3 rounded-lg border border-border/60 bg-background p-3.5 transition-colors hover:border-primary/30 hover:bg-muted/30 sm:p-4"
             >
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 mb-3">
-                <Icon className="h-5 w-5 text-primary" />
-              </div>
-              <p className="text-sm font-semibold mb-1">{benefit.title}</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">{benefit.description}</p>
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border/60 text-primary">
+                <Icon className="size-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold">{benefit.title}</span>
+                <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                  {benefit.description}
+                </span>
+              </span>
             </div>
           );
         })}

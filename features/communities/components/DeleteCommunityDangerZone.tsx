@@ -65,10 +65,10 @@ export function DeleteCommunityDangerZone({
   }, [router, state]);
 
   return (
-    <div className="rounded-xl border border-destructive/40 bg-destructive/[0.03] shadow-sm">
-      <div className="p-6">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1.5">
+    <div className="rounded-lg border border-destructive/30 bg-destructive/[0.03]">
+      <div className="p-4 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
+          <div className="flex flex-col gap-1.5">
             <p className="text-sm font-semibold text-destructive">「{communityName}」を削除</p>
             <p className="text-xs leading-relaxed text-muted-foreground">
               この操作は取り消せません。コミュニティプロフィールは非表示になり、ホームでの管理はできなくなります。
@@ -84,13 +84,13 @@ export function DeleteCommunityDangerZone({
                 variant="outline"
                 size="sm"
                 disabled={isPending}
-                className="shrink-0 border-destructive/60 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                className="w-full shrink-0 border-destructive/60 text-destructive hover:bg-destructive hover:text-destructive-foreground sm:w-auto"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="size-3.5" />
                 削除する
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>コミュニティを削除しますか？</DialogTitle>
                 <DialogDescription className="space-y-2">
@@ -118,7 +118,7 @@ export function DeleteCommunityDangerZone({
                 <Button type="submit" form={formId} variant="destructive" disabled={isPending}>
                   {isPending ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
                       削除中...
                     </>
                   ) : (

@@ -128,7 +128,7 @@ export function CreateCommunityForm({
               <Input
                 id="community-name"
                 name="name"
-                placeholder="例: ボドゲ会、読書会、テニスサークル"
+                placeholder="例: 〇〇サークル、〇〇会、〇〇のコミュニティ"
                 required
                 className="h-11 rounded-xl border-border/60 shadow-sm transition-all focus-visible:ring-primary/20"
                 aria-invalid={nameError ? true : undefined}
@@ -324,9 +324,9 @@ export function CreateCommunityForm({
         {/* メインコピー */}
         <div className="relative z-10 mt-8 mb-2 lg:my-10">
           <h2 className="text-2xl font-bold leading-snug tracking-tight text-white sm:text-3xl xl:text-4xl">
-            集金 · 出欠管理を
+            出欠確認から集金まで、
             <br className="hidden lg:block" />
-            もっとラクに
+            リンク1本でまとめて管理。
           </h2>
           <p className="mt-3 text-[13px] leading-relaxed text-white/80 lg:mt-4 lg:text-sm lg:text-white/65">
             イベント・集金はコミュニティやグループごとに束ねて管理することができます。

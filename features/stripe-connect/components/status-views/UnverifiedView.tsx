@@ -22,11 +22,11 @@ export function UnverifiedView({ refreshUrl }: UnverifiedViewProps) {
     <div>
       <OnboardingIntro hasExistingAccount />
 
-      <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4">
-        <div className="flex gap-3 items-start">
-          <div className="shrink-0 rounded-lg bg-amber-500/15 p-2 flex items-center justify-center">
-            <CircleAlert className="h-4 w-4 text-amber-600" />
-          </div>
+      <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3.5 sm:p-4">
+        <div className="flex items-start gap-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-amber-500/20 text-amber-600">
+            <CircleAlert className="size-4" />
+          </span>
           <div className="min-w-0">
             <p className="text-sm font-semibold">設定を再開しましょう</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -38,17 +38,17 @@ export function UnverifiedView({ refreshUrl }: UnverifiedViewProps) {
 
       <Button
         asChild
-        className="w-full mt-6 h-12 text-base font-semibold shadow-md hover:shadow-lg transition-shadow"
+        className="mt-5 h-11 w-full text-sm font-semibold sm:mt-6 sm:h-12 sm:text-base"
         size="lg"
       >
         <Link href={refreshUrl} prefetch={false}>
           設定を再開する
-          <ArrowRight className="ml-2 h-5 w-5" />
+          <ArrowRight className="ml-2 size-4 sm:size-5" />
         </Link>
       </Button>
 
-      <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mt-3">
-        <Lock className="h-3 w-3" />
+      <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
+        <Lock className="size-3" />
         Stripeの安全な画面で設定します・約3分で完了
       </p>
     </div>

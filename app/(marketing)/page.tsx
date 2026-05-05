@@ -6,27 +6,27 @@ import { CTASection } from "./_components/CTASection";
 import { FAQSection } from "./_components/FAQSection";
 import { FeaturesSection } from "./_components/FeaturesSection";
 import { HeroSection } from "./_components/HeroSection";
-import { HowItWorksSection } from "./_components/HowItWorksSection";
+import { MoneyFlowSection } from "./_components/MoneyFlowSection";
+import { ParticipantFlowSection } from "./_components/ParticipantFlowSection";
 import { PricingSection } from "./_components/PricingSection";
-import { ProblemsSection } from "./_components/ProblemsSection";
-import { UseCasesSection } from "./_components/UseCasesSection";
 
 export const dynamic = "force-static";
+
+const metaDescription =
+  "参加費・会費の集金を、リンク1本でまとめて管理。招待リンクを送るだけで出欠確認から集金まで完了。参加者はアカウント登録不要。オンライン決済・現金払い対応。";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title: {
       absolute: siteOgTitle,
     },
-    description:
-      "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できる、集金 & 出欠管理アプリです。いつもの集金を、キャッシュレスにしませんか?サークル・コミュニティ運営の集金負担を劇的に減らします。",
+    description: metaDescription,
     alternates: {
       canonical: process.env.NEXT_PUBLIC_APP_URL,
     },
     openGraph: buildOpenGraphMetadata({
       title: siteOgTitle,
-      description:
-        "参加の確認から集金まで、招待リンクをLINEで共有するだけで完了できる、集金 & 出欠管理アプリです。いつもの集金を、キャッシュレスにしませんか?サークル・コミュニティ運営の集金負担を劇的に減らします。",
+      description: metaDescription,
     }),
   };
 }
@@ -35,10 +35,9 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col w-full overflow-x-hidden">
       <HeroSection />
-      <ProblemsSection />
       <FeaturesSection />
-      <UseCasesSection />
-      <HowItWorksSection />
+      <ParticipantFlowSection />
+      <MoneyFlowSection />
       <PricingSection />
       <FAQSection />
       <CTASection />

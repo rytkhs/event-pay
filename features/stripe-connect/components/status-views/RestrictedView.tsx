@@ -19,12 +19,12 @@ export function RestrictedView({
   expressDashboardAvailable,
 }: RestrictedViewProps) {
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-destructive/25 bg-destructive/5 p-4">
-        <div className="flex gap-3 items-start">
-          <div className="shrink-0 rounded-lg bg-destructive/15 p-2 flex items-center justify-center">
-            <ShieldX className="h-4 w-4 text-destructive" />
-          </div>
+    <div className="flex flex-col gap-4">
+      <div className="rounded-lg border border-destructive/25 bg-destructive/5 p-3.5 sm:p-4">
+        <div className="flex items-start gap-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-destructive/20 text-destructive">
+            <ShieldX className="size-4" />
+          </span>
           <div className="min-w-0">
             <p className="text-sm font-semibold">アカウントが制限されています</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -39,10 +39,10 @@ export function RestrictedView({
           <Button
             type="submit"
             variant="outline"
-            className="group relative h-11 w-full rounded-xl border border-destructive/25 bg-gradient-to-r from-destructive/10 via-destructive/5 to-transparent text-sm font-semibold text-red-700 transition-all duration-300 hover:border-destructive/40 hover:from-destructive/20 hover:via-destructive/10 hover:to-destructive/5 hover:text-red-800 shadow-[inset_0_1px_0_hsl(var(--destructive-foreground)/0.4),0_8px_16px_-12px_hsl(var(--destructive)/0.2)] hover:shadow-[inset_0_1px_0_hsl(var(--destructive-foreground)/0.5),0_12px_24px_-12px_hsl(var(--destructive)/0.4)]"
+            className="group h-11 w-full border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground"
           >
             Stripeで制限内容を確認
-            <ExternalLink className="ml-2 h-3.5 w-3.5 opacity-70 transition-transform group-hover:translate-x-0.5" />
+            <ExternalLink className="ml-2 size-3.5 opacity-70 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
           </Button>
         </form>
       )}

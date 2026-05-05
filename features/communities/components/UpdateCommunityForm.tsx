@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 
+import Link from "next/link";
+
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
@@ -51,8 +53,8 @@ export function UpdateCommunityForm({
   const nameError = error?.fieldErrors?.name?.[0];
 
   return (
-    <div className="rounded-xl border border-border/60 bg-card shadow-sm">
-      <div className="space-y-6 p-6">
+    <div className="rounded-lg border border-border/60 bg-background">
+      <div className="flex flex-col gap-5 p-4 sm:gap-6 sm:p-6">
         {!state.success && error?.userMessage ? (
           <Alert variant="destructive">
             <AlertTitle>更新できませんでした</AlertTitle>
@@ -68,8 +70,8 @@ export function UpdateCommunityForm({
           </Alert>
         ) : null}
 
-        <form action={formAction} className="space-y-5" noValidate>
-          <div className="space-y-2">
+        <form action={formAction} className="flex flex-col gap-4 sm:gap-5" noValidate>
+          <div className="flex flex-col gap-2">
             <Label htmlFor="community-settings-name" className="text-sm font-medium">
               コミュニティ名
             </Label>
@@ -96,7 +98,7 @@ export function UpdateCommunityForm({
             ) : null}
           </div>
 
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="community-settings-description" className="text-sm font-medium">
               コミュニティの説明
               <span className="ml-2 text-xs font-normal text-muted-foreground">任意</span>
@@ -109,15 +111,23 @@ export function UpdateCommunityForm({
               className="min-h-28 resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              空欄で保存すると説明文は未設定になります。
+              コミュニティプロフィールに表示されます。{" "}
+              <Link
+                href="/settings/payments/guide#community-profile"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                詳しく見る
+              </Link>
             </p>
           </div>
 
-          <div className="flex justify-end border-t border-border/60 pt-5">
-            <Button type="submit" disabled={isPending} className="min-w-32">
+          <div className="flex justify-end border-t border-border/60 pt-4 sm:pt-5">
+            <Button type="submit" disabled={isPending} className="w-full sm:w-auto sm:min-w-32">
               {isPending ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
                   更新中...
                 </>
               ) : (

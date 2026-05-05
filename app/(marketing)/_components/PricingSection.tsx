@@ -1,6 +1,6 @@
 import React from "react";
 
-import Image from "next/image";
+import Link from "next/link";
 
 import { Check } from "lucide-react";
 
@@ -13,10 +13,14 @@ export const PricingSection: React.FC = () => {
         <div className="max-w-4xl mx-auto">
           <FadeIn direction="up" className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              初期費用・月額固定費はずっと 0円
+              初期費用・月額費用は0円。
+              <br className="md:hidden" />
+              手数料はオンライン決済で集金したときだけ。
             </h2>
             <p className="text-slate-400">
-              イベントを開催して売上が発生しない限り、費用は一切かかりません。
+              固定費なしで始められます。
+              <br className="hidden md:block" />
+              現金払いの管理には費用はかかりません。オンラインで支払われた参加費に対してのみ、決済金額に応じたオンライン集金手数料が発生します。
             </p>
           </FadeIn>
 
@@ -29,9 +33,7 @@ export const PricingSection: React.FC = () => {
                     <div className="bg-success/10 p-1 rounded-full">
                       <Check size={16} className="text-success" aria-hidden="true" />
                     </div>
-                    <span className="font-medium">
-                      イベント作成数：<span className="font-bold">無制限</span>
-                    </span>
+                    <span className="font-medium">イベントの作成</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="bg-green-100 p-1 rounded-full">
@@ -43,7 +45,7 @@ export const PricingSection: React.FC = () => {
                     <div className="bg-green-100 p-1 rounded-full">
                       <Check size={16} className="text-green-600" aria-hidden="true" />
                     </div>
-                    <span className="font-medium">Stripe連携によるオンライン決済</span>
+                    <span className="font-medium">オンライン決済による集金</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="bg-green-100 p-1 rounded-full">
@@ -66,20 +68,20 @@ export const PricingSection: React.FC = () => {
               <div className="flex-1 text-center md:text-left">
                 <div className="mb-8">
                   <p className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">
-                    現金集金の手数料
+                    現金払いの管理
                   </p>
                   <div className="flex items-baseline justify-center md:justify-start gap-1">
                     <span className="text-4xl font-bold text-slate-800">0</span>
-                    <span className="text-xl font-bold text-slate-700">%</span>
+                    <span className="text-xl font-bold text-slate-700">円</span>
                   </div>
                   <p className="text-xs text-slate-400 mt-1">
-                    ※現金の受け渡しにシステム手数料はかかりません
+                    現金の受け渡しにシステム手数料はかかりません
                   </p>
                 </div>
 
                 <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
                   <p className="text-sm text-slate-500 font-bold uppercase tracking-wider">
-                    オンライン集金の手数料
+                    オンライン集金手数料
                   </p>
                 </div>
                 <div className="flex items-baseline justify-center md:justify-start gap-1">
@@ -87,15 +89,13 @@ export const PricingSection: React.FC = () => {
                   <span className="text-2xl font-bold text-slate-700">%</span>
                 </div>
 
-                <div className="mt-4 bg-primary/5 border border-primary/20 p-4 rounded-xl text-left">
-                  <p className="text-sm font-bold text-slate-800 mb-1">負担は実質0円</p>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    参加費に手数料分を上乗せして設定すれば持ち出しはありません。
-                    <br />
+                <div className="mt-4 bg-slate-50 border border-slate-200 p-4 rounded-xl text-left">
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    主催者が受け取りたい金額に合わせて、手数料を考慮した参加費を設定できます。
                     <span className="text-xs text-slate-400 mt-1 block">
-                      例: 3,800円集めたい場合 → 参加費を4000円に設定
+                      例: 3,000円を受け取りたい場合 → 参加費を約3,155円に設定
                       <br />
-                      (自動計算ツール内蔵)
+                      （自動計算ツール内蔵）
                     </span>
                   </p>
                 </div>
@@ -103,86 +103,15 @@ export const PricingSection: React.FC = () => {
             </div>
           </FadeIn>
 
-          {/* Payment Methods Trust Badge */}
-          <FadeIn direction="up" delay={0.4}>
-            <div className="mt-12 pt-8 border-t border-slate-700">
-              <p className="text-center text-slate-400 text-sm mb-6">対応している支払い方法</p>
-              <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-4 opacity-90">
-                {/* Credit Cards */}
-                <div className="flex items-center gap-4">
-                  <Image
-                    src="/images/cards/visa.svg"
-                    alt="Visa"
-                    width={48}
-                    height={32}
-                    className="h-7 w-auto brightness-0 invert"
-                  />
-                  <Image
-                    src="/images/cards/mastercard.svg"
-                    alt="Mastercard"
-                    width={48}
-                    height={32}
-                    className="h-7 w-auto"
-                  />
-                  <Image
-                    src="/images/cards/jcb.webp"
-                    alt="JCB"
-                    width={73}
-                    height={56}
-                    className="h-7 w-auto"
-                  />
-                  <Image
-                    src="/images/cards/amex.webp"
-                    alt="Amex"
-                    width={56}
-                    height={56}
-                    className="h-7 w-auto"
-                  />
-                  <Image
-                    src="/images/cards/diners.webp"
-                    alt="Diners"
-                    width={76}
-                    height={56}
-                    className="h-7 w-auto"
-                  />
-                  <Image
-                    src="/images/cards/discover.webp"
-                    alt="Discover"
-                    width={88}
-                    height={56}
-                    className="h-7 w-auto"
-                  />
-                </div>
-
-                {/* Divider for desktop */}
-                <div className="hidden lg:block h-8 w-px bg-slate-600" aria-hidden="true"></div>
-
-                {/* Wallets & Stripe */}
-                <div className="flex items-center gap-5">
-                  <Image
-                    src="/images/cards/apple-pay.svg"
-                    alt="Apple Pay"
-                    width={56}
-                    height={32}
-                    className="h-7 w-auto"
-                  />
-                  <Image
-                    src="/images/cards/google-pay.webp"
-                    alt="Google Pay"
-                    width={105}
-                    height={56}
-                    className="h-7 w-auto"
-                  />
-                  <div className="h-6 w-px bg-slate-600 mx-1" aria-hidden="true"></div>
-                  <Image
-                    src="/images/powered-by-stripe.svg"
-                    alt="Powered by Stripe"
-                    width={120}
-                    height={32}
-                    className="h-7 w-auto brightness-0 invert opacity-90"
-                  />
-                </div>
-              </div>
+          {/* 文脈リンク */}
+          <FadeIn direction="up" delay={0.2}>
+            <div className="mt-8 text-center">
+              <Link
+                href="/guide/pricing-and-fees"
+                className="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
+              >
+                料金と手数料について →
+              </Link>
             </div>
           </FadeIn>
         </div>

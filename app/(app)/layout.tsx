@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 
 import { redirect } from "next/navigation";
 
-import { resolveCommunityAnnouncementForServerComponent } from "@core/announcements/community-announcement";
 import {
   resolveAppWorkspaceForServerComponent,
   toAppWorkspaceShellData,
@@ -17,7 +16,6 @@ import { MobileAppChrome } from "@components/layout/MobileAppChrome";
 
 import { logoutAction } from "@/app/(auth)/actions";
 import { createExpressDashboardLoginLinkAction } from "@/app/_actions/stripe-connect/actions";
-import { CommunityAnnouncementBanner } from "@/app/_components/CommunityAnnouncementBanner";
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
@@ -35,9 +33,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     redirect("/communities/create");
   }
 
-  const communityAnnouncement = await resolveCommunityAnnouncementForServerComponent(
-    workspace.currentUser.id
-  );
   const workspaceShell = toAppWorkspaceShellData(workspace);
 
   return (
@@ -50,9 +45,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         />
         <SidebarInset>
           <DemoBanner />
-          {communityAnnouncement.shouldShow ? (
-            <CommunityAnnouncementBanner userName={workspace.currentUser.name} />
-          ) : null}
           <Header />
           <MobileAppChrome
             workspace={workspaceShell}
