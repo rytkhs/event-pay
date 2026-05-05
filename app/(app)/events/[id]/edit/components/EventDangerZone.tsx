@@ -78,7 +78,7 @@ export function EventDangerZone({ eventId, eventTitle, eventStatus }: EventDange
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-destructive" />
           <CardTitle className="text-base font-semibold text-destructive md:text-lg">
-            危険な操作
+            イベントの中止
           </CardTitle>
         </div>
         <CardDescription className="text-sm">
