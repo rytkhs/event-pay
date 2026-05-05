@@ -12,7 +12,7 @@ export const HeroSection: React.FC = () => {
     <section className="relative pt-32 pb-20 md:pt-40 md:pb-32 overflow-hidden bg-gradient-to-br from-primary/5 via-white to-secondary/5">
       {/* Decorative Background Shapes */}
       <div
-        className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-primary/20 rounded-full blur-3xl"
+        className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-primary/15 rounded-full blur-3xl"
         aria-hidden="true"
       ></div>
       <div
@@ -25,9 +25,9 @@ export const HeroSection: React.FC = () => {
           {/* Text Content */}
           <div className="md:w-5/12 text-center md:text-left">
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-800 leading-snug mb-6">
-              出欠確認から<span className="">集金</span>まで、
+              出欠確認から集金まで、
               <br />
-              <span className="text-[#24A6B5]">リンク1本でまとめて管理。</span>
+              リンク1本でまとめて管理。
             </h1>
 
             <FadeIn delay={0.3} className="w-full">
