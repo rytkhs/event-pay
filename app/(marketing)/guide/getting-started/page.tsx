@@ -27,6 +27,7 @@ export const dynamic = "force-static";
 const title = "主催者のはじめ方";
 const description =
   "みんなの集金でイベントを作成し、招待リンクで出欠と集金を管理するまでの主催者向けスタートガイドです。現金集金だけで始める場合とオンライン集金を使う場合の違いも確認できます。";
+const demoStartUrl = `${process.env.NEXT_PUBLIC_DEMO_URL || "https://demo.minnano-shukin.com"}/start-demo`;
 
 export const metadata: Metadata = {
   title,
@@ -206,7 +207,7 @@ export default function OrganizerGettingStartedPage() {
                 size="lg"
                 className="h-12 rounded-full border-slate-300 bg-white/60 px-6"
               >
-                <Link href="/start-demo">デモで試す</Link>
+                <Link href={demoStartUrl}>デモを試す</Link>
               </Button>
             </div>
           </div>
@@ -350,7 +351,7 @@ export default function OrganizerGettingStartedPage() {
         eyebrow="Start now"
         title="まずは、次のイベントを1つ作ってみる。"
         body="現金集金だけでも始められます。オンライン集金は、必要なイベントが出てきたタイミングで設定できます。"
-        secondaryHref="/start-demo"
+        secondaryHref={demoStartUrl}
         secondaryLabel="デモを試す"
       />
     </div>

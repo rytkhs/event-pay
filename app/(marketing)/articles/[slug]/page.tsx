@@ -193,7 +193,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                 招待リンクを共有するだけで参加表明を集め、オンライン決済と現金集金をまとめて確認できます。
               </p>
               <Button asChild className="mt-6">
-                <Link href="/start-demo">
+                <Link href="/register">
                   無料でイベントを作成する
                   <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
