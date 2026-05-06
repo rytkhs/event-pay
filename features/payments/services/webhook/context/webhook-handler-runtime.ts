@@ -10,7 +10,6 @@ import { WebhookEventLedgerRepository } from "../repositories/webhook-event-ledg
 import type { StripeEventRouterHandlers } from "../router/stripe-event-router";
 import { PaymentAnalyticsWebhookService } from "../services/payment-analytics-service";
 import { PaymentNotificationService } from "../services/payment-notification-service";
-import { SettlementRegenerationService } from "../services/settlement-regeneration-service";
 import { StripeObjectFetchService } from "../services/stripe-object-fetch-service";
 
 import type { WebhookHandlerContext } from "./webhook-handler-context";
@@ -28,10 +27,6 @@ export function createWebhookHandlerRuntime(context: WebhookHandlerContext): Web
     logger: context.logger,
   });
   const paymentNotificationService = new PaymentNotificationService({
-    supabase: context.supabase,
-    logger: context.logger,
-  });
-  const settlementRegenerationService = new SettlementRegenerationService({
     supabase: context.supabase,
     logger: context.logger,
   });
@@ -57,18 +52,15 @@ export function createWebhookHandlerRuntime(context: WebhookHandlerContext): Web
     paymentRepository,
     stripeObjectFetchService,
     logger: context.logger,
-    settlementRegenerationService,
   });
   const applicationFeeHandler = new ApplicationFeeHandler({
     paymentRepository,
     stripeObjectFetchService,
     logger: context.logger,
-    settlementRegenerationService,
   });
   const disputeHandler = new DisputeHandler({
     paymentRepository,
     disputeRepository,
-    settlementRegenerationService,
     logger: context.logger,
   });
 

@@ -2,7 +2,7 @@
 
 ## 1. 目的とスコープ
 
-本DBは本プロダクトの Single Source of Truth として、イベント運営・参加・決済・精算・監査ログに加え、問い合わせ（contacts）と外部認証連携（LINE）も管理します。
+本DBは本プロダクトの Single Source of Truth として、イベント運営・参加・決済・監査ログに加え、問い合わせ（contacts）と外部認証連携（LINE）も管理します。
 ブラウザから直接アクセスされ得る前提（Supabase）なので、exposed schema（public）ではRLSを有効化し、ポリシーを正として運用します。
 
 community 機能導入後の主線は **users → communities → events → attendances → payments** です。現状、 `communities.created_by` が owner、`payout_profiles.owner_user_id UNIQUE` が 1 user = 1 payout profile を表します。
@@ -19,7 +19,6 @@ erDiagram
 
     users ||--o{ communities : "owns"
     users ||--o| payout_profiles : "owns (MVP)"
-    users ||--o{ settlements : "receives"
 
     payout_profiles ||--o{ communities : "default payout for"
     communities ||--o{ events : "contains"
@@ -29,7 +28,6 @@ erDiagram
     payout_profiles ||--o{ payments : "snapshotted by"
 
     payments ||--o{ payment_disputes : "may have"
-    events ||--o{ settlements : "generates"
 
     users {
         uuid id PK ,FK "-> auth.users.id"
@@ -108,18 +106,6 @@ erDiagram
         text checkout_idempotency_key
         integer version
         timestamptz paid_at
-    }
-
-    settlements {
-        uuid id PK
-        uuid event_id FK
-        uuid user_id FK
-        integer total_stripe_sales
-        integer total_stripe_fee
-        integer platform_fee
-        integer net_payout_amount
-        varchar transfer_group
-        timestamptz generated_at
     }
 
     system_logs {
@@ -208,19 +194,15 @@ erDiagram
 - 補足:
   - `payout_profile_id` は決済時点の受取先 snapshot。event 作成後に community のデフォルト受取先が変わっても過去決済は揺れない
 
-### 3.7 settlements
-- 役割: イベント単位の精算レポート（スナップショット）。
-- 主な列: `total_stripe_sales`, `platform_fee`, `net_payout_amount`, `transfer_group`, `generated_at`
-
-### 3.8 payment_disputes
+### 3.7 payment_disputes
 - 役割: Stripe dispute（チャージバック等）の記録。
 - 主な制約: `stripe_dispute_id` UNIQUE
 
-### 3.9 system_logs
+### 3.8 system_logs
 - 役割: 監査ログ。操作や Webhook 処理結果を追えるようにする。
 - 重要: `dedupe_key` により冪等ログ化できる
 
-### 3.10 fee_config
+### 3.9 fee_config
 - 役割: 手数料設定（シングルトン）。
 
 ## 4. RLS / 認可方針（概要）
@@ -235,7 +217,6 @@ Supabase はブラウザから DB へ直接アクセスし得るため、exposed
 | events | `event -> community owner` 基準で参照 / 更新 | 招待トークン等で限定参照 | 全操作 |
 | attendances | `event -> community owner` 基準で参照 / 更新 | 自分の `guest_token` 分のみ参照 | 全操作 |
 | payments | `event -> community owner` 基準で参照 / 更新 | 自分の `guest_token` 分のみ参照 | 全操作（Webhook等） |
-| settlements | 原則RPC経由 | なし | 全操作 |
 | system_logs | なし | なし | 全操作 |
 
 ## 5. 補足

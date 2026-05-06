@@ -13,7 +13,6 @@
 - 定員管理
 - 現金 / Stripe 決済
 - Stripe Connect 連携（community owner の受取設定）
-- 精算レポート（売上 / 手数料 / 控除の集計スナップショット）
 - メール通知 / リマインダー
 
 ### スコープ外（明示）
@@ -38,7 +37,6 @@
 | Attendance | `attendances` | 参加者の出欠とゲスト識別情報を持つ。 |
 | Guest | `guest_token` | アカウント不要で参加する匿名参加者。 |
 | Payment | `payments` | 支払いの単位。オンライン / 現金を統一して扱う。 |
-| Settlement | `settlements` | 精算レポート。実送金そのものとは区別する。 |
 | invite_token | `events.invite_token` | 招待リンクで使うトークン。 |
 | guest_token | `attendances.guest_token` | 匿名参加者の本人性を担保するトークン。 |
 
@@ -63,8 +61,6 @@
   - Stripe / cash の支払い状態、冪等性、Webhook 確定処理、payout snapshot
 - 受取設定コンテキスト（Payout / Connect）
   - payout profile、representative community、Connect onboarding
-- 精算コンテキスト（Settlement）
-  - 売上 / 手数料 / 控除 / 純額の集計。CC-10 方針どおり今回の主更新対象外
 - 認証・権限コンテキスト（Auth / RLS）
   - user / guest / service_role の権限境界
 
@@ -166,12 +162,7 @@
   - Stripe 決済で非 `pending` / `canceled` のとき、必要な Stripe 識別子が必須
   - Stripe 決済は `payout_profile_id` 必須
 
-### 5.6 Settlement（settlements）
-- 責務: イベント単位の集計スナップショット
-- 注意
-  - Settlement は支払いや送金の実行ではなく集計レポート
-
-### 5.6.1 Overview KPI: 入金状況
+### 5.6 Overview KPI: 入金状況
 - 概要タブの `入金状況` は、会計上の売上ではなく community owner 向けの運用KPI
 - 対象は `attending` のうち `waived` を除いた参加者
 - 入金済みは `paid` / `received`

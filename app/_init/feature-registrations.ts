@@ -6,11 +6,9 @@
 import "server-only";
 
 import { isPaymentPortRegistered } from "@core/ports/payments";
-import { isSettlementReportPortRegistered } from "@core/ports/settlements";
 import { isStripeConnectPortRegistered } from "@core/ports/stripe-connect";
 
 import { registerPaymentAdapters } from "@features/payments/server";
-import { registerSettlementsAdapters } from "@features/settlements/server";
 import { registerStripeConnectAdapters } from "@features/stripe-connect/server";
 
 /**
@@ -22,11 +20,6 @@ export function registerAllFeatures(): void {
   // Payment機能の実装を登録
   if (!isPaymentPortRegistered()) {
     registerPaymentAdapters();
-  }
-
-  // Settlement機能のアダプタを登録
-  if (!isSettlementReportPortRegistered()) {
-    registerSettlementsAdapters();
   }
 
   // Stripe Connect機能のアダプタを登録
