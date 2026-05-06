@@ -8,16 +8,6 @@ import { unified } from "unified";
 
 import { parseArticleFrontmatter } from "./article.schema";
 
-function estimateReadingMinutes(markdown: string): number {
-  const plainText = markdown
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/<[^>]*>/g, "")
-    .replace(/[#>*_`[\]()!-]/g, "")
-    .replace(/\s+/g, "");
-
-  return Math.max(1, Math.ceil(plainText.length / 600));
-}
-
 export async function parseArticleMarkdown({
   fileSlug,
   content,
@@ -39,6 +29,5 @@ export async function parseArticleMarkdown({
   return {
     frontmatter,
     html: String(file.value),
-    readingMinutes: estimateReadingMinutes(parsed.content),
   };
 }

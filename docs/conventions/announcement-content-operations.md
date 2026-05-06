@@ -25,8 +25,6 @@ description: "2026年6月1日からの料金体系改定について、対象と
 slug: "pricing-revision-2026-06"
 publishedAt: "2026-05-01"
 status: "published"
-type: "pricing"
-importance: "important"
 ---
 ```
 
@@ -35,11 +33,6 @@ importance: "important"
 ```yaml
 updatedAt: "2026-05-10"
 effectiveAt: "2026-06-01"
-audience:
-  - "organizer"
-tags:
-  - "料金"
-  - "手数料"
 ```
 
 ## 値のルール
@@ -47,9 +40,6 @@ tags:
 - `slug` は英小文字・数字・ハイフンのみを使う。
 - `publishedAt`, `updatedAt`, `effectiveAt` は `YYYY-MM-DD` 形式にする。
 - `status` は `draft` または `published`。
-- `type` は `pricing`, `feature`, `maintenance`, `legal`, `incident`, `other`。
-- `importance` は `normal`, `important`, `critical`。
-- `audience` は `organizer`, `participant`, `all`。
 
 ## 公開条件
 
@@ -68,13 +58,13 @@ tags:
 
 - 本文内では `#` を使わず、ページタイトルは `<h1>` に任せる。
 - 本文の大見出しは `##` から始める。
-- 料金改定や規約変更では、適用開始日、対象、既存イベントへの影響、問い合わせ先を明記する。
+- 料金改定や規約変更では、適用開始日、対象、既存イベントへの影響を本文内で明記する。
 - 生HTML、外部スクリプト、iframe は使わない。
 
 ## 追加・更新手順
 
 1. `content/announcements/{slug}.md` を追加または編集する。
-2. frontmatter の `slug`, `publishedAt`, `status`, `type`, `importance` を確認する。
+2. frontmatter の `slug`, `publishedAt`, `status` を確認する。
 3. 本文内の見出しが `##` から始まっていることを確認する。
 4. 検証コマンドを実行する。
 

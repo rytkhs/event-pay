@@ -39,7 +39,6 @@ export const getAllAnnouncements = cache(async (): Promise<Announcement[]> => {
         ...parsed.frontmatter,
         html: parsed.html,
         path: buildAnnouncementPath(parsed.frontmatter.slug),
-        readingMinutes: parsed.readingMinutes,
       };
     })
   );

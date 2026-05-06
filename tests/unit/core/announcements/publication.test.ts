@@ -9,10 +9,6 @@ const baseAnnouncement: AnnouncementFrontmatter = {
   slug: "pricing-revision-2026-06",
   publishedAt: "2026-05-01",
   status: "published",
-  type: "pricing",
-  importance: "important",
-  audience: [],
-  tags: [],
 };
 
 describe("isAnnouncementPublished", () => {

@@ -39,7 +39,6 @@ export const getAllArticles = cache(async (): Promise<Article[]> => {
         ...parsed.frontmatter,
         html: parsed.html,
         path: buildArticlePath(parsed.frontmatter.slug),
-        readingMinutes: parsed.readingMinutes,
       };
     })
   );

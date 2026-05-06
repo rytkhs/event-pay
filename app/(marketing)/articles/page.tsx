@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { ArrowUpRight, BookOpenText, CalendarDays, Clock } from "lucide-react";
+import { ArrowUpRight, BookOpenText, CalendarDays } from "lucide-react";
 import type { Metadata } from "next";
 
 import { getPublishedArticles } from "@core/articles/article.repository";
@@ -85,10 +85,6 @@ export default async function ArticlesPage() {
                   <span className="inline-flex items-center gap-1 text-slate-400">
                     <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
                     {formatArticleDate(article.publishedAt)}
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-slate-400">
-                    <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-                    {article.readingMinutes}分
                   </span>
                 </div>
 
