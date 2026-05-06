@@ -17,16 +17,10 @@ export const footerNavigationGroups: FooterLinkGroup[] = [
         href: "/#pricing",
         ariaLabel: "みんなの集金の料金を見る",
       },
-      {
-        label: "デモ",
-        href: `${process.env.NEXT_PUBLIC_DEMO_URL || "https://demo.minnano-shukin.com"}/start-demo`,
-        external: true,
-        ariaLabel: "みんなの集金のデモを試す",
-      },
     ],
   },
   {
-    title: "ガイド",
+    title: "使い方",
     links: [
       {
         label: "主催者のはじめ方",
@@ -48,36 +42,36 @@ export const footerNavigationGroups: FooterLinkGroup[] = [
         href: "/guide/pricing-and-fees",
         ariaLabel: "料金と手数料の詳細を確認する",
       },
-      {
-        label: "よくある質問",
-        href: "/#faq",
-        ariaLabel: "よくある質問を確認する",
-      },
     ],
   },
   {
     title: "サポート",
     links: [
       {
+        label: "よくある質問",
+        href: "/#faq",
+        ariaLabel: "よくある質問を確認する",
+      },
+      {
+        label: "お知らせ",
+        href: "/announcements",
+        ariaLabel: "みんなの集金のお知らせを見る",
+      },
+      {
         label: "フィードバック",
         href: "/feedback",
         ariaLabel: "みんなの集金へのフィードバックフォーム",
+        featured: true,
       },
       {
         label: "お問い合わせ",
         href: "/contact",
         ariaLabel: "みんなの集金へのお問い合わせフォーム",
       },
-      {
-        label: "運営元",
-        href: "https://project.tklab.workers.dev/",
-        external: true,
-        ariaLabel: "みんなの集金の運営元を確認する",
-      },
     ],
   },
   {
-    title: "法的情報",
+    title: "運営・法務",
     links: [
       {
         label: "利用規約",
@@ -93,6 +87,12 @@ export const footerNavigationGroups: FooterLinkGroup[] = [
         label: "特定商取引法に基づく表記",
         href: "/tokushoho/platform",
         ariaLabel: "みんなの集金プラットフォームの特定商取引法に基づく表記",
+      },
+      {
+        label: "運営元",
+        href: "https://project.tklab.workers.dev/",
+        external: true,
+        ariaLabel: "みんなの集金の運営元を確認する",
       },
     ],
   },

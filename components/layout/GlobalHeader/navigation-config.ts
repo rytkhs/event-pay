@@ -23,11 +23,6 @@ export const navigationConfig: NavigationConfig = {
       href: "/#pricing",
       exactMatch: false,
     },
-    {
-      label: "デモ",
-      href: `${process.env.NEXT_PUBLIC_DEMO_URL || "https://demo.minnano-shukin.com"}/start-demo`,
-      exactMatch: false,
-    },
   ],
 
   /**
