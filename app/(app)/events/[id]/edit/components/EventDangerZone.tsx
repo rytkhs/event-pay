@@ -73,29 +73,31 @@ export function EventDangerZone({ eventId, eventTitle, eventStatus }: EventDange
   const showCancelButton = eventStatus !== "canceled";
 
   return (
-    <Card className="border-destructive/50 bg-destructive/5">
-      <CardHeader>
+    <Card className="overflow-hidden rounded-lg border border-destructive/30 bg-destructive/5 shadow-none">
+      <CardHeader className="border-b border-destructive/20 bg-background/50 p-4 sm:p-5">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-destructive" />
-          <CardTitle className="text-destructive">イベントを中止する</CardTitle>
+          <CardTitle className="text-base font-semibold text-destructive md:text-lg">
+            イベントの中止
+          </CardTitle>
         </div>
-        <CardDescription>
+        <CardDescription className="text-sm">
           以下の操作は取り消すことができません。慎重に実行してください。
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="flex flex-col gap-3 p-4 sm:p-5">
         {showCancelButton && (
-          <div className="flex items-start justify-between gap-4 p-4 rounded-lg border border-border bg-background">
-            <div className="flex-1">
-              <h3 className="font-semibold text-sm mb-1">イベントを中止する</h3>
+          <div className="flex flex-col gap-4 rounded-lg border border-border bg-background p-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <h3 className="mb-1 text-sm font-semibold">イベントを中止する</h3>
               <p className="text-sm text-muted-foreground">
                 参加者の決済リンクが無効になり、イベントは「キャンセル」ステータスになります。
               </p>
             </div>
             <Dialog open={isCancelDialogOpen} onOpenChange={setCancelDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="flex-shrink-0">
-                  <Trash2 className="h-4 w-4 mr-1.5" />
+                <Button variant="destructive" size="sm" className="w-full flex-shrink-0 sm:w-auto">
+                  <Trash2 className="mr-1.5 h-4 w-4" />
                   中止する
                 </Button>
               </DialogTrigger>
@@ -127,9 +129,9 @@ export function EventDangerZone({ eventId, eventTitle, eventStatus }: EventDange
           </div>
         )}
 
-        <div className="flex items-start justify-between gap-4 p-4 rounded-lg border border-border bg-background">
-          <div className="flex-1">
-            <h3 className="font-semibold text-sm mb-1">イベントを削除する</h3>
+        <div className="flex flex-col gap-4 rounded-lg border border-border bg-background p-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <h3 className="mb-1 text-sm font-semibold">イベントを削除する</h3>
             <p className="text-sm text-muted-foreground">
               イベントがデータベースから完全に削除されます。すでに参加者や決済が存在するイベントは削除できません。
             </p>
@@ -139,9 +141,9 @@ export function EventDangerZone({ eventId, eventTitle, eventStatus }: EventDange
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-shrink-0 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                className="w-full flex-shrink-0 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground sm:w-auto"
               >
-                <Trash2 className="h-4 w-4 mr-1.5" />
+                <Trash2 className="mr-1.5 h-4 w-4" />
                 削除する
               </Button>
             </DialogTrigger>

@@ -148,25 +148,19 @@ export default async function EventEditPage(props: EventEditPageProps) {
   const canUseOnlinePayments = payoutResolution.isReady;
 
   return (
-    <div className="min-h-screen bg-muted/30 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
-        <div className="space-y-6">
-          {/* 編集フォーム（シングルページ版） */}
-          <SinglePageEventEditForm
-            event={eventForForm}
-            attendeeCount={attendeeCount}
-            hasStripePaid={hasStripePaid}
-            canUseOnlinePayments={canUseOnlinePayments}
-            updateEventAction={updateEventAction}
-          />
+    <div className="min-h-screen bg-muted/30">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-3 pb-28 pt-3 sm:gap-6 sm:px-6 sm:pb-32 lg:px-8 lg:pt-8">
+        {/* 編集フォーム（シングルページ版） */}
+        <SinglePageEventEditForm
+          event={eventForForm}
+          attendeeCount={attendeeCount}
+          hasStripePaid={hasStripePaid}
+          canUseOnlinePayments={canUseOnlinePayments}
+          updateEventAction={updateEventAction}
+        />
 
-          {/* 危険な操作（削除・中止） */}
-          <EventDangerZone
-            eventId={eventId}
-            eventTitle={event.title}
-            eventStatus={computedStatus}
-          />
-        </div>
+        {/* 危険な操作（削除・中止） */}
+        <EventDangerZone eventId={eventId} eventTitle={event.title} eventStatus={computedStatus} />
       </div>
     </div>
   );

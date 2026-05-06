@@ -41,10 +41,7 @@ describe("MarketingHeader", () => {
     expect(screen.getByRole("link", { name: "みんなの集金" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("link", { name: "機能" })).toHaveAttribute("href", "/#features");
     expect(screen.getByRole("link", { name: "料金" })).toHaveAttribute("href", "/#pricing");
-    expect(screen.getByRole("link", { name: "デモ" })).toHaveAttribute(
-      "href",
-      "https://demo.minnano-shukin.com/start-demo"
-    );
+    expect(screen.queryByRole("link", { name: "デモ" })).not.toBeInTheDocument();
     screen
       .getAllByRole("link", { name: "ログイン" })
       .forEach((link) => expect(link).toHaveAttribute("href", "/login"));

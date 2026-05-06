@@ -16,6 +16,8 @@ export interface FooterLink {
   ariaLabel?: string;
   /** アイコン（オプション） */
   icon?: React.ComponentType<{ className?: string }>;
+  /** フッター内で強調表示するかどうか */
+  featured?: boolean;
 }
 
 /**

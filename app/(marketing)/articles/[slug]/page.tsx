@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { ArrowLeft, ArrowUpRight, CalendarDays, Clock, Tags } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, CalendarDays, Tags } from "lucide-react";
 import type { Metadata } from "next";
 
 import {
@@ -27,6 +27,7 @@ function formatArticleDate(date: string): string {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "Asia/Tokyo",
   }).format(new Date(`${date}T00:00:00+09:00`));
 }
 
@@ -121,10 +122,6 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
               <span className="inline-flex items-center gap-1.5 text-slate-400">
                 <CalendarDays className="h-4 w-4" aria-hidden="true" />
                 {formatArticleDate(article.publishedAt)}
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-slate-400">
-                <Clock className="h-4 w-4" aria-hidden="true" />
-                {article.readingMinutes}分で読めます
               </span>
             </div>
 

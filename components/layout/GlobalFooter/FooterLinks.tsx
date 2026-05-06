@@ -39,10 +39,9 @@ export function FooterLinks({
           <h3 className="font-bold text-foreground text-xs tracking-[0.15em]">{group.title}</h3>
           <ul className="flex flex-col gap-3.5">
             {group.links.map((link) => {
-              const isFeedback = link.label === "フィードバック";
               const linkStyles = cn(
                 "text-sm relative group w-fit flex items-center gap-1.5 transition-all duration-300",
-                isFeedback
+                link.featured
                   ? "text-primary font-semibold hover:text-primary/80"
                   : "text-muted-foreground hover:text-primary",
                 "focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-sm"
@@ -59,12 +58,12 @@ export function FooterLinks({
                       rel="noopener noreferrer"
                     >
                       <span className="relative flex items-center gap-1.5">
-                        {isFeedback && <MessageSquare className="w-3.5 h-3.5" />}
+                        {link.featured && <MessageSquare className="w-3.5 h-3.5" />}
                         {link.label}
                         <span
                           className={cn(
                             "absolute -bottom-1 left-0 w-0 h-[1.5px] transition-all duration-300 group-hover:w-full",
-                            isFeedback ? "bg-primary/40" : "bg-primary/60"
+                            link.featured ? "bg-primary/40" : "bg-primary/60"
                           )}
                         />
                       </span>
@@ -77,12 +76,12 @@ export function FooterLinks({
                       aria-label={link.ariaLabel}
                     >
                       <span className="relative flex items-center gap-1.5">
-                        {isFeedback && <MessageSquare className="w-3.5 h-3.5" />}
+                        {link.featured && <MessageSquare className="w-3.5 h-3.5" />}
                         {link.label}
                         <span
                           className={cn(
                             "absolute -bottom-1 left-0 w-0 h-[1.5px] transition-all duration-300 group-hover:w-full",
-                            isFeedback ? "bg-primary/40" : "bg-primary/60"
+                            link.featured ? "bg-primary/40" : "bg-primary/60"
                           )}
                         />
                       </span>

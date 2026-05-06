@@ -6,9 +6,9 @@ import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 
-import { parseArticleFrontmatter } from "./article.schema";
+import { parseAnnouncementFrontmatter } from "./announcement.schema";
 
-export async function parseArticleMarkdown({
+export async function parseAnnouncementMarkdown({
   fileSlug,
   content,
 }: {
@@ -16,7 +16,7 @@ export async function parseArticleMarkdown({
   content: string;
 }) {
   const parsed = matter(content);
-  const frontmatter = parseArticleFrontmatter(parsed.data || {}, fileSlug);
+  const frontmatter = parseAnnouncementFrontmatter(parsed.data || {}, fileSlug);
   const processor = unified()
     .use(remarkParse)
     .use(remarkGfm)

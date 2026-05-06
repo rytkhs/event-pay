@@ -2,6 +2,8 @@
 
 `/articles` 配下の集客記事は、Markdown + frontmatter で管理する。記事は `content/articles/*.md` に1記事1ファイルで追加し、公開記事だけが一覧・詳細・sitemap・静的生成対象に含まれる。
 
+公式告知は `/announcements` に分け、`docs/conventions/announcement-content-operations.md` の運用ルールに従う。記事側のSEO項目やタグ運用を、お知らせの frontmatter に持ち込まない。
+
 ## ファイル配置
 
 記事ファイルは次の場所に置く。

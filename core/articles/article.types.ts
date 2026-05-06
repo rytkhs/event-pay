@@ -7,7 +7,6 @@ export type ArticleFrontmatter = z.infer<typeof articleFrontmatterSchema>;
 
 export type ArticleSummary = ArticleFrontmatter & {
   path: `/articles/${string}`;
-  readingMinutes: number;
 };
 
 export type Article = ArticleSummary & {

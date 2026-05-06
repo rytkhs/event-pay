@@ -154,7 +154,7 @@ test.describe("イベント作成（E2E）", () => {
     // オンライン決済のラベルを取得
     const paymentMethodsContainer = page.getByTestId("payment-methods");
     const onlinePaymentLabel = paymentMethodsContainer.locator("label").filter({
-      hasText: "オンライン決済",
+      hasText: "オンライン",
     });
 
     // オンライン決済が有効な場合のフロー
@@ -177,7 +177,7 @@ test.describe("イベント作成（E2E）", () => {
     } else {
       // オンライン決済が無効な場合は現金を選択
       const cashPaymentLabel = paymentMethodsContainer.locator("label").filter({
-        hasText: "現金払い",
+        hasText: "現金",
       });
       await cashPaymentLabel.click();
     }
