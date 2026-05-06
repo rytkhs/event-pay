@@ -678,26 +678,6 @@ export const ERROR_REGISTRY: Record<ErrorCode, ErrorDefinition> = {
     retryable: false,
     category: "payment",
   },
-  SETTLEMENT_REPORT_FAILED: {
-    code: "SETTLEMENT_REPORT_FAILED",
-    httpStatus: 500,
-    message: "Settlement report generation failed",
-    userMessage: "精算レポートの生成に失敗しました。",
-    typeUri: `${BASE_URI}/settlement-report-failed`,
-    severity: "high",
-    retryable: true,
-    category: "payment",
-  },
-  SETTLEMENT_REGENERATE_FAILED: {
-    code: "SETTLEMENT_REGENERATE_FAILED",
-    httpStatus: 500,
-    message: "Failed to regenerate settlement report",
-    userMessage: "精算レポートの再生成に失敗しました。",
-    typeUri: `${BASE_URI}/settlement-regenerate-failed`,
-    severity: "high",
-    retryable: true,
-    category: "payment",
-  },
 
   // --- Stripe Connect ---
   CONNECT_ACCOUNT_NOT_FOUND: {

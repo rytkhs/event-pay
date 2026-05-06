@@ -31,7 +31,6 @@ const LOG_CATEGORY_VALUES: LogCategory[] = [
   "event_management",
   "attendance",
   "payment",
-  "settlement",
   "stripe_webhook",
   "stripe_connect",
   "email",

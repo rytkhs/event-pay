@@ -14,7 +14,6 @@ import {
   PaymentWebhookRepositoryError,
   classifyReadError,
 } from "../repositories/payment-webhook-repository";
-import { SettlementRegenerationService } from "../services/settlement-regeneration-service";
 import { StripeObjectFetchService } from "../services/stripe-object-fetch-service";
 import type { WebhookProcessingResult } from "../types";
 import { getRefundFromWebhookEvent } from "../webhook-event-guards";
@@ -28,7 +27,6 @@ interface RefundHandlerParams {
   paymentRepository: PaymentWebhookRepository;
   stripeObjectFetchService: StripeObjectFetchService;
   logger: WebhookContextLogger;
-  settlementRegenerationService: SettlementRegenerationService;
 }
 
 interface ApplyRefundAggregateParams {
@@ -73,13 +71,11 @@ export class RefundHandler {
   private readonly paymentRepository: PaymentWebhookRepository;
   private readonly stripeObjectFetchService: StripeObjectFetchService;
   private readonly logger: WebhookContextLogger;
-  private readonly settlementRegenerationService: SettlementRegenerationService;
 
   constructor(params: RefundHandlerParams) {
     this.paymentRepository = params.paymentRepository;
     this.stripeObjectFetchService = params.stripeObjectFetchService;
     this.logger = params.logger;
-    this.settlementRegenerationService = params.settlementRegenerationService;
   }
 
   async handleCreated(event: Stripe.Event): Promise<WebhookProcessingResult> {
@@ -218,15 +214,6 @@ export class RefundHandler {
         target_status: applied.targetStatus,
         outcome: "success",
       });
-
-      await this.settlementRegenerationService.regenerateSettlementSnapshotFromPayment(
-        applied.payment,
-        {
-          action: "handleChargeRefunded",
-          eventId: event.id,
-          paymentId: applied.payment.id,
-        }
-      );
 
       return okResult(
         undefined,

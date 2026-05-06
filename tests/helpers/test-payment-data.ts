@@ -861,7 +861,7 @@ export async function createPaidStripePayment(
       operationType: "INSERT",
       accessedTables: ["public.payments"],
       additionalInfo: {
-        testContext: "settlement-integration",
+        testContext: "payment-integration",
         attendanceId,
         amount,
       },

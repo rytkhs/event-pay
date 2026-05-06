@@ -1,5 +1,4 @@
 import { isPaymentPortRegistered } from "@core/ports/payments";
-import { isSettlementReportPortRegistered } from "@core/ports/settlements";
 import { isStripeConnectPortRegistered } from "@core/ports/stripe-connect";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
@@ -9,7 +8,6 @@ describe("Feature Registrations", () => {
     ensureFeaturesRegistered();
 
     expect(isPaymentPortRegistered()).toBe(true);
-    expect(isSettlementReportPortRegistered()).toBe(true);
     expect(isStripeConnectPortRegistered()).toBe(true);
   });
 
@@ -20,7 +18,6 @@ describe("Feature Registrations", () => {
     }).not.toThrow();
 
     expect(isPaymentPortRegistered()).toBe(true);
-    expect(isSettlementReportPortRegistered()).toBe(true);
     expect(isStripeConnectPortRegistered()).toBe(true);
   });
 });

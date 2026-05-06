@@ -697,97 +697,6 @@ export type Database = {
           },
         ];
       };
-      settlements: {
-        Row: {
-          created_at: string;
-          dispute_count: number;
-          event_id: string;
-          generated_at: string | null;
-          id: string;
-          last_error: string | null;
-          net_payout_amount: number;
-          notes: string | null;
-          platform_fee: number;
-          processed_at: string | null;
-          retry_count: number;
-          stripe_account_id: string;
-          total_disputed_amount: number;
-          total_stripe_fee: number;
-          total_stripe_sales: number;
-          transfer_group: string | null;
-          updated_at: string;
-          user_id: string;
-          webhook_event_id: string | null;
-          webhook_processed_at: string | null;
-        };
-        Insert: {
-          created_at?: string;
-          dispute_count?: number;
-          event_id: string;
-          generated_at?: string | null;
-          id?: string;
-          last_error?: string | null;
-          net_payout_amount?: number;
-          notes?: string | null;
-          platform_fee?: number;
-          processed_at?: string | null;
-          retry_count?: number;
-          stripe_account_id: string;
-          total_disputed_amount?: number;
-          total_stripe_fee?: number;
-          total_stripe_sales?: number;
-          transfer_group?: string | null;
-          updated_at?: string;
-          user_id: string;
-          webhook_event_id?: string | null;
-          webhook_processed_at?: string | null;
-        };
-        Update: {
-          created_at?: string;
-          dispute_count?: number;
-          event_id?: string;
-          generated_at?: string | null;
-          id?: string;
-          last_error?: string | null;
-          net_payout_amount?: number;
-          notes?: string | null;
-          platform_fee?: number;
-          processed_at?: string | null;
-          retry_count?: number;
-          stripe_account_id?: string;
-          total_disputed_amount?: number;
-          total_stripe_fee?: number;
-          total_stripe_sales?: number;
-          transfer_group?: string | null;
-          updated_at?: string;
-          user_id?: string;
-          webhook_event_id?: string | null;
-          webhook_processed_at?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "settlements_event_id_fkey";
-            columns: ["event_id"];
-            isOneToOne: false;
-            referencedRelation: "events";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "settlements_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "public_profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "settlements_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       stripe_connect_accounts: {
         Row: {
           charges_enabled: boolean;
@@ -1046,30 +955,6 @@ export type Database = {
         Returns: boolean;
       };
       generate_community_slug: { Args: never; Returns: string };
-      generate_settlement_report: {
-        Args: { input_created_by: string; input_event_id: string };
-        Returns: {
-          already_exists: boolean;
-          created_by: string;
-          dispute_count: number;
-          event_date: string;
-          event_title: string;
-          net_payout_amount: number;
-          payment_count: number;
-          refunded_count: number;
-          report_generated_at: string;
-          report_id: string;
-          report_updated_at: string;
-          returned_event_id: string;
-          stripe_account_id: string;
-          total_application_fee: number;
-          total_disputed_amount: number;
-          total_refunded_amount: number;
-          total_stripe_fee: number;
-          total_stripe_sales: number;
-          transfer_group: string;
-        }[];
-      };
       get_dashboard_stats: {
         Args: { p_community_id: string };
         Returns: {
@@ -1095,32 +980,6 @@ export type Database = {
           id: string;
           location: string;
           title: string;
-        }[];
-      };
-      get_settlement_report_details: {
-        Args: {
-          input_created_by: string;
-          input_event_ids?: string[];
-          p_from_date?: string;
-          p_limit?: number;
-          p_offset?: number;
-          p_to_date?: string;
-        };
-        Returns: {
-          event_date: string;
-          event_id: string;
-          event_title: string;
-          generated_at: string;
-          net_payout_amount: number;
-          payment_count: number;
-          refunded_count: number;
-          report_id: string;
-          stripe_account_id: string;
-          total_application_fee: number;
-          total_refunded_amount: number;
-          total_stripe_fee: number;
-          total_stripe_sales: number;
-          transfer_group: string;
         }[];
       };
       hash_guest_token: { Args: { token: string }; Returns: string };
@@ -1306,7 +1165,6 @@ export type Database = {
         | "event_management"
         | "attendance"
         | "payment"
-        | "settlement"
         | "stripe_webhook"
         | "stripe_connect"
         | "email"
@@ -1461,7 +1319,6 @@ export const Constants = {
         "event_management",
         "attendance",
         "payment",
-        "settlement",
         "stripe_webhook",
         "stripe_connect",
         "email",
