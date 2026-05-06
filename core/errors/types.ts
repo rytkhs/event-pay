@@ -102,8 +102,6 @@ export type ErrorCode =
   | "PAYMENT_COMPLETION_NOTIFICATION_FAILED" // 完了通知失敗
   | "INSUFFICIENT_BALANCE" // 残高不足
   | "CARD_ERROR" // カードエラー
-  | "SETTLEMENT_REPORT_FAILED" // 清算レポート失敗
-  | "SETTLEMENT_REGENERATE_FAILED" // 清算レポート再生成失敗
 
   // --- Stripe Connect ---
   | "CONNECT_ACCOUNT_NOT_FOUND" // 連携アカウントなし

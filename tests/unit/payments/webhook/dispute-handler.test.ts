@@ -19,10 +19,6 @@ describe("DisputeHandler", () => {
     upsertDisputeRecord: jest.fn(),
   };
 
-  const mockSettlementRegenerationService = {
-    regenerateSettlementSnapshotFromPayment: jest.fn(),
-  };
-
   const disputeEvent = {
     id: "evt_dispute_1",
     type: "charge.dispute.created",
@@ -43,9 +39,6 @@ describe("DisputeHandler", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockDisputeRepository.upsertDisputeRecord.mockResolvedValue({ error: null });
-    mockSettlementRegenerationService.regenerateSettlementSnapshotFromPayment.mockResolvedValue(
-      undefined
-    );
   });
 
   it("payment repository の terminal error を握りつぶさずに throw する", async () => {
@@ -61,7 +54,6 @@ describe("DisputeHandler", () => {
     const handler = new DisputeHandler({
       paymentRepository: mockPaymentRepository as never,
       disputeRepository: mockDisputeRepository as never,
-      settlementRegenerationService: mockSettlementRegenerationService as never,
       logger: mockLogger as never,
     });
 

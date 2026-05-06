@@ -26,10 +26,6 @@ export function resolveMobilePageConfig(pathname: string): MobilePageConfig {
     return createConfig("ホーム", "dashboard");
   }
 
-  if (pathname === "/dashboard/settlement-reports") {
-    return createConfig("清算レポート", "dashboard", "/dashboard");
-  }
-
   if (pathname === "/events") {
     return createConfig("イベント一覧", "events");
   }

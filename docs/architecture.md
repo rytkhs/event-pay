@@ -148,7 +148,7 @@ flowchart TB
 
 ### 各層の責務
 - **app**: ルーティング、認証ガード（middleware.ts）、CSP設定
-- **features**: ドメイン機能（events, payments, guest, invite, settlements）、各機能は `index.ts` で公開API定義
+- **features**: ドメイン機能（events, payments, guest, invite）、各機能は `index.ts` で公開API定義
 - **core**: 認証、ロギング、セキュリティ、Stripe/Supabaseクライアント、バリデーション
 - **components/ui**: shadcn/ui ベースの再利用可能コンポーネント
 

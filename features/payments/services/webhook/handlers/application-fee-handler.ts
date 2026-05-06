@@ -6,7 +6,6 @@ import { handleServerError } from "@core/utils/error-handler.server";
 import type { WebhookContextLogger } from "../context/webhook-handler-context";
 import { createWebhookDbError } from "../errors/webhook-error-factory";
 import { PaymentWebhookRepository } from "../repositories/payment-webhook-repository";
-import { SettlementRegenerationService } from "../services/settlement-regeneration-service";
 import { StripeObjectFetchService } from "../services/stripe-object-fetch-service";
 import type { WebhookProcessingResult } from "../types";
 import {
@@ -19,7 +18,6 @@ interface ApplicationFeeHandlerParams {
   paymentRepository: PaymentWebhookRepository;
   stripeObjectFetchService: StripeObjectFetchService;
   logger: WebhookContextLogger;
-  settlementRegenerationService: SettlementRegenerationService;
 }
 
 function extractApplicationFeeId(event: Stripe.Event): string | null {
@@ -54,13 +52,11 @@ export class ApplicationFeeHandler {
   private readonly paymentRepository: PaymentWebhookRepository;
   private readonly stripeObjectFetchService: StripeObjectFetchService;
   private readonly logger: WebhookContextLogger;
-  private readonly settlementRegenerationService: SettlementRegenerationService;
 
   constructor(params: ApplicationFeeHandlerParams) {
     this.paymentRepository = params.paymentRepository;
     this.stripeObjectFetchService = params.stripeObjectFetchService;
     this.logger = params.logger;
-    this.settlementRegenerationService = params.settlementRegenerationService;
   }
 
   async handleRefunded(event: Stripe.Event): Promise<WebhookProcessingResult> {
@@ -147,12 +143,6 @@ export class ApplicationFeeHandler {
       application_fee_id: applicationFeeId,
       application_fee_refunded_amount: applicationFeeRefundedAmount,
       outcome: "success",
-    });
-
-    await this.settlementRegenerationService.regenerateSettlementSnapshotFromPayment(payment, {
-      action: "handleApplicationFeeRefunded",
-      eventId: event.id,
-      paymentId: payment.id,
     });
 
     return okResult(undefined, buildPaymentWebhookMeta({ eventId: event.id, payment }));

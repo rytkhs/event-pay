@@ -133,7 +133,7 @@ export const createMockSupabaseClient = () => ({
       error: null,
     }),
   },
-  // RPC関数のモック（settlement tests用）
+  // RPC関数のモック
   rpc: jest.fn().mockResolvedValue({ data: [], error: null }),
   // from, select, insert, updateなど基本的なクエリビルダーのモック
   from: jest.fn().mockReturnValue({

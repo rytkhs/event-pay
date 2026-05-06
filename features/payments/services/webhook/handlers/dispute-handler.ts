@@ -10,7 +10,6 @@ import {
   PaymentWebhookRepository,
   type PaymentWebhookRecord,
 } from "../repositories/payment-webhook-repository";
-import { SettlementRegenerationService } from "../services/settlement-regeneration-service";
 import type { WebhookProcessingResult } from "../types";
 import {
   buildPaymentWebhookMeta,
@@ -21,7 +20,6 @@ import {
 interface DisputeHandlerParams {
   paymentRepository: PaymentWebhookRepository;
   disputeRepository: DisputeWebhookRepository;
-  settlementRegenerationService: SettlementRegenerationService;
   logger: WebhookContextLogger;
 }
 
@@ -61,13 +59,11 @@ function getDisputeFromWebhookEvent(event: Stripe.Event): Stripe.Dispute | null 
 export class DisputeHandler {
   private readonly paymentRepository: PaymentWebhookRepository;
   private readonly disputeRepository: DisputeWebhookRepository;
-  private readonly settlementRegenerationService: SettlementRegenerationService;
   private readonly logger: WebhookContextLogger;
 
   constructor(params: DisputeHandlerParams) {
     this.paymentRepository = params.paymentRepository;
     this.disputeRepository = params.disputeRepository;
-    this.settlementRegenerationService = params.settlementRegenerationService;
     this.logger = params.logger;
   }
 
@@ -148,19 +144,13 @@ export class DisputeHandler {
         outcome: "success",
       });
 
-      await this.settlementRegenerationService.regenerateSettlementSnapshotFromPayment(payment, {
-        action: "handleDisputeEvent",
-        eventId: event.id,
-        paymentId: payment.id,
-      });
-
       return okResult(undefined, buildPaymentWebhookMeta({ eventId: event.id, payment }));
     } catch (error) {
       if (isPaymentWebhookRepositoryError(error)) {
         throw error;
       }
 
-      handleServerError("SETTLEMENT_REGENERATE_FAILED", {
+      handleServerError("WEBHOOK_UNEXPECTED_ERROR", {
         action: "handleDisputeEvent",
         additionalData: {
           eventId: event.id,
