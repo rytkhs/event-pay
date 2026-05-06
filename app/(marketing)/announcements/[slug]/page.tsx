@@ -27,6 +27,7 @@ function formatAnnouncementDate(date: string): string {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "Asia/Tokyo",
   }).format(new Date(`${date}T00:00:00+09:00`));
 }
 
