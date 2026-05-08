@@ -11,8 +11,7 @@ const mockCreateServerActionSupabaseClient = jest.fn();
 const mockCreateCommunity = jest.fn();
 const mockDeleteCommunity = jest.fn();
 const mockUpdateCommunityBasicInfo = jest.fn();
-const mockUpdateCommunityLegalDisclosureVisibility = jest.fn();
-const mockUpdateCommunityProfileVisibility = jest.fn();
+const mockUpdateCommunityPublicPageVisibility = jest.fn();
 const mockEnsureFeaturesRegistered = jest.fn();
 const mockRevalidatePath = jest.fn();
 
@@ -46,8 +45,7 @@ jest.mock("@features/communities/server", () => {
     createCommunity: mockCreateCommunity,
     deleteCommunity: mockDeleteCommunity,
     updateCommunityBasicInfo: mockUpdateCommunityBasicInfo,
-    updateCommunityLegalDisclosureVisibility: mockUpdateCommunityLegalDisclosureVisibility,
-    updateCommunityProfileVisibility: mockUpdateCommunityProfileVisibility,
+    updateCommunityPublicPageVisibility: mockUpdateCommunityPublicPageVisibility,
   };
 });
 
@@ -450,6 +448,132 @@ describe("app/(app)/actions/communities", () => {
     );
 
     expect(mockUpdateCommunityBasicInfo).not.toHaveBeenCalled();
+    expect(mockRevalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("updateCommunityPublicPageVisibilityAction は未認証時に UNAUTHORIZED を返す", async () => {
+    mockGetCurrentUserForServerAction.mockResolvedValue(null);
+
+    const { updateCommunityPublicPageVisibilityAction } = await loadCommunitiesActionModule();
+    const formData = new FormData();
+    formData.set("showCommunityLink", "true");
+    formData.set("showLegalDisclosureLink", "false");
+
+    await expect(updateCommunityPublicPageVisibilityAction(formData)).resolves.toEqual(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: "UNAUTHORIZED",
+        }),
+      })
+    );
+
+    expect(mockUpdateCommunityPublicPageVisibility).not.toHaveBeenCalled();
+  });
+
+  it("updateCommunityPublicPageVisibilityAction は current community が無ければ NOT_FOUND を返す", async () => {
+    mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
+    mockResolveCurrentCommunityForServerAction.mockResolvedValue(
+      okResult({
+        currentCommunity: null,
+      })
+    );
+
+    const { updateCommunityPublicPageVisibilityAction } = await loadCommunitiesActionModule();
+    const formData = new FormData();
+    formData.set("showCommunityLink", "true");
+    formData.set("showLegalDisclosureLink", "true");
+
+    await expect(updateCommunityPublicPageVisibilityAction(formData)).resolves.toEqual(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: "NOT_FOUND",
+          userMessage: "更新対象のコミュニティが見つかりません",
+        }),
+      })
+    );
+
+    expect(mockUpdateCommunityPublicPageVisibility).not.toHaveBeenCalled();
+  });
+
+  it("updateCommunityPublicPageVisibilityAction は2つの表示設定をまとめて更新する", async () => {
+    const supabase = { from: jest.fn() };
+    mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
+    mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
+    mockResolveCurrentCommunityForServerAction.mockResolvedValue(
+      okResult({
+        currentCommunity: {
+          id: "community-9",
+        },
+      })
+    );
+    mockUpdateCommunityPublicPageVisibility.mockResolvedValue(
+      okResult({
+        communityId: "community-9",
+        showCommunityLink: true,
+        showLegalDisclosureLink: false,
+      })
+    );
+
+    const { updateCommunityPublicPageVisibilityAction } = await loadCommunitiesActionModule();
+    const formData = new FormData();
+    formData.set("showCommunityLink", "true");
+    formData.set("showLegalDisclosureLink", "false");
+    formData.set("name", "malicious-name");
+
+    await expect(updateCommunityPublicPageVisibilityAction(formData)).resolves.toEqual({
+      success: true,
+      data: {
+        communityId: "community-9",
+        showCommunityLink: true,
+        showLegalDisclosureLink: false,
+      },
+      message: "参加者向け表示設定を更新しました",
+      redirectUrl: undefined,
+      needsVerification: undefined,
+    });
+
+    expect(mockUpdateCommunityPublicPageVisibility).toHaveBeenCalledWith(
+      supabase,
+      "user-1",
+      "community-9",
+      {
+        showCommunityLink: true,
+        showLegalDisclosureLink: false,
+      }
+    );
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/(app)", "layout");
+  });
+
+  it("updateCommunityPublicPageVisibilityAction は service failure を ActionResult に投影する", async () => {
+    const supabase = { from: jest.fn() };
+    mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
+    mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
+    mockUpdateCommunityPublicPageVisibility.mockResolvedValue(
+      errResult(
+        new AppError("DATABASE_ERROR", {
+          userMessage: "参加者向け表示設定の更新に失敗しました",
+          retryable: true,
+        })
+      )
+    );
+
+    const { updateCommunityPublicPageVisibilityAction } = await loadCommunitiesActionModule();
+    const formData = new FormData();
+    formData.set("showCommunityLink", "true");
+    formData.set("showLegalDisclosureLink", "true");
+
+    await expect(updateCommunityPublicPageVisibilityAction(formData)).resolves.toEqual(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: "DATABASE_ERROR",
+          userMessage: "参加者向け表示設定の更新に失敗しました",
+        }),
+      })
+    );
+
     expect(mockRevalidatePath).not.toHaveBeenCalled();
   });
 

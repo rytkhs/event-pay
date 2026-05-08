@@ -11,13 +11,9 @@ export {
   type UpdateCommunityBasicInfoResult,
 } from "./services/update-community-basic-info";
 export {
-  updateCommunityProfileVisibility,
-  type UpdateCommunityProfileVisibilityResult,
-} from "./services/update-community-profile-visibility";
-export {
-  updateCommunityLegalDisclosureVisibility,
-  type UpdateCommunityLegalDisclosureVisibilityResult,
-} from "./services/update-community-legal-disclosure-visibility";
+  updateCommunityPublicPageVisibility,
+  type UpdateCommunityPublicPageVisibilityResult,
+} from "./services/update-community-public-page-visibility";
 export {
   getPublicCommunityBySlug,
   getPublicCommunityByLegalSlug,
@@ -26,10 +22,8 @@ export { createCommunityContact } from "./services/create-community-contact";
 export {
   createCommunitySchema,
   updateCommunityBasicInfoSchema,
-  updateCommunityLegalDisclosureVisibilitySchema,
-  updateCommunityProfileVisibilitySchema,
+  updateCommunityPublicPageVisibilitySchema,
   type CreateCommunityInput,
   type UpdateCommunityBasicInfoInput,
-  type UpdateCommunityLegalDisclosureVisibilityInput,
-  type UpdateCommunityProfileVisibilityInput,
+  type UpdateCommunityPublicPageVisibilityInput,
 } from "./validation";

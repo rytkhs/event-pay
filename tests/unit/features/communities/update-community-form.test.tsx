@@ -138,7 +138,7 @@ describe("UpdateCommunityBasicInfoForm", () => {
   });
 });
 
-describe("CommunityProfileVisibilityForm", () => {
+describe("CommunityPublicPageVisibilityForm", () => {
   beforeAll(() => {
     global.ResizeObserver = class ResizeObserver {
       observe() {}
@@ -151,131 +151,87 @@ describe("CommunityProfileVisibilityForm", () => {
     jest.clearAllMocks();
   });
 
-  it("プロフィールリンク表示トグルの値を送信する", async () => {
+  it("表示トグル2つの値を1回で送信する", async () => {
     const user = userEvent.setup();
-    const updateCommunityProfileVisibilityAction = jest.fn(async (_state, formData: FormData) => {
-      expect(formData.get("showCommunityLink")).toBe("true");
-      expect(formData.get("name")).toBeNull();
-      expect(formData.get("description")).toBeNull();
-
-      return {
-        success: true as const,
-        data: {
-          communityId: "community-1",
-          showCommunityLink: true,
-        },
-        message: "コミュニティプロフィールの表示設定を更新しました",
-      };
-    });
-
-    const { CommunityProfileVisibilityForm } =
-      await import("@/features/communities/components/CommunityProfileVisibilityForm");
-
-    render(
-      <CommunityProfileVisibilityForm
-        defaultShowCommunityLink={false}
-        updateCommunityProfileVisibilityAction={updateCommunityProfileVisibilityAction}
-      />
-    );
-
-    await user.click(
-      screen.getByRole("switch", {
-        name: "参加者向けページにコミュニティプロフィールへのリンクを表示",
-      })
-    );
-    await user.click(screen.getByRole("button", { name: "表示設定を保存" }));
-
-    expect(await screen.findByText("更新しました")).toBeInTheDocument();
-    expect(screen.getByText("主催者へのお問い合わせについて").parentElement).toHaveTextContent(
-      "プラットフォーム内に受信箱・チャット・返信管理機能はありません。"
-    );
-  });
-});
-
-describe("CommunityLegalDisclosureVisibilityForm", () => {
-  beforeAll(() => {
-    global.ResizeObserver = class ResizeObserver {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    };
-  });
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it("特商法リンク表示トグルの値を送信する", async () => {
-    const user = userEvent.setup();
-    const updateCommunityLegalDisclosureVisibilityAction = jest.fn(
+    const updateCommunityPublicPageVisibilityAction = jest.fn(
       async (_state, formData: FormData) => {
+        expect(formData.get("showCommunityLink")).toBe("true");
         expect(formData.get("showLegalDisclosureLink")).toBe("true");
-        expect(formData.get("showCommunityLink")).toBeNull();
         expect(formData.get("name")).toBeNull();
+        expect(formData.get("description")).toBeNull();
 
         return {
           success: true as const,
           data: {
             communityId: "community-1",
+            showCommunityLink: true,
             showLegalDisclosureLink: true,
           },
-          message: "特定商取引法に基づく表記リンクの表示設定を更新しました",
+          message: "参加者向け表示設定を更新しました",
         };
       }
     );
 
-    const { CommunityLegalDisclosureVisibilityForm } =
-      await import("@/features/communities/components/CommunityLegalDisclosureVisibilityForm");
+    const { CommunityPublicPageVisibilityForm } =
+      await import("@/features/communities/components/CommunityPublicPageVisibilityForm");
 
     render(
-      <CommunityLegalDisclosureVisibilityForm
+      <CommunityPublicPageVisibilityForm
+        defaultShowCommunityLink={false}
         defaultShowLegalDisclosureLink={false}
-        updateCommunityLegalDisclosureVisibilityAction={
-          updateCommunityLegalDisclosureVisibilityAction
-        }
+        legalPageUrl="https://example.com/tokushoho/board-games"
+        publicPageUrl="https://example.com/c/board-games"
+        updateCommunityPublicPageVisibilityAction={updateCommunityPublicPageVisibilityAction}
       />
     );
 
     await user.click(
       screen.getByRole("switch", {
-        name: "招待・ゲストページに特定商取引法に基づく表記リンクを表示",
+        name: "コミュニティプロフィールへのリンクを表示",
       })
     );
-    await user.click(screen.getByRole("button", { name: "表示設定を保存" }));
+    await user.click(
+      screen.getByRole("switch", {
+        name: "特定商取引法に基づく表記へのリンクを表示",
+      })
+    );
+    await user.click(screen.getByRole("button", { name: "変更を保存" }));
 
     expect(await screen.findByText("更新しました")).toBeInTheDocument();
   });
 
-  it("特商法リンク表示トグルは変更がある場合だけ送信できる", async () => {
+  it("変更がある場合だけ送信できる", async () => {
     const user = userEvent.setup();
-    const updateCommunityLegalDisclosureVisibilityAction = jest.fn(async () => ({
+    const updateCommunityPublicPageVisibilityAction = jest.fn(async () => ({
       success: true as const,
       data: {
         communityId: "community-1",
+        showCommunityLink: false,
         showLegalDisclosureLink: true,
       },
-      message: "特定商取引法に基づく表記リンクの表示設定を更新しました",
+      message: "参加者向け表示設定を更新しました",
     }));
 
-    const { CommunityLegalDisclosureVisibilityForm } =
-      await import("@/features/communities/components/CommunityLegalDisclosureVisibilityForm");
+    const { CommunityPublicPageVisibilityForm } =
+      await import("@/features/communities/components/CommunityPublicPageVisibilityForm");
 
     render(
-      <CommunityLegalDisclosureVisibilityForm
+      <CommunityPublicPageVisibilityForm
+        defaultShowCommunityLink={false}
         defaultShowLegalDisclosureLink={false}
-        updateCommunityLegalDisclosureVisibilityAction={
-          updateCommunityLegalDisclosureVisibilityAction
-        }
+        legalPageUrl="https://example.com/tokushoho/board-games"
+        publicPageUrl="https://example.com/c/board-games"
+        updateCommunityPublicPageVisibilityAction={updateCommunityPublicPageVisibilityAction}
       />
     );
 
-    const submitButton = screen.getByRole("button", { name: "表示設定を保存" });
+    const submitButton = screen.getByRole("button", { name: "変更を保存" });
 
     expect(submitButton).toBeDisabled();
 
     await user.click(
       screen.getByRole("switch", {
-        name: "招待・ゲストページに特定商取引法に基づく表記リンクを表示",
+        name: "特定商取引法に基づく表記へのリンクを表示",
       })
     );
 
@@ -285,5 +241,41 @@ describe("CommunityLegalDisclosureVisibilityForm", () => {
 
     expect(await screen.findByText("更新しました")).toBeInTheDocument();
     expect(submitButton).toBeDisabled();
+  });
+
+  it("URL文字列を本文に出さず確認ボタンのリンク先に使う", async () => {
+    const updateCommunityPublicPageVisibilityAction = jest.fn(async () => ({
+      success: true as const,
+      data: {
+        communityId: "community-1",
+        showCommunityLink: false,
+        showLegalDisclosureLink: false,
+      },
+      message: "参加者向け表示設定を更新しました",
+    }));
+
+    const { CommunityPublicPageVisibilityForm } =
+      await import("@/features/communities/components/CommunityPublicPageVisibilityForm");
+
+    render(
+      <CommunityPublicPageVisibilityForm
+        defaultShowCommunityLink={false}
+        defaultShowLegalDisclosureLink={false}
+        legalPageUrl="https://example.com/tokushoho/board-games"
+        publicPageUrl="https://example.com/c/board-games"
+        updateCommunityPublicPageVisibilityAction={updateCommunityPublicPageVisibilityAction}
+      />
+    );
+
+    expect(screen.queryByText("https://example.com/c/board-games")).not.toBeInTheDocument();
+    expect(screen.queryByText("https://example.com/tokushoho/board-games")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /コミュニティプロフィールを確認/ })).toHaveAttribute(
+      "href",
+      "https://example.com/c/board-games"
+    );
+    expect(screen.getByRole("link", { name: /特商法表記を確認/ })).toHaveAttribute(
+      "href",
+      "https://example.com/tokushoho/board-games"
+    );
   });
 });

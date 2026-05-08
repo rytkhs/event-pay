@@ -11,12 +11,10 @@ jest.mock("@core/logging/app-logger", () => ({
 import { logger } from "@core/logging/app-logger";
 import {
   updateCommunityBasicInfoSchema,
-  updateCommunityLegalDisclosureVisibilitySchema,
-  updateCommunityProfileVisibilitySchema,
+  updateCommunityPublicPageVisibilitySchema,
 } from "@features/communities/server";
 import { updateCommunityBasicInfo } from "@features/communities/services/update-community-basic-info";
-import { updateCommunityLegalDisclosureVisibility } from "@features/communities/services/update-community-legal-disclosure-visibility";
-import { updateCommunityProfileVisibility } from "@features/communities/services/update-community-profile-visibility";
+import { updateCommunityPublicPageVisibility } from "@features/communities/services/update-community-public-page-visibility";
 
 type QueryResponse = {
   data: unknown;
@@ -135,32 +133,36 @@ describe("features/communities/services/update-community-basic-info", () => {
   });
 });
 
-describe("features/communities/services/update-community-profile-visibility", () => {
+describe("features/communities/services/update-community-public-page-visibility", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("showCommunityLink を boolean として受け取る", () => {
+  it("公開ページ表示設定を boolean として受け取る", () => {
     expect(
-      updateCommunityProfileVisibilitySchema.parse({
+      updateCommunityPublicPageVisibilitySchema.parse({
         showCommunityLink: true,
+        showLegalDisclosureLink: false,
       })
     ).toEqual({
       showCommunityLink: true,
+      showLegalDisclosureLink: false,
     });
   });
 
-  it("show_community_link だけを更新する", async () => {
+  it("show_community_link と show_legal_disclosure_link を同時更新する", async () => {
     const { supabase, spies } = createSupabaseMock({
       data: {
         id: "community-1",
         show_community_link: true,
+        show_legal_disclosure_link: false,
       },
       error: null,
     });
 
-    const result = await updateCommunityProfileVisibility(supabase, "user-1", "community-1", {
+    const result = await updateCommunityPublicPageVisibility(supabase, "user-1", "community-1", {
       showCommunityLink: true,
+      showLegalDisclosureLink: false,
     });
 
     expect(result).toEqual({
@@ -168,76 +170,23 @@ describe("features/communities/services/update-community-profile-visibility", ()
       data: {
         communityId: "community-1",
         showCommunityLink: true,
+        showLegalDisclosureLink: false,
       },
       meta: undefined,
     });
     expect(spies.updatePayloads).toEqual([
       {
         show_community_link: true,
+        show_legal_disclosure_link: false,
       },
     ]);
-    expect(spies.select).toHaveBeenCalledWith("id, show_community_link");
-    expect(logger.info).toHaveBeenCalledWith(
-      "Community profile visibility updated",
-      expect.objectContaining({
-        action: "community.update_profile_visibility",
-        communityId: "community-1",
-      })
+    expect(spies.select).toHaveBeenCalledWith(
+      "id, show_community_link, show_legal_disclosure_link"
     );
-  });
-});
-
-describe("features/communities/services/update-community-legal-disclosure-visibility", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it("showLegalDisclosureLink を boolean として受け取る", () => {
-    expect(
-      updateCommunityLegalDisclosureVisibilitySchema.parse({
-        showLegalDisclosureLink: true,
-      })
-    ).toEqual({
-      showLegalDisclosureLink: true,
-    });
-  });
-
-  it("show_legal_disclosure_link だけを更新する", async () => {
-    const { supabase, spies } = createSupabaseMock({
-      data: {
-        id: "community-1",
-        show_legal_disclosure_link: true,
-      },
-      error: null,
-    });
-
-    const result = await updateCommunityLegalDisclosureVisibility(
-      supabase,
-      "user-1",
-      "community-1",
-      {
-        showLegalDisclosureLink: true,
-      }
-    );
-
-    expect(result).toEqual({
-      success: true,
-      data: {
-        communityId: "community-1",
-        showLegalDisclosureLink: true,
-      },
-      meta: undefined,
-    });
-    expect(spies.updatePayloads).toEqual([
-      {
-        show_legal_disclosure_link: true,
-      },
-    ]);
-    expect(spies.select).toHaveBeenCalledWith("id, show_legal_disclosure_link");
     expect(logger.info).toHaveBeenCalledWith(
-      "Community legal disclosure visibility updated",
+      "Community public page visibility updated",
       expect.objectContaining({
-        action: "community.update_legal_disclosure_visibility",
+        action: "community.update_public_page_visibility",
         communityId: "community-1",
       })
     );

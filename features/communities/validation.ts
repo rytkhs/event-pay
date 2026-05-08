@@ -29,19 +29,13 @@ export const updateCommunityBasicInfoSchema = z.object({
     .transform(normalizeOptionalText),
 });
 
-export const updateCommunityProfileVisibilitySchema = z.object({
+export const updateCommunityPublicPageVisibilitySchema = z.object({
   showCommunityLink: z.boolean(),
-});
-
-export const updateCommunityLegalDisclosureVisibilitySchema = z.object({
   showLegalDisclosureLink: z.boolean(),
 });
 
 export type CreateCommunityInput = z.infer<typeof createCommunitySchema>;
 export type UpdateCommunityBasicInfoInput = z.infer<typeof updateCommunityBasicInfoSchema>;
-export type UpdateCommunityProfileVisibilityInput = z.infer<
-  typeof updateCommunityProfileVisibilitySchema
->;
-export type UpdateCommunityLegalDisclosureVisibilityInput = z.infer<
-  typeof updateCommunityLegalDisclosureVisibilitySchema
+export type UpdateCommunityPublicPageVisibilityInput = z.infer<
+  typeof updateCommunityPublicPageVisibilitySchema
 >;

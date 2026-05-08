@@ -6,7 +6,7 @@ import { CheckCircle2, Mail, MessageSquare, User } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
@@ -33,6 +33,7 @@ export function CommunityContactForm(props: { communitySlug: string }) {
         <CardTitle as="h2" className="text-lg sm:text-2xl">
           主催者へのお問い合わせ
         </CardTitle>
+        <CardDescription>お問い合わせ内容は主催者へメールで送信されます。</CardDescription>
       </CardHeader>
 
       <CardContent>

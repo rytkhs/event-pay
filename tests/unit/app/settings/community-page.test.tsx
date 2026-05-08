@@ -12,8 +12,7 @@ const createServerComponentSupabaseClient = jest.fn();
 const getCurrentCommunitySettings = jest.fn();
 const deleteCommunityAction = jest.fn();
 const updateCommunityBasicInfoAction = jest.fn();
-const updateCommunityLegalDisclosureVisibilityAction = jest.fn();
-const updateCommunityProfileVisibilityAction = jest.fn();
+const updateCommunityPublicPageVisibilityAction = jest.fn();
 const redirect = jest.fn((path: string) => {
   throw new Error(`NEXT_REDIRECT:${path}`);
 });
@@ -33,8 +32,7 @@ jest.mock("@features/communities/server", () => ({
 jest.mock("@/app/(app)/actions/communities", () => ({
   deleteCommunityAction,
   updateCommunityBasicInfoAction,
-  updateCommunityLegalDisclosureVisibilityAction,
-  updateCommunityProfileVisibilityAction,
+  updateCommunityPublicPageVisibilityAction,
 }));
 
 jest.mock("next/navigation", () => ({
@@ -46,21 +44,17 @@ jest.mock("@features/communities", () => ({
     deleteCommunityAction: mockedDeleteCommunityAction,
     settings,
     updateCommunityBasicInfoAction: mockedUpdateCommunityBasicInfoAction,
-    updateCommunityLegalDisclosureVisibilityAction:
-      mockedUpdateCommunityLegalDisclosureVisibilityAction,
-    updateCommunityProfileVisibilityAction: mockedUpdateCommunityProfileVisibilityAction,
+    updateCommunityPublicPageVisibilityAction: mockedUpdateCommunityPublicPageVisibilityAction,
   }: {
     settings: { community: { name: string } };
     deleteCommunityAction: unknown;
     updateCommunityBasicInfoAction: unknown;
-    updateCommunityLegalDisclosureVisibilityAction: unknown;
-    updateCommunityProfileVisibilityAction: unknown;
+    updateCommunityPublicPageVisibilityAction: unknown;
   }) => (
     <div>
       settings:{settings.community.name}
       {mockedUpdateCommunityBasicInfoAction ? ":basic" : ""}
-      {mockedUpdateCommunityProfileVisibilityAction ? ":visibility" : ""}
-      {mockedUpdateCommunityLegalDisclosureVisibilityAction ? ":legal" : ""}
+      {mockedUpdateCommunityPublicPageVisibilityAction ? ":visibility" : ""}
       {mockedDeleteCommunityAction ? ":delete" : ""}
     </div>
   ),
@@ -114,7 +108,7 @@ describe("CommunitySettingsPage", () => {
       "user-1",
       "community-1"
     );
-    expect(screen.getByText("settings:ボドゲ会:basic:visibility:legal:delete")).toBeInTheDocument();
+    expect(screen.getByText("settings:ボドゲ会:basic:visibility:delete")).toBeInTheDocument();
   });
 
   it("read model が解決できない場合は /dashboard に fail-close する", async () => {
