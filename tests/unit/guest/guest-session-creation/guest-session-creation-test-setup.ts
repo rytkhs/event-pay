@@ -72,7 +72,7 @@ export async function setupGuestSessionCreationTest(): Promise<GuestSessionCreat
 
   const testAttendance = await createTestAttendance(testEvent.id, {
     email: "test-guest@example.com", // 仕様書通りのメールアドレス
-    nickname: "テストゲスト", // 仕様書通りのニックネーム
+    nickname: "テストゲスト", // 仕様書通りの名前・ニックネーム
     status: "attending",
     // 実際に生成された36文字トークンを使用（仕様書の固定値は使わない）
   });

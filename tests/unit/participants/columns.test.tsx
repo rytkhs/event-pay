@@ -78,8 +78,8 @@ describe("buildParticipantsColumns", () => {
     jest.clearAllMocks();
   });
 
-  describe("ニックネーム列", () => {
-    it("ニックネームが正しく表示される", () => {
+  describe("名前・ニックネーム列", () => {
+    it("名前・ニックネームが正しく表示される", () => {
       render(<TestTableRow participant={mockParticipant} eventFee={1000} />);
       expect(screen.getByText("テストユーザー")).toBeInTheDocument();
     });

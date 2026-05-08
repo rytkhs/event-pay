@@ -71,7 +71,7 @@ const flowSteps: FlowStep[] = [
   },
   {
     title: "出欠を回答する",
-    body: "ニックネーム、メールアドレス、参加ステータスを入力します。",
+    body: "名前(ニックネーム)、メールアドレス、参加ステータスを入力します。",
     detail:
       "参加ステータスは「参加」「未定」「不参加」から選べます。「未定」は定員に含まれず、支払いも発生しません。",
     icon: UserCheck,
@@ -196,7 +196,9 @@ function InvitePhoneMock() {
         <div className="flex flex-1 flex-col bg-white px-4 py-3">
           <p className="mb-3 text-xs font-bold text-slate-800">参加登録</p>
           <div className="mb-2">
-            <span className="mb-1 block text-[9px] font-bold text-slate-500">ニックネーム</span>
+            <span className="mb-1 block text-[9px] font-bold text-slate-500">
+              名前・ニックネーム
+            </span>
             <div className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-slate-600">
               たなか
             </div>

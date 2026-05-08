@@ -10,12 +10,12 @@ const inviteTokenSchema = z
   .max(64, "招待トークンが長すぎます")
   .regex(/^[a-zA-Z0-9_-]+$/, "無効な招待トークンの文字です");
 
-// ニックネームの検証スキーマ
+// 名前・ニックネームの検証スキーマ
 const nicknameSchema = z
   .string()
-  .min(1, "ニックネームを入力してください")
-  .max(50, "ニックネームは50文字以内で入力してください")
-  .refine((val) => val.trim().length > 0, "ニックネームを入力してください")
+  .min(1, "名前・ニックネームを入力してください")
+  .max(50, "名前・ニックネームは50文字以内で入力してください")
+  .refine((val) => val.trim().length > 0, "名前・ニックネームを入力してください")
   .transform((val) => sanitizeForEventPay(val.trim()));
 
 // メールアドレスの検証スキーマ
@@ -246,10 +246,10 @@ export const validateParticipationFormWithDuplicateCheck = async (
 // 入力サニタイゼーション用のユーティリティ関数
 export const sanitizeParticipationInput = {
   /**
-   * ニックネームのサニタイゼーション（セキュリティログ付き）
-   * @param nickname 入力されたニックネーム
+   * 名前・ニックネームのサニタイゼーション（セキュリティログ付き）
+   * @param nickname 入力された名前・ニックネーム
    * @param request リクエスト情報（ログ用）
-   * @returns サニタイズされたニックネーム
+   * @returns サニタイズされた名前・ニックネーム
    */
   nickname: (
     nickname: string,

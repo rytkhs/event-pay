@@ -79,7 +79,7 @@ export const ParticipantTableMock: React.FC = () => {
 
       {/* Table Header */}
       <div className="grid grid-cols-12 gap-1 px-2.5 py-2 bg-slate-50/80 text-[9px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-        <div className="col-span-3 pl-1">ニックネーム</div>
+        <div className="col-span-3 pl-1">名前・ニックネーム</div>
         <div className="col-span-2 text-center">参加状況</div>
         <div className="col-span-3 text-center">決済方法</div>
         <div className="col-span-2 text-center">決済状況</div>

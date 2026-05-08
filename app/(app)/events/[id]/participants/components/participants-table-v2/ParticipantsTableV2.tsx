@@ -302,7 +302,7 @@ export function ParticipantsTableV2({
   const filteredParticipants = useMemo(() => {
     let result = localParticipants;
 
-    // 検索フィルタ（ニックネーム/メール部分一致）
+    // 検索フィルタ（名前・ニックネーム/メール部分一致）
     const search = query.search.toLowerCase();
     if (search) {
       result = result.filter(

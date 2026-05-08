@@ -117,7 +117,7 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
         {/* Nickname */}
         <div>
           <label htmlFor="nickname" className="block text-sm font-medium text-slate-700 mb-1">
-            ニックネーム <span className="text-red-500">*</span>
+            名前・ニックネーム <span className="text-red-500">*</span>
           </label>
           <input
             {...register("nickname")}

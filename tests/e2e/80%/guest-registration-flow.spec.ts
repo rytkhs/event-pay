@@ -85,14 +85,14 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     console.log("✓ Clicked registration button");
 
     // Step 4: 参加登録フォームが表示されることを確認
-    await expect(page.getByLabel("ニックネーム")).toBeVisible();
+    await expect(page.getByLabel("名前・ニックネーム")).toBeVisible();
     await expect(page.getByLabel("メールアドレス")).toBeVisible();
     console.log("✓ Registration form displayed");
 
-    // Step 5: フォームに入力（ニックネーム・メール）
+    // Step 5: フォームに入力（名前・ニックネーム・メール）
     const testNickname = "無料参加太郎";
     const testEmail = "free-participant@example.com";
-    await page.getByLabel("ニックネーム").fill(testNickname);
+    await page.getByLabel("名前・ニックネーム").fill(testNickname);
     await page.getByLabel("メールアドレス").fill(testEmail);
     console.log(`✓ Filled form: nickname="${testNickname}", email="${testEmail}"`);
 
@@ -157,7 +157,7 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     // Step 4: フォームに入力
     const testNickname = "有料参加花子";
     const testEmail = "paid-participant@example.com";
-    await page.getByLabel("ニックネーム").fill(testNickname);
+    await page.getByLabel("名前・ニックネーム").fill(testNickname);
     await page.getByLabel("メールアドレス").fill(testEmail);
     console.log(`✓ Filled form: nickname="${testNickname}", email="${testEmail}"`);
 
@@ -220,7 +220,7 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     // Step 4: フォームに入力
     const testNickname = "未定参加次郎";
     const testEmail = "maybe-participant@example.com";
-    await page.getByLabel("ニックネーム").fill(testNickname);
+    await page.getByLabel("名前・ニックネーム").fill(testNickname);
     await page.getByLabel("メールアドレス").fill(testEmail);
     console.log(`✓ Filled form: nickname="${testNickname}", email="${testEmail}"`);
 
@@ -283,7 +283,7 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     await expect(page.getByRole("button", { name: "登録する" })).toBeVisible();
 
     await page.getByRole("button", { name: "登録する" }).click();
-    await expect(page.getByLabel("ニックネーム")).toBeVisible();
+    await expect(page.getByLabel("名前・ニックネーム")).toBeVisible();
     await expect(page.getByLabel("メールアドレス")).toBeVisible();
 
     // 3つの参加ステータスオプションが存在することを確認
@@ -317,8 +317,8 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
 
     // 一般的なバリデーションエラーメッセージをチェック
     const validationError = page
-      .getByText("ニックネームは必須です")
-      .or(page.getByText("ニックネームを入力してください"))
+      .getByText("名前・ニックネームは必須です")
+      .or(page.getByText("名前・ニックネームを入力してください"))
       .or(page.getByText("必須項目"))
       .or(page.getByText("必須"))
       .first();
@@ -355,7 +355,7 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     await page.getByRole("button", { name: "登録する" }).click();
 
     // 不正なメールアドレス形式で入力
-    await page.getByLabel("ニックネーム").fill("メール形式テスト太郎");
+    await page.getByLabel("名前・ニックネーム").fill("メール形式テスト太郎");
     await page.getByLabel("メールアドレス").fill("invalid-email-format"); // 不正な形式
     await page.getByRole("button", { name: "参加", exact: true }).click();
 

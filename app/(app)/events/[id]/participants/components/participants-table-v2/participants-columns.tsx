@@ -76,7 +76,7 @@ export function buildParticipantsColumns(opts: {
   columns.push(
     {
       accessorKey: "nickname",
-      header: "ニックネーム",
+      header: "名前・ニックネーム",
       cell: ({ row }) => {
         const p = row.original;
         return (

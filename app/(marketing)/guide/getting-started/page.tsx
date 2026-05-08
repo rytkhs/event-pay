@@ -306,7 +306,7 @@ export default function OrganizerGettingStartedPage() {
             招待リンクを送った後は、参加者が自分で回答します。
           </h3>
           <p className="mt-4 text-sm leading-7 text-slate-300">
-            参加者はリンクから、ニックネーム、メールアドレス、参加ステータス、支払い方法を入力します。
+            参加者はリンクから、名前・ニックネーム、メールアドレス、参加ステータス、支払い方法を入力します。
             オンライン支払いを選んだ場合は、ゲストページから決済画面へ進めます。
           </p>
           <div className="mt-8 border-t border-white/15 pt-6">
