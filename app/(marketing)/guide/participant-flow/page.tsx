@@ -64,14 +64,14 @@ const flowSteps: FlowStep[] = [
   },
   {
     title: "イベント詳細を確認する",
-    body: "日時、場所、参加費、申込締切、定員、説明文を確認します。",
+    body: "日時、場所、参加費、出欠回答期限、定員、説明文を確認します。",
     detail:
-      "オンライン決済を受け付けるイベントでは、オンライン決済締切も表示されます。現金払いだけのイベントでは、現金での支払い案内に従います。",
+      "オンライン決済を受け付けるイベントでは、オンライン支払い期限も表示されます。現金払いだけのイベントでは、現金での支払い案内に従います。",
     icon: CalendarClock,
   },
   {
     title: "出欠を回答する",
-    body: "ニックネーム、メールアドレス、参加ステータスを入力します。",
+    body: "名前(ニックネーム)、メールアドレス、参加ステータスを入力します。",
     detail:
       "参加ステータスは「参加」「未定」「不参加」から選べます。「未定」は定員に含まれず、支払いも発生しません。",
     icon: UserCheck,
@@ -101,7 +101,7 @@ const flowSteps: FlowStep[] = [
     title: "必要ならあとから変更する",
     body: "締切までは、ゲストページから出欠や支払い方法を変更できます。",
     detail:
-      "申込締切後、イベント中止後、支払い完了後などは変更できない場合があります。画面に表示される案内に従ってください。",
+      "出欠回答期限後、イベント中止後、支払い完了後などは変更できない場合があります。画面に表示される案内に従ってください。",
     icon: UserCog,
   },
 ];
@@ -196,7 +196,9 @@ function InvitePhoneMock() {
         <div className="flex flex-1 flex-col bg-white px-4 py-3">
           <p className="mb-3 text-xs font-bold text-slate-800">参加登録</p>
           <div className="mb-2">
-            <span className="mb-1 block text-[9px] font-bold text-slate-500">ニックネーム</span>
+            <span className="mb-1 block text-[9px] font-bold text-slate-500">
+              名前・ニックネーム
+            </span>
             <div className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-slate-600">
               たなか
             </div>

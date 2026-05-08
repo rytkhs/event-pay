@@ -83,7 +83,7 @@ export type ErrorCode =
 
   // --- 参加・登録 (Business) ---
   | "REGISTRATION_CLOSED" // 申込終了
-  | "REGISTRATION_DEADLINE_PASSED" // 申込期限切れ
+  | "REGISTRATION_DEADLINE_PASSED" // 出欠回答期限切れ
   | "DUPLICATE_REGISTRATION" // 二重登録
   | "ATTENDANCE_NOT_FOUND" // 参加データなし
   | "ATTENDANCE_CAPACITY_REACHED" // 定員到達

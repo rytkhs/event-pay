@@ -106,8 +106,8 @@ export function EventInfo({ event }: EventInfoProps) {
             </div>
           </InfoItem>
 
-          {/* 6. 申込締切 */}
-          <InfoItem icon={Clock} label="申込締切">
+          {/* 6. 出欠回答期限 */}
+          <InfoItem icon={Clock} label="出欠回答期限">
             <span className={event.registration_deadline ? "font-medium" : "text-muted-foreground"}>
               {event.registration_deadline
                 ? formatUtcToJstByType(event.registration_deadline, "japanese")
@@ -115,8 +115,8 @@ export function EventInfo({ event }: EventInfoProps) {
             </span>
           </InfoItem>
 
-          {/* 7. 決済締切 */}
-          <InfoItem icon={Clock} label="オンライン決済締切">
+          {/* 7. オンライン支払い期限 */}
+          <InfoItem icon={Clock} label="オンライン支払い期限">
             <span className={event.payment_deadline ? "font-medium" : "text-muted-foreground"}>
               {event.payment_deadline
                 ? formatUtcToJstByType(event.payment_deadline, "japanese")

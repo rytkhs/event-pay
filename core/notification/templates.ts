@@ -364,7 +364,7 @@ export function buildResponseDeadlineReminderTemplate(params: {
   responseDeadline: string | Date;
   guestUrl: string;
 }): EmailTemplate {
-  const subject = `【${APP_NAME}】${params.eventTitle} 参加期限のリマインダー`;
+  const subject = `【${APP_NAME}】${params.eventTitle} 出欠回答期限のリマインダー`;
   const eventDate = formatJstDate(params.eventDate, "slash");
   const responseDeadline = formatJstDate(params.responseDeadline, "slash");
 
@@ -372,16 +372,16 @@ export function buildResponseDeadlineReminderTemplate(params: {
     { label: "イベント名", value: escapeHtml(params.eventTitle) },
     { label: "日時", value: escapeHtml(eventDate) },
     ...(params.eventLocation ? [{ label: "場所", value: escapeHtml(params.eventLocation) }] : []),
-    { label: "参加期限", value: `<strong>${escapeHtml(responseDeadline)}</strong>` },
+    { label: "出欠回答期限", value: `<strong>${escapeHtml(responseDeadline)}</strong>` },
   ];
 
   const html = renderLayout({
-    preheader: `${params.eventTitle}の参加期限が近づいています。`,
+    preheader: `${params.eventTitle}の出欠回答期限が近づいています。`,
     contentHtml: `
       <p style="margin:0 0 8px;font-size:16px;color:#475569;">${escapeHtml(params.nickname)} 様</p>
-      <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">参加期限が近づいています</h1>
+      <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">出欠回答期限が近づいています</h1>
       <div style="background:#fff7ed;border-left:4px solid #f97316;padding:12px 16px;border-radius:4px;margin-bottom:20px;color:#7c2d12;line-height:1.7;">
-        参加申込期限が近づいています。ご都合をご確認のうえ、参加ステータスの更新をお願いします。
+        出欠回答期限が近づいています。ご都合をご確認のうえ、参加ステータスの更新をお願いします。
       </div>
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;margin-bottom:20px;">
         ${renderKeyValueRows(rows)}
@@ -394,11 +394,11 @@ export function buildResponseDeadlineReminderTemplate(params: {
   const text = [
     `${params.nickname} 様`,
     "",
-    "参加期限が近づいています",
+    "出欠回答期限が近づいています",
     `イベント名: ${params.eventTitle}`,
     `日時: ${eventDate}`,
     ...(params.eventLocation ? [`場所: ${params.eventLocation}`] : []),
-    `参加期限: ${responseDeadline}`,
+    `出欠回答期限: ${responseDeadline}`,
     "",
     `参加ステータス更新: ${params.guestUrl}`,
   ].join("\n");
@@ -415,18 +415,18 @@ export function buildPaymentDeadlineReminderTemplate(params: {
   paymentDeadline: string;
   paymentUrl: string;
 }): EmailTemplate {
-  const subject = `【${APP_NAME}】${params.eventTitle} 決済期限のリマインダー`;
+  const subject = `【${APP_NAME}】${params.eventTitle} オンライン支払い期限のリマインダー`;
   const eventDate = formatJstDate(params.eventDate);
   const deadline = formatJstDate(params.paymentDeadline);
   const fee = formatYen(params.participationFee || 0);
 
   const html = renderLayout({
-    preheader: `決済期限 ${deadline} まで`,
+    preheader: `オンライン支払い期限 ${deadline} まで`,
     contentHtml: `
       <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${escapeHtml(params.nickname)} 様</p>
-      <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">決済期限が近づいています</h1>
+      <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">オンライン支払い期限が近づいています</h1>
       <div style="background:#fef2f2;border-left:4px solid #ef4444;padding:12px 16px;border-radius:4px;margin-bottom:20px;color:#7f1d1d;line-height:1.7;">
-        決済期限が近づいています（${escapeHtml(deadline)} まで）。以下の参加費の決済をお早めに完了してください。
+        オンライン支払い期限が近づいています（${escapeHtml(deadline)} まで）。以下の参加費の決済をお早めに完了してください。
       </div>
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;margin-bottom:20px;">
         ${renderKeyValueRows([
@@ -436,7 +436,7 @@ export function buildPaymentDeadlineReminderTemplate(params: {
             ? [{ label: "場所", value: escapeHtml(params.eventLocation) }]
             : []),
           { label: "参加費", value: `<strong>${escapeHtml(fee)}</strong>` },
-          { label: "決済期限", value: `<strong>${escapeHtml(deadline)}</strong>` },
+          { label: "オンライン支払い期限", value: `<strong>${escapeHtml(deadline)}</strong>` },
         ])}
       </table>
       <p style="margin:0 0 8px;"><a href="${escapeAttr(params.paymentUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">決済を完了する</a></p>
@@ -447,12 +447,12 @@ export function buildPaymentDeadlineReminderTemplate(params: {
   const text = [
     `${params.nickname} 様`,
     "",
-    "決済期限が近づいています",
+    "オンライン支払い期限が近づいています",
     `イベント名: ${params.eventTitle}`,
     `日時: ${eventDate}`,
     ...(params.eventLocation ? [`場所: ${params.eventLocation}`] : []),
     `参加費: ${fee}`,
-    `決済期限: ${deadline}`,
+    `オンライン支払い期限: ${deadline}`,
     "",
     `決済URL: ${params.paymentUrl}`,
   ].join("\n");

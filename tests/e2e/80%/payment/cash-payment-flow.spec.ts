@@ -109,10 +109,10 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
     await expect(page.getByText("E2Eテスト有料イベント")).toBeVisible();
 
     // フォームが表示されていることを確認
-    await expect(page.getByLabel(/ニックネーム/)).toBeVisible();
+    await expect(page.getByLabel(/名前・ニックネーム/)).toBeVisible();
 
     // === 3. フォームに入力 ===
-    await page.getByLabel(/ニックネーム/).fill("現金太郎");
+    await page.getByLabel(/名前・ニックネーム/).fill("現金太郎");
     await page.getByLabel(/メールアドレス/).fill("cash-participant@example.com");
 
     // 参加ステータスを「参加」に設定（ボタンクリック）

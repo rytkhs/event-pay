@@ -1,7 +1,7 @@
 /**
  * ゲスト参加制限に関するユーティリティ関数
  *
- * ゲストページでの変更可否や決済期限状態の判定を提供します。
+ * ゲストページでの変更可否やオンライン支払い期限状態の判定を提供します。
  */
 
 import { type GuestAttendanceData } from "@core/types/guest";
@@ -17,7 +17,7 @@ export type ModificationRestrictionReason =
   | "none"; // 制限なし
 
 /**
- * 決済期限の状態
+ * オンライン支払い期限の状態
  */
 export type PaymentDeadlineStatus =
   | "normal" // 通常期限内
@@ -54,11 +54,11 @@ export function getModificationRestrictionReason(
 }
 
 /**
- * 決済期限の状態を判定
+ * オンライン支払い期限の状態を判定
  *
  * @param attendance ゲスト参加データ
  * @param currentTime 現在時刻（テスト用、デフォルトは現在時刻）
- * @returns 決済期限の状態
+ * @returns オンライン支払い期限の状態
  */
 export function getPaymentDeadlineStatus(
   attendance: GuestAttendanceData,
@@ -66,14 +66,14 @@ export function getPaymentDeadlineStatus(
 ): PaymentDeadlineStatus {
   const event = attendance.event;
 
-  // 有効な決済期限を導出
+  // 有効なオンライン支払い期限を導出
   const { effectivePaymentDeadline, eventDate } = deriveEffectiveDeadlines({
     date: event.date,
     registration_deadline: event.registration_deadline,
     payment_deadline: event.payment_deadline,
   });
 
-  // 通常の決済期限内かチェック
+  // 通常のオンライン支払い期限内かチェック
   if (currentTime <= effectivePaymentDeadline) {
     return "normal";
   }

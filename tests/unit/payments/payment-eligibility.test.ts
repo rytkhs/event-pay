@@ -30,7 +30,7 @@ describe("payment eligibility", () => {
       new Date("2025-01-01T09:00:00.000Z")
     );
     expect(after.isEligible).toBe(false);
-    expect(after.reason).toContain("決済期限");
+    expect(after.reason).toContain("オンライン支払い期限");
   });
 
   test("猶予ON: 締切超過でもfinal内は許可、final超過は不許可", () => {

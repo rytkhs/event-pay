@@ -166,13 +166,13 @@ describe("リマインダー送信 統合テスト", () => {
     });
   });
 
-  describe("参加期限リマインダー", () => {
-    test("翌日が参加期限のmaybeステータスの参加者にリマインダーが送信される", async () => {
+  describe("出欠回答期限リマインダー", () => {
+    test("翌日が出欠回答期限のmaybeステータスの参加者にリマインダーが送信される", async () => {
       const tomorrowDeadline = getTomorrowJstDateTime();
       const eventDate = getFutureDateTime(7);
 
       const event = await createTestEvent(setup.testUser.id, {
-        title: "参加期限テストイベント",
+        title: "出欠回答期限テストイベント",
         date: eventDate.toISOString(),
         fee: 0,
         registration_deadline: tomorrowDeadline.toISOString(),
@@ -203,7 +203,7 @@ describe("リマインダー送信 統合テスト", () => {
 
       const body = (await response.json()) as any;
 
-      // 参加期限リマインダーのサマリーを確認
+      // 出欠回答期限リマインダーのサマリーを確認
       const responseDeadlineSummary = body.summaries.find(
         (s: any) => s.reminderType === "response_deadline"
       );
@@ -213,7 +213,7 @@ describe("リマインダー送信 統合テスト", () => {
       expect(responseDeadlineSummary.failureCount).toBe(0);
     });
 
-    test("参加期限が翌日でない場合はリマインダーが送信されない", async () => {
+    test("出欠回答期限が翌日でない場合はリマインダーが送信されない", async () => {
       const futureDeadline = getFutureDateTime(7);
       const eventDate = getFutureDateTime(14);
 
@@ -245,14 +245,14 @@ describe("リマインダー送信 統合テスト", () => {
     });
   });
 
-  describe("決済期限リマインダー", () => {
-    test("翌日が決済期限のStripe未集金者にリマインダーが送信される", async () => {
+  describe("オンライン支払い期限リマインダー", () => {
+    test("翌日がオンライン支払い期限のStripe未集金者にリマインダーが送信される", async () => {
       const tomorrowDeadline = getTomorrowJstDateTime();
       const eventDate = getFutureDateTime(7);
       const registrationDeadline = addDays(tomorrowDeadline, -1);
 
       const event = await createTestEvent(setup.testUser.id, {
-        title: "決済期限テストイベント",
+        title: "オンライン支払い期限テストイベント",
         date: eventDate.toISOString(),
         fee: 3000,
         registration_deadline: registrationDeadline.toISOString(),
@@ -415,9 +415,9 @@ describe("リマインダー送信 統合テスト", () => {
     test("複数種類のリマインダーが同時に送信される", async () => {
       const tomorrowDateTime = getTomorrowJstDateTime();
 
-      // 参加期限リマインダー用イベント
+      // 出欠回答期限リマインダー用イベント
       const event1 = await createTestEvent(setup.testUser.id, {
-        title: "参加期限イベント",
+        title: "出欠回答期限イベント",
         date: getFutureDateTime(7).toISOString(),
         fee: 0,
         registration_deadline: tomorrowDateTime.toISOString(),
@@ -430,10 +430,10 @@ describe("リマインダー送信 統合テスト", () => {
       });
       cleanupHelper.trackAttendance(attendance1.id);
 
-      // 決済期限リマインダー用イベント
+      // オンライン支払い期限リマインダー用イベント
       const registrationDeadline2 = addDays(tomorrowDateTime, -1);
       const event2 = await createTestEvent(setup.testUser.id, {
-        title: "決済期限イベント",
+        title: "オンライン支払い期限イベント",
         date: getFutureDateTime(7).toISOString(),
         fee: 2000,
         registration_deadline: registrationDeadline2.toISOString(),

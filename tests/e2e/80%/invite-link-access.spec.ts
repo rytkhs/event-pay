@@ -136,7 +136,7 @@ test.describe("招待リンクアクセス（E2E）", () => {
     // 実装では、イベント終了後に適切なエラーページを表示します。
   });
 
-  test("異常系：参加申込期限切れのトークンでエラーページが表示される", async ({ page }) => {
+  test("異常系：出欠回答期限切れのトークンでエラーページが表示される", async ({ page }) => {
     const adminClient = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Creating expired deadline event for invite link access test",
@@ -149,17 +149,17 @@ test.describe("招待リンクアクセス（E2E）", () => {
       }
     );
 
-    // 将来のイベントだが、申込期限が過去
+    // 将来のイベントだが、出欠回答期限が過去
     const futureDate = new Date(Date.now() + 48 * 60 * 60 * 1000); // 2日後
     const pastDeadline = new Date(Date.now() - 1 * 60 * 60 * 1000); // 1時間前
     const paymentDeadline = new Date(futureDate.getTime() - 12 * 60 * 60 * 1000); // イベントの12時間前
 
     const expiredDeadlineEvent = await createTestEvent(testUser.id, {
-      title: "申込期限切れイベント",
+      title: "出欠回答期限切れイベント",
       date: futureDate.toISOString(),
       fee: 1000,
       location: "テスト会場",
-      description: "申込期限が過ぎたイベント",
+      description: "出欠回答期限が過ぎたイベント",
       registration_deadline: pastDeadline.toISOString(),
       payment_deadline: paymentDeadline.toISOString(),
       payment_methods: ["stripe"],
@@ -170,8 +170,8 @@ test.describe("招待リンクアクセス（E2E）", () => {
     await page.goto(`/invite/${expiredDeadlineEvent.invite_token}`);
 
     // エラーページが表示されることを確認（canRegisterがfalseの場合）
-    await expect(page.getByText("申込期限終了")).toBeVisible();
-    await expect(page.getByText("参加申込期限が過ぎています")).toBeVisible();
+    await expect(page.getByText("出欠回答期限終了")).toBeVisible();
+    await expect(page.getByText("出欠回答期限が過ぎています")).toBeVisible();
 
     // 参加申し込みボタンが表示されないことを確認
     await expect(page.getByRole("button", { name: "登録する" })).not.toBeVisible();

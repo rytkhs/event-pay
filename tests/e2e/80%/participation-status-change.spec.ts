@@ -512,14 +512,14 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     console.log("🎉 Status change with payment flow initiation completed successfully");
   });
 
-  test("【期限後の変更】申込締切後の参加状況変更不可", async ({ page }) => {
+  test("【期限後の変更】出欠回答期限後の参加状況変更不可", async ({ page }) => {
     console.log("🧪 Testing participation status change after registration deadline");
 
-    // 申込締切が過去のイベントを作成
+    // 出欠回答期限が過去のイベントを作成
     const pastDeadline = new Date(Date.now() - 60 * 60 * 1000).toISOString(); // 1時間前
 
     const event = await createTestEvent(testUser.id, {
-      title: "申込締切後変更テスト",
+      title: "出欠回答期限後変更テスト",
       fee: 0,
       registration_deadline: pastDeadline,
     });
@@ -557,10 +557,10 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     console.log("🎉 Deadline enforcement completed successfully");
   });
 
-  test("【期限後の変更】申込締切後でも決済は可能", async ({ page }) => {
+  test("【期限後の変更】出欠回答期限後でも決済は可能", async ({ page }) => {
     console.log("🧪 Testing payment after registration deadline");
 
-    // 申込締切が過去、決済締切が未来のイベントを作成
+    // 出欠回答期限が過去、オンライン支払い期限が未来のイベントを作成
     const pastRegistrationDeadline = new Date(Date.now() - 60 * 60 * 1000).toISOString(); // 1時間前
     const futurePaymentDeadline = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1時間後
 

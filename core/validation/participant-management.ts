@@ -130,7 +130,7 @@ export type CollectionProgressSummary = z.infer<typeof CollectionProgressSummary
 export const AdminAddAttendanceInputSchema = z
   .object({
     eventId: z.string().uuid(),
-    nickname: z.string().min(1, "ニックネームは必須です").max(50),
+    nickname: z.string().min(1, "名前・ニックネームは必須です").max(50),
     status: z.enum(["attending", "maybe", "not_attending"]).default("attending"),
     paymentMethod: z.enum(["cash"]).optional(),
   })

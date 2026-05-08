@@ -110,7 +110,7 @@ function getEventScenarios(
 
   return [
     {
-      // 1. 開催前（申込受付中・支払期限あり・stripe+cash）
+      // 1. 開催前（申込受付中・支払い期限あり・stripe+cash）
       created_by: userId,
       community_id: communityId,
       payout_profile_id: ppForMethods(["stripe", "cash"]),
@@ -129,7 +129,7 @@ function getEventScenarios(
       grace_period_days: 3,
     },
     {
-      // 2. 開催前（申込締切間近・capacity小さめ）
+      // 2. 開催前（出欠回答期限間近・capacity小さめ）
       created_by: userId,
       community_id: communityId,
       payout_profile_id: ppForMethods(["stripe", "cash"]),
@@ -259,7 +259,7 @@ function getBookClubEventScenarios(
 
   return [
     {
-      // 1. 開催前（申込受付中・支払期限あり・stripe+cash）
+      // 1. 開催前（申込受付中・支払い期限あり・stripe+cash）
       created_by: userId,
       community_id: communityId,
       payout_profile_id: ppForMethods(["stripe", "cash"]),
@@ -278,7 +278,7 @@ function getBookClubEventScenarios(
       grace_period_days: 3,
     },
     {
-      // 2. 開催前（申込締切間近・capacity小さめ）
+      // 2. 開催前（出欠回答期限間近・capacity小さめ）
       created_by: userId,
       community_id: communityId,
       payout_profile_id: ppForMethods(["stripe", "cash"]),

@@ -67,7 +67,7 @@ export async function createTestEvent(
   const futureDate = new Date(Date.now() + 60 * 60 * 1000);
   const futureDateString = futureDate.toISOString();
 
-  // デフォルトの申込締切（イベント開始30分前）
+  // デフォルトの出欠回答期限（イベント開始30分前）
   const defaultRegistrationDeadline = new Date(futureDate.getTime() - 30 * 60 * 1000).toISOString();
 
   // 招待トークンを生成

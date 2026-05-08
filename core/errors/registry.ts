@@ -510,7 +510,7 @@ export const ERROR_REGISTRY: Record<ErrorCode, ErrorDefinition> = {
     code: "REGISTRATION_DEADLINE_PASSED",
     httpStatus: 410,
     message: "Registration deadline passed",
-    userMessage: "申込期限を過ぎています。",
+    userMessage: "出欠回答期限を過ぎています。",
     typeUri: `${BASE_URI}/registration-deadline-passed`,
     severity: "medium",
     retryable: false,

@@ -104,7 +104,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
                 <Clock className="w-4 h-4 text-blue-600" />
               </div>
               <div>
-                <p className="text-xs text-slate-500 mb-0.5 font-medium">申込締切</p>
+                <p className="text-xs text-slate-500 mb-0.5 font-medium">出欠回答期限</p>
                 <p className="text-sm font-bold text-slate-700">
                   {formatUtcToJstByType(event.registration_deadline, "japanese")}
                 </p>
@@ -119,7 +119,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
                 <Clock className="w-4 h-4 text-emerald-600" />
               </div>
               <div>
-                <p className="text-xs text-slate-500 mb-0.5 font-medium">オンライン決済締切</p>
+                <p className="text-xs text-slate-500 mb-0.5 font-medium">オンライン支払い期限</p>
                 <p className="text-sm font-bold text-slate-700">
                   {formatUtcToJstByType(event.payment_deadline, "japanese")}
                 </p>

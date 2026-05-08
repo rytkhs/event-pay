@@ -48,7 +48,7 @@ export const GuestActionArea: React.FC<GuestActionAreaProps> = ({
         {/* 2. Grace Period Warning */}
         {isEligible && isGracePeriod && (
           <div className="bg-orange-50 text-orange-700 px-3 py-2 rounded-lg text-sm border border-orange-100">
-            <p className="font-bold text-xs mb-1">決済期限を過ぎています</p>
+            <p className="font-bold text-xs mb-1">オンライン支払い期限を過ぎています</p>
             <p className="text-xs opacity-90">猶予期間中のためまだ決済が可能です。</p>
           </div>
         )}

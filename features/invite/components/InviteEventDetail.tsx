@@ -50,7 +50,7 @@ export function InviteEventDetail({
   // 定員状況の確認
   const isCapacityReached = event.capacity ? event.attendances_count >= event.capacity : false;
 
-  // 申込期限の確認
+  // 出欠回答期限の確認
   const isRegistrationDeadlinePassed = event.registration_deadline
     ? new Date() > new Date(event.registration_deadline)
     : false;
@@ -122,7 +122,7 @@ export function InviteEventDetail({
               {isRegistrationDeadlinePassed && (
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  <span>申込期限が過ぎています</span>
+                  <span>出欠回答期限が過ぎています</span>
                 </div>
               )}
               {event.status !== "upcoming" && (

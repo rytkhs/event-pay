@@ -257,7 +257,7 @@ interface CsvParticipant {
 function generateCsvContent(participants: CsvParticipant[], columns: string[]): string {
   // CSV ヘッダー行の生成
   const headerMap: Record<string, string> = {
-    nickname: "ニックネーム",
+    nickname: "名前・ニックネーム",
     status: "参加ステータス",
     payment_method: "決済方法",
     payment_status: "決済ステータス",

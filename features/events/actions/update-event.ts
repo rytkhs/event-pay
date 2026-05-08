@@ -105,32 +105,32 @@ export async function updateEventAction(
           : null
         : (existingEvent.payment_deadline as string | null);
 
-    // 参加申込締切: registration_deadline ≤ date
+    // 出欠回答期限: registration_deadline ≤ date
     if (effectiveRegDeadlineIso) {
       if (new Date(effectiveRegDeadlineIso) > new Date(effectiveDateIso)) {
         return fail("VALIDATION_ERROR", {
-          userMessage: "参加申込締切は開催日時以前に設定してください",
+          userMessage: "出欠回答期限は開催日時以前に設定してください",
         });
       }
     }
 
-    // 決済締切: registration_deadline ≤ payment_deadline（regがある場合）
+    // オンライン支払い期限: registration_deadline ≤ payment_deadline（regがある場合）
     if (effectivePayDeadlineIso && effectiveRegDeadlineIso) {
       if (new Date(effectivePayDeadlineIso) < new Date(effectiveRegDeadlineIso)) {
         return fail("VALIDATION_ERROR", {
-          userMessage: "決済締切は参加申込締切以降に設定してください",
+          userMessage: "オンライン支払い期限は出欠回答期限以降に設定してください",
         });
       }
     }
 
-    // 決済締切: payment_deadline ≤ date + 30日
+    // オンライン支払い期限: payment_deadline ≤ date + 30日
     if (effectivePayDeadlineIso) {
       const eventPlus30d = new Date(
         new Date(effectiveDateIso).getTime() + 30 * TIME_CONSTANTS.MS_TO_DAYS
       );
       if (new Date(effectivePayDeadlineIso) > eventPlus30d) {
         return fail("VALIDATION_ERROR", {
-          userMessage: "オンライン決済締切は開催日時から30日以内に設定してください",
+          userMessage: "オンライン支払い期限は開催日時から30日以内に設定してください",
         });
       }
     }
@@ -157,7 +157,7 @@ export async function updateEventAction(
       );
       if (finalCandidate > eventPlus30d) {
         return fail("VALIDATION_ERROR", {
-          userMessage: "猶予を含む最終支払期限は開催日時から30日以内にしてください",
+          userMessage: "猶予を含む最終支払い期限は開催日時から30日以内にしてください",
         });
       }
     }
@@ -188,7 +188,7 @@ export async function updateEventAction(
       });
     }
 
-    // Stripe決済締切必須関係の差分送信時取りこぼし防止
+    // Stripeオンライン支払い期限必須関係の差分送信時取りこぼし防止
     const hasStripe = effectivePaymentMethods.includes("stripe");
     if (hasStripe) {
       const effectivePaymentDeadline =
@@ -198,7 +198,7 @@ export async function updateEventAction(
 
       if (!effectivePaymentDeadline) {
         const message =
-          "オンライン集金を選択した場合、決済締切の設定が必要です。既存のイベントでオンライン決済締切が未設定の場合は、編集画面で締切日時を入力してください。";
+          "オンライン集金を選択した場合、オンライン支払い期限の設定が必要です。既存のイベントでオンライン支払い期限が未設定の場合は、編集画面で締切日時を入力してください。";
         return fail("VALIDATION_ERROR", {
           userMessage: message,
           fieldErrors: {

@@ -71,9 +71,9 @@ const InviteScreenMock: React.FC = () => (
     <div className="bg-white px-4 py-3 flex-1">
       <p className="font-bold text-slate-800 text-xs mb-2.5">参加登録</p>
 
-      {/* ニックネーム */}
+      {/* 名前・ニックネーム */}
       <div className="mb-2">
-        <span className="text-[9px] font-bold text-slate-500 block mb-0.5">ニックネーム</span>
+        <span className="text-[9px] font-bold text-slate-500 block mb-0.5">名前・ニックネーム</span>
         <div className="bg-slate-50 border border-slate-200 rounded-md px-2 py-1.5 text-slate-700">
           山田 太郎
         </div>

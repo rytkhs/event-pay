@@ -99,7 +99,7 @@ describe("エラーケース", () => {
 
     context.mockCanCreateStripeSession.mockReturnValue({
       isEligible: false,
-      reason: "決済期限を過ぎています",
+      reason: "オンライン支払い期限を過ぎています",
       checks: {
         isAttending: true,
         isPaidEvent: true,
@@ -115,7 +115,7 @@ describe("エラーケース", () => {
     expect(result).toEqual({
       success: false,
       code: "RESOURCE_CONFLICT",
-      error: "決済期限を過ぎています",
+      error: "オンライン支払い期限を過ぎています",
       correlationId: expect.any(String),
       retryable: false,
     });

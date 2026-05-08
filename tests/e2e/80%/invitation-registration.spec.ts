@@ -63,11 +63,11 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     await page.getByRole("button", { name: "参加申し込みをする" }).click();
 
     // 参加登録フォームが表示されることを確認
-    await expect(page.getByLabel("ニックネーム")).toBeVisible();
+    await expect(page.getByLabel("名前・ニックネーム")).toBeVisible();
     await expect(page.getByLabel("メールアドレス")).toBeVisible();
 
     // フォームに入力
-    await page.getByLabel("ニックネーム").fill("テスト太郎");
+    await page.getByLabel("名前・ニックネーム").fill("テスト太郎");
     await page.getByLabel("メールアドレス").fill("test-participant@example.com");
 
     // 参加ステータスを「参加」に設定 - ラベルを使用
@@ -117,7 +117,7 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     await page.getByRole("button", { name: "参加申し込みをする" }).click();
 
     // フォームに入力
-    await page.getByLabel("ニックネーム").fill("有料太郎");
+    await page.getByLabel("名前・ニックネーム").fill("有料太郎");
     await page.getByLabel("メールアドレス").fill("paid-participant@example.com");
 
     // 参加ステータスを「参加」に設定
@@ -170,7 +170,7 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     await expect(page.getByText("定員に達しています")).toBeVisible();
 
     // 参加登録フォームは表示されないことを確認
-    await expect(page.getByLabel("ニックネーム")).not.toBeVisible();
+    await expect(page.getByLabel("名前・ニックネーム")).not.toBeVisible();
   });
 
   test("異常系：重複したメールアドレスで参加登録がエラーになる", async ({ page }) => {
@@ -199,11 +199,11 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     await page.getByRole("button", { name: "参加申し込みをする" }).click();
 
     // フォームが表示されるのを確認
-    await expect(page.getByLabel("ニックネーム")).toBeVisible();
+    await expect(page.getByLabel("名前・ニックネーム")).toBeVisible();
     await expect(page.getByLabel("メールアドレス")).toBeVisible();
 
     // 既存参加者と同じメールアドレスで登録を試行
-    await page.getByLabel("ニックネーム").fill("重複太郎");
+    await page.getByLabel("名前・ニックネーム").fill("重複太郎");
     await page.getByLabel("メールアドレス").fill(existingEmail); // 動的に取得したメールアドレスを使用
     await page.locator('[role="radio"][value="attending"]').check();
 
@@ -227,7 +227,7 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     ).toBeVisible();
 
     // フォームはリセットされずに残る（ユーザーがメールアドレスを修正できるように）
-    await expect(page.getByLabel("ニックネーム")).toHaveValue("重複太郎");
+    await expect(page.getByLabel("名前・ニックネーム")).toHaveValue("重複太郎");
     await expect(page.getByLabel("メールアドレス")).toHaveValue(existingEmail);
   });
 
@@ -247,7 +247,7 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     await page.getByRole("button", { name: "参加申し込みをする" }).click();
 
     // フォームに入力
-    await page.getByLabel("ニックネーム").fill("未定太郎");
+    await page.getByLabel("名前・ニックネーム").fill("未定太郎");
     await page.getByLabel("メールアドレス").fill("maybe-participant@example.com");
 
     // 参加ステータスを「未定」に設定 - 他のテストと一貫性を保つためvalue-basedセレクタを使用
@@ -272,7 +272,7 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     await expect(page.getByText("無効な招待リンク").first()).toBeVisible();
 
     // 参加登録フォームが表示されないことを確認
-    await expect(page.getByLabel("ニックネーム")).not.toBeVisible();
+    await expect(page.getByLabel("名前・ニックネーム")).not.toBeVisible();
   });
 
   test("異常系：フォームの必須項目が未入力の場合、バリデーションエラーが表示される", async ({
@@ -293,20 +293,20 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     await page.getByRole("button", { name: "参加申し込みをする" }).click();
 
     // フォームが表示されることを確認
-    await expect(page.getByLabel("ニックネーム")).toBeVisible();
+    await expect(page.getByLabel("名前・ニックネーム")).toBeVisible();
     await expect(page.getByLabel("メールアドレス")).toBeVisible();
 
     // 何も入力していない状態では送信ボタンが無効化されていることを確認
     const submitButton = page.getByRole("button", { name: "参加申し込みを完了する" });
     await expect(submitButton).toBeDisabled();
 
-    // ニックネームフィールドに文字を入力してから削除してバリデーションをトリガー
-    const nicknameField = page.getByLabel("ニックネーム");
+    // 名前・ニックネームフィールドに文字を入力してから削除してバリデーションをトリガー
+    const nicknameField = page.getByLabel("名前・ニックネーム");
     await nicknameField.fill("a"); // 一時的に入力
     await nicknameField.clear(); // 削除してonChangeをトリガー
 
-    // ニックネームのバリデーションエラーが表示されることを確認
-    await expect(page.getByText("ニックネームを入力してください")).toBeVisible();
+    // 名前・ニックネームのバリデーションエラーが表示されることを確認
+    await expect(page.getByText("名前・ニックネームを入力してください")).toBeVisible();
 
     // メールアドレスフィールドに文字を入力してから削除してバリデーションをトリガー
     const emailField = page.getByLabel("メールアドレス");
@@ -341,12 +341,12 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     await page.getByRole("button", { name: "参加申し込みをする" }).click();
 
     // 不正なメールアドレス形式で入力
-    await page.getByLabel("ニックネーム").fill("不正メール太郎");
+    await page.getByLabel("名前・ニックネーム").fill("不正メール太郎");
     await page.getByLabel("メールアドレス").fill("invalid-email-format"); // 不正な形式
     await page.locator('[role="radio"][value="attending"]').check();
 
     // メールアドレスフィールドからフォーカスを外してバリデーションをトリガー
-    await page.getByLabel("ニックネーム").focus();
+    await page.getByLabel("名前・ニックネーム").focus();
 
     // メール形式のバリデーションエラーが表示されることを確認
     await expect(

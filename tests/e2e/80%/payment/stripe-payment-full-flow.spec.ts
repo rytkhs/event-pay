@@ -178,8 +178,8 @@ test.describe("Stripe決済 完全フロー", () => {
 
     // 開催日時
     await fillDateTimePicker("開催日時を選択", eventDate, "18");
-    // 参加申込締切
-    await fillDateTimePicker("参加申込締切を選択", regDeadline, "23");
+    // 出欠回答期限
+    await fillDateTimePicker("出欠回答期限を選択", regDeadline, "23");
 
     // 参加費を設定（1,000円）
     await page.fill('[name="fee"]', "1000");
@@ -188,8 +188,8 @@ test.describe("Stripe決済 完全フロー", () => {
     const onlinePaymentLabel = page.locator("label", { hasText: "オンライン決済" });
     await onlinePaymentLabel.click();
 
-    // オンライン決済締切 (オンライン決済選択後に表示される)
-    await fillDateTimePicker("オンライン決済締切を選択", payDeadline, "23");
+    // オンライン支払い期限 (オンライン決済選択後に表示される)
+    await fillDateTimePicker("オンライン支払い期限を選択", payDeadline, "23");
 
     // 詳細情報
     await page.fill('[name="location"]', "テスト会場");

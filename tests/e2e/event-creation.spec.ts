@@ -130,8 +130,8 @@ test.describe("イベント作成（E2E）", () => {
   test("正常系：有効な情報でイベントを作成し、詳細ページに遷移する", async ({ page }) => {
     // 将来の日時を生成（確実に未来になるよう十分な時間差を設定）
     const futureDateString = "2026-12-25T15:00"; // 開催日：25日
-    const registrationDeadline = "2026-12-22T23:45"; // 申込締切：22日（余裕を持たせる）
-    const paymentDeadline = "2026-12-24T23:45"; // 決済締切：24日（申込締切の翌々日）
+    const registrationDeadline = "2026-12-22T23:45"; // 出欠回答期限：22日（余裕を持たせる）
+    const paymentDeadline = "2026-12-24T23:45"; // オンライン支払い期限：24日（出欠回答期限の翌々日）
 
     // 基本情報セクション
     await page.getByPlaceholder("例：勉強会、夏合宿、会費の集金など").fill("テスト勉強会");
@@ -143,7 +143,7 @@ test.describe("イベント作成（E2E）", () => {
 
     // 日時・締め切りセクション - DateTimePickerを使用
     await fillDateTimePicker(page, "開催日時", futureDateString);
-    await fillDateTimePicker(page, "参加申込締切", registrationDeadline);
+    await fillDateTimePicker(page, "出欠回答期限", registrationDeadline);
 
     // 参加費・決済セクション
     await page.getByPlaceholder("0（無料）または100以上").fill("1000");
@@ -165,14 +165,16 @@ test.describe("イベント作成（E2E）", () => {
       // オンライン決済を選択
       await onlinePaymentLabel.click();
 
-      // オンライン決済締切設定が表示されるのを待機（ラベルを特定）
-      await expect(page.locator("label", { hasText: "オンライン決済締切" }).first()).toBeVisible();
+      // オンライン支払い期限設定が表示されるのを待機（ラベルを特定）
+      await expect(
+        page.locator("label", { hasText: "オンライン支払い期限" }).first()
+      ).toBeVisible();
 
-      // オンライン決済締切を設定
-      await fillDateTimePicker(page, "オンライン決済締切", paymentDeadline);
+      // オンライン支払い期限を設定
+      await fillDateTimePicker(page, "オンライン支払い期限", paymentDeadline);
 
-      // 締切後決済許可（猶予期間）のテスト
-      await page.getByLabel("締切後も決済を許可").click();
+      // オンライン支払い期限後の支払い許可（猶予期間）のテスト
+      await page.getByLabel("期限後もオンライン支払いを許可").click();
       await page.getByPlaceholder("7").fill("3"); // 3日間の猶予
     } else {
       // オンライン決済が無効な場合は現金を選択
@@ -204,7 +206,7 @@ test.describe("イベント作成（E2E）", () => {
   test("正常系：無料イベントを作成し、決済方法の選択が不要であることを確認", async ({ page }) => {
     // 将来の日時を生成（確実に未来の日時）
     const futureDateString = "2026-12-26T10:00";
-    const registrationDeadline = "2026-12-25T23:45"; // 申込締切
+    const registrationDeadline = "2026-12-25T23:45"; // 出欠回答期限
 
     // 基本情報セクション
     await page.getByPlaceholder("例：勉強会、夏合宿、会費の集金など").fill("無料勉強会");
@@ -214,7 +216,7 @@ test.describe("イベント作成（E2E）", () => {
 
     // 日時・締め切りセクション
     await fillDateTimePicker(page, "開催日時", futureDateString);
-    await fillDateTimePicker(page, "参加申込締切", registrationDeadline);
+    await fillDateTimePicker(page, "出欠回答期限", registrationDeadline);
 
     // 参加費・決済セクション（無料）
     await page.getByPlaceholder("0（無料）または100以上").fill("0");

@@ -84,9 +84,9 @@ const steps: Step[] = [
   },
   {
     title: "イベントを作成する",
-    body: "イベント名、日時、申込締切、参加費、支払い方法を入力します。",
+    body: "イベント名、日時、出欠回答期限、参加費、支払い方法を入力します。",
     detail:
-      "有料イベントでは支払い方法を選びます。オンライン集金を選ぶ場合は、支払期限も設定します。無料イベントなら支払い設定は不要です。",
+      "有料イベントでは支払い方法を選びます。オンライン集金を選ぶ場合は、支払い期限も設定します。無料イベントなら支払い設定は不要です。",
     icon: CalendarPlus,
   },
   {
@@ -138,7 +138,7 @@ const eventFields = [
   "出欠回答期限",
   "参加費",
   "支払い方法",
-  "オンライン支払期限",
+  "オンライン支払い期限",
 ];
 
 const guideLinks: GuideLink[] = [
@@ -306,13 +306,13 @@ export default function OrganizerGettingStartedPage() {
             招待リンクを送った後は、参加者が自分で回答します。
           </h3>
           <p className="mt-4 text-sm leading-7 text-slate-300">
-            参加者はリンクから、ニックネーム、メールアドレス、参加ステータス、支払い方法を入力します。
+            参加者はリンクから、名前・ニックネーム、メールアドレス、参加ステータス、支払い方法を入力します。
             オンライン支払いを選んだ場合は、ゲストページから決済画面へ進めます。
           </p>
           <div className="mt-8 border-t border-white/15 pt-6">
             <p className="text-sm font-bold text-white">自動で届く案内</p>
             <p className="mt-2 text-sm leading-7 text-slate-300">
-              回答締切、支払期限、イベント前日のリマインド対象者には、参加者用URLを含むメールが送られます。
+              出欠回答期限、支払い期限、イベント前日のリマインド対象者には、参加者用URLを含むメールが送られます。
             </p>
           </div>
         </aside>

@@ -100,7 +100,7 @@ export function ParticipantsActionBarV2({
   const handleSubmitAdd = async () => {
     if (isAdding) return;
     if (!addNickname || addNickname.trim().length === 0) {
-      setAddError("ニックネームを入力してください");
+      setAddError("名前・ニックネームを入力してください");
       return;
     }
 
@@ -129,7 +129,7 @@ export function ParticipantsActionBarV2({
 
       const data = result.data as AdminAddAttendanceResult;
       const successDescription = isPayingEvent
-        ? "参加者を追加しました。現金決済（未払い）として記録されました。"
+        ? "参加者を追加しました。現金（未集金）として記録されました。"
         : data.canOnlinePay
           ? "参加者を追加しました（現在オンライン決済が可能です）"
           : "参加者を追加しました（オンライン決済は現在できません）";
@@ -227,7 +227,7 @@ export function ParticipantsActionBarV2({
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    placeholder="ニックネームで検索..."
+                    placeholder="名前・ニックネームで検索..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="h-10 rounded-xl border-border/40 bg-background/60 pl-9 pr-8 text-base shadow-[inset_0_1px_0_hsl(var(--background)),0_1px_2px_hsl(var(--foreground)/0.02)] focus-visible:border-primary/20 focus-visible:ring-primary/5 md:text-sm"
@@ -271,7 +271,7 @@ export function ParticipantsActionBarV2({
                       )}
                     />
                     <Input
-                      placeholder="ニックネームで検索..."
+                      placeholder="名前・ニックネームで検索..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onFocus={() => setIsSearchFocused(true)}
@@ -413,7 +413,7 @@ export function ParticipantsActionBarV2({
           </DialogHeader>
           <div className="space-y-3">
             <Input
-              placeholder="ニックネーム"
+              placeholder="名前・ニックネーム"
               value={addNickname}
               onChange={(e) => setAddNickname(e.target.value)}
               onKeyDown={(e) => {

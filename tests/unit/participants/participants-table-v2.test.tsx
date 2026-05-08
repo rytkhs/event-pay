@@ -265,13 +265,13 @@ describe("ParticipantsTableV2", () => {
   });
 
   describe("ソート機能", () => {
-    it("ニックネーム列でソートできる", async () => {
+    it("名前・ニックネーム列でソートできる", async () => {
       const user = userEvent.setup();
       const onParamsChange = jest.fn();
 
       render(<ParticipantsTableV2 {...defaultProps} onParamsChange={onParamsChange} />);
 
-      const nicknameHeader = screen.getByRole("button", { name: /ニックネームでソート/ });
+      const nicknameHeader = screen.getByRole("button", { name: /名前・ニックネームでソート/ });
       await user.click(nicknameHeader);
 
       expect(onParamsChange).toHaveBeenCalledWith({

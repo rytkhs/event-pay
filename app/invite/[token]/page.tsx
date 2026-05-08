@@ -80,11 +80,11 @@ export default async function InvitePage(props: InvitePageProps) {
             };
           case "REGISTRATION_DEADLINE_PASSED":
             return {
-              title: "申込期限終了",
+              title: "出欠回答期限終了",
               icon: "business" as const,
               description: validationResult.event?.registration_deadline
-                ? `申込期限: ${new Date(validationResult.event.registration_deadline).toLocaleString("ja-JP")}`
-                : "申込期限を過ぎたため、参加申し込みはできません。",
+                ? `出欠回答期限: ${new Date(validationResult.event.registration_deadline).toLocaleString("ja-JP")}`
+                : "出欠回答期限を過ぎたため、出欠回答はできません。",
             };
           default:
             return {

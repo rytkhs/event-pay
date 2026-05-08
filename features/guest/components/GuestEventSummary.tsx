@@ -83,7 +83,7 @@ export const GuestEventSummary: React.FC<GuestEventSummaryProps> = ({ attendance
               <Clock className="w-4 h-4 text-blue-600" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-0.5 font-medium">申込締切</p>
+              <p className="text-xs text-slate-500 mb-0.5 font-medium">出欠回答期限</p>
               <p className="text-sm font-bold text-gray-700">{regDeadline || "設定なし"}</p>
             </div>
           </div>
@@ -94,7 +94,7 @@ export const GuestEventSummary: React.FC<GuestEventSummaryProps> = ({ attendance
               <Clock className="w-4 h-4 text-emerald-600" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-0.5 font-medium">オンライン決済締切</p>
+              <p className="text-xs text-slate-500 mb-0.5 font-medium">オンライン支払い期限</p>
               <p className="text-sm font-bold text-gray-700">{payDeadline || "設定なし"}</p>
             </div>
           </div>

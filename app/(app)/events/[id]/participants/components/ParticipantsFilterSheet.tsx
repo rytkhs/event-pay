@@ -188,8 +188,8 @@ export function ParticipantsFilterSheet({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全て</SelectItem>
-                  <SelectItem value="stripe">オンライン決済</SelectItem>
-                  <SelectItem value="cash">現金決済</SelectItem>
+                  <SelectItem value="stripe">オンライン</SelectItem>
+                  <SelectItem value="cash">現金</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -230,7 +230,7 @@ export function ParticipantsFilterSheet({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="created_at">登録日時</SelectItem>
-                  <SelectItem value="nickname">ニックネーム</SelectItem>
+                  <SelectItem value="nickname">名前・ニックネーム</SelectItem>
                   <SelectItem value="status">参加状況</SelectItem>
                   <SelectItem value="updated_at">更新日時</SelectItem>
                 </SelectContent>
