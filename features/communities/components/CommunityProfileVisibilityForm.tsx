@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState, type FormEvent } from "react";
 
 import { CheckCircle2, Loader2 } from "lucide-react";
 
@@ -48,10 +48,33 @@ export function CommunityProfileVisibilityForm({
     initialState
   );
   const [showCommunityLink, setShowCommunityLink] = useState(defaultShowCommunityLink);
+  const [baselineShowCommunityLink, setBaselineShowCommunityLink] =
+    useState(defaultShowCommunityLink);
   const error = state.success ? undefined : state.error;
+  const isDirty = showCommunityLink !== baselineShowCommunityLink;
+
+  useEffect(() => {
+    if (!state.success || !state.data) {
+      return;
+    }
+
+    setShowCommunityLink(state.data.showCommunityLink);
+    setBaselineShowCommunityLink(state.data.showCommunityLink);
+  }, [state]);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (!isDirty) {
+      event.preventDefault();
+    }
+  }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4 p-4 sm:p-5" noValidate>
+    <form
+      action={formAction}
+      className="flex flex-col gap-4 p-4 sm:p-5"
+      noValidate
+      onSubmit={handleSubmit}
+    >
       {!state.success && error?.userMessage ? (
         <Alert variant="destructive">
           <AlertTitle>更新できませんでした</AlertTitle>
@@ -59,7 +82,7 @@ export function CommunityProfileVisibilityForm({
         </Alert>
       ) : null}
 
-      {state.success && state.message ? (
+      {state.success && state.message && !isDirty ? (
         <Alert className="border-primary/30 bg-primary/5 text-primary [&>svg]:text-primary">
           <CheckCircle2 className="h-4 w-4" />
           <AlertTitle>更新しました</AlertTitle>
@@ -99,7 +122,11 @@ export function CommunityProfileVisibilityForm({
       </div>
 
       <div className="flex justify-end border-t border-border/60 pt-4">
-        <Button type="submit" disabled={isPending} className="w-full sm:w-auto sm:min-w-32">
+        <Button
+          type="submit"
+          disabled={isPending || !isDirty}
+          className="w-full sm:w-auto sm:min-w-32"
+        >
           {isPending ? (
             <>
               <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState, type FormEvent } from "react";
 
 import Link from "next/link";
 
@@ -43,6 +43,22 @@ const initialState: UpdateCommunityBasicInfoFormState = {
   },
 };
 
+type BasicInfoFormValues = {
+  description: string;
+  name: string;
+};
+
+function normalizeText(value: string | null | undefined) {
+  return value?.trim() ?? "";
+}
+
+function toComparableValues(values: BasicInfoFormValues) {
+  return {
+    description: normalizeText(values.description),
+    name: normalizeText(values.name),
+  };
+}
+
 export function UpdateCommunityBasicInfoForm({
   defaultDescription,
   defaultName,
@@ -52,8 +68,43 @@ export function UpdateCommunityBasicInfoForm({
     updateCommunityBasicInfoAction,
     initialState
   );
+  const [values, setValues] = useState<BasicInfoFormValues>({
+    description: defaultDescription ?? "",
+    name: defaultName,
+  });
+  const [baseline, setBaseline] = useState<BasicInfoFormValues>(() =>
+    toComparableValues({
+      description: defaultDescription ?? "",
+      name: defaultName,
+    })
+  );
   const error = state.success ? undefined : state.error;
   const nameError = error?.fieldErrors?.name?.[0];
+  const comparableValues = toComparableValues(values);
+  const isDirty =
+    comparableValues.description !== baseline.description ||
+    comparableValues.name !== baseline.name;
+
+  useEffect(() => {
+    if (!state.success || !state.data) {
+      return;
+    }
+
+    const updatedValues = {
+      description: state.data.description ?? "",
+      name: state.data.name,
+    };
+    const updatedBaseline = toComparableValues(updatedValues);
+
+    setValues(updatedValues);
+    setBaseline(updatedBaseline);
+  }, [state]);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (!isDirty) {
+      event.preventDefault();
+    }
+  }
 
   return (
     <div className="rounded-lg border border-border/60 bg-background">
@@ -65,7 +116,7 @@ export function UpdateCommunityBasicInfoForm({
           </Alert>
         ) : null}
 
-        {state.success && state.message ? (
+        {state.success && state.message && !isDirty ? (
           <Alert className="border-primary/30 bg-primary/5 text-primary [&>svg]:text-primary">
             <CheckCircle2 className="h-4 w-4" />
             <AlertTitle>更新しました</AlertTitle>
@@ -73,7 +124,12 @@ export function UpdateCommunityBasicInfoForm({
           </Alert>
         ) : null}
 
-        <form action={formAction} className="flex flex-col gap-4 sm:gap-5" noValidate>
+        <form
+          action={formAction}
+          className="flex flex-col gap-4 sm:gap-5"
+          noValidate
+          onSubmit={handleSubmit}
+        >
           <div className="flex flex-col gap-2">
             <Label htmlFor="community-settings-name" className="text-sm font-medium">
               コミュニティ名
@@ -81,7 +137,11 @@ export function UpdateCommunityBasicInfoForm({
             <Input
               id="community-settings-name"
               name="name"
-              defaultValue={defaultName}
+              value={values.name}
+              onChange={(event) =>
+                setValues((current) => ({ ...current, name: event.target.value }))
+              }
+              disabled={isPending}
               required
               className="h-10"
               aria-invalid={nameError ? true : undefined}
@@ -109,7 +169,11 @@ export function UpdateCommunityBasicInfoForm({
             <Textarea
               id="community-settings-description"
               name="description"
-              defaultValue={defaultDescription ?? ""}
+              value={values.description}
+              onChange={(event) =>
+                setValues((current) => ({ ...current, description: event.target.value }))
+              }
+              disabled={isPending}
               placeholder="活動内容や集金内容など"
               className="min-h-28 resize-none"
             />
@@ -127,7 +191,11 @@ export function UpdateCommunityBasicInfoForm({
           </div>
 
           <div className="flex justify-end border-t border-border/60 pt-4 sm:pt-5">
-            <Button type="submit" disabled={isPending} className="w-full sm:w-auto sm:min-w-32">
+            <Button
+              type="submit"
+              disabled={isPending || !isDirty}
+              className="w-full sm:w-auto sm:min-w-32"
+            >
               {isPending ? (
                 <>
                   <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
