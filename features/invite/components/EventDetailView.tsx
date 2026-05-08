@@ -1,6 +1,8 @@
 import React from "react";
 
-import { Calendar, MapPin, Users, Clock, Banknote, AlertCircle } from "lucide-react";
+import Link from "next/link";
+
+import { Calendar, MapPin, Users, Clock, Banknote, AlertCircle, ExternalLink } from "lucide-react";
 
 import type { InviteEventDetail } from "@core/types/invite";
 import { formatUtcToJst, formatUtcToJstByType } from "@core/utils/timezone";
@@ -42,6 +44,16 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
             {statusLabel}
           </span>
           <span className="text-slate-400 text-xs font-medium">{event.community.name}</span>
+          {event.community.showCommunityLink && (
+            <Link
+              href={`/c/${event.community.slug}`}
+              prefetch={false}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary underline-offset-4 hover:underline"
+            >
+              コミュニティ
+              <ExternalLink className="w-3 h-3" aria-hidden="true" />
+            </Link>
+          )}
         </div>
         <h1 className="text-xl font-bold text-slate-900 leading-tight tracking-tight">
           {event.title}

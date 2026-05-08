@@ -361,7 +361,9 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       payment_deadline: rpcRow.payment_deadline ?? null,
       community: {
         name: rpcRow.community_name,
+        slug: rpcRow.community_slug,
         legalSlug: rpcRow.community_legal_slug,
+        showCommunityLink: rpcRow.community_show_community_link,
       },
       canceled_at: rpcRow.canceled_at ?? null,
     };

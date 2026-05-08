@@ -14,26 +14,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-export type UpdateCommunityPayload = {
+export type UpdateCommunityBasicInfoPayload = {
   communityId: string;
   description: string | null;
   name: string;
 };
 
-export type UpdateCommunityFormState = ActionResult<UpdateCommunityPayload>;
+export type UpdateCommunityBasicInfoFormState = ActionResult<UpdateCommunityBasicInfoPayload>;
 
-export type UpdateCommunityFormAction = (
-  state: UpdateCommunityFormState,
+export type UpdateCommunityBasicInfoFormAction = (
+  state: UpdateCommunityBasicInfoFormState,
   formData: FormData
-) => Promise<UpdateCommunityFormState>;
+) => Promise<UpdateCommunityBasicInfoFormState>;
 
-type UpdateCommunityFormProps = {
+type UpdateCommunityBasicInfoFormProps = {
   defaultDescription: string | null;
   defaultName: string;
-  updateCommunityAction: UpdateCommunityFormAction;
+  updateCommunityBasicInfoAction: UpdateCommunityBasicInfoFormAction;
 };
 
-const initialState: UpdateCommunityFormState = {
+const initialState: UpdateCommunityBasicInfoFormState = {
   success: false,
   error: {
     code: "VALIDATION_ERROR",
@@ -43,12 +43,15 @@ const initialState: UpdateCommunityFormState = {
   },
 };
 
-export function UpdateCommunityForm({
+export function UpdateCommunityBasicInfoForm({
   defaultDescription,
   defaultName,
-  updateCommunityAction,
-}: UpdateCommunityFormProps) {
-  const [state, formAction, isPending] = useActionState(updateCommunityAction, initialState);
+  updateCommunityBasicInfoAction,
+}: UpdateCommunityBasicInfoFormProps) {
+  const [state, formAction, isPending] = useActionState(
+    updateCommunityBasicInfoAction,
+    initialState
+  );
   const error = state.success ? undefined : state.error;
   const nameError = error?.fieldErrors?.name?.[0];
 

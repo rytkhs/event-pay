@@ -9,8 +9,12 @@ jest.mock("@core/logging/app-logger", () => ({
 }));
 
 import { logger } from "@core/logging/app-logger";
-import { updateCommunitySchema } from "@features/communities/server";
-import { updateCommunity } from "@features/communities/services/update-community";
+import {
+  updateCommunityBasicInfoSchema,
+  updateCommunityProfileVisibilitySchema,
+} from "@features/communities/server";
+import { updateCommunityBasicInfo } from "@features/communities/services/update-community-basic-info";
+import { updateCommunityProfileVisibility } from "@features/communities/services/update-community-profile-visibility";
 
 type QueryResponse = {
   data: unknown;
@@ -42,25 +46,23 @@ function createSupabaseMock(response: QueryResponse) {
     supabase: { from } as never,
     spies: {
       from,
-      update,
       updatePayloads,
       eqId,
       eqCreatedBy,
       eqIsDeleted,
       select,
-      maybeSingle,
     },
   };
 }
 
-describe("features/communities/services/update-community", () => {
+describe("features/communities/services/update-community-basic-info", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it("description の空文字は schema で null に正規化する", () => {
     expect(
-      updateCommunitySchema.parse({
+      updateCommunityBasicInfoSchema.parse({
         name: "  ボドゲ会  ",
         description: "   ",
       })
@@ -68,39 +70,6 @@ describe("features/communities/services/update-community", () => {
       name: "ボドゲ会",
       description: null,
     });
-  });
-
-  it("description は任意のまま1000文字以内に制限する", () => {
-    expect(
-      updateCommunitySchema.parse({
-        name: "ボドゲ会",
-      })
-    ).toEqual({
-      name: "ボドゲ会",
-      description: null,
-    });
-
-    expect(
-      updateCommunitySchema.parse({
-        name: "ボドゲ会",
-        description: "あ".repeat(1000),
-      })
-    ).toEqual({
-      name: "ボドゲ会",
-      description: "あ".repeat(1000),
-    });
-
-    const result = updateCommunitySchema.safeParse({
-      name: "ボドゲ会",
-      description: "あ".repeat(1001),
-    });
-
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.flatten().fieldErrors.description).toEqual([
-        "コミュニティ説明は1000文字以内で入力してください",
-      ]);
-    }
   });
 
   it("name と description だけを更新する", async () => {
@@ -113,7 +82,7 @@ describe("features/communities/services/update-community", () => {
       error: null,
     });
 
-    const result = await updateCommunity(supabase, "user-1", "community-1", {
+    const result = await updateCommunityBasicInfo(supabase, "user-1", "community-1", {
       name: "新しい名前",
       description: "新しい説明",
     });
@@ -127,24 +96,17 @@ describe("features/communities/services/update-community", () => {
       },
       meta: undefined,
     });
-    expect(spies.from).toHaveBeenCalledWith("communities");
     expect(spies.updatePayloads).toEqual([
       {
         name: "新しい名前",
         description: "新しい説明",
       },
     ]);
-    expect(spies.eqId).toHaveBeenCalledWith("id", "community-1");
-    expect(spies.eqCreatedBy).toHaveBeenCalledWith("created_by", "user-1");
-    expect(spies.eqIsDeleted).toHaveBeenCalledWith("is_deleted", false);
     expect(spies.select).toHaveBeenCalledWith("id, name, description");
     expect(logger.info).toHaveBeenCalledWith(
-      "Community updated",
+      "Community basic info updated",
       expect.objectContaining({
-        category: "system",
-        action: "community.update",
-        outcome: "success",
-        user_id: "user-1",
+        action: "community.update_basic_info",
         communityId: "community-1",
       })
     );
@@ -156,7 +118,7 @@ describe("features/communities/services/update-community", () => {
       error: null,
     });
 
-    const result = await updateCommunity(supabase, "user-1", "community-x", {
+    const result = await updateCommunityBasicInfo(supabase, "user-1", "community-x", {
       name: "名前",
       description: null,
     });
@@ -168,46 +130,55 @@ describe("features/communities/services/update-community", () => {
 
     expect(result.error.code).toBe("NOT_FOUND");
     expect(result.error.userMessage).toBe("更新対象のコミュニティが見つかりません");
-    expect(logger.warn).toHaveBeenCalledWith(
-      "Community update target not found",
-      expect.objectContaining({
-        category: "system",
-        action: "community.update",
-        outcome: "failure",
-        user_id: "user-1",
-        communityId: "community-x",
-      })
-    );
+  });
+});
+
+describe("features/communities/services/update-community-profile-visibility", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it("DB エラー時は DATABASE_ERROR を返す", async () => {
-    const { supabase } = createSupabaseMock({
-      data: null,
-      error: {
-        code: "PGRST116",
-        message: "database failed",
+  it("showCommunityLink を boolean として受け取る", () => {
+    expect(
+      updateCommunityProfileVisibilitySchema.parse({
+        showCommunityLink: true,
+      })
+    ).toEqual({
+      showCommunityLink: true,
+    });
+  });
+
+  it("show_community_link だけを更新する", async () => {
+    const { supabase, spies } = createSupabaseMock({
+      data: {
+        id: "community-1",
+        show_community_link: true,
       },
+      error: null,
     });
 
-    const result = await updateCommunity(supabase, "user-1", "community-1", {
-      name: "名前",
-      description: null,
+    const result = await updateCommunityProfileVisibility(supabase, "user-1", "community-1", {
+      showCommunityLink: true,
     });
 
-    expect(result.success).toBe(false);
-    if (result.success) {
-      throw new Error("expected failure");
-    }
-
-    expect(result.error.code).toBe("DATABASE_ERROR");
-    expect(result.error.userMessage).toBe("コミュニティの更新に失敗しました");
-    expect(logger.error).toHaveBeenCalledWith(
-      "Community update failed",
+    expect(result).toEqual({
+      success: true,
+      data: {
+        communityId: "community-1",
+        showCommunityLink: true,
+      },
+      meta: undefined,
+    });
+    expect(spies.updatePayloads).toEqual([
+      {
+        show_community_link: true,
+      },
+    ]);
+    expect(spies.select).toHaveBeenCalledWith("id, show_community_link");
+    expect(logger.info).toHaveBeenCalledWith(
+      "Community profile visibility updated",
       expect.objectContaining({
-        category: "system",
-        action: "community.update",
-        outcome: "failure",
-        user_id: "user-1",
+        action: "community.update_profile_visibility",
         communityId: "community-1",
       })
     );

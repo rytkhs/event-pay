@@ -86,6 +86,8 @@ describe("エラーケース", () => {
           community: {
             name: "テストコミュニティ",
             legalSlug: "test-community-legal",
+            slug: "test-community",
+            showCommunityLink: false,
           },
           canceled_at: null,
         },
@@ -151,6 +153,8 @@ describe("エラーケース", () => {
           community: {
             name: "テストコミュニティ",
             legalSlug: "test-community-legal",
+            slug: "test-community",
+            showCommunityLink: false,
           },
           canceled_at: null,
         },
@@ -225,6 +229,8 @@ describe("エラーケース", () => {
           community: {
             name: "テストコミュニティ",
             legalSlug: "test-community-legal",
+            slug: "test-community",
+            showCommunityLink: false,
           },
           canceled_at: null,
         },
@@ -307,6 +313,8 @@ describe("エラーケース", () => {
           community: {
             name: "テストコミュニティ",
             legalSlug: "test-community-legal",
+            slug: "test-community",
+            showCommunityLink: false,
           },
           canceled_at: null,
         },

@@ -33,6 +33,8 @@ jest.mock("@core/utils/guest-token", () => ({
         community: {
           name: "Test Community",
           legalSlug: "legal-test-community",
+          slug: "test-community",
+          showCommunityLink: false,
         },
         canceled_at: null,
       },

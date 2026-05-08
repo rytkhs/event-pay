@@ -7,19 +7,28 @@ import { Separator } from "@/components/ui/separator";
 
 import type { CurrentCommunitySettingsReadModel } from "../server";
 
+import {
+  CommunityProfileVisibilityForm,
+  type UpdateCommunityProfileVisibilityFormAction,
+} from "./CommunityProfileVisibilityForm";
 import { DeleteCommunityDangerZone, type DeleteCommunityAction } from "./DeleteCommunityDangerZone";
-import { UpdateCommunityForm, type UpdateCommunityFormAction } from "./UpdateCommunityForm";
+import {
+  UpdateCommunityBasicInfoForm,
+  type UpdateCommunityBasicInfoFormAction,
+} from "./UpdateCommunityBasicInfoForm";
 
 type CurrentCommunitySettingsOverviewProps = {
   deleteCommunityAction: DeleteCommunityAction;
   settings: CurrentCommunitySettingsReadModel;
-  updateCommunityAction: UpdateCommunityFormAction;
+  updateCommunityBasicInfoAction: UpdateCommunityBasicInfoFormAction;
+  updateCommunityProfileVisibilityAction: UpdateCommunityProfileVisibilityFormAction;
 };
 
 export function CurrentCommunitySettingsOverview({
   deleteCommunityAction,
   settings,
-  updateCommunityAction,
+  updateCommunityBasicInfoAction,
+  updateCommunityProfileVisibilityAction,
 }: CurrentCommunitySettingsOverviewProps) {
   return (
     <div className="flex flex-col gap-6 sm:gap-10">
@@ -29,13 +38,13 @@ export function CurrentCommunitySettingsOverview({
             基本情報
           </h2>
           <p className="text-xs leading-5 text-muted-foreground">
-            招待ページと公開プロフィールに表示される情報です。
+            招待ページとコミュニティプロフィールに表示される情報です。
           </p>
         </div>
-        <UpdateCommunityForm
+        <UpdateCommunityBasicInfoForm
           defaultDescription={settings.community.description}
           defaultName={settings.community.name}
-          updateCommunityAction={updateCommunityAction}
+          updateCommunityBasicInfoAction={updateCommunityBasicInfoAction}
         />
       </section>
 
@@ -45,7 +54,7 @@ export function CurrentCommunitySettingsOverview({
             コミュニティプロフィール
           </h2>
           <p className="text-xs leading-5 text-muted-foreground">
-            Stripe アカウント作成に利用可能なコミュニティプロフィールです
+            Stripe アカウント作成に利用可能なプロフィールページと参加者向け導線です。
           </p>
         </div>
         <div className="rounded-lg border border-border/60 bg-background">
@@ -66,6 +75,10 @@ export function CurrentCommunitySettingsOverview({
                 </Link>
               </Button>
             </div>
+            <CommunityProfileVisibilityForm
+              defaultShowCommunityLink={settings.community.showCommunityLink}
+              updateCommunityProfileVisibilityAction={updateCommunityProfileVisibilityAction}
+            />
             {/* <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0 space-y-1">
                 <p className="text-xs font-medium text-muted-foreground">

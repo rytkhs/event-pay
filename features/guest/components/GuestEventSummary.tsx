@@ -1,6 +1,8 @@
 import React from "react";
 
-import { MapPin, Calendar, Users, Clock, AlignLeft } from "lucide-react";
+import Link from "next/link";
+
+import { MapPin, Calendar, Users, Clock, AlignLeft, ExternalLink } from "lucide-react";
 
 import type { GuestAttendanceData } from "@core/types/guest";
 import { sanitizeForEventPay } from "@core/utils/sanitize";
@@ -33,10 +35,20 @@ export const GuestEventSummary: React.FC<GuestEventSummaryProps> = ({ attendance
     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
       {/* Header / Always Visible */}
       <div className="px-6 py-7 border-b border-slate-100">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
           <span className="text-slate-400 text-xs font-medium">
             {sanitizeForEventPay(event.community.name)}
           </span>
+          {event.community.showCommunityLink && (
+            <Link
+              href={`/c/${event.community.slug}`}
+              prefetch={false}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary underline-offset-4 hover:underline"
+            >
+              コミュニティ
+              <ExternalLink className="w-3 h-3" aria-hidden="true" />
+            </Link>
+          )}
         </div>
         <h1 className="text-lg font-bold text-slate-900 leading-tight tracking-tight">
           {sanitizeForEventPay(event.title)}

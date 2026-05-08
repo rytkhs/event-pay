@@ -135,7 +135,7 @@ export function CommunityContactForm(props: { communitySlug: string }) {
                         />
                         <Textarea
                           {...field}
-                          placeholder="お問い合わせ内容をご記入ください&#10;&#10;例：&#10;・参加前に確認したい点&#10;・当日の運営に関する質問&#10;・キャンセルや返金に関する相談"
+                          placeholder="お問い合わせ内容をご記入ください"
                           disabled={isPending}
                           rows={8}
                           className="pl-9 resize-none"

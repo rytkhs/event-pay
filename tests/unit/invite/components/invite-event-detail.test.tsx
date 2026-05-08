@@ -38,6 +38,8 @@ describe("InviteEventDetail", () => {
     community: {
       name: "Organizer Community",
       legalSlug: "legal-1",
+      slug: "organizer-community",
+      showCommunityLink: false,
     },
     title: "Test Event",
     date: "2099-01-01T12:00:00.000Z",

@@ -10,7 +10,8 @@ const mockResolveCurrentCommunityForServerAction = jest.fn();
 const mockCreateServerActionSupabaseClient = jest.fn();
 const mockCreateCommunity = jest.fn();
 const mockDeleteCommunity = jest.fn();
-const mockUpdateCommunity = jest.fn();
+const mockUpdateCommunityBasicInfo = jest.fn();
+const mockUpdateCommunityProfileVisibility = jest.fn();
 const mockEnsureFeaturesRegistered = jest.fn();
 const mockRevalidatePath = jest.fn();
 
@@ -43,7 +44,8 @@ jest.mock("@features/communities/server", () => {
     ...actual,
     createCommunity: mockCreateCommunity,
     deleteCommunity: mockDeleteCommunity,
-    updateCommunity: mockUpdateCommunity,
+    updateCommunityBasicInfo: mockUpdateCommunityBasicInfo,
+    updateCommunityProfileVisibility: mockUpdateCommunityProfileVisibility,
   };
 });
 
@@ -274,14 +276,14 @@ describe("app/(app)/actions/communities", () => {
     expect(mockRevalidatePath).not.toHaveBeenCalled();
   });
 
-  it("updateCommunityAction は未認証時に UNAUTHORIZED を返す", async () => {
+  it("updateCommunityBasicInfoAction は未認証時に UNAUTHORIZED を返す", async () => {
     mockGetCurrentUserForServerAction.mockResolvedValue(null);
 
-    const { updateCommunityAction } = await loadCommunitiesActionModule();
+    const { updateCommunityBasicInfoAction } = await loadCommunitiesActionModule();
     const formData = new FormData();
     formData.set("name", "ボドゲ会");
 
-    await expect(updateCommunityAction(formData)).resolves.toEqual(
+    await expect(updateCommunityBasicInfoAction(formData)).resolves.toEqual(
       expect.objectContaining({
         success: false,
         error: expect.objectContaining({
@@ -290,17 +292,17 @@ describe("app/(app)/actions/communities", () => {
       })
     );
 
-    expect(mockUpdateCommunity).not.toHaveBeenCalled();
+    expect(mockUpdateCommunityBasicInfo).not.toHaveBeenCalled();
   });
 
-  it("updateCommunityAction の validation error は fieldErrors を返す", async () => {
+  it("updateCommunityBasicInfoAction の validation error は fieldErrors を返す", async () => {
     mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
 
-    const { updateCommunityAction } = await loadCommunitiesActionModule();
+    const { updateCommunityBasicInfoAction } = await loadCommunitiesActionModule();
     const formData = new FormData();
     formData.set("name", "   ");
 
-    await expect(updateCommunityAction(formData)).resolves.toEqual(
+    await expect(updateCommunityBasicInfoAction(formData)).resolves.toEqual(
       expect.objectContaining({
         success: false,
         error: expect.objectContaining({
@@ -313,10 +315,10 @@ describe("app/(app)/actions/communities", () => {
     );
 
     expect(mockResolveCurrentCommunityForServerAction).not.toHaveBeenCalled();
-    expect(mockUpdateCommunity).not.toHaveBeenCalled();
+    expect(mockUpdateCommunityBasicInfo).not.toHaveBeenCalled();
   });
 
-  it("updateCommunityAction は current community が無ければ NOT_FOUND を返す", async () => {
+  it("updateCommunityBasicInfoAction は current community が無ければ NOT_FOUND を返す", async () => {
     mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
     mockResolveCurrentCommunityForServerAction.mockResolvedValue(
       okResult({
@@ -324,11 +326,11 @@ describe("app/(app)/actions/communities", () => {
       })
     );
 
-    const { updateCommunityAction } = await loadCommunitiesActionModule();
+    const { updateCommunityBasicInfoAction } = await loadCommunitiesActionModule();
     const formData = new FormData();
     formData.set("name", "ボドゲ会");
 
-    await expect(updateCommunityAction(formData)).resolves.toEqual(
+    await expect(updateCommunityBasicInfoAction(formData)).resolves.toEqual(
       expect.objectContaining({
         success: false,
         error: expect.objectContaining({
@@ -338,10 +340,10 @@ describe("app/(app)/actions/communities", () => {
       })
     );
 
-    expect(mockUpdateCommunity).not.toHaveBeenCalled();
+    expect(mockUpdateCommunityBasicInfo).not.toHaveBeenCalled();
   });
 
-  it("updateCommunityAction は current community をサーバー側で解決して更新する", async () => {
+  it("updateCommunityBasicInfoAction は current community をサーバー側で解決して更新する", async () => {
     const supabase = { from: jest.fn() };
     mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
     mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
@@ -352,7 +354,7 @@ describe("app/(app)/actions/communities", () => {
         },
       })
     );
-    mockUpdateCommunity.mockResolvedValue(
+    mockUpdateCommunityBasicInfo.mockResolvedValue(
       okResult({
         communityId: "community-9",
         name: "新しい名前",
@@ -360,15 +362,16 @@ describe("app/(app)/actions/communities", () => {
       })
     );
 
-    const { updateCommunityAction } = await loadCommunitiesActionModule();
+    const { updateCommunityBasicInfoAction } = await loadCommunitiesActionModule();
     const formData = new FormData();
     formData.set("name", "  新しい名前  ");
     formData.set("description", "  新しい説明  ");
     formData.set("slug", "malicious-slug");
     formData.set("created_by", "malicious-user");
     formData.set("current_payout_profile_id", "profile-x");
+    formData.set("showCommunityLink", "true");
 
-    await expect(updateCommunityAction(formData)).resolves.toEqual({
+    await expect(updateCommunityBasicInfoAction(formData)).resolves.toEqual({
       success: true,
       data: {
         communityId: "community-9",
@@ -381,7 +384,7 @@ describe("app/(app)/actions/communities", () => {
     });
 
     expect(mockResolveCurrentCommunityForServerAction).toHaveBeenCalled();
-    expect(mockUpdateCommunity).toHaveBeenCalledWith(supabase, "user-1", "community-9", {
+    expect(mockUpdateCommunityBasicInfo).toHaveBeenCalledWith(supabase, "user-1", "community-9", {
       name: "新しい名前",
       description: "新しい説明",
     });
@@ -389,11 +392,11 @@ describe("app/(app)/actions/communities", () => {
     expect(mockSetCurrentCommunityCookie).not.toHaveBeenCalled();
   });
 
-  it("updateCommunityAction は service failure を ActionResult に投影する", async () => {
+  it("updateCommunityBasicInfoAction は service failure を ActionResult に投影する", async () => {
     const supabase = { from: jest.fn() };
     mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
     mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
-    mockUpdateCommunity.mockResolvedValue(
+    mockUpdateCommunityBasicInfo.mockResolvedValue(
       errResult(
         new AppError("DATABASE_ERROR", {
           userMessage: "コミュニティの更新に失敗しました",
@@ -402,11 +405,11 @@ describe("app/(app)/actions/communities", () => {
       )
     );
 
-    const { updateCommunityAction } = await loadCommunitiesActionModule();
+    const { updateCommunityBasicInfoAction } = await loadCommunitiesActionModule();
     const formData = new FormData();
     formData.set("name", "映画会");
 
-    await expect(updateCommunityAction(formData)).resolves.toEqual(
+    await expect(updateCommunityBasicInfoAction(formData)).resolves.toEqual(
       expect.objectContaining({
         success: false,
         error: expect.objectContaining({
@@ -419,7 +422,7 @@ describe("app/(app)/actions/communities", () => {
     expect(mockRevalidatePath).not.toHaveBeenCalled();
   });
 
-  it("updateCommunityAction は current community 解決失敗を ActionResult に投影する", async () => {
+  it("updateCommunityBasicInfoAction は current community 解決失敗を ActionResult に投影する", async () => {
     mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
     mockResolveCurrentCommunityForServerAction.mockResolvedValue(
       errResult(
@@ -430,11 +433,11 @@ describe("app/(app)/actions/communities", () => {
       )
     );
 
-    const { updateCommunityAction } = await loadCommunitiesActionModule();
+    const { updateCommunityBasicInfoAction } = await loadCommunitiesActionModule();
     const formData = new FormData();
     formData.set("name", "映画会");
 
-    await expect(updateCommunityAction(formData)).resolves.toEqual(
+    await expect(updateCommunityBasicInfoAction(formData)).resolves.toEqual(
       expect.objectContaining({
         success: false,
         error: expect.objectContaining({
@@ -444,7 +447,7 @@ describe("app/(app)/actions/communities", () => {
       })
     );
 
-    expect(mockUpdateCommunity).not.toHaveBeenCalled();
+    expect(mockUpdateCommunityBasicInfo).not.toHaveBeenCalled();
     expect(mockRevalidatePath).not.toHaveBeenCalled();
   });
 

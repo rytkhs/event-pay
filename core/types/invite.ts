@@ -21,6 +21,8 @@ export interface InviteEventDetail {
   community: {
     name: string;
     legalSlug: string;
+    showCommunityLink: boolean;
+    slug: string;
   };
   title: string;
   date: string;

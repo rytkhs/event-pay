@@ -100,7 +100,9 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
       id: evRow.id,
       community: {
         name: evRow.community_name,
+        slug: evRow.community_slug,
         legalSlug: evRow.community_legal_slug,
+        showCommunityLink: evRow.community_show_community_link,
       },
       title: evRow.title,
       date: evRow.date,
