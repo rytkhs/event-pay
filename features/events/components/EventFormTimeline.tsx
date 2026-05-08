@@ -163,7 +163,7 @@ export function EventFormTimeline({
       });
     }
 
-    // 申込締切
+    // 出欠回答期限
     if (regDeadlineDate) {
       const errors: ValidationError[] = [];
 
@@ -177,7 +177,7 @@ export function EventFormTimeline({
       if (payDeadlineDate && regDeadlineDate > payDeadlineDate) {
         errors.push({
           type: "order",
-          message: "決済締切より後になっています",
+          message: "オンライン支払い期限より後になっています",
           severity: "error",
         });
       }
@@ -193,7 +193,7 @@ export function EventFormTimeline({
         id: "registration",
         type: "registration",
         date: regDeadlineDate,
-        label: "申込締切",
+        label: "出欠回答期限",
         icon: Calendar,
         color: {
           bg: "bg-blue-500",
@@ -205,7 +205,7 @@ export function EventFormTimeline({
       });
     }
 
-    // 決済締切
+    // オンライン支払い期限
     if (payDeadlineDate) {
       const errors: ValidationError[] = [];
 
@@ -219,12 +219,12 @@ export function EventFormTimeline({
       if (regDeadlineDate && payDeadlineDate < regDeadlineDate) {
         errors.push({
           type: "order",
-          message: "申込締切より前になっています",
+          message: "出欠回答期限より前になっています",
           severity: "error",
         });
       }
 
-      // 決済締切がイベント開催に非常に近い場合の警告 (例: 24時間以内)
+      // オンライン支払い期限がイベント開催に非常に近い場合の警告 (例: 24時間以内)
       if (eventDateObj) {
         const hoursDiff = differenceInHours(eventDateObj, payDeadlineDate);
         if (hoursDiff > 0 && hoursDiff < 24) {
@@ -240,7 +240,7 @@ export function EventFormTimeline({
         id: "payment",
         type: "payment",
         date: payDeadlineDate,
-        label: "オンライン決済締切",
+        label: "オンライン支払い期限",
         icon: CreditCard,
         color: {
           bg: "bg-purple-500",
@@ -268,7 +268,7 @@ export function EventFormTimeline({
         id: "grace",
         type: "grace",
         date: finalPaymentDate,
-        label: "最終決済期限",
+        label: "最終オンライン支払い期限",
         icon: Clock,
         color: {
           bg: "bg-orange-500",
@@ -399,7 +399,7 @@ export function EventFormTimeline({
                       {/* 決済猶予期間メタデータ */}
                       {item.metadata?.isGracePeriod && !hasError && (
                         <p className="mt-1 text-xs text-orange-600">
-                          ※ 決済締切後{item.metadata.graceDays}日間の猶予期間終了
+                          ※ オンライン支払い期限後{item.metadata.graceDays}日間の猶予期間終了
                         </p>
                       )}
 

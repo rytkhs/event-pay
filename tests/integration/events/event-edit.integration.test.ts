@@ -285,7 +285,7 @@ describe("イベント編集 統合テスト", () => {
     if (!res.success) {
       expect(res.error.code).toBe("VALIDATION_ERROR");
       expect(res.error.userMessage).toMatch(
-        /オンライン集金を選択した場合、決済締切は必須です|入力内容に誤りがあります。確認して再度お試しください。/
+        /オンライン集金を選択した場合、オンライン支払い期限は必須です|入力内容に誤りがあります。確認して再度お試しください。/
       );
     }
   });
@@ -418,7 +418,7 @@ describe("イベント編集 統合テスト", () => {
     expect(res.success).toBe(false);
     if (!res.success) expect(res.error.code).toBe("VALIDATION_ERROR");
 
-    // 猶予で最終支払期限>date+30d（エラー）
+    // 猶予で最終支払い期限>date+30d（エラー）
     const regOk = getFutureDateTimeLocal(24);
     const payOk = getFutureDateTimeLocal(48); // date(48h後)の直前だが、graceで超過させる
     res = await updateEventAction(
@@ -463,7 +463,7 @@ describe("イベント編集 統合テスト", () => {
     if (!res.success) {
       expect(res.error.code).toBe("VALIDATION_ERROR");
       expect(res.error.userMessage).toMatch(
-        /決済締切は参加申込締切以降に設定してください|入力内容に誤りがあります。確認して再度お試しください。/
+        /オンライン支払い期限は出欠回答期限以降に設定してください|入力内容に誤りがあります。確認して再度お試しください。/
       );
     }
   });

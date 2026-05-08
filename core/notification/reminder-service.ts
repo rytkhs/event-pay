@@ -37,7 +37,7 @@ export interface ReminderSummary {
 }
 
 /**
- * 参加期限リマインダーの送信対象データ
+ * 出欠回答期限リマインダーの送信対象データ
  */
 interface ResponseDeadlineTarget {
   id: string;
@@ -54,7 +54,7 @@ interface ResponseDeadlineTarget {
 }
 
 /**
- * 決済期限リマインダーの送信対象データ
+ * オンライン支払い期限リマインダーの送信対象データ
  */
 interface PaymentDeadlineTarget {
   id: string;
@@ -135,7 +135,7 @@ export class ReminderService {
   }
 
   /**
-   * 参加期限リマインダーを送信
+   * 出欠回答期限リマインダーを送信
    */
   async sendResponseDeadlineReminders(): Promise<ReminderSummary> {
     this.logger.info("Starting response deadline reminders", { outcome: "success" });
@@ -232,7 +232,7 @@ export class ReminderService {
   }
 
   /**
-   * 決済期限リマインダーを送信
+   * オンライン支払い期限リマインダーを送信
    */
   async sendPaymentDeadlineReminders(): Promise<ReminderSummary> {
     this.logger.info("Starting payment deadline reminders", { outcome: "success" });
@@ -450,7 +450,7 @@ export class ReminderService {
   }
 
   /**
-   * 参加期限リマインダーメールを送信
+   * 出欠回答期限リマインダーメールを送信
    */
   private async sendResponseDeadlineEmail(target: ResponseDeadlineTarget): Promise<void> {
     const guestUrl = buildGuestUrl(target.guest_token);
@@ -477,7 +477,7 @@ export class ReminderService {
   }
 
   /**
-   * 決済期限リマインダーメールを送信
+   * オンライン支払い期限リマインダーメールを送信
    */
   private async sendPaymentDeadlineEmail(target: PaymentDeadlineTarget): Promise<void> {
     const guestUrl = buildGuestUrl(target.guest_token);

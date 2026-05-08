@@ -108,10 +108,10 @@ export const createEventSchema = z
 
     registration_deadline: z
       .string()
-      .min(1, "参加申込締切が空です")
-      .refine((val) => val && val.trim() !== "", "参加申込締切は必須です")
+      .min(1, "出欠回答期限が空です")
+      .refine((val) => val && val.trim() !== "", "出欠回答期限は必須です")
       .transform((val) => sanitizeForEventPay(val.trim())) // XSS対策
-      .refine(validateFutureDate, "参加申込締切は現在時刻より後である必要があります")
+      .refine(validateFutureDate, "出欠回答期限は現在時刻より後である必要があります")
       .optional(),
 
     payment_deadline: z
@@ -120,7 +120,7 @@ export const createEventSchema = z
       // 作成時は未来必須（仕様）
       .refine(
         (val) => (val ? validateOptionalFutureDate(val) : true),
-        "オンライン決済締切は現在時刻より後である必要があります"
+        "オンライン支払い期限は現在時刻より後である必要があります"
       )
       .optional(),
 
@@ -140,7 +140,7 @@ export const createEventSchema = z
   })
   .refine(
     (data) => {
-      // 参加申込締切が開催日時以前であることを確認（date-fns-tz統一）
+      // 出欠回答期限が開催日時以前であることを確認（date-fns-tz統一）
       if (data.registration_deadline && data.date) {
         try {
           const regUtcDate = convertDatetimeLocalToUtc(data.registration_deadline);
@@ -153,13 +153,13 @@ export const createEventSchema = z
       return true;
     },
     {
-      message: "参加申込締切は開催日時以前に設定してください",
+      message: "出欠回答期限は開催日時以前に設定してください",
       path: ["registration_deadline"],
     }
   )
   .refine(
     (data) => {
-      // オンライン決済選択時は決済締切が必須
+      // オンライン決済選択時はオンライン支払い期限が必須
       const hasStripe = Array.isArray(data.payment_methods)
         ? data.payment_methods.includes("stripe")
         : false;
@@ -169,13 +169,13 @@ export const createEventSchema = z
       return true;
     },
     {
-      message: "オンライン集金を選択した場合、決済締切は必須です",
+      message: "オンライン集金を選択した場合、オンライン支払い期限は必須です",
       path: ["payment_deadline"],
     }
   )
   .refine(
     (data) => {
-      // 決済締切が参加申込締切以降であることを確認（date-fns-tz統一）
+      // オンライン支払い期限が出欠回答期限以降であることを確認（date-fns-tz統一）
       if (data.registration_deadline && data.payment_deadline) {
         try {
           const payUtcDate = convertDatetimeLocalToUtc(data.payment_deadline);
@@ -188,13 +188,13 @@ export const createEventSchema = z
       return true;
     },
     {
-      message: "決済締切は参加申込締切以降に設定してください",
+      message: "オンライン支払い期限は出欠回答期限以降に設定してください",
       path: ["payment_deadline"],
     }
   )
   .refine(
     (data) => {
-      // 決済締切の上限: payment_deadline <= date + 30日（包括比較, nullはUIでdateを初期値表示）
+      // オンライン支払い期限の上限: payment_deadline <= date + 30日（包括比較, nullはUIでdateを初期値表示）
       if (data.payment_deadline && data.date) {
         try {
           const payUtcDate = convertDatetimeLocalToUtc(data.payment_deadline);
@@ -208,7 +208,7 @@ export const createEventSchema = z
       return true;
     },
     {
-      message: "オンライン決済締切は開催日時から30日以内に設定してください",
+      message: "オンライン支払い期限は開催日時から30日以内に設定してください",
       path: ["payment_deadline"],
     }
   )
@@ -233,7 +233,7 @@ export const createEventSchema = z
       return true;
     },
     {
-      message: "猶予を含む最終支払期限は開催日時から30日以内にしてください",
+      message: "猶予を含む最終支払い期限は開催日時から30日以内にしてください",
       path: ["grace_period_days"],
     }
   )
@@ -320,8 +320,8 @@ export const updateEventSchema = z
 
     registration_deadline: z
       .string()
-      .min(1, "参加申込締切が空です")
-      .refine((val) => val && val.trim() !== "", "参加申込締切は空文字列では許可されません")
+      .min(1, "出欠回答期限が空です")
+      .refine((val) => val && val.trim() !== "", "出欠回答期限は空文字列では許可されません")
       // 編集では過去日時も保存可能（運用整備用）。現在時刻チェックは行わない。
       // 注意: DBで必須のため、送信する場合は有効な値が必要（空文字列不可）
       .optional(),
@@ -344,7 +344,7 @@ export const updateEventSchema = z
   })
   .refine(
     (data) => {
-      // 参加申込締切が開催日時以前であることを確認（date-fns-tz統一）
+      // 出欠回答期限が開催日時以前であることを確認（date-fns-tz統一）
       if (data.registration_deadline && data.date) {
         try {
           const regUtcDate = convertDatetimeLocalToUtc(data.registration_deadline);
@@ -357,13 +357,13 @@ export const updateEventSchema = z
       return true;
     },
     {
-      message: "参加申込締切は開催日時以前に設定してください",
+      message: "出欠回答期限は開催日時以前に設定してください",
       path: ["registration_deadline"],
     }
   )
   .refine(
     (data) => {
-      // 決済締切が参加申込締切以降であることを確認（date-fns-tz統一）
+      // オンライン支払い期限が出欠回答期限以降であることを確認（date-fns-tz統一）
       if (data.registration_deadline && data.payment_deadline) {
         try {
           const payUtcDate = convertDatetimeLocalToUtc(data.payment_deadline);
@@ -376,7 +376,7 @@ export const updateEventSchema = z
       return true;
     },
     {
-      message: "決済締切は参加申込締切以降に設定してください",
+      message: "オンライン支払い期限は出欠回答期限以降に設定してください",
       path: ["payment_deadline"],
     }
   )
@@ -396,7 +396,7 @@ export const updateEventSchema = z
       return true;
     },
     {
-      message: "オンライン決済締切は開催日時から30日以内に設定してください",
+      message: "オンライン支払い期限は開催日時から30日以内に設定してください",
       path: ["payment_deadline"],
     }
   )
@@ -420,7 +420,7 @@ export const updateEventSchema = z
       return true;
     },
     {
-      message: "猶予を含む最終支払期限は開催日時から30日以内にしてください",
+      message: "猶予を含む最終支払い期限は開催日時から30日以内にしてください",
       path: ["grace_period_days"],
     }
   )
@@ -443,14 +443,14 @@ export const updateEventSchema = z
   )
   .refine(
     (data) => {
-      // 同一リクエストでStripe有効化する場合は決済締切も同時に必須
+      // 同一リクエストでStripe有効化する場合はオンライン支払い期限も同時に必須
       if (Array.isArray(data.payment_methods) && data.payment_methods.includes("stripe")) {
         return typeof data.payment_deadline === "string" && data.payment_deadline.trim() !== "";
       }
       return true;
     },
     {
-      message: "オンライン集金を選択した場合、決済締切は必須です",
+      message: "オンライン集金を選択した場合、オンライン支払い期限は必須です",
       path: ["payment_deadline"],
     }
   );

@@ -501,17 +501,17 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
       }
     });
 
-    test("無料イベントでは決済締切も自動的にnullになる", async () => {
+    test("無料イベントではオンライン支払い期限も自動的にnullになる", async () => {
       const eventDate = getFutureDateTime(48);
       const registrationDeadline = getFutureDateTime(24);
 
       const formData = createFormDataFromEvent({
-        title: "無料イベント決済締切テスト",
+        title: "無料イベントオンライン支払い期限テスト",
         date: eventDate,
         fee: "0",
         // payment_methodsは指定しない（無料イベントでは決済方法不要）
         registration_deadline: registrationDeadline,
-        // payment_deadlineも指定しない（無料イベントでは決済締切不要）
+        // payment_deadlineも指定しない（無料イベントではオンライン支払い期限不要）
       });
 
       const result = await createEventAction(formData);
@@ -529,8 +529,8 @@ describe("イベント作成統合テスト - 1.3 データベース保存の確
         expect(event.fee).toBe(0);
         expect(event.payment_methods).toEqual([]);
 
-        // 決済締切が設定されていないことを確認
-        // （無料イベントでは決済締切は不要）
+        // オンライン支払い期限が設定されていないことを確認
+        // （無料イベントではオンライン支払い期限は不要）
         // 実装によってはnullまたは設定値が残る可能性があるため、
         // ここでは決済方法が空であることを重点的に確認
         expect(event.payment_methods.length).toBe(0);

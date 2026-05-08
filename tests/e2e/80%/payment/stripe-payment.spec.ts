@@ -5,7 +5,7 @@
  *
  * テストケース:
  * - ケース1-1-1: ゲストの初回Stripe決済成功フロー
- * - ケース1-1-2: 決済締切前の初回決済
+ * - ケース1-1-2: オンライン支払い期限前の初回決済
  * - ケース1-1-3: Stripe Checkout Session の冪等性キー生成
  *
  * 前提条件:
@@ -81,7 +81,7 @@ test.describe("Stripe決済 ケース1-1: 初回決済フロー", () => {
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 参加費を2000円に、決済締切を未来に設定
+    // 参加費を2000円に、オンライン支払い期限を未来に設定
     // 制約: payment_deadline >= registration_deadline を満たす必要がある
     const now = Date.now();
     const futureRegistrationDeadline = new Date(now + 12 * 60 * 60 * 1000).toISOString(); // +12時間
@@ -101,7 +101,7 @@ test.describe("Stripe決済 ケース1-1: 初回決済フロー", () => {
       throw new Error(`Failed to update event fee: ${updateError.message}`);
     }
 
-    console.log("✓ イベント作成完了（参加費: 2000円、決済締切: +1日）");
+    console.log("✓ イベント作成完了（参加費: 2000円、オンライン支払い期限: +1日）");
 
     // 参加者作成（オンライン決済選択）
     const attendanceData = await TestDataManager.createAttendance({
@@ -266,13 +266,13 @@ test.describe("Stripe決済 ケース1-1: 初回決済フロー", () => {
     console.log("🎉 ケース1-1-1: テスト成功");
   });
 
-  test("ケース1-1-2: 決済締切前の初回決済", async ({ page }) => {
+  test("ケース1-1-2: オンライン支払い期限前の初回決済", async ({ page }) => {
     /**
      * テストID: PAYMENT-E2E-001 (ケース1-1-2)
      * 優先度: P0
      *
      * 前提条件:
-     * - 決済締切（payment_deadline）が未来の日時
+     * - オンライン支払い期限（payment_deadline）が未来の日時
      * - 猶予期間設定なし（allow_payment_after_deadline = false）
      *
      * 期待結果:
@@ -281,7 +281,7 @@ test.describe("Stripe決済 ケース1-1: 初回決済フロー", () => {
      * - 正常に決済が完了する
      */
 
-    console.log("=== ケース1-1-2: 決済締切前の初回決済 ===");
+    console.log("=== ケース1-1-2: オンライン支払い期限前の初回決済 ===");
 
     // === 1. テストデータの作成 ===
     console.log("📝 テストデータ作成中...");
@@ -289,7 +289,7 @@ test.describe("Stripe決済 ケース1-1: 初回決済フロー", () => {
     await TestDataManager.createUserWithConnect();
     await TestDataManager.createPaidEvent();
 
-    // 決済締切を未来に設定（猶予期間なし）
+    // オンライン支払い期限を未来に設定（猶予期間なし）
     const futureDeadline = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(); // +2日
     await TestDataManager.updateEventPaymentSettings({
       payment_deadline: futureDeadline,
@@ -297,7 +297,7 @@ test.describe("Stripe決済 ケース1-1: 初回決済フロー", () => {
       grace_period_days: 0,
     });
 
-    console.log("✓ 決済締切を未来に設定:", futureDeadline);
+    console.log("✓ オンライン支払い期限を未来に設定:", futureDeadline);
 
     const attendanceData = await TestDataManager.createAttendance({
       status: "attending",

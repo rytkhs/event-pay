@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 /**
  * リマインダー送信Cronジョブ
  * - 毎日 JST 9:00 (UTC 0:00) に実行
- * - 参加期限、決済期限、イベント開催の各リマインダーを送信
+ * - 出欠回答期限、オンライン支払い期限、イベント開催の各リマインダーを送信
  */
 export async function GET(request: NextRequest) {
   const cronLogger = logger.withContext({

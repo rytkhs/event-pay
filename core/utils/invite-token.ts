@@ -146,7 +146,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
       };
     }
 
-    // 参加申込期限を確認
+    // 出欠回答期限を確認
     if (eventRow.registration_deadline) {
       const now = new Date();
       const deadline = new Date(eventRow.registration_deadline);
@@ -156,7 +156,7 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
           isValid: true,
           event: eventDetail,
           canRegister: false,
-          errorMessage: "参加申込期限が過ぎています",
+          errorMessage: "出欠回答期限が過ぎています",
           errorCode: "REGISTRATION_DEADLINE_PASSED",
         };
       }

@@ -214,7 +214,7 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
             </button>
           </div>
           <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-            出欠は申込締切まで何度でも変更できます。
+            出欠回答期限までは、出欠を何度でも変更できます。
             予定がわからない場合は「未定」で登録することをおすすめします。
           </p>
           {watchedStatus === "maybe" && (

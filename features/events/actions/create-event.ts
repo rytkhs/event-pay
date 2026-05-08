@@ -404,7 +404,7 @@ function buildEventData(
     description: validatedData.description ?? null,
     capacity: parseCapacityLocal(validatedData.capacity),
     registration_deadline: convertDatetimeLocalToIso(validatedData.registration_deadline as string),
-    // 無料イベント（fee=0）の場合は決済締切も強制的にnullに設定
+    // 無料イベント（fee=0）の場合はオンライン支払い期限も強制的にnullに設定
     payment_deadline:
       fee === 0
         ? null

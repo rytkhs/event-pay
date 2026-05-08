@@ -135,7 +135,7 @@ export const createEventFormSchema = z
       const num = safeParseNumber(val);
       return num >= 1 && num <= 10000;
     }, "定員は1以上10000以下である必要があります"),
-    registration_deadline: z.string().min(1, "参加申込締切は必須です"),
+    registration_deadline: z.string().min(1, "出欠回答期限は必須です"),
     payment_deadline: z.string(),
     allow_payment_after_deadline: z.boolean().optional(),
     grace_period_days: z.string().optional(),
@@ -152,26 +152,26 @@ export const createEventFormSchema = z
     }
   })
   .superRefine((data, ctx) => {
-    // オンライン決済を選択した場合は決済締切を必須にする
+    // オンライン決済を選択した場合はオンライン支払い期限を必須にする
     const fee = parseFee(data.fee);
     const hasStripe = hasStripePaymentMethod(data.payment_methods);
     if (fee > 0 && hasStripe) {
       if (!data.payment_deadline || data.payment_deadline.trim() === "") {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "オンライン決済締切は必須です",
+          message: "オンライン支払い期限は必須です",
           path: ["payment_deadline"],
         });
       }
     }
   })
   .refine((data) => isRegistrationDeadlineBeforeEventDate(data.registration_deadline, data.date), {
-    message: "参加申込締切は開催日時以前に設定してください",
+    message: "出欠回答期限は開催日時以前に設定してください",
     path: ["registration_deadline"],
   })
   .refine(
     (data) => {
-      // オンライン決済を選択した場合のみ、決済締切が必須
+      // オンライン決済を選択した場合のみ、オンライン支払い期限が必須
       const fee = parseFee(data.fee);
       const hasStripe = hasStripePaymentMethod(data.payment_methods);
       if (fee > 0 && hasStripe) {
@@ -180,25 +180,25 @@ export const createEventFormSchema = z
       return true;
     },
     {
-      message: "オンライン集金を選択した場合、決済締切は必須です",
+      message: "オンライン集金を選択した場合、オンライン支払い期限は必須です",
       path: ["payment_deadline"],
     }
   )
   .refine(
     (data) => {
-      // オンライン決済が選択されている場合のみ、決済締切 ≤ 開催日時 + 30日
+      // オンライン決済が選択されている場合のみ、オンライン支払い期限 ≤ 開催日時 + 30日
       const hasStripe = hasStripePaymentMethod(data.payment_methods);
       if (!hasStripe) return true;
       return isPaymentDeadlineWithinThirtyDays(data.payment_deadline, data.date);
     },
     {
-      message: "オンライン決済締切は開催日時から30日以内に設定してください",
+      message: "オンライン支払い期限は開催日時から30日以内に設定してください",
       path: ["payment_deadline"],
     }
   )
   .refine(
     (data) => {
-      // オンライン決済が選択されている場合のみ、決済締切が参加申込締切以降であることを確認
+      // オンライン決済が選択されている場合のみ、オンライン支払い期限が出欠回答期限以降であることを確認
       const hasStripe = hasStripePaymentMethod(data.payment_methods);
       if (!hasStripe) return true;
       return isPaymentDeadlineAfterRegistrationDeadline(
@@ -207,13 +207,13 @@ export const createEventFormSchema = z
       );
     },
     {
-      message: "決済締切は参加申込締切以降に設定してください",
+      message: "オンライン支払い期限は出欠回答期限以降に設定してください",
       path: ["payment_deadline"],
     }
   )
   .refine(
     (data) => {
-      // オンライン決済が選択されている場合のみ、最終支払期限（payment_deadline + 猶予日） ≤ 開催日時 + 30日
+      // オンライン決済が選択されている場合のみ、最終支払い期限（payment_deadline + 猶予日） ≤ 開催日時 + 30日
       const hasStripe = hasStripePaymentMethod(data.payment_methods);
       return isGracePeriodWithinThirtyDays({
         hasStripe,
@@ -225,7 +225,7 @@ export const createEventFormSchema = z
       });
     },
     {
-      message: "最終支払期限は開催日時から30日以内に設定してください",
+      message: "最終支払い期限は開催日時から30日以内に設定してください",
       path: ["grace_period_days"],
     }
   );
@@ -287,19 +287,19 @@ export const eventEditFormSchemaBase = z
     }
   )
   .refine((data) => isRegistrationDeadlineBeforeEventDate(data.registration_deadline, data.date), {
-    message: "参加申込締切は開催日時以前に設定してください",
+    message: "出欠回答期限は開催日時以前に設定してください",
     path: ["registration_deadline"],
   })
   .refine(
     (data) =>
       isPaymentDeadlineAfterRegistrationDeadline(data.payment_deadline, data.registration_deadline),
     {
-      message: "オンライン決済締切は参加申込締切以降に設定してください",
+      message: "オンライン支払い期限は出欠回答期限以降に設定してください",
       path: ["payment_deadline"],
     }
   )
   .refine((data) => isPaymentDeadlineWithinThirtyDays(data.payment_deadline, data.date), {
-    message: "オンライン決済締切は開催日時から30日以内に設定してください",
+    message: "オンライン支払い期限は開催日時から30日以内に設定してください",
     path: ["payment_deadline"],
   })
   .refine(
@@ -312,7 +312,7 @@ export const eventEditFormSchemaBase = z
         allowDateFallbackBase: true,
       }),
     {
-      message: "猶予を含む最終支払期限は開催日時から30日以内にしてください",
+      message: "猶予を含む最終支払い期限は開催日時から30日以内にしてください",
       path: ["grace_period_days"],
     }
   );
@@ -337,7 +337,7 @@ export function createEventEditFormSchema(attendeeCount: number, existingEvent: 
     )
     .refine(
       (data) => {
-        // オンライン決済選択時は決済締切が必須（existing値も考慮）
+        // オンライン決済選択時はオンライン支払い期限が必須（existing値も考慮）
         const hasStripe = hasStripePaymentMethod(data.payment_methods);
         if (hasStripe) {
           // フォーム値または既存値のいずれかに締切が設定されていればOK
@@ -350,7 +350,7 @@ export function createEventEditFormSchema(attendeeCount: number, existingEvent: 
         return true;
       },
       {
-        message: "オンライン集金を選択した場合、決済締切の設定が必要です。",
+        message: "オンライン集金を選択した場合、オンライン支払い期限の設定が必要です。",
         path: ["payment_deadline"],
       }
     );

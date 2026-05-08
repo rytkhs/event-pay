@@ -45,7 +45,7 @@ export function useEventChanges({
         });
       }
 
-      // 決済締切がクリアされる場合
+      // オンライン支払い期限がクリアされる場合
       const originalPaymentDeadline = event.payment_deadline;
       const currentPaymentDeadline = formData.payment_deadline;
 
@@ -55,7 +55,7 @@ export function useEventChanges({
       ) {
         secondaryChanges.push({
           field: "payment_deadline",
-          fieldName: "決済締切",
+          fieldName: "オンライン支払い期限",
           oldValue: formatUtcToDatetimeLocal(originalPaymentDeadline),
           newValue: "（無料化により自動クリア）",
         });
@@ -98,7 +98,7 @@ export function useEventChanges({
     const hasStripe = currentPaymentMethods.includes("stripe");
 
     if (hadStripe && !hasStripe) {
-      // 決済締切がクリアされる場合
+      // オンライン支払い期限がクリアされる場合
       const originalPaymentDeadline = event.payment_deadline;
       const currentPaymentDeadline = formData.payment_deadline;
 
@@ -108,7 +108,7 @@ export function useEventChanges({
       ) {
         secondaryChanges.push({
           field: "payment_deadline",
-          fieldName: "決済締切",
+          fieldName: "オンライン支払い期限",
           oldValue: formatUtcToDatetimeLocal(originalPaymentDeadline),
           newValue: "（オンライン決済選択解除により自動クリア）",
         });
@@ -244,13 +244,13 @@ export function useEventChanges({
         field: "registration_deadline",
         oldValue: formatUtcToDatetimeLocal(event.registration_deadline || ""),
         newValue: formData.registration_deadline || "",
-        fieldName: "参加申込締切",
+        fieldName: "出欠回答期限",
       },
       {
         field: "payment_deadline",
         oldValue: formatUtcToDatetimeLocal(event.payment_deadline || ""),
         newValue: formData.payment_deadline || "",
-        fieldName: "オンライン決済締切",
+        fieldName: "オンライン支払い期限",
       },
       {
         field: "allow_payment_after_deadline",

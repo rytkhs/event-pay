@@ -118,7 +118,7 @@ export function checkBasicPaymentEligibility(
   } else if (!isEventActiveForPayment) {
     reason = "キャンセル済みまたは無効な状態のイベントです。";
   } else if (!checks.isBeforeDeadline) {
-    reason = "決済期限を過ぎています。";
+    reason = "オンライン支払い期限を過ぎています。";
   }
 
   return {
@@ -232,7 +232,7 @@ export function canCreateStripeSession(
 }
 
 /**
- * 決済期限までの残り日数を取得
+ * オンライン支払い期限までの残り日数を取得
  */
 export function getDaysUntilPaymentDeadline(
   event: PaymentEligibilityEvent,

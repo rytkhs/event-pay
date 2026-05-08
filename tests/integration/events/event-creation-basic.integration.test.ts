@@ -198,7 +198,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
   }
 
   describe("1.1.1 最小限の必須項目のみでの無料イベント作成", () => {
-    test("タイトル、開催日時、参加費0円、参加申込締切のみで無料イベントが作成される", async () => {
+    test("タイトル、開催日時、参加費0円、出欠回答期限のみで無料イベントが作成される", async () => {
       const eventDate = getFutureDateTime(48);
       const registrationDeadline = getFutureDateTime(24);
 
@@ -353,7 +353,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
           description: "現金決済のみを受け付けるイベントです",
         });
 
-        // 現金決済のみの場合、決済締切は不要
+        // 現金決済のみの場合、オンライン支払い期限は不要
         expect(event.payment_deadline).toBeNull();
       }
     });
@@ -393,7 +393,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
           capacity: 50,
         });
 
-        // オンライン決済の場合、決済締切が必要
+        // オンライン決済の場合、オンライン支払い期限が必要
         expect(event.payment_deadline).not.toBeNull();
         if (event.payment_deadline) {
           expect(new Date(event.payment_deadline)).toBeInstanceOf(Date);
@@ -445,7 +445,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
         expect(event.payment_methods).toContain("stripe");
         expect(event.payment_methods.length).toBe(2);
 
-        // オンライン決済を含む場合、決済締切が必要
+        // オンライン決済を含む場合、オンライン支払い期限が必要
         expect(event.payment_deadline).not.toBeNull();
 
         // 猶予期間設定の確認

@@ -256,7 +256,7 @@ export function useEventSubmission({
     if (feeValue === 0) {
       // 無料イベントの場合、決済関連項目を強制的にクリアして整合性を保つ
       submissionData.payment_methods = []; // 決済方法をクリア
-      submissionData.payment_deadline = ""; // 決済締切をクリア
+      submissionData.payment_deadline = ""; // オンライン支払い期限をクリア
       submissionData.allow_payment_after_deadline = false; // 締切後決済を無効化
       submissionData.grace_period_days = "0"; // 猶予日数をリセット
     }

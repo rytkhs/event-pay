@@ -502,7 +502,7 @@ export function SinglePageEventEditForm({
                         <FormItem>
                           <div className="flex items-center gap-2">
                             <FormLabel className="text-sm font-medium">
-                              参加申込締切 <span className="text-red-500">*</span>
+                              出欠回答期限 <span className="text-red-500">*</span>
                             </FormLabel>
                             {isChanged("registration_deadline") && (
                               <Badge variant="outline" className={changedBadgeClass}>
@@ -521,7 +521,7 @@ export function SinglePageEventEditForm({
                                   field.onChange("");
                                 }
                               }}
-                              placeholder="参加申込締切を選択"
+                              placeholder="出欠回答期限を選択"
                               disabled={
                                 isPending || !restrictions.isFieldEditable("registration_deadline")
                               }
@@ -791,11 +791,11 @@ export function SinglePageEventEditForm({
                       <div className="flex items-start gap-2">
                         <InfoIcon className="mt-0.5 h-4 w-4 text-primary" />
                         <p className="text-xs text-muted-foreground">
-                          オンライン集金を選択した場合、決済期限を設定できます。
+                          オンライン集金を選択した場合、オンライン支払い期限を設定できます。
                         </p>
                       </div>
 
-                      {/* オンライン決済締切 */}
+                      {/* オンライン支払い期限 */}
                       <FormField
                         control={form.control}
                         name="payment_deadline"
@@ -803,7 +803,7 @@ export function SinglePageEventEditForm({
                           <FormItem>
                             <div className="flex items-center gap-2">
                               <FormLabel className="text-sm font-medium">
-                                オンライン決済締切 <span className="text-red-500">*</span>
+                                オンライン支払い期限 <span className="text-red-500">*</span>
                               </FormLabel>
                               {isChanged("payment_deadline") && (
                                 <Badge variant="outline" className={changedBadgeClass}>
@@ -822,7 +822,7 @@ export function SinglePageEventEditForm({
                                     field.onChange("");
                                   }
                                 }}
-                                placeholder="オンライン決済締切を選択"
+                                placeholder="オンライン支払い期限を選択"
                                 disabled={
                                   isPending || !restrictions.isFieldEditable("payment_deadline")
                                 }
@@ -835,7 +835,7 @@ export function SinglePageEventEditForm({
                         )}
                       />
 
-                      {/* 締切後決済許可設定 */}
+                      {/* オンライン支払い期限後の支払い許可設定 */}
                       <div className="rounded-lg border border-border bg-background p-4 md:p-5">
                         <FormField
                           control={form.control}
@@ -845,7 +845,7 @@ export function SinglePageEventEditForm({
                               <div className="flex flex-col gap-1 leading-none">
                                 <div className="flex items-center gap-2">
                                   <FormLabel className="text-sm font-medium">
-                                    締切後も決済を許可
+                                    期限後もオンライン支払いを許可
                                   </FormLabel>
                                   {isChanged("allow_payment_after_deadline") && (
                                     <Badge variant="outline" className={changedBadgeClass}>
@@ -854,7 +854,7 @@ export function SinglePageEventEditForm({
                                   )}
                                 </div>
                                 <FormDescription>
-                                  決済締切後も一定期間オンライン決済を受け付けます
+                                  オンライン支払い期限後も一定期間オンライン支払いを受け付けます
                                 </FormDescription>
                               </div>
                               <FormControl>
@@ -913,7 +913,7 @@ export function SinglePageEventEditForm({
                                     />
                                   </FormControl>
                                   <FormDescription>
-                                    オンライン決済締切からの猶予日数（0〜30日）
+                                    オンライン支払い期限からの猶予日数（0〜30日）
                                   </FormDescription>
                                   <FormMessage />
                                 </FormItem>
@@ -926,7 +926,7 @@ export function SinglePageEventEditForm({
                   )}
                 </FormSection>
 
-                {/* モバイル用: 決済締切まで入力した後にタイムライン表示 */}
+                {/* モバイル用: オンライン支払い期限まで入力した後にタイムライン表示 */}
                 <div className="lg:hidden">
                   {watchedDate && (
                     <div className="animate-in fade-in slide-in-from-top-2 duration-300">

@@ -221,7 +221,7 @@ sequenceDiagram
 1. **GitHub Actions**: 毎日 UTC 0:00（JST 9:00）に Cron実行 → `/api/cron/send-reminders` 呼び出し
 2. **Cron Handler**: `CRON_SECRET` Bearer認証
 3. **システム**: 管理者クライアント作成（RLS回避、監査ログ記録）
-4. **ReminderService**: 対象イベント抽出（出欠期限24h前、決済期限24h前、開催24h前）
+4. **ReminderService**: 対象イベント抽出（出欠期限24h前、オンライン支払い期限24h前、開催24h前）
 5. **EmailService**: Resend API経由でメール送信（React Emailテンプレート）
 6. **システム**: 送信履歴をDB記録（重複送信防止）
 

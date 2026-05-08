@@ -324,7 +324,7 @@ function SinglePageEventForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-sm font-medium">
-                          参加申込締切 <span className="text-red-500">*</span>
+                          出欠回答期限 <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
                           <DateTimePicker
@@ -337,7 +337,7 @@ function SinglePageEventForm({
                                 field.onChange("");
                               }
                             }}
-                            placeholder="参加申込締切を選択"
+                            placeholder="出欠回答期限を選択"
                             disabled={isPending}
                             minDate={minDateObject}
                           />
@@ -553,18 +553,18 @@ function SinglePageEventForm({
                     <div className="flex items-start gap-2">
                       <InfoIcon className="mt-0.5 h-4 w-4 text-primary" />
                       <p className="text-xs text-muted-foreground">
-                        オンライン集金を選択した場合、決済期限を設定できます。
+                        オンライン集金を選択した場合、オンライン支払い期限を設定できます。
                       </p>
                     </div>
 
-                    {/* オンライン決済締切 */}
+                    {/* オンライン支払い期限 */}
                     <FormField
                       control={form.control}
                       name="payment_deadline"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm font-medium">
-                            オンライン決済締切 <span className="text-red-500">*</span>
+                            オンライン支払い期限 <span className="text-red-500">*</span>
                           </FormLabel>
                           <FormControl>
                             <DateTimePicker
@@ -577,7 +577,7 @@ function SinglePageEventForm({
                                   field.onChange("");
                                 }
                               }}
-                              placeholder="オンライン決済締切を選択"
+                              placeholder="オンライン支払い期限を選択"
                               disabled={isPending}
                             />
                           </FormControl>
@@ -587,7 +587,7 @@ function SinglePageEventForm({
                       )}
                     />
 
-                    {/* 締切後決済許可設定 */}
+                    {/* オンライン支払い期限後の支払い許可設定 */}
                     <div className="rounded-lg border border-border bg-background p-4 md:p-5">
                       <FormField
                         control={form.control}
@@ -596,10 +596,10 @@ function SinglePageEventForm({
                           <FormItem className="flex flex-row items-center justify-between gap-4 space-y-0">
                             <div className="flex flex-col gap-1 leading-none">
                               <FormLabel className="text-sm font-medium">
-                                締切後も決済を許可
+                                期限後もオンライン支払いを許可
                               </FormLabel>
                               <FormDescription>
-                                決済締切後も一定期間オンライン決済を受け付けます（最長30日まで）
+                                オンライン支払い期限後も一定期間オンライン支払いを受け付けます（最長30日まで）
                               </FormDescription>
                             </div>
                             <FormControl>
@@ -642,7 +642,7 @@ function SinglePageEventForm({
                                   />
                                 </FormControl>
                                 <FormDescription>
-                                  オンライン決済締切からの猶予日数（0〜30日）
+                                  オンライン支払い期限からの猶予日数（0〜30日）
                                 </FormDescription>
                                 <FormMessage />
                               </FormItem>
@@ -655,7 +655,7 @@ function SinglePageEventForm({
                 )}
               </FormSection>
 
-              {/* モバイル用: 決済締切まで入力した後にタイムライン表示 */}
+              {/* モバイル用: オンライン支払い期限まで入力した後にタイムライン表示 */}
               <div className="lg:hidden">
                 {watchedDate && (
                   <div className="animate-in fade-in slide-in-from-top-2 duration-300">

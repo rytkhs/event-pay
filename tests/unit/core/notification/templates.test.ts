@@ -34,7 +34,7 @@ describe("core/notification/templates", () => {
     expect(template.html).toContain("2025年1月2日(木) 12:04");
   });
 
-  test("参加期限リマインダーテンプレートはJSTスラッシュ書式で日時を表示する", () => {
+  test("出欠回答期限リマインダーテンプレートはJSTスラッシュ書式で日時を表示する", () => {
     const template = buildResponseDeadlineReminderTemplate({
       nickname: "田中",
       eventTitle: "新年会",
@@ -45,7 +45,7 @@ describe("core/notification/templates", () => {
     });
 
     expect(template.text).toContain("日時: 2025/01/02 12:04");
-    expect(template.text).toContain("参加期限: 2025/01/03 19:20");
+    expect(template.text).toContain("出欠回答期限: 2025/01/03 19:20");
     expect(template.html).toContain("2025/01/02 12:04");
     expect(template.html).toContain("2025/01/03 19:20");
   });
