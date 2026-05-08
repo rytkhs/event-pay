@@ -45,10 +45,8 @@ function buildAppWorkspaceContext(
 }
 
 const getCachedAppWorkspaceForServerComponent = cache(async (): Promise<AppWorkspaceContext> => {
-  const [currentUser, currentCommunityResolution] = await Promise.all([
-    requireCurrentAppUserForServerComponent(),
-    resolveCurrentCommunityForServerComponent(),
-  ]);
+  const currentUser = await requireCurrentAppUserForServerComponent();
+  const currentCommunityResolution = await resolveCurrentCommunityForServerComponent(currentUser);
 
   return buildAppWorkspaceContext(currentUser, currentCommunityResolution);
 });

@@ -16,7 +16,32 @@ export function isNextRedirectError(err: unknown): boolean {
       return true;
     }
     const message = err instanceof Error ? err.message : String(err);
-    return message === "NEXT_REDIRECT";
+    return message.startsWith("NEXT_REDIRECT");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Next.js ナビゲーション（redirect/notFound等）が投げる制御例外の検知ユーティリティ
+ */
+export function isNextNavigationError(err: unknown): boolean {
+  try {
+    const digest = toErrorLike(err).digest;
+    if (
+      typeof digest === "string" &&
+      (digest.startsWith("NEXT_REDIRECT") ||
+        digest.startsWith("NEXT_NOT_FOUND") ||
+        digest.startsWith("NEXT_HTTP_ERROR_FALLBACK"))
+    ) {
+      return true;
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    return (
+      message.startsWith("NEXT_REDIRECT") ||
+      message.startsWith("NEXT_NOT_FOUND") ||
+      message.startsWith("NEXT_HTTP_ERROR_FALLBACK")
+    );
   } catch {
     return false;
   }

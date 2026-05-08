@@ -44,6 +44,21 @@ export function isMissingAuthSessionError(error: unknown): boolean {
 }
 
 /**
+ * 認証セッションが無効で、再ログインへ戻せる認証エラーかどうかを判定する
+ */
+export function isUnauthenticatedAuthError(error: unknown): boolean {
+  if (isMissingAuthSessionError(error)) {
+    return true;
+  }
+
+  if (hasAuthErrorCode(error, "user_not_found")) {
+    return true;
+  }
+
+  return getAuthErrorMessage(error) === "User from sub claim in JWT does not exist";
+}
+
+/**
  * resetPasswordForEmailの戻り値型ガード
  */
 export function isResetPasswordResult(value: unknown): value is {

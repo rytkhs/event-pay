@@ -77,6 +77,65 @@ describe("EventDetailPage", () => {
     expect(getEventDetailAction).toHaveBeenCalledWith("event-1", "community-1");
     expect(getEventStatsAction).not.toHaveBeenCalled();
     expect(getEventParticipantsAction).not.toHaveBeenCalled();
+    expect(handleServerError).not.toHaveBeenCalled();
+  });
+
+  it("notFound の制御例外は error log しない", async () => {
+    requireNonEmptyCommunityWorkspaceForServerComponent.mockResolvedValue({
+      currentCommunity: { id: "community-1", name: "A" },
+    });
+    getEventDetailAction.mockResolvedValue({
+      success: false,
+      error: {
+        code: "EVENT_NOT_FOUND",
+        userMessage: "not found",
+        correlationId: "corr-1",
+        retryable: false,
+      },
+    });
+
+    const EventDetailPage = (await import("../../../../app/(app)/events/[id]/page")).default;
+
+    await expect(
+      EventDetailPage({
+        params: Promise.resolve({ id: "event-1" }),
+        searchParams: Promise.resolve({}),
+      })
+    ).rejects.toThrow("NEXT_NOT_FOUND");
+
+    expect(handleServerError).not.toHaveBeenCalled();
+  });
+
+  it("通常例外は event_page_view として error log する", async () => {
+    requireNonEmptyCommunityWorkspaceForServerComponent.mockResolvedValue({
+      currentCommunity: { id: "community-1", name: "A" },
+    });
+    getEventDetailAction.mockResolvedValue({
+      success: false,
+      error: {
+        code: "DATABASE_ERROR",
+        userMessage: "failed",
+        correlationId: "corr-1",
+        retryable: true,
+      },
+    });
+
+    const EventDetailPage = (await import("../../../../app/(app)/events/[id]/page")).default;
+
+    await expect(
+      EventDetailPage({
+        params: Promise.resolve({ id: "event-1" }),
+        searchParams: Promise.resolve({}),
+      })
+    ).rejects.toThrow("failed");
+
+    expect(handleServerError).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({
+        action: "event_page_view",
+        eventId: "event-1",
+      })
+    );
   });
 
   it("metadata は current community 不一致時に汎用タイトルへフォールバックする", async () => {

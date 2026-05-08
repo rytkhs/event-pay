@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { AuthSessionMissingError } from "@supabase/supabase-js";
+import { AuthApiError, AuthSessionMissingError } from "@supabase/supabase-js";
 
 const mockCreateServerActionSupabaseClient = jest.fn();
 const mockCreateServerComponentSupabaseClient = jest.fn();
@@ -162,6 +162,24 @@ describe("core/auth/auth-utils", () => {
     expect(mockHandleServerError).not.toHaveBeenCalled();
   });
 
+  it("JWT sub の user が存在しない場合は requireCurrentUserForServerComponent が /login に redirect する", async () => {
+    const { client } = createLookupClient({
+      authError: new AuthApiError(
+        "User from sub claim in JWT does not exist",
+        403,
+        "user_not_found"
+      ),
+      user: null,
+    });
+    mockCreateServerComponentSupabaseClient.mockResolvedValue(client);
+
+    const { requireCurrentUserForServerComponent } = await loadAuthUtils();
+
+    await expect(requireCurrentUserForServerComponent()).rejects.toThrow("NEXT_REDIRECT:/login");
+    expect(mockRedirect).toHaveBeenCalledWith("/login");
+    expect(mockHandleServerError).not.toHaveBeenCalled();
+  });
+
   it("未認証時は requireCurrentAppUserForServerComponent が /login に redirect する", async () => {
     const { client } = createLookupClient({
       user: null,
@@ -211,6 +229,23 @@ describe("core/auth/auth-utils", () => {
   it("getOptionalCurrentUserForServerComponent はセッション欠如を null として扱う", async () => {
     const { client } = createLookupClient({
       authError: new AuthSessionMissingError(),
+      user: null,
+    });
+    mockCreateServerComponentSupabaseClient.mockResolvedValue(client);
+
+    const { getOptionalCurrentUserForServerComponent } = await loadAuthUtils();
+
+    await expect(getOptionalCurrentUserForServerComponent()).resolves.toBeNull();
+    expect(mockHandleServerError).not.toHaveBeenCalled();
+  });
+
+  it("getOptionalCurrentUserForServerComponent は JWT sub の user 不在を null として扱う", async () => {
+    const { client } = createLookupClient({
+      authError: new AuthApiError(
+        "User from sub claim in JWT does not exist",
+        403,
+        "user_not_found"
+      ),
       user: null,
     });
     mockCreateServerComponentSupabaseClient.mockResolvedValue(client);

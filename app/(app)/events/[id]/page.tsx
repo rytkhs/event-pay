@@ -11,6 +11,7 @@ import {
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { createCachedActions } from "@core/utils/cache-helpers";
 import { handleServerError } from "@core/utils/error-handler.server";
+import { isNextNavigationError } from "@core/utils/next";
 import type {
   CollectionProgressSummary,
   GetParticipantsResponse,
@@ -132,6 +133,10 @@ export default async function EventDetailPage(props: {
       />
     );
   } catch (error) {
+    if (isNextNavigationError(error)) {
+      throw error;
+    }
+
     handleServerError(error, {
       category: "event_management",
       action: "event_page_view",
