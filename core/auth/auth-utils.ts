@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import type { User } from "@supabase/supabase-js";
 
-import { isMissingAuthSessionError } from "@core/supabase/auth-guards";
+import { isUnauthenticatedAuthError } from "@core/supabase/auth-guards";
 import {
   createServerActionSupabaseClient,
   createServerComponentSupabaseClient,
@@ -59,7 +59,7 @@ function isUnauthenticatedLookupResult(result: UserLookupResult): boolean {
     return true;
   }
 
-  return !result.user && isMissingAuthSessionError(result.authError);
+  return !result.user && isUnauthenticatedAuthError(result.authError);
 }
 
 function resolveRequiredUser(result: UserLookupResult, context: AuthLookupContext): User {

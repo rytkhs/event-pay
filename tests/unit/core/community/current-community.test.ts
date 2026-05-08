@@ -381,4 +381,33 @@ describe("core/community/current-community", () => {
     expect(mockRequireCurrentUserForServerComponent).toHaveBeenCalledTimes(1);
     expect(mockCreateServerComponentSupabaseClient).toHaveBeenCalledTimes(1);
   });
+
+  it("resolveCurrentCommunityForServerComponent は user override があれば認証ユーザーを再解決しない", async () => {
+    const { client } = createSupabaseClientForCommunities({
+      data: [
+        {
+          created_at: "2026-03-10T00:00:00.000Z",
+          id: "community-1",
+          name: "A",
+          slug: "a",
+        },
+      ],
+    });
+    const cookieStore = createCookieStore("community-1");
+
+    mockCreateServerComponentSupabaseClient.mockResolvedValue(client);
+    mockCookies.mockResolvedValue(cookieStore);
+
+    const { resolveCurrentCommunityForServerComponent } = await loadCurrentCommunityModule();
+
+    await expect(
+      resolveCurrentCommunityForServerComponent({ id: "user-1" })
+    ).resolves.toMatchObject({
+      currentCommunity: { id: "community-1" },
+      resolvedBy: "cookie",
+    });
+
+    expect(mockRequireCurrentUserForServerComponent).not.toHaveBeenCalled();
+    expect(mockCreateServerComponentSupabaseClient).toHaveBeenCalledTimes(1);
+  });
 });

@@ -110,6 +110,11 @@ describe("core/community/app-workspace", () => {
         resolvedBy: "cookie",
       },
     });
+    expect(resolveCurrentCommunityForServerComponent).toHaveBeenCalledWith({
+      id: "user-1",
+      email: "owner@example.com",
+      name: "集金 太郎",
+    });
   });
 
   it("owned community が 0 件なら空状態フラグを返し shell data へ内部情報を漏らさない", async () => {

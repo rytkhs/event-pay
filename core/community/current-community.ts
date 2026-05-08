@@ -43,6 +43,8 @@ export type CurrentCommunityServerActionContext = {
   user: User;
 };
 
+type CurrentCommunityUserRef = Pick<User, "id">;
+
 type ResolveCurrentCommunityContextParams = {
   userId: string;
   supabase: AppSupabaseClient;
@@ -182,8 +184,8 @@ export async function resolveCurrentCommunityContext({
 }
 
 const getCachedCurrentCommunityForServerComponent = cache(
-  async (): Promise<CurrentCommunityResolution> => {
-    const user = await requireCurrentUserForServerComponent();
+  async (userOverride?: CurrentCommunityUserRef): Promise<CurrentCommunityResolution> => {
+    const user = userOverride ?? (await requireCurrentUserForServerComponent());
     const supabase = await createServerComponentSupabaseClient();
     const requestedCommunityId = await readCurrentCommunityCookie();
 
@@ -208,8 +210,10 @@ const getCachedCurrentCommunityForServerComponent = cache(
   }
 );
 
-export async function resolveCurrentCommunityForServerComponent(): Promise<CurrentCommunityResolution> {
-  return await getCachedCurrentCommunityForServerComponent();
+export async function resolveCurrentCommunityForServerComponent(
+  userOverride?: CurrentCommunityUserRef
+): Promise<CurrentCommunityResolution> {
+  return await getCachedCurrentCommunityForServerComponent(userOverride);
 }
 
 export async function resolveCurrentCommunityForServerAction(
