@@ -25,17 +25,24 @@ import {
   createCommunity,
   createCommunitySchema,
   deleteCommunity,
-  updateCommunity,
-  updateCommunitySchema,
+  updateCommunityBasicInfo,
+  updateCommunityBasicInfoSchema,
+  updateCommunityPublicPageVisibility,
+  updateCommunityPublicPageVisibilitySchema,
 } from "@features/communities/server";
 
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
 export type CreateCommunityActionResult = ActionResult<{ communityId: string }>;
-export type UpdateCommunityActionResult = ActionResult<{
+export type UpdateCommunityBasicInfoActionResult = ActionResult<{
   communityId: string;
   description: string | null;
   name: string;
+}>;
+export type UpdateCommunityPublicPageVisibilityActionResult = ActionResult<{
+  communityId: string;
+  showCommunityLink: boolean;
+  showLegalDisclosureLink: boolean;
 }>;
 export type DeleteCommunityActionResult = ActionResult<{
   deletedCommunityId: string;
@@ -45,6 +52,11 @@ export type DeleteCommunityActionResult = ActionResult<{
 function getStringFormValue(formData: FormData, key: string): string | undefined {
   const value = formData.get(key);
   return typeof value === "string" ? value : undefined;
+}
+
+function getBooleanFormValue(formData: FormData, key: string): boolean {
+  const value = formData.get(key);
+  return value === "true" || value === "on";
 }
 
 function resolveActionFormData(
@@ -134,17 +146,17 @@ export async function createCommunityAction(
   }
 }
 
-export async function updateCommunityAction(
+export async function updateCommunityBasicInfoAction(
   formData: FormData
-): Promise<UpdateCommunityActionResult>;
-export async function updateCommunityAction(
-  _state: UpdateCommunityActionResult,
+): Promise<UpdateCommunityBasicInfoActionResult>;
+export async function updateCommunityBasicInfoAction(
+  _state: UpdateCommunityBasicInfoActionResult,
   formData: FormData
-): Promise<UpdateCommunityActionResult>;
-export async function updateCommunityAction(
-  stateOrFormData: UpdateCommunityActionResult | FormData,
+): Promise<UpdateCommunityBasicInfoActionResult>;
+export async function updateCommunityBasicInfoAction(
+  stateOrFormData: UpdateCommunityBasicInfoActionResult | FormData,
   maybeFormData?: FormData
-): Promise<UpdateCommunityActionResult> {
+): Promise<UpdateCommunityBasicInfoActionResult> {
   ensureFeaturesRegistered();
 
   try {
@@ -152,16 +164,16 @@ export async function updateCommunityAction(
     const user = await getCurrentUserForServerAction();
 
     if (!user) {
-      logger.warn("Unauthenticated community update attempt", {
+      logger.warn("Unauthenticated community basic info update attempt", {
         category: "authentication",
-        action: "community.update",
+        action: "community.update_basic_info",
         actor_type: "anonymous",
         outcome: "failure",
       });
       return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
     }
 
-    const parsedInput = updateCommunitySchema.safeParse({
+    const parsedInput = updateCommunityBasicInfoSchema.safeParse({
       description: getStringFormValue(formData, "description"),
       name: getStringFormValue(formData, "name"),
     });
@@ -189,7 +201,12 @@ export async function updateCommunityAction(
     }
 
     const supabase = await createServerActionSupabaseClient();
-    const result = await updateCommunity(supabase, user.id, currentCommunity.id, parsedInput.data);
+    const result = await updateCommunityBasicInfo(
+      supabase,
+      user.id,
+      currentCommunity.id,
+      parsedInput.data
+    );
 
     if (!result.success || !result.data) {
       return result.success
@@ -212,6 +229,97 @@ export async function updateCommunityAction(
   } catch (error) {
     return failFrom(error, {
       userMessage: "コミュニティの更新に失敗しました",
+    });
+  }
+}
+
+export async function updateCommunityPublicPageVisibilityAction(
+  formData: FormData
+): Promise<UpdateCommunityPublicPageVisibilityActionResult>;
+export async function updateCommunityPublicPageVisibilityAction(
+  _state: UpdateCommunityPublicPageVisibilityActionResult,
+  formData: FormData
+): Promise<UpdateCommunityPublicPageVisibilityActionResult>;
+export async function updateCommunityPublicPageVisibilityAction(
+  stateOrFormData: UpdateCommunityPublicPageVisibilityActionResult | FormData,
+  maybeFormData?: FormData
+): Promise<UpdateCommunityPublicPageVisibilityActionResult> {
+  ensureFeaturesRegistered();
+
+  try {
+    const formData = resolveActionFormData(stateOrFormData, maybeFormData);
+    const user = await getCurrentUserForServerAction();
+
+    if (!user) {
+      logger.warn("Unauthenticated community public page visibility update attempt", {
+        category: "authentication",
+        action: "community.update_public_page_visibility",
+        actor_type: "anonymous",
+        outcome: "failure",
+      });
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
+    }
+
+    const parsedInput = updateCommunityPublicPageVisibilitySchema.safeParse({
+      showCommunityLink: getBooleanFormValue(formData, "showCommunityLink"),
+      showLegalDisclosureLink: getBooleanFormValue(formData, "showLegalDisclosureLink"),
+    });
+
+    if (!parsedInput.success) {
+      return zodFail(parsedInput.error, { userMessage: "入力内容を確認してください" });
+    }
+
+    const resolutionResult = await resolveCurrentCommunityForServerAction();
+
+    if (!resolutionResult.success) {
+      return toActionResultFromAppResult(resolutionResult, {
+        userMessage: "参加者向け表示設定の更新に失敗しました",
+      });
+    }
+
+    if (!resolutionResult.data) {
+      return fail("INTERNAL_ERROR", {
+        userMessage: "参加者向け表示設定の更新に失敗しました",
+      });
+    }
+
+    const currentCommunity = resolutionResult.data.currentCommunity;
+
+    if (!currentCommunity) {
+      return fail("NOT_FOUND", { userMessage: "更新対象のコミュニティが見つかりません" });
+    }
+
+    const supabase = await createServerActionSupabaseClient();
+    const result = await updateCommunityPublicPageVisibility(
+      supabase,
+      user.id,
+      currentCommunity.id,
+      parsedInput.data
+    );
+
+    if (!result.success || !result.data) {
+      return result.success
+        ? fail("INTERNAL_ERROR", {
+            userMessage: "参加者向け表示設定の更新に失敗しました",
+          })
+        : toActionResultFromAppResult(result);
+    }
+
+    revalidatePath("/(app)", "layout");
+
+    return ok(
+      {
+        communityId: result.data.communityId,
+        showCommunityLink: result.data.showCommunityLink,
+        showLegalDisclosureLink: result.data.showLegalDisclosureLink,
+      },
+      {
+        message: "参加者向け表示設定を更新しました",
+      }
+    );
+  } catch (error) {
+    return failFrom(error, {
+      userMessage: "参加者向け表示設定の更新に失敗しました",
     });
   }
 }

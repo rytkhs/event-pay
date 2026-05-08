@@ -6,7 +6,14 @@ export {
   getCurrentCommunitySettings,
   type CurrentCommunitySettingsReadModel,
 } from "./services/get-current-community-settings";
-export { updateCommunity, type UpdateCommunityResult } from "./services/update-community";
+export {
+  updateCommunityBasicInfo,
+  type UpdateCommunityBasicInfoResult,
+} from "./services/update-community-basic-info";
+export {
+  updateCommunityPublicPageVisibility,
+  type UpdateCommunityPublicPageVisibilityResult,
+} from "./services/update-community-public-page-visibility";
 export {
   getPublicCommunityBySlug,
   getPublicCommunityByLegalSlug,
@@ -14,7 +21,9 @@ export {
 export { createCommunityContact } from "./services/create-community-contact";
 export {
   createCommunitySchema,
-  updateCommunitySchema,
+  updateCommunityBasicInfoSchema,
+  updateCommunityPublicPageVisibilitySchema,
   type CreateCommunityInput,
-  type UpdateCommunityInput,
+  type UpdateCommunityBasicInfoInput,
+  type UpdateCommunityPublicPageVisibilityInput,
 } from "./validation";

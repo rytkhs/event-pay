@@ -34,6 +34,9 @@ export interface GuestAttendanceData {
     community: {
       name: string;
       legalSlug: string;
+      showCommunityLink: boolean;
+      showLegalDisclosureLink: boolean;
+      slug: string;
     };
     canceled_at: string | null;
   };

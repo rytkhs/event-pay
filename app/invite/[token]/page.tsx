@@ -157,9 +157,10 @@ export default async function InvitePage(props: InvitePageProps) {
           />
           {/* 主催コミュニティの特商法リンク */}
           {(() => {
-            const legalSlug = validationResult.event?.community.legalSlug;
+            const community = validationResult.event?.community;
+            const legalSlug = community?.legalSlug;
             const isDemo = process.env.NEXT_PUBLIC_IS_DEMO === "true";
-            if (!legalSlug || isDemo) return null;
+            if (!legalSlug || !community?.showLegalDisclosureLink || isDemo) return null;
             return (
               <div className="mt-8 text-center">
                 <Link

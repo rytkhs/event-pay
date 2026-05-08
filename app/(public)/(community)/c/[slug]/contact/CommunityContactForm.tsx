@@ -6,7 +6,7 @@ import { CheckCircle2, Mail, MessageSquare, User } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
@@ -33,6 +33,7 @@ export function CommunityContactForm(props: { communitySlug: string }) {
         <CardTitle as="h2" className="text-lg sm:text-2xl">
           主催者へのお問い合わせ
         </CardTitle>
+        <CardDescription>お問い合わせ内容は主催者へメールで送信されます。</CardDescription>
       </CardHeader>
 
       <CardContent>
@@ -135,7 +136,7 @@ export function CommunityContactForm(props: { communitySlug: string }) {
                         />
                         <Textarea
                           {...field}
-                          placeholder="お問い合わせ内容をご記入ください&#10;&#10;例：&#10;・参加前に確認したい点&#10;・当日の運営に関する質問&#10;・キャンセルや返金に関する相談"
+                          placeholder="お問い合わせ内容をご記入ください"
                           disabled={isPending}
                           rows={8}
                           className="pl-9 resize-none"

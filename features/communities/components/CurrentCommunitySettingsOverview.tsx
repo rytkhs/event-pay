@@ -1,25 +1,29 @@
-import Link from "next/link";
-
-import { ExternalLink } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
 import type { CurrentCommunitySettingsReadModel } from "../server";
 
+import {
+  CommunityPublicPageVisibilityForm,
+  type UpdateCommunityPublicPageVisibilityFormAction,
+} from "./CommunityPublicPageVisibilityForm";
 import { DeleteCommunityDangerZone, type DeleteCommunityAction } from "./DeleteCommunityDangerZone";
-import { UpdateCommunityForm, type UpdateCommunityFormAction } from "./UpdateCommunityForm";
+import {
+  UpdateCommunityBasicInfoForm,
+  type UpdateCommunityBasicInfoFormAction,
+} from "./UpdateCommunityBasicInfoForm";
 
 type CurrentCommunitySettingsOverviewProps = {
   deleteCommunityAction: DeleteCommunityAction;
   settings: CurrentCommunitySettingsReadModel;
-  updateCommunityAction: UpdateCommunityFormAction;
+  updateCommunityBasicInfoAction: UpdateCommunityBasicInfoFormAction;
+  updateCommunityPublicPageVisibilityAction: UpdateCommunityPublicPageVisibilityFormAction;
 };
 
 export function CurrentCommunitySettingsOverview({
   deleteCommunityAction,
   settings,
-  updateCommunityAction,
+  updateCommunityBasicInfoAction,
+  updateCommunityPublicPageVisibilityAction,
 }: CurrentCommunitySettingsOverviewProps) {
   return (
     <div className="flex flex-col gap-6 sm:gap-10">
@@ -29,61 +33,32 @@ export function CurrentCommunitySettingsOverview({
             基本情報
           </h2>
           <p className="text-xs leading-5 text-muted-foreground">
-            招待ページと公開プロフィールに表示される情報です。
+            招待ページとコミュニティプロフィールに表示される情報です。
           </p>
         </div>
-        <UpdateCommunityForm
+        <UpdateCommunityBasicInfoForm
           defaultDescription={settings.community.description}
           defaultName={settings.community.name}
-          updateCommunityAction={updateCommunityAction}
+          updateCommunityBasicInfoAction={updateCommunityBasicInfoAction}
         />
       </section>
 
-      <section aria-labelledby="community-profile-heading">
+      <section aria-labelledby="community-public-page-heading">
         <div className="mb-3 flex flex-col gap-1 sm:mb-4">
-          <h2 id="community-profile-heading" className="text-sm font-semibold">
-            コミュニティプロフィール
+          <h2 id="community-public-page-heading" className="text-sm font-semibold">
+            コミュニティプロフィールと参加者向け表示
           </h2>
           <p className="text-xs leading-5 text-muted-foreground">
-            Stripe アカウント作成に利用可能なコミュニティプロフィールです
+            Stripe設定などで利用するページです。必要な場合は、招待・ゲストページにリンクを表示できます。
           </p>
         </div>
-        <div className="rounded-lg border border-border/60 bg-background">
-          <div className="divide-y divide-border/60">
-            <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-              <div className="flex min-w-0 flex-col gap-1">
-                <p className="text-xs font-medium text-muted-foreground">
-                  コミュニティプロフィール URL
-                </p>
-                <p className="truncate text-sm font-medium text-foreground">
-                  {settings.publicPageUrl}
-                </p>
-              </div>
-              <Button variant="outline" size="sm" className="w-full shrink-0 sm:w-auto" asChild>
-                <Link href={settings.publicPageUrl} rel="noopener noreferrer" target="_blank">
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  開く
-                </Link>
-              </Button>
-            </div>
-            {/* <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0 space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">
-                  特定商取引法に基づく表記 URL
-                </p>
-                <p className="truncate text-sm font-medium text-foreground">
-                  {settings.legalPageUrl}
-                </p>
-              </div>
-              <Button variant="outline" size="sm" className="shrink-0" asChild>
-                <Link href={settings.legalPageUrl} rel="noopener noreferrer" target="_blank">
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  開く
-                </Link>
-              </Button>
-            </div> */}
-          </div>
-        </div>
+        <CommunityPublicPageVisibilityForm
+          defaultShowCommunityLink={settings.community.showCommunityLink}
+          defaultShowLegalDisclosureLink={settings.community.showLegalDisclosureLink}
+          legalPageUrl={settings.legalPageUrl}
+          publicPageUrl={settings.publicPageUrl}
+          updateCommunityPublicPageVisibilityAction={updateCommunityPublicPageVisibilityAction}
+        />
       </section>
 
       {/* 危険ゾーン区切り */}

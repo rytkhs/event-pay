@@ -66,6 +66,9 @@ describe("仕様書通りの正常系フロー", () => {
           community: {
             name: "テストコミュニティ",
             legalSlug: "test-community-legal",
+            slug: "test-community",
+            showCommunityLink: false,
+            showLegalDisclosureLink: false,
           },
           canceled_at: null,
         },

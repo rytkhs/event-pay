@@ -19,7 +19,7 @@ export const createCommunitySchema = z.object({
   description: z.string().optional().transform(normalizeOptionalText),
 });
 
-export const updateCommunitySchema = z.object({
+export const updateCommunityBasicInfoSchema = z.object({
   name: communityNameSchema,
   description: z
     .string()
@@ -29,5 +29,13 @@ export const updateCommunitySchema = z.object({
     .transform(normalizeOptionalText),
 });
 
+export const updateCommunityPublicPageVisibilitySchema = z.object({
+  showCommunityLink: z.boolean(),
+  showLegalDisclosureLink: z.boolean(),
+});
+
 export type CreateCommunityInput = z.infer<typeof createCommunitySchema>;
-export type UpdateCommunityInput = z.infer<typeof updateCommunitySchema>;
+export type UpdateCommunityBasicInfoInput = z.infer<typeof updateCommunityBasicInfoSchema>;
+export type UpdateCommunityPublicPageVisibilityInput = z.infer<
+  typeof updateCommunityPublicPageVisibilitySchema
+>;

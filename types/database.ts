@@ -80,6 +80,8 @@ export type Database = {
           is_deleted: boolean;
           legal_slug: string;
           name: string;
+          show_community_link: boolean;
+          show_legal_disclosure_link: boolean;
           slug: string;
           updated_at: string;
         };
@@ -93,6 +95,8 @@ export type Database = {
           is_deleted?: boolean;
           legal_slug?: string;
           name: string;
+          show_community_link?: boolean;
+          show_legal_disclosure_link?: boolean;
           slug?: string;
           updated_at?: string;
         };
@@ -106,6 +110,8 @@ export type Database = {
           is_deleted?: boolean;
           legal_slug?: string;
           name?: string;
+          show_community_link?: boolean;
+          show_legal_disclosure_link?: boolean;
           slug?: string;
           updated_at?: string;
         };
@@ -1046,6 +1052,9 @@ export type Database = {
           canceled_at: string;
           community_legal_slug: string;
           community_name: string;
+          community_show_community_link: boolean;
+          community_show_legal_disclosure_link: boolean;
+          community_slug: string;
           email: string;
           event_allow_payment_after_deadline: boolean;
           event_capacity: number;
@@ -1118,6 +1127,9 @@ export type Database = {
           capacity: number;
           community_legal_slug: string;
           community_name: string;
+          community_show_community_link: boolean;
+          community_show_legal_disclosure_link: boolean;
+          community_slug: string;
           date: string;
           description: string;
           fee: number;

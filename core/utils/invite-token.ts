@@ -2,7 +2,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 
 import { generateRandomBytes, toBase64UrlSafe } from "@core/security/crypto";
-import type { InviteEventDetail, InviteValidationResult } from "@core/types/invite";
+import type {
+  InviteEventDetail,
+  InviteValidationResult,
+  RpcPublicGetEventRow,
+} from "@core/types/invite";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { handleServerError } from "@core/utils/error-handler.server";
 
@@ -93,31 +97,35 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
         errorCode: "TOKEN_NOT_FOUND",
       };
     }
+    const eventRow = evRow as RpcPublicGetEventRow;
     const actualAttendancesCount = Number(evRow.attendances_count) || 0;
 
-    const computedStatus = deriveEventStatus(evRow.date, evRow.canceled_at ?? null);
+    const computedStatus = deriveEventStatus(eventRow.date, eventRow.canceled_at ?? null);
     const eventDetail: InviteEventDetail = {
-      id: evRow.id,
+      id: eventRow.id,
       community: {
-        name: evRow.community_name,
-        legalSlug: evRow.community_legal_slug,
+        name: eventRow.community_name,
+        slug: eventRow.community_slug,
+        legalSlug: eventRow.community_legal_slug,
+        showCommunityLink: eventRow.community_show_community_link,
+        showLegalDisclosureLink: eventRow.community_show_legal_disclosure_link,
       },
-      title: evRow.title,
-      date: evRow.date,
-      location: evRow.location,
-      description: evRow.description,
-      fee: evRow.fee,
-      capacity: evRow.capacity,
-      payment_methods: evRow.payment_methods,
-      registration_deadline: evRow.registration_deadline,
-      payment_deadline: evRow.payment_deadline,
-      invite_token: evRow.invite_token,
+      title: eventRow.title,
+      date: eventRow.date,
+      location: eventRow.location,
+      description: eventRow.description,
+      fee: eventRow.fee,
+      capacity: eventRow.capacity,
+      payment_methods: eventRow.payment_methods,
+      registration_deadline: eventRow.registration_deadline,
+      payment_deadline: eventRow.payment_deadline,
+      invite_token: eventRow.invite_token,
       status: computedStatus,
       attendances_count: actualAttendancesCount,
     };
 
     // イベントがキャンセルされているか確認
-    if (evRow.canceled_at) {
+    if (eventRow.canceled_at) {
       return {
         isValid: true,
         event: eventDetail,
@@ -139,9 +147,9 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
     }
 
     // 参加申込期限を確認
-    if (evRow.registration_deadline) {
+    if (eventRow.registration_deadline) {
       const now = new Date();
-      const deadline = new Date(evRow.registration_deadline);
+      const deadline = new Date(eventRow.registration_deadline);
 
       if (now > deadline) {
         return {

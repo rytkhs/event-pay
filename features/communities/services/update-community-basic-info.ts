@@ -3,27 +3,27 @@ import { errResult, okResult, type AppResult } from "@core/errors/app-result";
 import { logger } from "@core/logging/app-logger";
 import type { AppSupabaseClient } from "@core/types/supabase";
 
-import type { UpdateCommunityInput } from "../validation";
+import type { UpdateCommunityBasicInfoInput } from "../validation";
 
-const UPDATE_COMMUNITY_ERROR_MESSAGE = "コミュニティの更新に失敗しました";
+const UPDATE_COMMUNITY_BASIC_INFO_ERROR_MESSAGE = "コミュニティの更新に失敗しました";
 const COMMUNITY_NOT_FOUND_MESSAGE = "更新対象のコミュニティが見つかりません";
 
-type UpdatedCommunityRow = {
+type UpdatedCommunityBasicInfoRow = {
   description: string | null;
   id: string;
   name: string;
 };
 
-export type UpdateCommunityResult = {
+export type UpdateCommunityBasicInfoResult = {
   communityId: string;
   description: string | null;
   name: string;
 };
 
 function toDatabaseError(cause: unknown, ownerUserId: string, communityId: string) {
-  logger.error("Community update failed", {
+  logger.error("Community basic info update failed", {
     category: "system",
-    action: "community.update",
+    action: "community.update_basic_info",
     outcome: "failure",
     resource_type: "community",
     resource_id: communityId,
@@ -36,17 +36,17 @@ function toDatabaseError(cause: unknown, ownerUserId: string, communityId: strin
     new AppError("DATABASE_ERROR", {
       cause,
       retryable: true,
-      userMessage: UPDATE_COMMUNITY_ERROR_MESSAGE,
+      userMessage: UPDATE_COMMUNITY_BASIC_INFO_ERROR_MESSAGE,
     })
   );
 }
 
-export async function updateCommunity(
+export async function updateCommunityBasicInfo(
   supabase: AppSupabaseClient,
   ownerUserId: string,
   communityId: string,
-  input: UpdateCommunityInput
-): Promise<AppResult<UpdateCommunityResult>> {
+  input: UpdateCommunityBasicInfoInput
+): Promise<AppResult<UpdateCommunityBasicInfoResult>> {
   const { data, error } = await supabase
     .from("communities")
     .update({
@@ -57,16 +57,16 @@ export async function updateCommunity(
     .eq("created_by", ownerUserId)
     .eq("is_deleted", false)
     .select("id, name, description")
-    .maybeSingle<UpdatedCommunityRow>();
+    .maybeSingle<UpdatedCommunityBasicInfoRow>();
 
   if (error) {
     return toDatabaseError(error, ownerUserId, communityId);
   }
 
   if (!data) {
-    logger.warn("Community update target not found", {
+    logger.warn("Community basic info update target not found", {
       category: "system",
-      action: "community.update",
+      action: "community.update_basic_info",
       outcome: "failure",
       resource_type: "community",
       resource_id: communityId,
@@ -82,9 +82,9 @@ export async function updateCommunity(
     );
   }
 
-  logger.info("Community updated", {
+  logger.info("Community basic info updated", {
     category: "system",
-    action: "community.update",
+    action: "community.update_basic_info",
     outcome: "success",
     resource_type: "community",
     resource_id: data.id,

@@ -11,7 +11,8 @@ const requireNonEmptyCommunityWorkspaceForServerComponent = jest.fn();
 const createServerComponentSupabaseClient = jest.fn();
 const getCurrentCommunitySettings = jest.fn();
 const deleteCommunityAction = jest.fn();
-const updateCommunityAction = jest.fn();
+const updateCommunityBasicInfoAction = jest.fn();
+const updateCommunityPublicPageVisibilityAction = jest.fn();
 const redirect = jest.fn((path: string) => {
   throw new Error(`NEXT_REDIRECT:${path}`);
 });
@@ -30,7 +31,8 @@ jest.mock("@features/communities/server", () => ({
 
 jest.mock("@/app/(app)/actions/communities", () => ({
   deleteCommunityAction,
-  updateCommunityAction,
+  updateCommunityBasicInfoAction,
+  updateCommunityPublicPageVisibilityAction,
 }));
 
 jest.mock("next/navigation", () => ({
@@ -41,15 +43,18 @@ jest.mock("@features/communities", () => ({
   CurrentCommunitySettingsOverview: ({
     deleteCommunityAction: mockedDeleteCommunityAction,
     settings,
-    updateCommunityAction: mockedUpdateCommunityAction,
+    updateCommunityBasicInfoAction: mockedUpdateCommunityBasicInfoAction,
+    updateCommunityPublicPageVisibilityAction: mockedUpdateCommunityPublicPageVisibilityAction,
   }: {
     settings: { community: { name: string } };
     deleteCommunityAction: unknown;
-    updateCommunityAction: unknown;
+    updateCommunityBasicInfoAction: unknown;
+    updateCommunityPublicPageVisibilityAction: unknown;
   }) => (
     <div>
       settings:{settings.community.name}
-      {mockedUpdateCommunityAction ? ":update" : ""}
+      {mockedUpdateCommunityBasicInfoAction ? ":basic" : ""}
+      {mockedUpdateCommunityPublicPageVisibilityAction ? ":visibility" : ""}
       {mockedDeleteCommunityAction ? ":delete" : ""}
     </div>
   ),
@@ -103,7 +108,7 @@ describe("CommunitySettingsPage", () => {
       "user-1",
       "community-1"
     );
-    expect(screen.getByText("settings:ボドゲ会:update:delete")).toBeInTheDocument();
+    expect(screen.getByText("settings:ボドゲ会:basic:visibility:delete")).toBeInTheDocument();
   });
 
   it("read model が解決できない場合は /dashboard に fail-close する", async () => {

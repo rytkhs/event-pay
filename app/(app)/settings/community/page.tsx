@@ -10,7 +10,11 @@ import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import { CurrentCommunitySettingsOverview } from "@features/communities";
 import { getCurrentCommunitySettings } from "@features/communities/server";
 
-import { deleteCommunityAction, updateCommunityAction } from "@/app/(app)/actions/communities";
+import {
+  deleteCommunityAction,
+  updateCommunityBasicInfoAction,
+  updateCommunityPublicPageVisibilityAction,
+} from "@/app/(app)/actions/communities";
 
 export const metadata: Metadata = {
   title: "コミュニティ設定",
@@ -44,7 +48,8 @@ export default async function CommunitySettingsPage() {
     <CurrentCommunitySettingsOverview
       deleteCommunityAction={deleteCommunityAction}
       settings={settings.data}
-      updateCommunityAction={updateCommunityAction}
+      updateCommunityBasicInfoAction={updateCommunityBasicInfoAction}
+      updateCommunityPublicPageVisibilityAction={updateCommunityPublicPageVisibilityAction}
     />
   );
 }

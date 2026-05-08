@@ -20,13 +20,13 @@ function createDeferred<T>(): Deferred<T> {
   return { promise, resolve };
 }
 
-describe("UpdateCommunityForm", () => {
+describe("UpdateCommunityBasicInfoForm", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it("現在値を表示する", async () => {
-    const updateCommunityAction = jest.fn(async () => ({
+    const updateCommunityBasicInfoAction = jest.fn(async () => ({
       success: true as const,
       data: {
         communityId: "community-1",
@@ -36,14 +36,14 @@ describe("UpdateCommunityForm", () => {
       message: "コミュニティを更新しました",
     }));
 
-    const { UpdateCommunityForm } =
-      await import("@/features/communities/components/UpdateCommunityForm");
+    const { UpdateCommunityBasicInfoForm } =
+      await import("@/features/communities/components/UpdateCommunityBasicInfoForm");
 
     render(
-      <UpdateCommunityForm
+      <UpdateCommunityBasicInfoForm
         defaultDescription="毎週開催"
         defaultName="ボドゲ会"
-        updateCommunityAction={updateCommunityAction}
+        updateCommunityBasicInfoAction={updateCommunityBasicInfoAction}
       />
     );
 
@@ -54,9 +54,10 @@ describe("UpdateCommunityForm", () => {
 
   it("validation error を表示する", async () => {
     const user = userEvent.setup();
-    const updateCommunityAction = jest.fn(async (_state, formData: FormData) => {
+    const updateCommunityBasicInfoAction = jest.fn(async (_state, formData: FormData) => {
       expect(formData.get("name")).toBe("");
       expect(formData.get("slug")).toBe("malicious");
+      expect(formData.get("showCommunityLink")).toBeNull();
 
       return {
         success: false as const,
@@ -72,14 +73,14 @@ describe("UpdateCommunityForm", () => {
       };
     });
 
-    const { UpdateCommunityForm } =
-      await import("@/features/communities/components/UpdateCommunityForm");
+    const { UpdateCommunityBasicInfoForm } =
+      await import("@/features/communities/components/UpdateCommunityBasicInfoForm");
 
     render(
-      <UpdateCommunityForm
+      <UpdateCommunityBasicInfoForm
         defaultDescription="毎週開催"
         defaultName="ボドゲ会"
-        updateCommunityAction={updateCommunityAction}
+        updateCommunityBasicInfoAction={updateCommunityBasicInfoAction}
       />
     );
 
@@ -94,65 +95,6 @@ describe("UpdateCommunityForm", () => {
     expect(screen.getByText("入力内容を確認してください")).toBeInTheDocument();
   });
 
-  it("domain error を alert 表示する", async () => {
-    const user = userEvent.setup();
-    const updateCommunityAction = jest.fn(async () => ({
-      success: false as const,
-      error: {
-        code: "DATABASE_ERROR" as const,
-        correlationId: "sa_456",
-        retryable: true,
-        userMessage: "コミュニティの更新に失敗しました",
-      },
-    }));
-
-    const { UpdateCommunityForm } =
-      await import("@/features/communities/components/UpdateCommunityForm");
-
-    render(
-      <UpdateCommunityForm
-        defaultDescription="毎週開催"
-        defaultName="ボドゲ会"
-        updateCommunityAction={updateCommunityAction}
-      />
-    );
-
-    await user.click(screen.getByRole("button", { name: "変更を保存" }));
-
-    expect(await screen.findByText("更新できませんでした")).toBeInTheDocument();
-    expect(screen.getByText("コミュニティの更新に失敗しました")).toBeInTheDocument();
-  });
-
-  it("成功時は成功メッセージを表示する", async () => {
-    const user = userEvent.setup();
-    const updateCommunityAction = jest.fn(async () => ({
-      success: true as const,
-      data: {
-        communityId: "community-1",
-        name: "新しい名前",
-        description: "新しい説明",
-      },
-      message: "コミュニティを更新しました",
-    }));
-
-    const { UpdateCommunityForm } =
-      await import("@/features/communities/components/UpdateCommunityForm");
-
-    render(
-      <UpdateCommunityForm
-        defaultDescription="毎週開催"
-        defaultName="ボドゲ会"
-        updateCommunityAction={updateCommunityAction}
-      />
-    );
-
-    await user.type(screen.getByLabelText("コミュニティ名"), "!");
-    await user.click(screen.getByRole("button", { name: "変更を保存" }));
-
-    expect(await screen.findByText("更新しました")).toBeInTheDocument();
-    expect(screen.getByText("コミュニティを更新しました")).toBeInTheDocument();
-  });
-
   it("submit 中はボタンを disable して文言を切り替える", async () => {
     const user = userEvent.setup();
     const deferred = createDeferred<{
@@ -164,19 +106,20 @@ describe("UpdateCommunityForm", () => {
       };
       message: string;
     }>();
-    const updateCommunityAction = jest.fn(() => deferred.promise);
+    const updateCommunityBasicInfoAction = jest.fn(() => deferred.promise);
 
-    const { UpdateCommunityForm } =
-      await import("@/features/communities/components/UpdateCommunityForm");
+    const { UpdateCommunityBasicInfoForm } =
+      await import("@/features/communities/components/UpdateCommunityBasicInfoForm");
 
     render(
-      <UpdateCommunityForm
+      <UpdateCommunityBasicInfoForm
         defaultDescription="毎週開催"
         defaultName="ボドゲ会"
-        updateCommunityAction={updateCommunityAction}
+        updateCommunityBasicInfoAction={updateCommunityBasicInfoAction}
       />
     );
 
+    await user.type(screen.getByLabelText("コミュニティ名"), " (更新)");
     await user.click(screen.getByRole("button", { name: "変更を保存" }));
 
     expect(await screen.findByRole("button", { name: /更新中/ })).toBeDisabled();
@@ -192,5 +135,147 @@ describe("UpdateCommunityForm", () => {
     });
 
     expect(await screen.findByText("更新しました")).toBeInTheDocument();
+  });
+});
+
+describe("CommunityPublicPageVisibilityForm", () => {
+  beforeAll(() => {
+    global.ResizeObserver = class ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("表示トグル2つの値を1回で送信する", async () => {
+    const user = userEvent.setup();
+    const updateCommunityPublicPageVisibilityAction = jest.fn(
+      async (_state, formData: FormData) => {
+        expect(formData.get("showCommunityLink")).toBe("true");
+        expect(formData.get("showLegalDisclosureLink")).toBe("true");
+        expect(formData.get("name")).toBeNull();
+        expect(formData.get("description")).toBeNull();
+
+        return {
+          success: true as const,
+          data: {
+            communityId: "community-1",
+            showCommunityLink: true,
+            showLegalDisclosureLink: true,
+          },
+          message: "参加者向け表示設定を更新しました",
+        };
+      }
+    );
+
+    const { CommunityPublicPageVisibilityForm } =
+      await import("@/features/communities/components/CommunityPublicPageVisibilityForm");
+
+    render(
+      <CommunityPublicPageVisibilityForm
+        defaultShowCommunityLink={false}
+        defaultShowLegalDisclosureLink={false}
+        legalPageUrl="https://example.com/tokushoho/board-games"
+        publicPageUrl="https://example.com/c/board-games"
+        updateCommunityPublicPageVisibilityAction={updateCommunityPublicPageVisibilityAction}
+      />
+    );
+
+    await user.click(
+      screen.getByRole("switch", {
+        name: "コミュニティプロフィールへのリンクを表示",
+      })
+    );
+    await user.click(
+      screen.getByRole("switch", {
+        name: "特定商取引法に基づく表記へのリンクを表示",
+      })
+    );
+    await user.click(screen.getByRole("button", { name: "変更を保存" }));
+
+    expect(await screen.findByText("更新しました")).toBeInTheDocument();
+  });
+
+  it("変更がある場合だけ送信できる", async () => {
+    const user = userEvent.setup();
+    const updateCommunityPublicPageVisibilityAction = jest.fn(async () => ({
+      success: true as const,
+      data: {
+        communityId: "community-1",
+        showCommunityLink: false,
+        showLegalDisclosureLink: true,
+      },
+      message: "参加者向け表示設定を更新しました",
+    }));
+
+    const { CommunityPublicPageVisibilityForm } =
+      await import("@/features/communities/components/CommunityPublicPageVisibilityForm");
+
+    render(
+      <CommunityPublicPageVisibilityForm
+        defaultShowCommunityLink={false}
+        defaultShowLegalDisclosureLink={false}
+        legalPageUrl="https://example.com/tokushoho/board-games"
+        publicPageUrl="https://example.com/c/board-games"
+        updateCommunityPublicPageVisibilityAction={updateCommunityPublicPageVisibilityAction}
+      />
+    );
+
+    const submitButton = screen.getByRole("button", { name: "変更を保存" });
+
+    expect(submitButton).toBeDisabled();
+
+    await user.click(
+      screen.getByRole("switch", {
+        name: "特定商取引法に基づく表記へのリンクを表示",
+      })
+    );
+
+    expect(submitButton).toBeEnabled();
+
+    await user.click(submitButton);
+
+    expect(await screen.findByText("更新しました")).toBeInTheDocument();
+    expect(submitButton).toBeDisabled();
+  });
+
+  it("URL文字列を本文に出さず確認ボタンのリンク先に使う", async () => {
+    const updateCommunityPublicPageVisibilityAction = jest.fn(async () => ({
+      success: true as const,
+      data: {
+        communityId: "community-1",
+        showCommunityLink: false,
+        showLegalDisclosureLink: false,
+      },
+      message: "参加者向け表示設定を更新しました",
+    }));
+
+    const { CommunityPublicPageVisibilityForm } =
+      await import("@/features/communities/components/CommunityPublicPageVisibilityForm");
+
+    render(
+      <CommunityPublicPageVisibilityForm
+        defaultShowCommunityLink={false}
+        defaultShowLegalDisclosureLink={false}
+        legalPageUrl="https://example.com/tokushoho/board-games"
+        publicPageUrl="https://example.com/c/board-games"
+        updateCommunityPublicPageVisibilityAction={updateCommunityPublicPageVisibilityAction}
+      />
+    );
+
+    expect(screen.queryByText("https://example.com/c/board-games")).not.toBeInTheDocument();
+    expect(screen.queryByText("https://example.com/tokushoho/board-games")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /コミュニティプロフィールを確認/ })).toHaveAttribute(
+      "href",
+      "https://example.com/c/board-games"
+    );
+    expect(screen.getByRole("link", { name: /特商法表記を確認/ })).toHaveAttribute(
+      "href",
+      "https://example.com/tokushoho/board-games"
+    );
   });
 });

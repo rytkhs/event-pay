@@ -228,17 +228,19 @@ export function GuestPageClient({
 
       {/* Footer */}
       <footer className="py-8 text-center text-gray-400 text-xs space-y-3">
-        {attendance.event.community.legalSlug && process.env.NEXT_PUBLIC_IS_DEMO !== "true" && (
-          <div className="flex justify-center gap-4">
-            <Link
-              href={`/tokushoho/${attendance.event.community.legalSlug}`}
-              prefetch={false}
-              className="hover:text-gray-600 underline"
-            >
-              特定商取引法に基づく表記
-            </Link>
-          </div>
-        )}
+        {attendance.event.community.legalSlug &&
+          attendance.event.community.showLegalDisclosureLink &&
+          process.env.NEXT_PUBLIC_IS_DEMO !== "true" && (
+            <div className="flex justify-center gap-4">
+              <Link
+                href={`/tokushoho/${attendance.event.community.legalSlug}`}
+                prefetch={false}
+                className="hover:text-gray-600 underline"
+              >
+                特定商取引法に基づく表記
+              </Link>
+            </div>
+          )}
       </footer>
 
       {/* Edit Modal */}
