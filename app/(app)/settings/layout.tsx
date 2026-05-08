@@ -65,7 +65,7 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
 
   return (
     <div className="mt-0 grid w-full gap-4 lg:mt-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-8">
-      <aside className="hidden lg:sticky lg:top-4 lg:block lg:self-start">
+      <aside className="hidden lg:sticky lg:top-[calc(3.5rem+1rem)] lg:block lg:self-start">
         <div className="flex flex-col gap-2 border-b border-border/60 pb-4 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4">
           <p className="px-2 text-xs font-medium text-muted-foreground">設定</p>
           <nav className="grid gap-1 sm:grid-cols-2 lg:grid-cols-1" aria-label="設定メニュー">
