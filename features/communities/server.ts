@@ -15,6 +15,10 @@ export {
   type UpdateCommunityProfileVisibilityResult,
 } from "./services/update-community-profile-visibility";
 export {
+  updateCommunityLegalDisclosureVisibility,
+  type UpdateCommunityLegalDisclosureVisibilityResult,
+} from "./services/update-community-legal-disclosure-visibility";
+export {
   getPublicCommunityBySlug,
   getPublicCommunityByLegalSlug,
 } from "./services/get-public-community";
@@ -22,8 +26,10 @@ export { createCommunityContact } from "./services/create-community-contact";
 export {
   createCommunitySchema,
   updateCommunityBasicInfoSchema,
+  updateCommunityLegalDisclosureVisibilitySchema,
   updateCommunityProfileVisibilitySchema,
   type CreateCommunityInput,
   type UpdateCommunityBasicInfoInput,
+  type UpdateCommunityLegalDisclosureVisibilityInput,
   type UpdateCommunityProfileVisibilityInput,
 } from "./validation";

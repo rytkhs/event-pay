@@ -11,9 +11,11 @@ jest.mock("@core/logging/app-logger", () => ({
 import { logger } from "@core/logging/app-logger";
 import {
   updateCommunityBasicInfoSchema,
+  updateCommunityLegalDisclosureVisibilitySchema,
   updateCommunityProfileVisibilitySchema,
 } from "@features/communities/server";
 import { updateCommunityBasicInfo } from "@features/communities/services/update-community-basic-info";
+import { updateCommunityLegalDisclosureVisibility } from "@features/communities/services/update-community-legal-disclosure-visibility";
 import { updateCommunityProfileVisibility } from "@features/communities/services/update-community-profile-visibility";
 
 type QueryResponse = {
@@ -179,6 +181,63 @@ describe("features/communities/services/update-community-profile-visibility", ()
       "Community profile visibility updated",
       expect.objectContaining({
         action: "community.update_profile_visibility",
+        communityId: "community-1",
+      })
+    );
+  });
+});
+
+describe("features/communities/services/update-community-legal-disclosure-visibility", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("showLegalDisclosureLink を boolean として受け取る", () => {
+    expect(
+      updateCommunityLegalDisclosureVisibilitySchema.parse({
+        showLegalDisclosureLink: true,
+      })
+    ).toEqual({
+      showLegalDisclosureLink: true,
+    });
+  });
+
+  it("show_legal_disclosure_link だけを更新する", async () => {
+    const { supabase, spies } = createSupabaseMock({
+      data: {
+        id: "community-1",
+        show_legal_disclosure_link: true,
+      },
+      error: null,
+    });
+
+    const result = await updateCommunityLegalDisclosureVisibility(
+      supabase,
+      "user-1",
+      "community-1",
+      {
+        showLegalDisclosureLink: true,
+      }
+    );
+
+    expect(result).toEqual({
+      success: true,
+      data: {
+        communityId: "community-1",
+        showLegalDisclosureLink: true,
+      },
+      meta: undefined,
+    });
+    expect(spies.updatePayloads).toEqual([
+      {
+        show_legal_disclosure_link: true,
+      },
+    ]);
+    expect(spies.select).toHaveBeenCalledWith("id, show_legal_disclosure_link");
+    expect(logger.info).toHaveBeenCalledWith(
+      "Community legal disclosure visibility updated",
+      expect.objectContaining({
+        action: "community.update_legal_disclosure_visibility",
         communityId: "community-1",
       })
     );

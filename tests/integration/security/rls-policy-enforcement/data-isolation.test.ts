@@ -42,6 +42,7 @@ describe("Data Isolation Verification", () => {
     expect((rpcRow as any).event_id).toBe(setup.testEventId);
     expect((rpcRow as any).community_slug).toBe(setup.testCommunitySlug);
     expect((rpcRow as any).community_show_community_link).toBe(false);
+    expect((rpcRow as any).community_show_legal_disclosure_link).toBe(false);
   });
 
   test("無効なゲストトークンでは何のデータも取得できない", async () => {
@@ -84,6 +85,7 @@ describe("Data Isolation Verification", () => {
       expect(row.title).toBe("Test Event for RLS");
       expect(row.community_slug).toBe(setup.testCommunitySlug);
       expect(row.community_show_community_link).toBe(false);
+      expect(row.community_show_legal_disclosure_link).toBe(false);
     }
   });
 

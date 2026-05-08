@@ -27,6 +27,8 @@ import {
   deleteCommunity,
   updateCommunityBasicInfo,
   updateCommunityBasicInfoSchema,
+  updateCommunityLegalDisclosureVisibility,
+  updateCommunityLegalDisclosureVisibilitySchema,
   updateCommunityProfileVisibility,
   updateCommunityProfileVisibilitySchema,
 } from "@features/communities/server";
@@ -42,6 +44,10 @@ export type UpdateCommunityBasicInfoActionResult = ActionResult<{
 export type UpdateCommunityProfileVisibilityActionResult = ActionResult<{
   communityId: string;
   showCommunityLink: boolean;
+}>;
+export type UpdateCommunityLegalDisclosureVisibilityActionResult = ActionResult<{
+  communityId: string;
+  showLegalDisclosureLink: boolean;
 }>;
 export type DeleteCommunityActionResult = ActionResult<{
   deletedCommunityId: string;
@@ -317,6 +323,95 @@ export async function updateCommunityProfileVisibilityAction(
   } catch (error) {
     return failFrom(error, {
       userMessage: "コミュニティプロフィールの表示設定の更新に失敗しました",
+    });
+  }
+}
+
+export async function updateCommunityLegalDisclosureVisibilityAction(
+  formData: FormData
+): Promise<UpdateCommunityLegalDisclosureVisibilityActionResult>;
+export async function updateCommunityLegalDisclosureVisibilityAction(
+  _state: UpdateCommunityLegalDisclosureVisibilityActionResult,
+  formData: FormData
+): Promise<UpdateCommunityLegalDisclosureVisibilityActionResult>;
+export async function updateCommunityLegalDisclosureVisibilityAction(
+  stateOrFormData: UpdateCommunityLegalDisclosureVisibilityActionResult | FormData,
+  maybeFormData?: FormData
+): Promise<UpdateCommunityLegalDisclosureVisibilityActionResult> {
+  ensureFeaturesRegistered();
+
+  try {
+    const formData = resolveActionFormData(stateOrFormData, maybeFormData);
+    const user = await getCurrentUserForServerAction();
+
+    if (!user) {
+      logger.warn("Unauthenticated community legal disclosure visibility update attempt", {
+        category: "authentication",
+        action: "community.update_legal_disclosure_visibility",
+        actor_type: "anonymous",
+        outcome: "failure",
+      });
+      return fail("UNAUTHORIZED", { userMessage: "認証が必要です" });
+    }
+
+    const parsedInput = updateCommunityLegalDisclosureVisibilitySchema.safeParse({
+      showLegalDisclosureLink: getBooleanFormValue(formData, "showLegalDisclosureLink"),
+    });
+
+    if (!parsedInput.success) {
+      return zodFail(parsedInput.error, { userMessage: "入力内容を確認してください" });
+    }
+
+    const resolutionResult = await resolveCurrentCommunityForServerAction();
+
+    if (!resolutionResult.success) {
+      return toActionResultFromAppResult(resolutionResult, {
+        userMessage: "特定商取引法に基づく表記リンクの表示設定の更新に失敗しました",
+      });
+    }
+
+    if (!resolutionResult.data) {
+      return fail("INTERNAL_ERROR", {
+        userMessage: "特定商取引法に基づく表記リンクの表示設定の更新に失敗しました",
+      });
+    }
+
+    const currentCommunity = resolutionResult.data.currentCommunity;
+
+    if (!currentCommunity) {
+      return fail("NOT_FOUND", { userMessage: "更新対象のコミュニティが見つかりません" });
+    }
+
+    const supabase = await createServerActionSupabaseClient();
+    const result = await updateCommunityLegalDisclosureVisibility(
+      supabase,
+      user.id,
+      currentCommunity.id,
+      parsedInput.data
+    );
+
+    if (!result.success || !result.data) {
+      return result.success
+        ? fail("INTERNAL_ERROR", {
+            userMessage: "特定商取引法に基づく表記リンクの表示設定の更新に失敗しました",
+          })
+        : toActionResultFromAppResult(result);
+    }
+
+    revalidatePath("/(app)", "layout");
+
+    return ok(
+      {
+        communityId: result.data.communityId,
+        showLegalDisclosureLink: result.data.showLegalDisclosureLink,
+      },
+      {
+        message: "特定商取引法に基づく表記リンクの表示設定を更新しました",
+      }
+    );
+  } catch (error) {
+    return failFrom(error, {
+      userMessage: "特定商取引法に基づく表記リンクの表示設定の更新に失敗しました",
     });
   }
 }

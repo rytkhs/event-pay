@@ -35,6 +35,7 @@ const baseAttendance: GuestAttendanceData = {
       legalSlug: "legal-1",
       slug: "organizer-community",
       showCommunityLink: false,
+      showLegalDisclosureLink: false,
     },
     canceled_at: null,
   },
@@ -45,7 +46,7 @@ describe("GuestEventSummary", () => {
   it("設定OFFでは主催コミュニティリンクを表示しない", () => {
     render(<GuestEventSummary attendance={baseAttendance} />);
 
-    expect(screen.queryByRole("link", { name: /主催コミュニティを見る/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /コミュニティ/ })).not.toBeInTheDocument();
   });
 
   it("設定ONでは主催コミュニティリンクを表示する", () => {
@@ -64,7 +65,7 @@ describe("GuestEventSummary", () => {
       />
     );
 
-    expect(screen.getByRole("link", { name: /主催コミュニティを見る/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /コミュニティ/ })).toHaveAttribute(
       "href",
       "/c/organizer-community"
     );

@@ -102,7 +102,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       }
 
       // RPCの最小列からイベント情報を正規化
-      const eventData = this.buildEventInfoFromRpcRow(rpcRow);
+      const eventData = this.buildEventInfoFromRpcRow(rpcRow as RpcGuestGetAttendanceRow);
       const canModify = this.checkCanModify(eventData);
 
       // 成功をログに記録
@@ -185,7 +185,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         };
       }
 
-      const eventData = this.buildGuestEventFromRpcRow(rpcRow);
+      const eventData = this.buildGuestEventFromRpcRow(rpcRow as RpcGuestGetAttendanceRow);
 
       const canModify = this.checkCanModifyAttendance(eventData);
 
@@ -198,7 +198,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         resultCount: 1,
       });
 
-      const payment = this.buildGuestPaymentFromRpcRow(rpcRow);
+      const payment = this.buildGuestPaymentFromRpcRow(rpcRow as RpcGuestGetAttendanceRow);
 
       return {
         isValid: true,
@@ -364,6 +364,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
         slug: rpcRow.community_slug,
         legalSlug: rpcRow.community_legal_slug,
         showCommunityLink: rpcRow.community_show_community_link,
+        showLegalDisclosureLink: rpcRow.community_show_legal_disclosure_link,
       },
       canceled_at: rpcRow.canceled_at ?? null,
     };

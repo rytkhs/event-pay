@@ -119,6 +119,7 @@ describe("UpdateCommunityBasicInfoForm", () => {
       />
     );
 
+    await user.type(screen.getByLabelText("コミュニティ名"), " (更新)");
     await user.click(screen.getByRole("button", { name: "変更を保存" }));
 
     expect(await screen.findByRole("button", { name: /更新中/ })).toBeDisabled();
@@ -188,5 +189,101 @@ describe("CommunityProfileVisibilityForm", () => {
     expect(screen.getByText("主催者へのお問い合わせについて").parentElement).toHaveTextContent(
       "プラットフォーム内に受信箱・チャット・返信管理機能はありません。"
     );
+  });
+});
+
+describe("CommunityLegalDisclosureVisibilityForm", () => {
+  beforeAll(() => {
+    global.ResizeObserver = class ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("特商法リンク表示トグルの値を送信する", async () => {
+    const user = userEvent.setup();
+    const updateCommunityLegalDisclosureVisibilityAction = jest.fn(
+      async (_state, formData: FormData) => {
+        expect(formData.get("showLegalDisclosureLink")).toBe("true");
+        expect(formData.get("showCommunityLink")).toBeNull();
+        expect(formData.get("name")).toBeNull();
+
+        return {
+          success: true as const,
+          data: {
+            communityId: "community-1",
+            showLegalDisclosureLink: true,
+          },
+          message: "特定商取引法に基づく表記リンクの表示設定を更新しました",
+        };
+      }
+    );
+
+    const { CommunityLegalDisclosureVisibilityForm } =
+      await import("@/features/communities/components/CommunityLegalDisclosureVisibilityForm");
+
+    render(
+      <CommunityLegalDisclosureVisibilityForm
+        defaultShowLegalDisclosureLink={false}
+        updateCommunityLegalDisclosureVisibilityAction={
+          updateCommunityLegalDisclosureVisibilityAction
+        }
+      />
+    );
+
+    await user.click(
+      screen.getByRole("switch", {
+        name: "招待・ゲストページに特定商取引法に基づく表記リンクを表示",
+      })
+    );
+    await user.click(screen.getByRole("button", { name: "表示設定を保存" }));
+
+    expect(await screen.findByText("更新しました")).toBeInTheDocument();
+  });
+
+  it("特商法リンク表示トグルは変更がある場合だけ送信できる", async () => {
+    const user = userEvent.setup();
+    const updateCommunityLegalDisclosureVisibilityAction = jest.fn(async () => ({
+      success: true as const,
+      data: {
+        communityId: "community-1",
+        showLegalDisclosureLink: true,
+      },
+      message: "特定商取引法に基づく表記リンクの表示設定を更新しました",
+    }));
+
+    const { CommunityLegalDisclosureVisibilityForm } =
+      await import("@/features/communities/components/CommunityLegalDisclosureVisibilityForm");
+
+    render(
+      <CommunityLegalDisclosureVisibilityForm
+        defaultShowLegalDisclosureLink={false}
+        updateCommunityLegalDisclosureVisibilityAction={
+          updateCommunityLegalDisclosureVisibilityAction
+        }
+      />
+    );
+
+    const submitButton = screen.getByRole("button", { name: "表示設定を保存" });
+
+    expect(submitButton).toBeDisabled();
+
+    await user.click(
+      screen.getByRole("switch", {
+        name: "招待・ゲストページに特定商取引法に基づく表記リンクを表示",
+      })
+    );
+
+    expect(submitButton).toBeEnabled();
+
+    await user.click(submitButton);
+
+    expect(await screen.findByText("更新しました")).toBeInTheDocument();
+    expect(submitButton).toBeDisabled();
   });
 });

@@ -8,6 +8,10 @@ import { Separator } from "@/components/ui/separator";
 import type { CurrentCommunitySettingsReadModel } from "../server";
 
 import {
+  CommunityLegalDisclosureVisibilityForm,
+  type UpdateCommunityLegalDisclosureVisibilityFormAction,
+} from "./CommunityLegalDisclosureVisibilityForm";
+import {
   CommunityProfileVisibilityForm,
   type UpdateCommunityProfileVisibilityFormAction,
 } from "./CommunityProfileVisibilityForm";
@@ -21,6 +25,7 @@ type CurrentCommunitySettingsOverviewProps = {
   deleteCommunityAction: DeleteCommunityAction;
   settings: CurrentCommunitySettingsReadModel;
   updateCommunityBasicInfoAction: UpdateCommunityBasicInfoFormAction;
+  updateCommunityLegalDisclosureVisibilityAction: UpdateCommunityLegalDisclosureVisibilityFormAction;
   updateCommunityProfileVisibilityAction: UpdateCommunityProfileVisibilityFormAction;
 };
 
@@ -28,6 +33,7 @@ export function CurrentCommunitySettingsOverview({
   deleteCommunityAction,
   settings,
   updateCommunityBasicInfoAction,
+  updateCommunityLegalDisclosureVisibilityAction,
   updateCommunityProfileVisibilityAction,
 }: CurrentCommunitySettingsOverviewProps) {
   return (
@@ -79,7 +85,13 @@ export function CurrentCommunitySettingsOverview({
               defaultShowCommunityLink={settings.community.showCommunityLink}
               updateCommunityProfileVisibilityAction={updateCommunityProfileVisibilityAction}
             />
-            {/* <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <CommunityLegalDisclosureVisibilityForm
+              defaultShowLegalDisclosureLink={settings.community.showLegalDisclosureLink}
+              updateCommunityLegalDisclosureVisibilityAction={
+                updateCommunityLegalDisclosureVisibilityAction
+              }
+            />
+            <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0 space-y-1">
                 <p className="text-xs font-medium text-muted-foreground">
                   特定商取引法に基づく表記 URL
@@ -94,7 +106,7 @@ export function CurrentCommunitySettingsOverview({
                   開く
                 </Link>
               </Button>
-            </div> */}
+            </div>
           </div>
         </div>
       </section>

@@ -1777,7 +1777,7 @@ COMMENT ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_up
 
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") RETURNS TABLE("attendance_id" "uuid", "nickname" character varying, "email" character varying, "status" "public"."attendance_status_enum", "guest_token" character varying, "attendance_created_at" timestamp with time zone, "attendance_updated_at" timestamp with time zone, "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "event_location" character varying, "event_fee" integer, "event_capacity" integer, "event_description" "text", "event_payment_methods" "public"."payment_method_enum"[], "event_allow_payment_after_deadline" boolean, "event_grace_period_days" smallint, "community_name" character varying, "community_slug" character varying, "community_legal_slug" character varying, "community_show_community_link" boolean, "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "canceled_at" timestamp with time zone, "payment_id" "uuid", "payment_amount" integer, "payment_method" "public"."payment_method_enum", "payment_status" "public"."payment_status_enum", "payment_created_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") RETURNS TABLE("attendance_id" "uuid", "nickname" character varying, "email" character varying, "status" "public"."attendance_status_enum", "guest_token" character varying, "attendance_created_at" timestamp with time zone, "attendance_updated_at" timestamp with time zone, "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "event_location" character varying, "event_fee" integer, "event_capacity" integer, "event_description" "text", "event_payment_methods" "public"."payment_method_enum"[], "event_allow_payment_after_deadline" boolean, "event_grace_period_days" smallint, "community_name" character varying, "community_slug" character varying, "community_legal_slug" character varying, "community_show_community_link" boolean, "community_show_legal_disclosure_link" boolean, "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "canceled_at" timestamp with time zone, "payment_id" "uuid", "payment_amount" integer, "payment_method" "public"."payment_method_enum", "payment_status" "public"."payment_status_enum", "payment_created_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
@@ -1809,6 +1809,7 @@ BEGIN
     c.slug AS community_slug,
     c.legal_slug AS community_legal_slug,
     c.show_community_link AS community_show_community_link,
+    c.show_legal_disclosure_link AS community_show_legal_disclosure_link,
     e.registration_deadline,
     e.payment_deadline,
     e.canceled_at,
@@ -2013,7 +2014,7 @@ COMMENT ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid
 
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") RETURNS TABLE("id" "uuid", "community_name" character varying, "community_slug" character varying, "community_legal_slug" character varying, "community_show_community_link" boolean, "title" character varying, "date" timestamp with time zone, "location" character varying, "description" "text", "fee" integer, "capacity" integer, "payment_methods" "public"."payment_method_enum"[], "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "invite_token" character varying, "canceled_at" timestamp with time zone, "attendances_count" integer)
+CREATE OR REPLACE FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") RETURNS TABLE("id" "uuid", "community_name" character varying, "community_slug" character varying, "community_legal_slug" character varying, "community_show_community_link" boolean, "community_show_legal_disclosure_link" boolean, "title" character varying, "date" timestamp with time zone, "location" character varying, "description" "text", "fee" integer, "capacity" integer, "payment_methods" "public"."payment_method_enum"[], "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "invite_token" character varying, "canceled_at" timestamp with time zone, "attendances_count" integer)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
@@ -2025,6 +2026,7 @@ BEGIN
     c.slug AS community_slug,
     c.legal_slug AS community_legal_slug,
     c.show_community_link AS community_show_community_link,
+    c.show_legal_disclosure_link AS community_show_legal_disclosure_link,
     e.title,
     e.date,
     e.location,
@@ -2583,6 +2585,7 @@ CREATE TABLE IF NOT EXISTS "public"."communities" (
     "deleted_at" timestamp with time zone,
     "legal_slug" character varying(255) DEFAULT "public"."generate_community_slug"() NOT NULL,
     "show_community_link" boolean DEFAULT false NOT NULL,
+    "show_legal_disclosure_link" boolean DEFAULT false NOT NULL,
     CONSTRAINT "communities_soft_delete_consistency" CHECK (("is_deleted" = ("deleted_at" IS NOT NULL)))
 );
 
@@ -2609,6 +2612,10 @@ COMMENT ON COLUMN "public"."communities"."current_payout_profile_id" IS 'コミ�
 
 
 COMMENT ON COLUMN "public"."communities"."show_community_link" IS '招待ページ/ゲストページに主催コミュニティプロフィールへのリンクを表示するかどうか';
+
+
+
+COMMENT ON COLUMN "public"."communities"."show_legal_disclosure_link" IS '招待ページ/ゲストページに特定商取引法に基づく表記へのリンクを表示するかどうか';
 
 
 

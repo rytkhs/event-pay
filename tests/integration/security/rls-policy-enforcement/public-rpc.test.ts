@@ -42,6 +42,7 @@ describe("Public Event RPC", () => {
       expect((row as any).community_slug).toBe(setup.testCommunitySlug);
       expect((row as any).community_legal_slug).toBe(setup.testCommunityLegalSlug);
       expect((row as any).community_show_community_link).toBe(false);
+      expect((row as any).community_show_legal_disclosure_link).toBe(false);
       expect(row).not.toHaveProperty("created_by");
       expect(row).not.toHaveProperty("organizer_name");
     }

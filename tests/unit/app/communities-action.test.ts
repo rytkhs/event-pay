@@ -11,6 +11,7 @@ const mockCreateServerActionSupabaseClient = jest.fn();
 const mockCreateCommunity = jest.fn();
 const mockDeleteCommunity = jest.fn();
 const mockUpdateCommunityBasicInfo = jest.fn();
+const mockUpdateCommunityLegalDisclosureVisibility = jest.fn();
 const mockUpdateCommunityProfileVisibility = jest.fn();
 const mockEnsureFeaturesRegistered = jest.fn();
 const mockRevalidatePath = jest.fn();
@@ -45,6 +46,7 @@ jest.mock("@features/communities/server", () => {
     createCommunity: mockCreateCommunity,
     deleteCommunity: mockDeleteCommunity,
     updateCommunityBasicInfo: mockUpdateCommunityBasicInfo,
+    updateCommunityLegalDisclosureVisibility: mockUpdateCommunityLegalDisclosureVisibility,
     updateCommunityProfileVisibility: mockUpdateCommunityProfileVisibility,
   };
 });

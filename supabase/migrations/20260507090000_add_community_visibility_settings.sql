@@ -1,10 +1,14 @@
 GRANT CREATE ON SCHEMA public TO app_definer;
 
 ALTER TABLE public.communities
-  ADD COLUMN show_community_link boolean NOT NULL DEFAULT false;
+  ADD COLUMN show_community_link boolean NOT NULL DEFAULT false,
+  ADD COLUMN show_legal_disclosure_link boolean NOT NULL DEFAULT false;
 
 COMMENT ON COLUMN public.communities.show_community_link IS
   '招待ページ/ゲストページに主催コミュニティプロフィールへのリンクを表示するかどうか';
+
+COMMENT ON COLUMN public.communities.show_legal_disclosure_link IS
+  '招待ページ/ゲストページに特定商取引法に基づく表記へのリンクを表示するかどうか';
 
 DROP FUNCTION IF EXISTS public.rpc_public_get_event(text);
 
@@ -15,6 +19,7 @@ RETURNS TABLE (
   community_slug character varying(255),
   community_legal_slug character varying(255),
   community_show_community_link boolean,
+  community_show_legal_disclosure_link boolean,
   title character varying(255),
   date timestamptz,
   location character varying(500),
@@ -41,6 +46,7 @@ BEGIN
     c.slug AS community_slug,
     c.legal_slug AS community_legal_slug,
     c.show_community_link AS community_show_community_link,
+    c.show_legal_disclosure_link AS community_show_legal_disclosure_link,
     e.title,
     e.date,
     e.location,
@@ -99,6 +105,7 @@ RETURNS TABLE (
   community_slug character varying(255),
   community_legal_slug character varying(255),
   community_show_community_link boolean,
+  community_show_legal_disclosure_link boolean,
   registration_deadline timestamptz,
   payment_deadline timestamptz,
   canceled_at timestamptz,
@@ -141,6 +148,7 @@ BEGIN
     c.slug AS community_slug,
     c.legal_slug AS community_legal_slug,
     c.show_community_link AS community_show_community_link,
+    c.show_legal_disclosure_link AS community_show_legal_disclosure_link,
     e.registration_deadline,
     e.payment_deadline,
     e.canceled_at,

@@ -11,6 +11,7 @@ type CommunitySettingsRow = {
   legal_slug: string;
   name: string;
   show_community_link: boolean;
+  show_legal_disclosure_link: boolean;
   slug: string;
 };
 
@@ -21,6 +22,7 @@ export type CurrentCommunitySettingsReadModel = {
     legalSlug: string;
     name: string;
     showCommunityLink: boolean;
+    showLegalDisclosureLink: boolean;
     slug: string;
   };
   legalPageUrl: string;
@@ -36,7 +38,9 @@ export async function getCurrentCommunitySettings(
 ): Promise<AppResult<CurrentCommunitySettingsReadModel | null>> {
   const { data: community, error: communityError } = await supabase
     .from("communities")
-    .select("id, name, description, slug, legal_slug, show_community_link")
+    .select(
+      "id, name, description, slug, legal_slug, show_community_link, show_legal_disclosure_link"
+    )
     .eq("id", currentCommunityId)
     .eq("created_by", ownerUserId)
     .eq("is_deleted", false)
@@ -68,6 +72,7 @@ export async function getCurrentCommunitySettings(
       legalSlug: community.legal_slug,
       name: community.name,
       showCommunityLink: community.show_community_link,
+      showLegalDisclosureLink: community.show_legal_disclosure_link,
       slug: community.slug,
     },
     legalPageUrl: getPublicUrl(`/tokushoho/${community.legal_slug}`),

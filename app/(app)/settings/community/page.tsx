@@ -13,6 +13,7 @@ import { getCurrentCommunitySettings } from "@features/communities/server";
 import {
   deleteCommunityAction,
   updateCommunityBasicInfoAction,
+  updateCommunityLegalDisclosureVisibilityAction,
   updateCommunityProfileVisibilityAction,
 } from "@/app/(app)/actions/communities";
 
@@ -49,6 +50,9 @@ export default async function CommunitySettingsPage() {
       deleteCommunityAction={deleteCommunityAction}
       settings={settings.data}
       updateCommunityBasicInfoAction={updateCommunityBasicInfoAction}
+      updateCommunityLegalDisclosureVisibilityAction={
+        updateCommunityLegalDisclosureVisibilityAction
+      }
       updateCommunityProfileVisibilityAction={updateCommunityProfileVisibilityAction}
     />
   );

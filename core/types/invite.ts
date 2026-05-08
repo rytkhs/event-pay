@@ -3,10 +3,14 @@ import type { EventStatus, PaymentMethod } from "@core/types/statuses";
 import type { Database } from "@/types/database";
 
 export type RpcPublicGetEventRow =
-  Database["public"]["Functions"]["rpc_public_get_event"]["Returns"][number];
+  Database["public"]["Functions"]["rpc_public_get_event"]["Returns"][number] & {
+    community_show_legal_disclosure_link: boolean;
+  };
 
 export type RpcGuestGetAttendanceRow =
-  Database["public"]["Functions"]["rpc_guest_get_attendance"]["Returns"][number];
+  Database["public"]["Functions"]["rpc_guest_get_attendance"]["Returns"][number] & {
+    community_show_legal_disclosure_link: boolean;
+  };
 
 export type InviteValidationErrorCode =
   | "INVALID_TOKEN"
@@ -22,6 +26,7 @@ export interface InviteEventDetail {
     name: string;
     legalSlug: string;
     showCommunityLink: boolean;
+    showLegalDisclosureLink: boolean;
     slug: string;
   };
   title: string;

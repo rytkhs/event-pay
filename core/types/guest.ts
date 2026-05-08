@@ -35,6 +35,7 @@ export interface GuestAttendanceData {
       name: string;
       legalSlug: string;
       showCommunityLink: boolean;
+      showLegalDisclosureLink: boolean;
       slug: string;
     };
     canceled_at: string | null;

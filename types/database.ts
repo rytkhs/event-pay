@@ -81,6 +81,7 @@ export type Database = {
           legal_slug: string;
           name: string;
           show_community_link: boolean;
+          show_legal_disclosure_link: boolean;
           slug: string;
           updated_at: string;
         };
@@ -95,6 +96,7 @@ export type Database = {
           legal_slug?: string;
           name: string;
           show_community_link?: boolean;
+          show_legal_disclosure_link?: boolean;
           slug?: string;
           updated_at?: string;
         };
@@ -109,6 +111,7 @@ export type Database = {
           legal_slug?: string;
           name?: string;
           show_community_link?: boolean;
+          show_legal_disclosure_link?: boolean;
           slug?: string;
           updated_at?: string;
         };
@@ -1050,6 +1053,7 @@ export type Database = {
           community_legal_slug: string;
           community_name: string;
           community_show_community_link: boolean;
+          community_show_legal_disclosure_link: boolean;
           community_slug: string;
           email: string;
           event_allow_payment_after_deadline: boolean;
@@ -1124,6 +1128,7 @@ export type Database = {
           community_legal_slug: string;
           community_name: string;
           community_show_community_link: boolean;
+          community_show_legal_disclosure_link: boolean;
           community_slug: string;
           date: string;
           description: string;

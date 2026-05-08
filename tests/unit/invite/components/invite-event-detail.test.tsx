@@ -40,6 +40,7 @@ describe("InviteEventDetail", () => {
       legalSlug: "legal-1",
       slug: "organizer-community",
       showCommunityLink: false,
+      showLegalDisclosureLink: false,
     },
     title: "Test Event",
     date: "2099-01-01T12:00:00.000Z",

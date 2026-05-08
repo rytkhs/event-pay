@@ -11,6 +11,7 @@ function createSupabaseMock(options: { community?: { data: unknown; error: unkno
         slug: "community-slug",
         legal_slug: "legal-slug",
         show_community_link: true,
+        show_legal_disclosure_link: false,
       },
       error: null,
     }
@@ -74,6 +75,7 @@ describe("getCurrentCommunitySettings", () => {
           slug: "community-slug",
           legalSlug: "legal-slug",
           showCommunityLink: true,
+          showLegalDisclosureLink: false,
         },
         legalPageUrl: "https://example.com/tokushoho/legal-slug",
         publicPageUrl: "https://example.com/c/community-slug",
@@ -82,7 +84,7 @@ describe("getCurrentCommunitySettings", () => {
     });
     expect(from).toHaveBeenCalledWith("communities");
     expect(communitySelect).toHaveBeenCalledWith(
-      "id, name, description, slug, legal_slug, show_community_link"
+      "id, name, description, slug, legal_slug, show_community_link, show_legal_disclosure_link"
     );
     expect(communityEqId).toHaveBeenCalledWith("id", "community-1");
     expect(communityEqCreatedBy).toHaveBeenCalledWith("created_by", "user-1");
