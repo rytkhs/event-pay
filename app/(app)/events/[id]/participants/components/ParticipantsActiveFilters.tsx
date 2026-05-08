@@ -41,7 +41,7 @@ export function ParticipantsActiveFilters({
   if (!isFreeEvent && query.paymentMethod) {
     chips.push({
       key: "paymentMethod",
-      label: query.paymentMethod === "cash" ? "現金決済" : "オンライン決済",
+      label: query.paymentMethod === "cash" ? "現金" : "オンライン",
       clearPatch: { paymentMethod: undefined },
     });
   }

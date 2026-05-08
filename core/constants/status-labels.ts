@@ -8,8 +8,8 @@ export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  stripe: "オンライン決済",
-  cash: "現金決済",
+  stripe: "オンライン",
+  cash: "現金",
 };
 
 export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {

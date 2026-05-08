@@ -190,7 +190,7 @@ export function buildParticipantsColumns(opts: {
                   variant="outline"
                   onClick={() => hasPaymentId(p) && onReceive(p.payment_id)}
                   disabled={!!isUpdating}
-                  aria-label={`${p.nickname}の現金決済を受領済みにする`}
+                  aria-label={`${p.nickname}を受領済みにする`}
                   className="rounded-xl border-emerald-500/30 bg-emerald-500/5 text-emerald-700 hover:bg-emerald-500/15 hover:border-emerald-500/40 text-[12px] font-bold h-8 px-3 transition-all duration-200"
                   title="受領済みにする"
                 >

@@ -129,7 +129,7 @@ export function ParticipantsActionBarV2({
 
       const data = result.data as AdminAddAttendanceResult;
       const successDescription = isPayingEvent
-        ? "参加者を追加しました。現金決済（未払い）として記録されました。"
+        ? "参加者を追加しました。現金（未集金）として記録されました。"
         : data.canOnlinePay
           ? "参加者を追加しました（現在オンライン決済が可能です）"
           : "参加者を追加しました（オンライン決済は現在できません）";

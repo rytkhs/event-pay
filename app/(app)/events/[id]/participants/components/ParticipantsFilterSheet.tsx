@@ -188,8 +188,8 @@ export function ParticipantsFilterSheet({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全て</SelectItem>
-                  <SelectItem value="stripe">オンライン決済</SelectItem>
-                  <SelectItem value="cash">現金決済</SelectItem>
+                  <SelectItem value="stripe">オンライン</SelectItem>
+                  <SelectItem value="cash">現金</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -48,15 +48,11 @@ export const ParticipantTableMock: React.FC = () => {
   ]);
 
   const handleReceive = (id: number) => {
-    setParticipants((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: "済" as const } : p))
-    );
+    setParticipants((prev) => prev.map((p) => (p.id === id ? { ...p, status: "済" as const } : p)));
   };
 
   const handleCancel = (id: number) => {
-    setParticipants((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: "未" as const } : p))
-    );
+    setParticipants((prev) => prev.map((p) => (p.id === id ? { ...p, status: "未" as const } : p)));
   };
 
   return (
@@ -93,7 +89,8 @@ export const ParticipantTableMock: React.FC = () => {
       {/* Rows */}
       <div className="divide-y divide-slate-50">
         {participants.map((participant) => {
-          const isActionRequired = participant.paymentMethod === "cash" && participant.status === "未";
+          const isActionRequired =
+            participant.paymentMethod === "cash" && participant.status === "未";
 
           const rowClassName = isActionRequired
             ? "bg-red-50/60 border-l-2 !border-l-red-500"
@@ -108,13 +105,15 @@ export const ParticipantTableMock: React.FC = () => {
                 {participant.name}
               </div>
               <div className="col-span-2 flex justify-center">
-                <span className={`border px-1.5 py-0.5 rounded-[5px] text-[9px] font-semibold tracking-wide ${
-                  participant.attendance === "参加"
-                    ? "text-emerald-700 border-emerald-500/20 bg-emerald-500/10"
-                    : participant.attendance === "未定"
-                      ? "text-amber-700 border-amber-500/30 bg-amber-500/10"
-                      : "text-rose-700 border-rose-500/20 bg-rose-500/10"
-                }`}>
+                <span
+                  className={`border px-1.5 py-0.5 rounded-[5px] text-[9px] font-semibold tracking-wide ${
+                    participant.attendance === "参加"
+                      ? "text-emerald-700 border-emerald-500/20 bg-emerald-500/10"
+                      : participant.attendance === "未定"
+                        ? "text-amber-700 border-amber-500/30 bg-amber-500/10"
+                        : "text-rose-700 border-rose-500/20 bg-rose-500/10"
+                  }`}
+                >
                   {participant.attendance}
                 </span>
               </div>
@@ -159,7 +158,7 @@ export const ParticipantTableMock: React.FC = () => {
                     <button
                       onClick={() => handleReceive(participant.id)}
                       className="flex items-center gap-0.5 border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 text-[9px] font-bold px-1.5 py-0.5 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-sm"
-                      title="現金決済を受領済みにする"
+                      title="現金を受領済みにする"
                     >
                       <Check className="h-2.5 w-2.5" />
                       受領
