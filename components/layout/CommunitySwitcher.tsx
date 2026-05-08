@@ -12,7 +12,6 @@ import {
   Loader2,
   LogOut,
   Plus,
-  Settings,
 } from "lucide-react";
 
 import type { AppWorkspaceShellData } from "@core/community/app-workspace";
@@ -206,16 +205,6 @@ export function CommunitySwitcher({
             <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               アカウント
             </p>
-            <DropdownMenuItem
-              asChild
-              className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-foreground transition-colors focus:bg-muted/60 focus:text-foreground"
-            >
-              <Link href="/settings" onClick={() => setIsMenuOpen(false)}>
-                <Settings className="h-4 w-4 text-muted-foreground" />
-                設定
-              </Link>
-            </DropdownMenuItem>
-
             <DropdownMenuItem
               onSelect={(event) => {
                 event.preventDefault();

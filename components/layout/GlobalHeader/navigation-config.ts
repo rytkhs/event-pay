@@ -42,6 +42,12 @@ export const navigationConfig: NavigationConfig = {
       icon: createElement(Calendar),
       exactMatch: false,
     },
+    {
+      label: "設定",
+      href: "/settings",
+      icon: createElement(Settings),
+      exactMatch: false,
+    },
   ],
 
   /**
