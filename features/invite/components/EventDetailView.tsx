@@ -131,47 +131,51 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
             </div>
           )}
 
-          {/* Capacity */}
-          <div className="flex items-start gap-3 sm:col-span-2">
-            <div className="bg-slate-50 p-2 rounded-full shrink-0">
-              <Users className="w-4 h-4 text-slate-600" />
-            </div>
-            <div className="flex-1">
-              <div className="flex justify-between items-center mb-1">
-                <p className="text-xs text-slate-500 font-medium">
-                  {capacityStatus.participantCountVisible ? "参加人数 / 定員" : "定員"}
-                </p>
-                <p
-                  className={`text-sm font-bold ${isNearCapacity ? "text-warning" : "text-slate-700"}`}
-                >
-                  {capacityStatus.participantCountVisible
-                    ? `${capacityStatus.attendingCount} / ${
-                        isCapacitySet ? `${capacityStatus.capacity}名` : "制限なし"
-                      }`
-                    : isCapacitySet
-                      ? `${capacityStatus.capacity}名`
-                      : "制限なし"}
-                </p>
+          {/* Capacity & Participant Count */}
+          {(isCapacitySet || capacityStatus.participantCountVisible) && (
+            <div className="flex items-start gap-3 sm:col-span-2">
+              <div className="bg-slate-50 p-2 rounded-full shrink-0">
+                <Users className="w-4 h-4 text-slate-600" />
               </div>
-              {capacityStatus.participantCountVisible &&
-                isCapacitySet &&
-                capacityStatus.capacity && (
-                  <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1.5">
-                    <div
-                      className={`h-1.5 rounded-full ${isNearCapacity ? "bg-warning" : "bg-primary"}`}
-                      style={{
-                        width: `${Math.min((capacityStatus.attendingCount / capacityStatus.capacity) * 100, 100)}%`,
-                      }}
-                    ></div>
-                  </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-center mb-1">
+                  <p className="text-xs text-slate-500 font-medium">
+                    {capacityStatus.participantCountVisible && !isCapacitySet
+                      ? "参加人数"
+                      : capacityStatus.participantCountVisible
+                        ? "参加人数 / 定員"
+                        : "定員"}
+                  </p>
+                  <p
+                    className={`text-sm font-bold ${isNearCapacity ? "text-warning" : "text-slate-700"}`}
+                  >
+                    {capacityStatus.participantCountVisible && !isCapacitySet
+                      ? `${capacityStatus.attendingCount}名`
+                      : capacityStatus.participantCountVisible
+                        ? `${capacityStatus.attendingCount} / ${capacityStatus.capacity}名`
+                        : `${capacityStatus.capacity}名`}
+                  </p>
+                </div>
+                {capacityStatus.participantCountVisible &&
+                  isCapacitySet &&
+                  capacityStatus.capacity && (
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1.5">
+                      <div
+                        className={`h-1.5 rounded-full ${isNearCapacity ? "bg-warning" : "bg-primary"}`}
+                        style={{
+                          width: `${Math.min((capacityStatus.attendingCount / capacityStatus.capacity) * 100, 100)}%`,
+                        }}
+                      ></div>
+                    </div>
+                  )}
+                {isNearCapacity && (
+                  <p className="text-[10px] text-warning mt-1.5 flex items-center font-medium">
+                    <AlertCircle className="w-3 h-3 mr-1" /> 残りわずかです
+                  </p>
                 )}
-              {isNearCapacity && (
-                <p className="text-[10px] text-warning mt-1.5 flex items-center font-medium">
-                  <AlertCircle className="w-3 h-3 mr-1" /> 残りわずかです
-                </p>
-              )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
         {event.description && (
           <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap pt-4 border-t border-slate-100">
