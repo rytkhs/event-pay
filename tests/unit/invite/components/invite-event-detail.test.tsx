@@ -48,12 +48,20 @@ describe("InviteEventDetail", () => {
     description: null,
     fee: 1000,
     capacity: 10,
+    show_capacity: true,
+    show_participant_count: false,
     payment_methods: ["cash"],
     registration_deadline: null,
     payment_deadline: null,
     status: "upcoming",
     invite_token: "inv_12345678901234567890123456789012",
     attendances_count: 0,
+    is_capacity_reached: false,
+    capacityStatus: {
+      capacityVisible: true,
+      participantCountVisible: false,
+      capacity: 10,
+    },
   };
 
   const mockInitialRegistration: RegisterParticipationData = {

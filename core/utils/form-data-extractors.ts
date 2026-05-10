@@ -147,6 +147,7 @@ interface EventCreateFormData {
   location?: string;
   description?: string;
   capacity?: string;
+  show_capacity?: boolean;
   show_participant_count?: boolean;
   registration_deadline: string;
   payment_deadline?: string;
@@ -165,6 +166,7 @@ export function extractEventCreateFormData(formData: FormData): EventCreateFormD
     location: extractor.extractOptionalValue("location"),
     description: extractor.extractOptionalValue("description"),
     capacity: extractor.extractOptionalValue("capacity"),
+    show_capacity: extractor.extractBooleanValue("show_capacity"),
     show_participant_count: extractor.extractBooleanValue("show_participant_count"),
     registration_deadline: extractor.extractRequiredValue("registration_deadline"),
     payment_deadline: extractor.extractOptionalValue("payment_deadline"),
@@ -189,6 +191,7 @@ export function extractEventUpdateFormData(formData: FormData): Partial<UpdateEv
     location: extractClearableValue(formData, "location"),
     description: extractClearableValue(formData, "description"),
     capacity: extractClearableValue(formData, "capacity"),
+    show_capacity: extractOptionalBooleanValue(formData, "show_capacity"),
     show_participant_count: extractOptionalBooleanValue(formData, "show_participant_count"),
     registration_deadline: extractOptionalValue(formData, "registration_deadline"),
     payment_deadline: extractClearableValue(formData, "payment_deadline"),

@@ -30,6 +30,7 @@ export const GuestEventSummary: React.FC<GuestEventSummaryProps> = ({ attendance
   const regDeadline = event.registration_deadline
     ? formatUtcToJstByType(event.registration_deadline, "japanese")
     : null;
+  const showCapacity = event.show_capacity && event.capacity !== null;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
@@ -100,7 +101,7 @@ export const GuestEventSummary: React.FC<GuestEventSummaryProps> = ({ attendance
           </div>
 
           {/* Capacity */}
-          {event.capacity && (
+          {showCapacity && (
             <div className="flex items-start gap-3 sm:col-span-2">
               <div className="bg-slate-50 p-2 rounded-full shrink-0">
                 <Users className="w-4 h-4 text-slate-600" />

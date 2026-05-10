@@ -1,8 +1,12 @@
 ALTER TABLE public.events
-  ADD COLUMN show_participant_count boolean NOT NULL DEFAULT false;
+  ADD COLUMN show_participant_count boolean NOT NULL DEFAULT false,
+  ADD COLUMN show_capacity boolean NOT NULL DEFAULT false;
 
 COMMENT ON COLUMN public.events.show_participant_count IS
   '招待ページに現在の参加人数を表示するかどうか';
+
+COMMENT ON COLUMN public.events.show_capacity IS
+  '参加者向けページに定員を表示するかどうか';
 
 GRANT CREATE ON SCHEMA public TO app_definer;
 
@@ -22,6 +26,7 @@ RETURNS TABLE (
   description text,
   fee integer,
   capacity integer,
+  show_capacity boolean,
   show_participant_count boolean,
   payment_methods public.payment_method_enum[],
   registration_deadline timestamptz,
@@ -50,6 +55,7 @@ BEGIN
     e.description,
     e.fee,
     e.capacity,
+    e.show_capacity,
     e.show_participant_count,
     e.payment_methods,
     e.registration_deadline,
@@ -95,6 +101,7 @@ RETURNS TABLE (
   event_location character varying(500),
   event_fee integer,
   event_capacity integer,
+  event_show_capacity boolean,
   event_show_participant_count boolean,
   event_description text,
   event_payment_methods public.payment_method_enum[],
@@ -139,6 +146,7 @@ BEGIN
     e.location,
     e.fee,
     e.capacity,
+    e.show_capacity,
     e.show_participant_count,
     e.description,
     e.payment_methods,

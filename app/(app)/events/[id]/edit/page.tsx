@@ -38,6 +38,7 @@ type EventEditQueryRow = Pick<
   | "payment_deadline"
   | "allow_payment_after_deadline"
   | "grace_period_days"
+  | "show_capacity"
   | "show_participant_count"
   | "created_at"
   | "updated_at"
@@ -101,6 +102,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
       payment_deadline,
       allow_payment_after_deadline,
       grace_period_days,
+      show_capacity,
       show_participant_count,
       created_at,
       updated_at,

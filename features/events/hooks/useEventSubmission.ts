@@ -42,6 +42,7 @@ interface FormErrors {
   date?: string;
   fee?: string;
   capacity?: string;
+  show_capacity?: string;
   payment_methods?: string;
   registration_deadline?: string;
   payment_deadline?: string;
@@ -72,6 +73,7 @@ export function useEventSubmission({
       "date",
       "fee",
       "capacity",
+      "show_capacity",
       "payment_methods",
       "registration_deadline",
       "payment_deadline",
@@ -229,6 +231,9 @@ export function useEventSubmission({
           break;
         case "capacity":
           submissionData.capacity = value as string;
+          break;
+        case "show_capacity":
+          submissionData.show_capacity = value as boolean;
           break;
         case "show_participant_count":
           submissionData.show_participant_count = value as boolean;

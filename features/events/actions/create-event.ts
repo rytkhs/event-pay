@@ -38,6 +38,7 @@ type FormDataFields = {
   location?: string;
   description?: string;
   capacity?: string;
+  show_capacity?: boolean;
   show_participant_count?: boolean;
   registration_deadline: string;
   payment_deadline?: string;
@@ -393,6 +394,7 @@ function buildEventData(
   }
 ): EventInsert {
   const fee = Number(validatedData.fee);
+  const capacity = parseCapacityLocal(validatedData.capacity);
 
   return {
     id: params.eventId,
@@ -403,7 +405,8 @@ function buildEventData(
     payment_methods: fee === 0 ? [] : (validatedData.payment_methods as PaymentMethod[]),
     location: validatedData.location ?? null,
     description: validatedData.description ?? null,
-    capacity: parseCapacityLocal(validatedData.capacity),
+    capacity,
+    show_capacity: capacity !== null ? Boolean(validatedData.show_capacity) : false,
     show_participant_count: Boolean(validatedData.show_participant_count),
     registration_deadline: convertDatetimeLocalToIso(validatedData.registration_deadline as string),
     // 無料イベント（fee=0）の場合はオンライン支払い期限も強制的にnullに設定

@@ -106,6 +106,8 @@ export const createEventSchema = z
       .transform((val) => (val ? Number(val) : null))
       .optional(),
 
+    show_capacity: z.boolean().optional().default(false),
+
     show_participant_count: z.boolean().optional().default(true),
 
     registration_deadline: z
@@ -320,6 +322,8 @@ export const updateEventSchema = z
       .transform((val) => (val ? Number(val) : null))
       .optional(),
 
+    show_capacity: z.boolean().optional(),
+
     show_participant_count: z.boolean().optional(),
 
     registration_deadline: z
@@ -469,6 +473,7 @@ export interface EventFormData {
   date: string;
   fee: string;
   capacity: string;
+  show_capacity: boolean;
   show_participant_count: boolean;
   payment_methods: string[];
   registration_deadline: string;

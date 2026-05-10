@@ -35,6 +35,7 @@ export interface InviteEventDetail {
   description: string | null;
   fee: number;
   capacity: number | null;
+  show_capacity: boolean;
   show_participant_count: boolean;
   payment_methods: PaymentMethod[];
   registration_deadline: string | null;
@@ -45,11 +46,13 @@ export interface InviteEventDetail {
   is_capacity_reached: boolean;
   capacityStatus:
     | {
+        capacityVisible: boolean;
         participantCountVisible: true;
         attendingCount: number;
         capacity: number | null;
       }
     | {
+        capacityVisible: boolean;
         participantCountVisible: false;
         capacity: number | null;
       };

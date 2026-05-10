@@ -177,6 +177,7 @@ export function useEventChanges({
           );
 
         case "allow_payment_after_deadline":
+        case "show_capacity":
         case "show_participant_count":
           // boolean として比較
           const oldBool = Boolean(oldValue);
@@ -242,6 +243,12 @@ export function useEventChanges({
         fieldName: "参加人数の表示",
       },
       {
+        field: "show_capacity",
+        oldValue: event.show_capacity,
+        newValue: formData.show_capacity,
+        fieldName: "定員の表示",
+      },
+      {
         field: "payment_methods",
         oldValue: event.payment_methods || [],
         newValue: formData.payment_methods || [],
@@ -299,7 +306,7 @@ export function useEventChanges({
         } else if (field === "allow_payment_after_deadline") {
           displayOldValue = Boolean(oldValue) ? "許可" : "禁止";
           displayNewValue = Boolean(newValue) ? "許可" : "禁止";
-        } else if (field === "show_participant_count") {
+        } else if (field === "show_capacity" || field === "show_participant_count") {
           displayOldValue = Boolean(oldValue) ? "表示" : "非表示";
           displayNewValue = Boolean(newValue) ? "表示" : "非表示";
         } else if (field === "grace_period_days") {
@@ -393,6 +400,7 @@ export function useEventChanges({
           "fee",
           "payment_methods",
           "capacity",
+          "show_capacity",
           "show_participant_count",
           "allow_payment_after_deadline",
           "grace_period_days",
@@ -429,6 +437,9 @@ export function useEventChanges({
           break;
         case "show_participant_count":
           revertData.show_participant_count = event.show_participant_count ?? true;
+          break;
+        case "show_capacity":
+          revertData.show_capacity = event.show_capacity;
           break;
         case "date":
           revertData.date = formatUtcToDatetimeLocal(event.date);

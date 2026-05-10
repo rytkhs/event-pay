@@ -46,6 +46,7 @@ export interface Event {
   payment_deadline: string | null;
   allow_payment_after_deadline: boolean;
   grace_period_days: number;
+  show_capacity: boolean;
   show_participant_count: boolean;
   created_at: string;
   updated_at: string;

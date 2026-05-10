@@ -14,11 +14,12 @@ interface EventDetailViewProps {
 export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
   const { capacityStatus } = event;
   const isCapacitySet = capacityStatus.capacity !== null && capacityStatus.capacity > 0;
+  const isCapacityVisible = capacityStatus.capacityVisible && isCapacitySet;
   const attendingCount = capacityStatus.participantCountVisible
     ? capacityStatus.attendingCount
     : null;
   const isNearCapacity =
-    isCapacitySet && capacityStatus.capacity && attendingCount !== null
+    isCapacityVisible && capacityStatus.capacity && attendingCount !== null
       ? capacityStatus.capacity - attendingCount <= 5 &&
         capacityStatus.capacity - attendingCount > 0
       : false;
@@ -132,7 +133,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
           )}
 
           {/* Capacity & Participant Count */}
-          {(isCapacitySet || capacityStatus.participantCountVisible) && (
+          {(isCapacityVisible || capacityStatus.participantCountVisible) && (
             <div className="flex items-start gap-3 sm:col-span-2">
               <div className="bg-slate-50 p-2 rounded-full shrink-0">
                 <Users className="w-4 h-4 text-slate-600" />
@@ -140,24 +141,24 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
               <div className="flex-1">
                 <div className="flex justify-between items-center mb-1">
                   <p className="text-xs text-slate-500 font-medium">
-                    {capacityStatus.participantCountVisible && !isCapacitySet
+                    {capacityStatus.participantCountVisible && !isCapacityVisible
                       ? "参加人数"
-                      : capacityStatus.participantCountVisible
+                      : capacityStatus.participantCountVisible && isCapacityVisible
                         ? "参加人数 / 定員"
                         : "定員"}
                   </p>
                   <p
                     className={`text-sm font-bold ${isNearCapacity ? "text-warning" : "text-slate-700"}`}
                   >
-                    {capacityStatus.participantCountVisible && !isCapacitySet
+                    {capacityStatus.participantCountVisible && !isCapacityVisible
                       ? `${capacityStatus.attendingCount}名`
-                      : capacityStatus.participantCountVisible
+                      : capacityStatus.participantCountVisible && isCapacityVisible
                         ? `${capacityStatus.attendingCount} / ${capacityStatus.capacity}名`
                         : `${capacityStatus.capacity}名`}
                   </p>
                 </div>
                 {capacityStatus.participantCountVisible &&
-                  isCapacitySet &&
+                  isCapacityVisible &&
                   capacityStatus.capacity && (
                     <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1.5">
                       <div

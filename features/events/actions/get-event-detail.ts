@@ -24,6 +24,7 @@ type EventDetailQueryRow = Pick<
   | "payment_methods"
   | "allow_payment_after_deadline"
   | "grace_period_days"
+  | "show_capacity"
   | "show_participant_count"
   | "created_at"
   | "updated_at"
@@ -85,6 +86,7 @@ export async function getEventDetailAction(
         payment_methods,
         allow_payment_after_deadline,
         grace_period_days,
+        show_capacity,
         show_participant_count,
         created_at,
         updated_at,
@@ -161,6 +163,7 @@ export async function getEventDetailAction(
       payment_deadline: eventDetail.payment_deadline,
       allow_payment_after_deadline: eventDetail.allow_payment_after_deadline,
       grace_period_days: eventDetail.grace_period_days,
+      show_capacity: eventDetail.show_capacity,
       show_participant_count: eventDetail.show_participant_count,
       created_at: eventDetail.created_at,
       updated_at: eventDetail.updated_at,

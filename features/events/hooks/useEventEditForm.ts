@@ -75,6 +75,7 @@ export function useEventEditForm({
       date: formatUtcToDatetimeLocal(event.date),
       fee: event.fee?.toString() || "0",
       capacity: event.capacity?.toString() || "",
+      show_capacity: event.show_capacity,
       show_participant_count: event.show_participant_count ?? true,
       payment_methods: event.payment_methods || [],
       registration_deadline: formatUtcToDatetimeLocal(event.registration_deadline),
@@ -95,6 +96,7 @@ export function useEventEditForm({
 
   // リアルタイムでフォーム値を監視
   const watchedValues = form.watch();
+  const watchedCapacity = form.watch("capacity");
 
   // 参加費をリアルタイムで監視
   const watchedFee = form.watch("fee");
@@ -104,6 +106,16 @@ export function useEventEditForm({
 
   // 決済方法をリアルタイムで監視
   const watchedPaymentMethods = form.watch("payment_methods");
+
+  useEffect(() => {
+    if (!watchedCapacity?.trim()) {
+      form.setValue("show_capacity", false, {
+        shouldDirty: true,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
+    }
+  }, [form, watchedCapacity]);
 
   // 無料イベントの場合は決済方法をクリア
   useEffect(() => {
@@ -166,6 +178,7 @@ export function useEventEditForm({
       date: watchedValues.date || "",
       fee: (watchedValues.fee || "").toString(), // 文字列として統一
       capacity: (watchedValues.capacity || "").toString(), // 文字列として統一
+      show_capacity: watchedValues.show_capacity ?? false,
       show_participant_count: watchedValues.show_participant_count ?? true,
       payment_methods: watchedValues.payment_methods || [],
       registration_deadline: watchedValues.registration_deadline || "",
@@ -231,6 +244,7 @@ export function useEventEditForm({
       date: data.date,
       fee: data.fee.toString(), // 文字列として統一
       capacity: data.capacity?.toString() || "", // 文字列として統一
+      show_capacity: data.show_capacity ?? false,
       show_participant_count: data.show_participant_count ?? true,
       payment_methods: data.payment_methods,
       registration_deadline: data.registration_deadline || "",

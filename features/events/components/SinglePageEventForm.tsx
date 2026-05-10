@@ -102,7 +102,9 @@ function SinglePageEventForm({
 }: SinglePageEventFormProps): JSX.Element {
   useMobileBottomOverlay(true);
 
-  const { form, onSubmit, isPending, isFreeEvent } = useEventForm({ createEventAction });
+  const { form, onSubmit, isPending, isFreeEvent } = useEventForm({
+    createEventAction,
+  });
 
   // 決済方法の選択状態
   const paymentMethods = form.watch("payment_methods");
@@ -282,6 +284,36 @@ function SinglePageEventForm({
                   )}
                 />
 
+                {watchedCapacity && watchedCapacity.trim() !== "" && (
+                  <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                    <FormField
+                      control={form.control}
+                      name="show_capacity"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center gap-3">
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={isPending}
+                            />
+                          </FormControl>
+                          <div className="flex flex-col gap-0.5 leading-none">
+                            <FormLabel className="text-sm font-medium">
+                              参加者にイベントの定員を表示する
+                            </FormLabel>
+                          {field.value && (
+                            <FormDescription className="text-xs animate-in fade-in duration-200">
+                              招待・ゲストページに定員を表示します
+                            </FormDescription>
+                          )}
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
                 <FormField
                   control={form.control}
                   name="show_participant_count"
@@ -296,19 +328,20 @@ function SinglePageEventForm({
                       </FormControl>
                       <div className="flex flex-col gap-0.5 leading-none">
                         <FormLabel className="text-sm font-medium">
-                          参加人数を招待ページに表示
+                          参加者に現在の参加人数を表示する
                         </FormLabel>
                         {field.value && (
                           <FormDescription className="text-xs animate-in fade-in duration-200">
                             {watchedCapacity && watchedCapacity.trim() !== ""
-                              ? `参加者向けに「○名 / ${watchedCapacity}名」と参加状況バーを表示します`
-                              : "参加者向けに現在の参加人数を表示します"}
+                              ? `招待ページに「○名 / ${watchedCapacity}名」と参加状況バーを表示します`
+                              : "招待ページに現在の参加人数を表示します"}
                           </FormDescription>
                         )}
                       </div>
                     </FormItem>
                   )}
                 />
+
               </FormSection>
 
               {/* ============================================= */}
