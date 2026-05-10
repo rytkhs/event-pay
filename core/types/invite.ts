@@ -35,12 +35,24 @@ export interface InviteEventDetail {
   description: string | null;
   fee: number;
   capacity: number | null;
+  show_participant_count: boolean;
   payment_methods: PaymentMethod[];
   registration_deadline: string | null;
   payment_deadline: string | null;
   status: EventStatus;
   invite_token: string;
-  attendances_count: number;
+  attendances_count?: number;
+  is_capacity_reached: boolean;
+  capacityStatus:
+    | {
+        participantCountVisible: true;
+        attendingCount: number;
+        capacity: number | null;
+      }
+    | {
+        participantCountVisible: false;
+        capacity: number | null;
+      };
 }
 
 export interface InviteValidationResult {

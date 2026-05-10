@@ -161,6 +161,9 @@ export function SinglePageEventEditForm({
   const watchedFee = form.watch("fee");
   const feeAmount = watchedFee && watchedFee.trim() !== "" ? Number(watchedFee) : 0;
 
+  // 定員を監視（参加人数表示トグルのヒント用）
+  const watchedCapacity = form.watch("capacity");
+
   // フォームの値を監視（タイムライン表示用）
   const watchedDate = form.watch("date");
   const watchedRegistrationDeadline = form.watch("registration_deadline");
@@ -445,6 +448,46 @@ export function SinglePageEventEditForm({
                           </FormDescription>
                         )}
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="show_participant_count"
+                    render={({ field }) => (
+                      <FormItem
+                        className={cn(
+                          "flex flex-row items-center gap-3",
+                          isChanged("show_participant_count") && "opacity-100"
+                        )}
+                      >
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                        <div className="flex flex-col gap-0.5 leading-none">
+                          <div className="flex items-center gap-2">
+                            <FormLabel className="text-sm font-medium">
+                              参加人数を招待ページに表示
+                            </FormLabel>
+                            {isChanged("show_participant_count") && (
+                              <Badge variant="outline" className={changedBadgeClass}>
+                                変更あり
+                              </Badge>
+                            )}
+                          </div>
+                          {field.value && (
+                            <FormDescription className="text-xs animate-in fade-in duration-200">
+                              {watchedCapacity && watchedCapacity.trim() !== ""
+                                ? `参加者向けに「○名 / ${watchedCapacity}名」と参加状況バーを表示します`
+                                : "参加者向けに現在の参加人数を表示します"}
+                            </FormDescription>
+                          )}
+                        </div>
                       </FormItem>
                     )}
                   />

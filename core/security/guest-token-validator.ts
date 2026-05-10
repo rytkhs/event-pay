@@ -353,6 +353,7 @@ export class RLSGuestTokenValidator implements IGuestTokenValidator {
       location: rpcRow.event_location,
       fee: rpcRow.event_fee,
       capacity: rpcRow.event_capacity,
+      show_participant_count: rpcRow.event_show_participant_count,
       description: rpcRow.event_description,
       payment_methods: rpcRow.event_payment_methods,
       allow_payment_after_deadline: rpcRow.event_allow_payment_after_deadline,

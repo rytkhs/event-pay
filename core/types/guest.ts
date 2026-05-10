@@ -26,6 +26,7 @@ export interface GuestAttendanceData {
     location: string | null;
     fee: number;
     capacity: number | null;
+    show_participant_count: boolean;
     registration_deadline: string | null;
     payment_deadline: string | null;
     payment_methods: PaymentMethod[];

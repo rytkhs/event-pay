@@ -28,6 +28,7 @@ const defaultValues: EventFormSchemaData = {
   location: "",
   date: "",
   capacity: "",
+  show_participant_count: false,
   registration_deadline: "",
   payment_deadline: "",
   payment_methods: [], // default([])を手動で設定
@@ -224,6 +225,7 @@ export const useEventForm = ({
         if (submissionData.capacity) {
           formData.append("capacity", submissionData.capacity);
         }
+        formData.append("show_participant_count", String(submissionData.show_participant_count));
         if (submissionData.registration_deadline) {
           formData.append("registration_deadline", submissionData.registration_deadline);
         }

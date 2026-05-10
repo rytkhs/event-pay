@@ -112,6 +112,9 @@ function SinglePageEventForm({
   const watchedFee = form.watch("fee");
   const feeAmount = watchedFee && watchedFee.trim() !== "" ? Number(watchedFee) : 0;
 
+  // 定員を監視（参加人数表示トグルのヒント用）
+  const watchedCapacity = form.watch("capacity");
+
   // SSR不整合を避けるため、DateTimePickerのmin値をクライアント側で設定
   const [minDateObject, setMinDateObject] = useState<Date | undefined>(undefined);
 
@@ -275,6 +278,34 @@ function SinglePageEventForm({
                         </div>
                       </FormControl>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="show_participant_count"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center gap-3">
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <div className="flex flex-col gap-0.5 leading-none">
+                        <FormLabel className="text-sm font-medium">
+                          参加人数を招待ページに表示
+                        </FormLabel>
+                        {field.value && (
+                          <FormDescription className="text-xs animate-in fade-in duration-200">
+                            {watchedCapacity && watchedCapacity.trim() !== ""
+                              ? `参加者向けに「○名 / ${watchedCapacity}名」と参加状況バーを表示します`
+                              : "参加者向けに現在の参加人数を表示します"}
+                          </FormDescription>
+                        )}
+                      </div>
                     </FormItem>
                   )}
                 />

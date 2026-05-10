@@ -38,6 +38,7 @@ type FormDataFields = {
   location?: string;
   description?: string;
   capacity?: string;
+  show_participant_count?: boolean;
   registration_deadline: string;
   payment_deadline?: string;
   allow_payment_after_deadline?: boolean;
@@ -403,6 +404,7 @@ function buildEventData(
     location: validatedData.location ?? null,
     description: validatedData.description ?? null,
     capacity: parseCapacityLocal(validatedData.capacity),
+    show_participant_count: Boolean(validatedData.show_participant_count),
     registration_deadline: convertDatetimeLocalToIso(validatedData.registration_deadline as string),
     // 無料イベント（fee=0）の場合はオンライン支払い期限も強制的にnullに設定
     payment_deadline:

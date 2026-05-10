@@ -75,6 +75,7 @@ export function useEventEditForm({
       date: formatUtcToDatetimeLocal(event.date),
       fee: event.fee?.toString() || "0",
       capacity: event.capacity?.toString() || "",
+      show_participant_count: event.show_participant_count ?? true,
       payment_methods: event.payment_methods || [],
       registration_deadline: formatUtcToDatetimeLocal(event.registration_deadline),
       payment_deadline: formatUtcToDatetimeLocal(event.payment_deadline || ""),
@@ -165,6 +166,7 @@ export function useEventEditForm({
       date: watchedValues.date || "",
       fee: (watchedValues.fee || "").toString(), // 文字列として統一
       capacity: (watchedValues.capacity || "").toString(), // 文字列として統一
+      show_participant_count: watchedValues.show_participant_count ?? true,
       payment_methods: watchedValues.payment_methods || [],
       registration_deadline: watchedValues.registration_deadline || "",
       payment_deadline: watchedValues.payment_deadline || "",
@@ -229,6 +231,7 @@ export function useEventEditForm({
       date: data.date,
       fee: data.fee.toString(), // 文字列として統一
       capacity: data.capacity?.toString() || "", // 文字列として統一
+      show_participant_count: data.show_participant_count ?? true,
       payment_methods: data.payment_methods,
       registration_deadline: data.registration_deadline || "",
       payment_deadline: data.payment_deadline || "",

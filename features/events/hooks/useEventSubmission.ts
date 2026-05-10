@@ -230,6 +230,9 @@ export function useEventSubmission({
         case "capacity":
           submissionData.capacity = value as string;
           break;
+        case "show_participant_count":
+          submissionData.show_participant_count = value as boolean;
+          break;
         case "payment_methods":
           submissionData.payment_methods = value as string[];
           break;
