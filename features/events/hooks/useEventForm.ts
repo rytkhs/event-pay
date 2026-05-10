@@ -28,6 +28,8 @@ const defaultValues: EventFormSchemaData = {
   location: "",
   date: "",
   capacity: "",
+  show_capacity: false,
+  show_participant_count: false,
   registration_deadline: "",
   payment_deadline: "",
   payment_methods: [], // default([])を手動で設定
@@ -84,6 +86,7 @@ export const useEventForm = ({
   // 参加費をリアルタイムで監視
   const watchedFee = form.watch("fee");
   const watchedDate = form.watch("date");
+  const watchedCapacity = form.watch("capacity");
   const watchedPaymentMethods = form.watch("payment_methods");
   // 空文字列や未入力の場合は無料イベントとして扱わない
   const currentFee = watchedFee && watchedFee.trim() !== "" ? safeParseNumber(watchedFee) : null;
@@ -103,6 +106,12 @@ export const useEventForm = ({
       void form.trigger(["payment_methods", "allow_payment_after_deadline", "grace_period_days"]);
     }
   }, [isFreeEvent, form]);
+
+  useEffect(() => {
+    if (!watchedCapacity?.trim()) {
+      form.setValue("show_capacity", false, { shouldValidate: true, shouldTouch: false });
+    }
+  }, [form, watchedCapacity]);
 
   // 決済方法が変更されたときの処理
   // オンライン決済が追加された場合：オンライン支払い期限をプリセット
@@ -224,6 +233,8 @@ export const useEventForm = ({
         if (submissionData.capacity) {
           formData.append("capacity", submissionData.capacity);
         }
+        formData.append("show_capacity", String(submissionData.show_capacity));
+        formData.append("show_participant_count", String(submissionData.show_participant_count));
         if (submissionData.registration_deadline) {
           formData.append("registration_deadline", submissionData.registration_deadline);
         }

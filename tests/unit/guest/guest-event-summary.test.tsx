@@ -25,6 +25,8 @@ const baseAttendance: GuestAttendanceData = {
     location: "Tokyo",
     fee: 1000,
     capacity: 20,
+    show_capacity: true,
+    show_participant_count: false,
     registration_deadline: null,
     payment_deadline: null,
     payment_methods: ["cash"],
@@ -69,5 +71,46 @@ describe("GuestEventSummary", () => {
       "href",
       "/c/organizer-community"
     );
+  });
+
+  it("定員表示ONかつ定員ありでは定員を表示する", () => {
+    render(<GuestEventSummary attendance={baseAttendance} />);
+
+    expect(screen.getByText("定員")).toBeInTheDocument();
+    expect(screen.getByText("20名")).toBeInTheDocument();
+  });
+
+  it("定員表示OFFでは定員ありでも定員を表示しない", () => {
+    render(
+      <GuestEventSummary
+        attendance={{
+          ...baseAttendance,
+          event: {
+            ...baseAttendance.event,
+            show_capacity: false,
+          },
+        }}
+      />
+    );
+
+    expect(screen.queryByText("定員")).not.toBeInTheDocument();
+    expect(screen.queryByText("20名")).not.toBeInTheDocument();
+  });
+
+  it("定員なしでは定員表示ONでも定員を表示しない", () => {
+    render(
+      <GuestEventSummary
+        attendance={{
+          ...baseAttendance,
+          event: {
+            ...baseAttendance.event,
+            capacity: null,
+            show_capacity: true,
+          },
+        }}
+      />
+    );
+
+    expect(screen.queryByText("定員")).not.toBeInTheDocument();
   });
 });

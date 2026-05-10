@@ -516,6 +516,25 @@ function buildUpdateData(
     }
   }
 
+  const effectiveStoredCapacity =
+    validatedData.capacity !== undefined
+      ? (validatedData.capacity as number | null)
+      : existingEvent.capacity;
+
+  if (validatedData.show_capacity !== undefined || effectiveStoredCapacity === null) {
+    const next = effectiveStoredCapacity !== null ? Boolean(validatedData.show_capacity) : false;
+    if (next !== existingEvent.show_capacity) {
+      updateData.show_capacity = next;
+    }
+  }
+
+  if (validatedData.show_participant_count !== undefined) {
+    const next = Boolean(validatedData.show_participant_count);
+    if (next !== existingEvent.show_participant_count) {
+      updateData.show_participant_count = next;
+    }
+  }
+
   if (validatedData.registration_deadline !== undefined) {
     // Zodバリデーションで空文字は既にチェック済みのため、ここでは有効な値として処理
     const deadline = validatedData.registration_deadline as string;

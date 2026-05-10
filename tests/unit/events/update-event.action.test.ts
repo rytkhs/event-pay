@@ -43,19 +43,24 @@ describe("updateEventAction", () => {
     } | null;
   }) {
     const captured = { updateData: undefined as any };
+    const existingEvent = {
+      show_capacity: options.existingEvent.capacity != null,
+      show_participant_count: false,
+      ...options.existingEvent,
+    };
 
     // single: 1回目: 既存, 2回目: 更新後
     const singleMock = (jest.fn() as any)
-      .mockResolvedValueOnce({ data: options.existingEvent, error: null })
+      .mockResolvedValueOnce({ data: existingEvent, error: null })
       .mockResolvedValueOnce({
-        data: options.updatedEvent ?? options.existingEvent,
+        data: options.updatedEvent ?? existingEvent,
         error: null,
       });
 
     const accessEvent = options.accessEvent ?? {
-      id: options.existingEvent.id,
-      community_id: options.existingEvent.community_id ?? "community-1",
-      created_by: options.existingEvent.created_by ?? "00000000-0000-0000-0000-000000000001",
+      id: existingEvent.id,
+      community_id: existingEvent.community_id ?? "community-1",
+      created_by: existingEvent.created_by ?? "00000000-0000-0000-0000-000000000001",
     };
 
     const eventsQuery: any = {
@@ -223,11 +228,85 @@ describe("updateEventAction", () => {
       description: null,
       capacity: null,
       payment_deadline: null,
+      show_capacity: false,
     });
     // registration_deadline は含まれない（DB仕様: 非NULL）
     expect(Object.prototype.hasOwnProperty.call(captured.updateData, "registration_deadline")).toBe(
       false
     );
+  });
+
+  it("定員ありで show_capacity=true を送信すると定員表示設定を更新する", async () => {
+    const existingEvent = {
+      id: "evt-show-capacity",
+      created_by: "00000000-0000-0000-0000-000000000001",
+      community_id: "community-1",
+      title: "t",
+      date: new Date(Date.now() + 3600_000).toISOString(),
+      registration_deadline: new Date(Date.now() + 600_000).toISOString(),
+      payment_deadline: null,
+      fee: 1000,
+      payment_methods: ["cash"],
+      capacity: 30,
+      show_capacity: false,
+      attendances: [],
+    };
+
+    const updatedEvent = {
+      ...existingEvent,
+      show_capacity: true,
+    };
+
+    const { captured } = mockSupabaseWith({ existingEvent, updatedEvent, attendancesData: [] });
+
+    const form = new FormData();
+    form.append("show_capacity", "true");
+
+    const { updateEventAction: run } = await import("@/features/events/actions/update-event");
+    const res = await run("00000000-0000-0000-0000-000000000006", form);
+
+    expect(res.success).toBe(true);
+    expect(captured.updateData).toMatchObject({
+      show_capacity: true,
+    });
+  });
+
+  it("定員クリア時は show_capacity=true が送信されても false に正規化する", async () => {
+    const existingEvent = {
+      id: "evt-clear-capacity",
+      created_by: "00000000-0000-0000-0000-000000000001",
+      community_id: "community-1",
+      title: "t",
+      date: new Date(Date.now() + 3600_000).toISOString(),
+      registration_deadline: new Date(Date.now() + 600_000).toISOString(),
+      payment_deadline: null,
+      fee: 1000,
+      payment_methods: ["cash"],
+      capacity: 30,
+      show_capacity: true,
+      attendances: [],
+    };
+
+    const updatedEvent = {
+      ...existingEvent,
+      capacity: null,
+      show_capacity: false,
+    };
+
+    const { captured } = mockSupabaseWith({ existingEvent, updatedEvent, attendancesData: [] });
+
+    const form = new FormData();
+    form.append("capacity", "");
+    form.append("show_capacity", "true");
+
+    const { updateEventAction: run } = await import("@/features/events/actions/update-event");
+    const res = await run("00000000-0000-0000-0000-000000000007", form);
+
+    expect(res.success).toBe(true);
+    expect(captured.updateData).toMatchObject({
+      capacity: null,
+      show_capacity: false,
+    });
   });
 
   it("current community 不一致なら EVENT_ACCESS_DENIED を返す", async () => {

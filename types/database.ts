@@ -236,6 +236,8 @@ export type Database = {
           payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
           payout_profile_id: string | null;
           registration_deadline: string;
+          show_capacity: boolean;
+          show_participant_count: boolean;
           title: string;
           updated_at: string;
         };
@@ -258,6 +260,8 @@ export type Database = {
           payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
           payout_profile_id?: string | null;
           registration_deadline: string;
+          show_capacity?: boolean;
+          show_participant_count?: boolean;
           title: string;
           updated_at?: string;
         };
@@ -280,6 +284,8 @@ export type Database = {
           payment_methods?: Database["public"]["Enums"]["payment_method_enum"][];
           payout_profile_id?: string | null;
           registration_deadline?: string;
+          show_capacity?: boolean;
+          show_participant_count?: boolean;
           title?: string;
           updated_at?: string;
         };
@@ -1065,6 +1071,8 @@ export type Database = {
           event_id: string;
           event_location: string;
           event_payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
+          event_show_capacity: boolean;
+          event_show_participant_count: boolean;
           event_title: string;
           guest_token: string;
           nickname: string;
@@ -1139,6 +1147,8 @@ export type Database = {
           payment_deadline: string;
           payment_methods: Database["public"]["Enums"]["payment_method_enum"][];
           registration_deadline: string;
+          show_capacity: boolean;
+          show_participant_count: boolean;
           title: string;
         }[];
       };

@@ -48,7 +48,7 @@ export function InviteEventDetail({
   }, [registrationData, initialRegistrationData]);
 
   // 定員状況の確認
-  const isCapacityReached = event.capacity ? event.attendances_count >= event.capacity : false;
+  const isCapacityReached = event.is_capacity_reached;
 
   // 出欠回答期限の確認
   const isRegistrationDeadlinePassed = event.registration_deadline

@@ -116,12 +116,30 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
       description: eventRow.description,
       fee: eventRow.fee,
       capacity: eventRow.capacity,
+      show_capacity: eventRow.show_capacity,
+      show_participant_count: eventRow.show_participant_count,
       payment_methods: eventRow.payment_methods,
       registration_deadline: eventRow.registration_deadline,
       payment_deadline: eventRow.payment_deadline,
       invite_token: eventRow.invite_token,
       status: computedStatus,
-      attendances_count: actualAttendancesCount,
+      attendances_count: eventRow.show_participant_count ? actualAttendancesCount : undefined,
+      is_capacity_reached:
+        eventRow.capacity !== null && eventRow.capacity > 0
+          ? actualAttendancesCount >= eventRow.capacity
+          : false,
+      capacityStatus: eventRow.show_participant_count
+        ? {
+            capacityVisible: eventRow.show_capacity && eventRow.capacity !== null,
+            participantCountVisible: true,
+            attendingCount: actualAttendancesCount,
+            capacity: eventRow.capacity,
+          }
+        : {
+            capacityVisible: eventRow.show_capacity && eventRow.capacity !== null,
+            participantCountVisible: false,
+            capacity: eventRow.capacity,
+          },
     };
 
     // イベントがキャンセルされているか確認

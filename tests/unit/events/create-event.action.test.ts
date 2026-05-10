@@ -47,8 +47,10 @@ jest.mock("@features/events/services/payout-profile-readiness", () => ({
 
 function buildValidFormData(
   overrides: {
+    capacity?: string;
     fee?: string;
     paymentMethods?: string[];
+    showCapacity?: boolean;
   } = {}
 ): FormData {
   const formData = new FormData();
@@ -59,6 +61,12 @@ function buildValidFormData(
   formData.set("description", "新歓イベント");
   formData.set("registration_deadline", getFutureDateTimeLocal(24));
   formData.set("payment_deadline", getFutureDateTimeLocal(48));
+  if (overrides.capacity !== undefined) {
+    formData.set("capacity", overrides.capacity);
+  }
+  if (overrides.showCapacity !== undefined) {
+    formData.set("show_capacity", String(overrides.showCapacity));
+  }
 
   for (const method of overrides.paymentMethods ?? ["cash"]) {
     formData.append("payment_methods", method);
@@ -236,6 +244,40 @@ describe("createEventAction", () => {
       community_id: "community-1",
       payout_profile_id: "payout-profile-1",
       payment_methods: ["stripe", "cash"],
+    });
+  });
+
+  it("定員ありで show_capacity=true の場合は定員表示設定を保存する", async () => {
+    const { supabase, insertedRows } = createSupabaseMock({
+      currentPayoutProfileId: null,
+    });
+    mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
+
+    const { createEventAction } = await import("@/features/events/actions/create-event");
+    const result = await createEventAction(
+      buildValidFormData({ capacity: "30", showCapacity: true })
+    );
+
+    expect(result.success).toBe(true);
+    expect(insertedRows[0]).toMatchObject({
+      capacity: 30,
+      show_capacity: true,
+    });
+  });
+
+  it("定員なしでは show_capacity=true が送信されても false に正規化する", async () => {
+    const { supabase, insertedRows } = createSupabaseMock({
+      currentPayoutProfileId: null,
+    });
+    mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
+
+    const { createEventAction } = await import("@/features/events/actions/create-event");
+    const result = await createEventAction(buildValidFormData({ showCapacity: true }));
+
+    expect(result.success).toBe(true);
+    expect(insertedRows[0]).toMatchObject({
+      capacity: null,
+      show_capacity: false,
     });
   });
 });

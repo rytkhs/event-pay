@@ -177,6 +177,8 @@ export function useEventChanges({
           );
 
         case "allow_payment_after_deadline":
+        case "show_capacity":
+        case "show_participant_count":
           // boolean として比較
           const oldBool = Boolean(oldValue);
           const newBool = Boolean(newValue);
@@ -233,6 +235,18 @@ export function useEventChanges({
         oldValue: event.capacity,
         newValue: formData.capacity || "",
         fieldName: "定員",
+      },
+      {
+        field: "show_participant_count",
+        oldValue: event.show_participant_count ?? true,
+        newValue: formData.show_participant_count ?? true,
+        fieldName: "参加人数の表示",
+      },
+      {
+        field: "show_capacity",
+        oldValue: event.show_capacity,
+        newValue: formData.show_capacity,
+        fieldName: "定員の表示",
       },
       {
         field: "payment_methods",
@@ -292,6 +306,9 @@ export function useEventChanges({
         } else if (field === "allow_payment_after_deadline") {
           displayOldValue = Boolean(oldValue) ? "許可" : "禁止";
           displayNewValue = Boolean(newValue) ? "許可" : "禁止";
+        } else if (field === "show_capacity" || field === "show_participant_count") {
+          displayOldValue = Boolean(oldValue) ? "表示" : "非表示";
+          displayNewValue = Boolean(newValue) ? "表示" : "非表示";
         } else if (field === "grace_period_days") {
           displayOldValue = (
             typeof oldValue === "number" ? oldValue : Number(oldValue || 0)
@@ -383,6 +400,8 @@ export function useEventChanges({
           "fee",
           "payment_methods",
           "capacity",
+          "show_capacity",
+          "show_participant_count",
           "allow_payment_after_deadline",
           "grace_period_days",
         ],
@@ -415,6 +434,12 @@ export function useEventChanges({
           break;
         case "capacity":
           revertData.capacity = event.capacity?.toString() || "";
+          break;
+        case "show_participant_count":
+          revertData.show_participant_count = event.show_participant_count ?? true;
+          break;
+        case "show_capacity":
+          revertData.show_capacity = event.show_capacity;
           break;
         case "date":
           revertData.date = formatUtcToDatetimeLocal(event.date);
