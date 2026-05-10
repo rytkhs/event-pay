@@ -139,12 +139,22 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
                 <Users className="w-4 h-4 text-slate-600" />
               </div>
               <div className="flex-1">
-                <div className="flex justify-between items-center mb-1">
-                  <p className="text-xs text-slate-500 font-medium">
+                <div
+                  className={
+                    capacityStatus.participantCountVisible && isCapacityVisible
+                      ? "flex justify-between items-center mb-1"
+                      : ""
+                  }
+                >
+                  <p
+                    className={`text-xs text-slate-500 font-medium ${
+                      capacityStatus.participantCountVisible && isCapacityVisible ? "" : "mb-0.5"
+                    }`}
+                  >
                     {capacityStatus.participantCountVisible && !isCapacityVisible
-                      ? "参加人数"
+                      ? "現在の参加人数"
                       : capacityStatus.participantCountVisible && isCapacityVisible
-                        ? "参加人数 / 定員"
+                        ? "現在の参加人数 / 定員"
                         : "定員"}
                   </p>
                   <p
