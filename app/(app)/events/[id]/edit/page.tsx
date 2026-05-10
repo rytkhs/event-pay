@@ -172,7 +172,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
 
 export function generateMetadata() {
   return {
-    title: "イベント編集 - みんなの集金",
+    title: "イベント編集",
     description: "イベント情報の編集画面",
   };
 }
