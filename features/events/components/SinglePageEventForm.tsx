@@ -14,6 +14,7 @@ import {
   ClockIcon,
   AlignLeftIcon,
   CheckIcon,
+  ChevronRightIcon,
 } from "lucide-react";
 
 import { getCurrentJstTime } from "@core/utils/timezone";
@@ -23,6 +24,7 @@ import { cn } from "@/components/ui/_lib/cn";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Form,
@@ -116,6 +118,7 @@ function SinglePageEventForm({
 
   // 定員を監視（参加人数表示トグルのヒント用）
   const watchedCapacity = form.watch("capacity");
+  const watchedShowCapacity = form.watch("show_capacity");
 
   // SSR不整合を避けるため、DateTimePickerのmin値をクライアント側で設定
   const [minDateObject, setMinDateObject] = useState<Date | undefined>(undefined);
@@ -284,64 +287,71 @@ function SinglePageEventForm({
                   )}
                 />
 
-                {watchedCapacity && watchedCapacity.trim() !== "" && (
-                  <div className="animate-in fade-in slide-in-from-top-1 duration-200">
-                    <FormField
-                      control={form.control}
-                      name="show_capacity"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center gap-3">
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              disabled={isPending}
-                            />
-                          </FormControl>
-                          <div className="flex flex-col gap-0.5 leading-none">
-                            <FormLabel className="text-sm font-medium">
-                              参加者にイベントの定員を表示する
-                            </FormLabel>
-                          {field.value && (
-                            <FormDescription className="text-xs animate-in fade-in duration-200">
-                              招待・ゲストページに定員を表示します
-                            </FormDescription>
-                          )}
-                          </div>
-                        </FormItem>
+                <Collapsible>
+                  <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md px-1 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                    <ChevronRightIcon className="size-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                    表示設定
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+                    <div className="flex flex-col gap-4 rounded-lg border border-border/70 bg-muted/10 p-4 mt-2">
+                      {watchedCapacity && watchedCapacity.trim() !== "" && (
+                        <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                          <FormField
+                            control={form.control}
+                            name="show_capacity"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center gap-3">
+                                <FormControl>
+                                  <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                    disabled={isPending}
+                                  />
+                                </FormControl>
+                                <div className="flex flex-col gap-0.5 leading-none">
+                                  <FormLabel className="text-sm font-medium">
+                                    定員を表示する
+                                  </FormLabel>
+                                  <FormDescription className="text-xs animate-in fade-in duration-200">
+                                    招待・ゲストページに定員を表示します
+                                  </FormDescription>
+                                </div>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                       )}
-                    />
-                  </div>
-                )}
 
-                <FormField
-                  control={form.control}
-                  name="show_participant_count"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center gap-3">
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <div className="flex flex-col gap-0.5 leading-none">
-                        <FormLabel className="text-sm font-medium">
-                          参加者に現在の参加人数を表示する
-                        </FormLabel>
-                        {field.value && (
-                          <FormDescription className="text-xs animate-in fade-in duration-200">
-                            {watchedCapacity && watchedCapacity.trim() !== ""
-                              ? `招待ページに「○名 / ${watchedCapacity}名」と参加状況バーを表示します`
-                              : "招待ページに現在の参加人数を表示します"}
-                          </FormDescription>
+                      <FormField
+                        control={form.control}
+                        name="show_participant_count"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center gap-3">
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                disabled={isPending}
+                              />
+                            </FormControl>
+                            <div className="flex flex-col gap-0.5 leading-none">
+                              <FormLabel className="text-sm font-medium">
+                                参加人数を表示する
+                              </FormLabel>
+                              <FormDescription className="text-xs animate-in fade-in duration-200">
+                                {watchedCapacity &&
+                                watchedCapacity.trim() !== "" &&
+                                watchedShowCapacity
+                                  ? `招待ページに参加状況バー（○名 / ${watchedCapacity}名）を表示します`
+                                  : "招待ページに現在の参加人数を表示します"}
+                              </FormDescription>
+                            </div>
+                          </FormItem>
                         )}
-                      </div>
-                    </FormItem>
-                  )}
-                />
-
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               </FormSection>
 
               {/* ============================================= */}
