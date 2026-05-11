@@ -3677,27 +3677,19 @@ CREATE INDEX "idx_payout_profiles_representative_community_id" ON "public"."payo
 
 
 
-CREATE INDEX "idx_payout_requests_community_id" ON "public"."payout_requests" USING "btree" ("community_id");
+CREATE INDEX "idx_payout_requests_community_requested_at" ON "public"."payout_requests" USING "btree" ("community_id", "requested_at" DESC);
 
 
 
-CREATE INDEX "idx_payout_requests_payout_profile_id" ON "public"."payout_requests" USING "btree" ("payout_profile_id");
+CREATE INDEX "idx_payout_requests_pending_requested_at" ON "public"."payout_requests" USING "btree" ("requested_at") WHERE ("status" = ANY (ARRAY['requesting'::"public"."payout_request_status", 'created'::"public"."payout_request_status", 'creation_unknown'::"public"."payout_request_status"]));
 
 
 
-CREATE INDEX "idx_payout_requests_requested_at" ON "public"."payout_requests" USING "btree" ("requested_at" DESC);
+CREATE INDEX "idx_payout_requests_profile_requested_at" ON "public"."payout_requests" USING "btree" ("payout_profile_id", "requested_at" DESC);
 
 
 
-CREATE INDEX "idx_payout_requests_requested_by" ON "public"."payout_requests" USING "btree" ("requested_by");
-
-
-
-CREATE INDEX "idx_payout_requests_status" ON "public"."payout_requests" USING "btree" ("status");
-
-
-
-CREATE INDEX "idx_payout_requests_stripe_account_id" ON "public"."payout_requests" USING "btree" ("stripe_account_id");
+CREATE INDEX "idx_payout_requests_requested_by_requested_at" ON "public"."payout_requests" USING "btree" ("requested_by", "requested_at" DESC);
 
 
 
