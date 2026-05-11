@@ -7,20 +7,28 @@
 
 import { AlertTriangle, CheckCircle2, ExternalLink, Info } from "lucide-react";
 
+import type { ActionResult } from "@core/errors/adapters/server-actions";
+
 import { Button } from "@/components/ui/button";
 
+import type { PayoutPanelState, RequestPayoutPayload } from "../../types/payout-request";
 import type { AccountStatusData } from "../../types/status-classification";
+import { PayoutRequestPanel } from "../PayoutRequestPanel";
 
 interface ReadyViewProps {
   status: AccountStatusData;
   expressDashboardAction?: (formData: FormData) => Promise<void>;
   expressDashboardAvailable?: boolean;
+  payoutPanel?: PayoutPanelState;
+  requestPayoutAction?: () => Promise<ActionResult<RequestPayoutPayload>>;
 }
 
 export function ReadyView({
   status,
   expressDashboardAction,
   expressDashboardAvailable,
+  payoutPanel,
+  requestPayoutAction,
 }: ReadyViewProps) {
   const hasPayoutWarning = status.collectionReady && !status.payoutsEnabled;
   const eventuallyDueCount = status.requirements?.eventually_due?.length ?? 0;
@@ -71,6 +79,10 @@ export function ReadyView({
             </div>
           </div>
         </div>
+      )}
+
+      {payoutPanel && requestPayoutAction && (
+        <PayoutRequestPanel payoutPanel={payoutPanel} requestPayoutAction={requestPayoutAction} />
       )}
 
       {expressDashboardAvailable && expressDashboardAction && (

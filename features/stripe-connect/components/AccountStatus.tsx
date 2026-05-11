@@ -11,8 +11,11 @@ import Link from "next/link";
 
 import { BookOpen, ExternalLink } from "lucide-react";
 
+import type { ActionResult } from "@core/errors/adapters/server-actions";
+
 import { cn } from "@/components/ui/_lib/cn";
 
+import type { PayoutPanelState, RequestPayoutPayload } from "../types/payout-request";
 import type { AccountStatusData } from "../types/status-classification";
 
 import { NoAccountView } from "./status-views/NoAccountView";
@@ -26,6 +29,8 @@ interface AccountStatusProps {
   refreshUrl: string;
   status: AccountStatusData;
   expressDashboardAction?: (formData: FormData) => Promise<void>;
+  payoutPanel?: PayoutPanelState;
+  requestPayoutAction?: () => Promise<ActionResult<RequestPayoutPayload>>;
 }
 
 type StatusConfig = {
@@ -64,7 +69,13 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
   },
 };
 
-export function AccountStatus({ refreshUrl, status, expressDashboardAction }: AccountStatusProps) {
+export function AccountStatus({
+  refreshUrl,
+  status,
+  expressDashboardAction,
+  payoutPanel,
+  requestPayoutAction,
+}: AccountStatusProps) {
   const config = STATUS_CONFIG[status.uiStatus] ?? {
     label: "不明",
     dotClass: "bg-muted-foreground/40",
@@ -98,6 +109,8 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
             status={status}
             expressDashboardAction={expressDashboardAction}
             expressDashboardAvailable={status.expressDashboardAvailable}
+            payoutPanel={payoutPanel}
+            requestPayoutAction={requestPayoutAction}
           />
         );
       default:

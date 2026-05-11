@@ -106,6 +106,9 @@ export type ErrorCode =
   // --- Stripe Connect ---
   | "CONNECT_ACCOUNT_NOT_FOUND" // 連携アカウントなし
   | "CONNECT_ACCOUNT_RESTRICTED" // アカウント制限中
+  | "PAYOUT_REQUEST_NOT_FOUND" // 入金リクエストなし
+  | "STRIPE_ACCOUNT_MISMATCH" // Stripeアカウント不一致
+  | "PAYOUT_ID_MISMATCH" // Payout ID不一致
   | "STRIPE_CONFIG_ERROR" // 設定ミス
   | "STRIPE_CONNECT_SERVICE_ERROR" // Connectサービス操作失敗
   | "STRIPE_CHECKOUT_SESSION_EXPIRED_UPDATE_FAILED" // 期限切れ処理失敗

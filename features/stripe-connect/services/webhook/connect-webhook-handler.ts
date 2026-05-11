@@ -25,6 +25,7 @@ import { handleServerError } from "@core/utils/error-handler.server";
 
 import type { RequirementsSummary } from "../../types";
 import { getPayoutProfileByStripeAccountId } from "../payout-profile-resolver";
+import { PayoutRequestService } from "../payout-request-service";
 
 import type { ConnectWebhookResult } from "./connect-webhook.types";
 
@@ -334,25 +335,71 @@ export class ConnectWebhookHandler {
     }
   }
 
-  async handlePayoutPaid(payout: Stripe.Payout): Promise<ConnectWebhookResult> {
+  async handlePayoutCreated(
+    payout: Stripe.Payout,
+    stripeAccountId: string
+  ): Promise<ConnectWebhookResult> {
+    return this.handlePayoutEvent(payout, stripeAccountId, "payout_created_processed");
+  }
+
+  async handlePayoutUpdated(
+    payout: Stripe.Payout,
+    stripeAccountId: string
+  ): Promise<ConnectWebhookResult> {
+    return this.handlePayoutEvent(payout, stripeAccountId, "payout_updated_processed");
+  }
+
+  async handlePayoutPaid(
+    payout: Stripe.Payout,
+    stripeAccountId: string
+  ): Promise<ConnectWebhookResult> {
+    return this.handlePayoutEvent(payout, stripeAccountId, "payout_paid_processed");
+  }
+
+  async handlePayoutFailed(
+    payout: Stripe.Payout,
+    stripeAccountId: string
+  ): Promise<ConnectWebhookResult> {
+    return this.handlePayoutEvent(payout, stripeAccountId, "payout_failed_processed");
+  }
+
+  async handlePayoutCanceled(
+    payout: Stripe.Payout,
+    stripeAccountId: string
+  ): Promise<ConnectWebhookResult> {
+    return this.handlePayoutEvent(payout, stripeAccountId, "payout_canceled_processed");
+  }
+
+  private async handlePayoutEvent(
+    payout: Stripe.Payout,
+    stripeAccountId: string,
+    reason: string
+  ): Promise<ConnectWebhookResult> {
     try {
-      // 参考表示向けのログのみ（会計確定は行わない）
-      this.logger.info("Payout paid received", {
+      const service = new PayoutRequestService(this.supabase);
+      const result = await service.syncPayoutFromWebhook(payout, stripeAccountId);
+      if (!result.success) {
+        return result;
+      }
+
+      this.logger.info("Payout event processed", {
         payout_id: payout.id,
         amount: payout.amount,
         currency: payout.currency,
+        status: payout.status,
         outcome: "success",
       });
       return okResult(undefined, {
-        reason: "payout_paid_processed",
+        reason,
         payoutId: payout.id,
       });
     } catch (error) {
       handleServerError("CONNECT_WEBHOOK_PAYOUT_ERROR", {
-        action: "handlePayoutPaid",
+        action: "handlePayoutEvent",
         additionalData: {
           category: "stripe_webhook",
           payout_id: payout.id,
+          payout_status: payout.status,
           error_name: error instanceof Error ? error.name : "Unknown",
           error_message: error instanceof Error ? error.message : String(error),
         },
@@ -360,39 +407,7 @@ export class ConnectWebhookHandler {
       return errFrom(error, {
         defaultCode: "CONNECT_WEBHOOK_PAYOUT_ERROR",
         meta: {
-          reason: "payout_paid_failed",
-          payoutId: payout.id,
-        },
-      });
-    }
-  }
-
-  async handlePayoutFailed(payout: Stripe.Payout): Promise<ConnectWebhookResult> {
-    try {
-      // 参考表示向けのログのみ（会計確定は行わない）
-      this.logger.warn("Payout failed received", {
-        payout_id: payout.id,
-        failure_message: payout.failure_message,
-        outcome: "failure",
-      });
-      return okResult(undefined, {
-        reason: "payout_failed_processed",
-        payoutId: payout.id,
-      });
-    } catch (error) {
-      handleServerError("CONNECT_WEBHOOK_PAYOUT_ERROR", {
-        action: "handlePayoutFailed",
-        additionalData: {
-          category: "stripe_webhook",
-          payout_id: payout.id,
-          error_name: error instanceof Error ? error.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
-        },
-      });
-      return errFrom(error, {
-        defaultCode: "CONNECT_WEBHOOK_PAYOUT_ERROR",
-        meta: {
-          reason: "payout_failed_handler_error",
+          reason: "payout_event_handler_error",
           payoutId: payout.id,
         },
       });

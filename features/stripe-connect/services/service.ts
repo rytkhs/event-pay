@@ -93,6 +93,30 @@ export class StripeConnectService implements IStripeConnectService {
     return getStripe();
   }
 
+  private async configureManualPayoutSchedule(accountId: string): Promise<void> {
+    validateStripeAccountId(accountId);
+
+    const stripe = this.getStripeClient();
+    await stripe.balanceSettings.update(
+      {
+        payments: {
+          payouts: {
+            schedule: { interval: "manual" },
+          },
+        },
+      },
+      {
+        stripeAccount: accountId,
+        idempotencyKey: generateIdempotencyKey(`manual-payouts-${accountId}`),
+      }
+    );
+
+    this.logger.info("Manual payout schedule configured", {
+      account_id: accountId,
+      outcome: "success",
+    });
+  }
+
   /**
    * Stripe Account Objectのrequirementsを整形
    * @param requirements Stripe Account Requirements
@@ -286,6 +310,44 @@ export class StripeConnectService implements IStripeConnectService {
           stripeAccount = await stripe.accounts.create(createParams, { idempotencyKey });
         }
         createdNewAccount = true;
+        try {
+          await this.configureManualPayoutSchedule(stripeAccount.id);
+        } catch (manualScheduleError) {
+          if (process.env.NODE_ENV !== "test") {
+            try {
+              await stripe.accounts.del(stripeAccount.id);
+            } catch (compensationError) {
+              handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+                action: "compensate_manual_payout_schedule_failure",
+                additionalData: {
+                  account_id: stripeAccount.id,
+                  error_name:
+                    compensationError instanceof Error ? compensationError.name : "Unknown",
+                  error_message:
+                    compensationError instanceof Error
+                      ? compensationError.message
+                      : String(compensationError),
+                },
+              });
+            }
+          }
+
+          if (manualScheduleError instanceof Stripe.errors.StripeError) {
+            throw new StripeConnectError(
+              StripeConnectErrorType.STRIPE_API_ERROR,
+              "入金スケジュールの設定に失敗しました",
+              manualScheduleError,
+              { accountId: stripeAccount.id, userId }
+            );
+          }
+
+          throw new StripeConnectError(
+            StripeConnectErrorType.STRIPE_API_ERROR,
+            "入金スケジュールの設定に失敗しました",
+            manualScheduleError as Error,
+            { accountId: stripeAccount.id, userId }
+          );
+        }
       }
 
       // データベースにアカウント情報を保存

@@ -162,14 +162,29 @@ export async function POST(request: NextRequest) {
         );
         break;
       }
+      case "payout.created": {
+        const payout = event.data.object as Stripe.Payout;
+        processingResult = await handler.handlePayoutCreated(payout, event.account ?? "");
+        break;
+      }
+      case "payout.updated": {
+        const payout = event.data.object as Stripe.Payout;
+        processingResult = await handler.handlePayoutUpdated(payout, event.account ?? "");
+        break;
+      }
       case "payout.paid": {
         const payout = event.data.object as Stripe.Payout;
-        processingResult = await handler.handlePayoutPaid(payout);
+        processingResult = await handler.handlePayoutPaid(payout, event.account ?? "");
         break;
       }
       case "payout.failed": {
         const payout = event.data.object as Stripe.Payout;
-        processingResult = await handler.handlePayoutFailed(payout);
+        processingResult = await handler.handlePayoutFailed(payout, event.account ?? "");
+        break;
+      }
+      case "payout.canceled": {
+        const payout = event.data.object as Stripe.Payout;
+        processingResult = await handler.handlePayoutCanceled(payout, event.account ?? "");
         break;
       }
       default: {
