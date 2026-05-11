@@ -1,6 +1,6 @@
 describe("PayoutRequestService 統合テスト", () => {
   describe("入金要求の作成", () => {
-    // 正常系のDB永続化とStripe連携を固定する
+    // Service境界から実DB保存とStripe Payout作成まで到達する代表ケースを固定する
     it.todo(
       "現在のコミュニティに入金可能なpayout_profileとavailable残高が存在する時、payout_requestがcreatedで保存されStripe Payout IDが保存されること"
     );
@@ -16,14 +16,13 @@ describe("PayoutRequestService 統合テスト", () => {
     // available残高0円で空の入金を作らないことを固定する
     it.todo("available残高が0円の時、payout_requestもStripe Payoutも作成されないこと");
 
-    // Stripe側の最小payout制約ちょうどの境界を固定する
-    it.todo("available残高が1円の時、入金要求を作成できること");
-
-    // 追跡可能性は統合テストではDB保存をまとめて固定し、Stripe呼び出し引数の詳細はunitで固定する
+    // 追跡可能性はDB保存を統合テストで固定し、Stripe呼び出し引数の詳細はunitで固定する
     it.todo(
       "入金要求に成功した時、payout_requestに追跡用カラムと一意なidempotency_keyが保存されること"
     );
+  });
 
+  describe("DB制約", () => {
     // Stripe webhook復旧と二重登録防止のためDB制約を固定する
     it.todo("同じstripe_payout_idのpayout_requestを複数保存できないこと");
 
@@ -32,17 +31,12 @@ describe("PayoutRequestService 統合テスト", () => {
   });
 
   describe("二重実行と再実行", () => {
-    // 未完了リクエストの二重作成を防ぐことを固定する
+    // 未完了リクエストの二重作成をサービス境界で防ぐことを固定する
     it.todo(
       "同じpayout_profileにrequestingのpayout_requestが存在する時、新しい入金要求は作成されないこと"
     );
 
-    // 作成結果不明リクエストの二重作成を防ぐことを固定する
-    it.todo(
-      "同じpayout_profileにcreation_unknownのpayout_requestが存在する時、新しい入金要求は作成されないこと"
-    );
-
-    // 作成済みリクエストは履歴扱いにし、freshなavailable残高があれば次の入金を許可する
+    // 作成済みリクエストは履歴扱いにし、freshなavailable残高があれば次の入金を許可する代表ケースを固定する
     it.todo(
       "同じpayout_profileにcreatedのpayout_requestのみが存在する時、新しい入金要求を作成できること"
     );
@@ -50,24 +44,6 @@ describe("PayoutRequestService 統合テスト", () => {
     // active requestはrequesting / creation_unknownのみとし、同時クリックを単一に収束させる
     it.todo(
       "同じpayout_profileへの入金要求が同時実行された時、activeなpayout_requestは1件だけ作成されること"
-    );
-
-    // アプリケーション実装だけでなくDB制約でもrequesting / creation_unknownの重複を防ぐ
-    it.todo("同じpayout_profileにactiveなpayout_requestを複数保存できないこと");
-
-    // 完了済み履歴は次回要求を妨げないことを固定する
-    it.todo(
-      "同じpayout_profileにpaidのpayout_requestのみが存在する時、新しい入金要求を作成できること"
-    );
-
-    // 失敗済み履歴は次回要求を妨げないことを固定する
-    it.todo(
-      "同じpayout_profileにfailedのpayout_requestのみが存在する時、新しい入金要求を作成できること"
-    );
-
-    // キャンセル済み履歴は次回要求を妨げないことを固定する
-    it.todo(
-      "同じpayout_profileにcanceledのpayout_requestのみが存在する時、新しい入金要求を作成できること"
     );
   });
 });

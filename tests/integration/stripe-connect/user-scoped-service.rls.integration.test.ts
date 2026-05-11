@@ -17,6 +17,9 @@ jest.mock("@core/stripe/client", () => ({
         deleted: true,
       }),
     },
+    balanceSettings: {
+      update: jest.fn().mockResolvedValue({}),
+    },
   })),
   generateIdempotencyKey: jest.fn(() => "test_idempotency_key"),
 }));

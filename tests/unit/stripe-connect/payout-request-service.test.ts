@@ -1,191 +1,711 @@
+import Stripe from "stripe";
+
+import { revalidateTag } from "next/cache";
+
+import { PayoutRequestService } from "@features/stripe-connect/services/payout-request-service";
+import { StripeConnectErrorHandler, StripeConnectService } from "@features/stripe-connect/server";
+
+import { expectAppFailure, expectAppSuccess } from "@tests/helpers/assert-result";
+import {
+  buildPayout,
+  createPayoutContextFixture,
+  createPayoutRequestFixture,
+  getPayoutRequestById,
+  listPayoutRequests,
+  type PayoutContextFixture,
+  type PayoutRequestFixture,
+} from "@tests/helpers/stripe-connect-payout-fixtures";
+import { installStripePayoutSdkDouble } from "@tests/helpers/stripe-payout-sdk-double";
+
+const stripeDouble = installStripePayoutSdkDouble();
+
+jest.mock("@core/stripe/client", () => ({
+  getStripe: jest.fn(() => stripeDouble.stripe),
+  generateIdempotencyKey: jest.fn((prefix?: string) => `${prefix ?? "key"}_fixed_idempotency_key`),
+}));
+
+jest.mock("next/cache", () => ({
+  revalidateTag: jest.fn(),
+  revalidatePath: jest.fn(),
+  unstable_cache: (fn: unknown) => fn,
+}));
+
 describe("PayoutRequestService", () => {
+  let ctx: PayoutContextFixture;
+  let service: PayoutRequestService;
+
+  afterEach(async () => {
+    await ctx?.cleanup();
+    stripeDouble.reset();
+    jest.clearAllMocks();
+  });
+
   describe("getFreshPayoutBalance", () => {
+    beforeEach(async () => {
+      ctx = await createPayoutContextFixture({ emailPrefix: "fresh-balance" });
+      service = new PayoutRequestService(ctx.adminClient);
+    });
+
     // Stripe残高のうち、入金実行可能額はavailableのみであることを固定する
-    it.todo(
-      "JPYのavailable残高とpending残高が存在する時、availableAmountとpendingAmountを分離して返すこと"
-    );
+    it("JPYのavailable残高とpending残高が存在する時、availableAmountとpendingAmountを分離して返すこと", async () => {
+      stripeDouble.setBalance({
+        available: [{ amount: 1200, currency: "jpy" }],
+        pending: [{ amount: 800, currency: "jpy" }],
+      });
+
+      const result = await service.getFreshPayoutBalance(ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(result).toEqual(
+        expect.objectContaining({
+          data: { availableAmount: 1200, pendingAmount: 800, currency: "jpy" },
+        })
+      );
+      expect(stripeDouble.balanceRetrieveCalls[0]?.options).toEqual(
+        expect.objectContaining({ stripeAccount: ctx.stripeAccountId })
+      );
+    });
 
     // pendingは入金可能額に含めないことを固定する
-    it.todo("JPYのpending残高のみが存在する時、availableAmountは0でpendingAmountのみを返すこと");
+    it("JPYのpending残高のみが存在する時、availableAmountは0でpendingAmountのみを返すこと", async () => {
+      stripeDouble.setBalance({ pending: [{ amount: 900, currency: "jpy" }] });
+
+      const result = await service.getFreshPayoutBalance(ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(result).toEqual(
+        expect.objectContaining({
+          data: { availableAmount: 0, pendingAmount: 900, currency: "jpy" },
+        })
+      );
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+    });
 
     // 通貨違いの残高を誤ってJPYとして扱わないことを固定する
-    it.todo(
-      "JPY以外の残高のみが存在する時、JPYのavailableAmountとpendingAmountはいずれも0であること"
-    );
+    it("JPY以外の残高のみが存在する時、JPYのavailableAmountとpendingAmountはいずれも0であること", async () => {
+      stripeDouble.setBalance({
+        available: [{ amount: 1200, currency: "usd" }],
+        pending: [{ amount: 800, currency: "eur" }],
+      });
+
+      const result = await service.getFreshPayoutBalance(ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(result).toEqual(
+        expect.objectContaining({
+          data: { availableAmount: 0, pendingAmount: 0, currency: "jpy" },
+        })
+      );
+    });
 
     // Stripe API障害時のResult契約を固定する
-    it.todo("Stripe残高取得に失敗した時、例外を外へ投げず失敗Resultを返すこと");
+    it("Stripe残高取得に失敗した時、例外を外へ投げず失敗Resultを返すこと", async () => {
+      stripeDouble.setBalanceError(new Error("stripe balance failed"));
+
+      const result = await service.getFreshPayoutBalance(ctx.stripeAccountId);
+
+      const failure = expectAppFailure(result);
+      expect(failure.error.code).toBe("STRIPE_CONNECT_SERVICE_ERROR");
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+    });
   });
 
   describe("requestPayout", () => {
+    beforeEach(async () => {
+      ctx = await createPayoutContextFixture({ emailPrefix: "request-payout" });
+      service = new PayoutRequestService(ctx.adminClient);
+      stripeDouble.setBalance({ available: [{ amount: 1500, currency: "jpy" }] });
+      stripeDouble.setPayoutResponse({
+        id: "po_test_created",
+        amount: 1500,
+        status: "paid",
+      });
+    });
+
     // 正常系の最小成功条件を固定する
-    it.todo(
-      "入金可能なpayout_profileとavailable残高が存在する時、available全額のpayout_requestを作成してStripe Payoutを作成すること"
-    );
+    it("入金可能なpayout_profileとavailable残高が存在する時、available全額のpayout_requestを作成してStripe Payoutを作成すること", async () => {
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      const success = expectAppSuccess(result);
+      const row = await getPayoutRequestById(ctx, success.data.payoutRequestId);
+      expect(success.data).toEqual(
+        expect.objectContaining({ amount: 1500, currency: "jpy", status: "created" })
+      );
+      expect(row).toEqual(expect.objectContaining({ amount: 1500, status: "paid" }));
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(1);
+    });
 
     // 入金実行可否はオンライン集金可否ではなくpayouts_enabledで判定する
-    it.todo("payouts_enabledがfalseの時、Stripe Payoutを作成せず失敗Resultを返すこと");
+    it("payouts_enabledがfalseの時、Stripe Payoutを作成せず失敗Resultを返すこと", async () => {
+      await ctx.cleanup();
+      ctx = await createPayoutContextFixture({
+        emailPrefix: "payout-disabled",
+        payoutsEnabled: false,
+        collectionReady: true,
+      });
+      service = new PayoutRequestService(ctx.adminClient);
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppFailure(result);
+      expect(await listPayoutRequests(ctx)).toHaveLength(0);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+    });
 
     // アプリ内入金は現在のコミュニティの受取先に限定することを固定する
-    it.todo(
-      "現在のコミュニティにpayout_profileが紐付かない時、Stripe Payoutを作成せず失敗Resultを返すこと"
-    );
+    it("現在のコミュニティにpayout_profileが紐付かない時、Stripe Payoutを作成せず失敗Resultを返すこと", async () => {
+      await ctx.adminClient
+        .from("communities")
+        .update({ current_payout_profile_id: null })
+        .eq("id", ctx.communityId);
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppFailure(result);
+      expect(await listPayoutRequests(ctx)).toHaveLength(0);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+    });
 
     // available残高がない場合に空のPayoutを作らないことを固定する
-    it.todo("available残高が0円の時、payout_requestもStripe Payoutも作成せず失敗Resultを返すこと");
+    it("available残高が0円の時、payout_requestもStripe Payoutも作成せず失敗Resultを返すこと", async () => {
+      stripeDouble.setBalance({ available: [{ amount: 0, currency: "jpy" }] });
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppFailure(result);
+      expect(await listPayoutRequests(ctx)).toHaveLength(0);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+    });
 
     // pending残高だけでは入金可能にしないことを固定する
-    it.todo(
-      "pending残高が存在してavailable残高が0円の時、Stripe Payoutを作成せず失敗Resultを返すこと"
-    );
+    it("pending残高が存在してavailable残高が0円の時、Stripe Payoutを作成せず失敗Resultを返すこと", async () => {
+      stripeDouble.setBalance({ pending: [{ amount: 1500, currency: "jpy" }] });
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppFailure(result);
+      expect(await listPayoutRequests(ctx)).toHaveLength(0);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+    });
 
     // 進行中リクエストの二重作成を防ぐことを固定する
-    it.todo(
-      "同じpayout_profileにrequestingのpayout_requestが存在する時、新しいStripe Payoutを作成せず失敗Resultを返すこと"
-    );
+    it("同じpayout_profileにrequestingのpayout_requestが存在する時、新しいStripe Payoutを作成せず失敗Resultを返すこと", async () => {
+      const existing = await createPayoutRequestFixture(ctx, { status: "requesting" });
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppFailure(result);
+      expect(await listPayoutRequests(ctx)).toHaveLength(1);
+      expect(await getPayoutRequestById(ctx, existing.id)).toEqual(
+        expect.objectContaining({ status: "requesting" })
+      );
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+    });
 
     // 作成結果不明の二重実行を防ぐことを固定する
-    it.todo(
-      "同じpayout_profileにcreation_unknownのpayout_requestが存在する時、新しいStripe Payoutを作成せず失敗Resultを返すこと"
-    );
+    it("同じpayout_profileにcreation_unknownのpayout_requestが存在する時、新しいStripe Payoutを作成せず失敗Resultを返すこと", async () => {
+      await createPayoutRequestFixture(ctx, { status: "creation_unknown" });
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppFailure(result);
+      expect(await listPayoutRequests(ctx)).toHaveLength(1);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+    });
 
     // Stripe作成済みのPayoutは履歴扱いにし、freshなavailable残高があれば次の入金を許可する
-    it.todo(
-      "同じpayout_profileにcreatedのpayout_requestのみが存在する時、新しいStripe Payoutを作成できること"
-    );
+    it("同じpayout_profileにcreatedのpayout_requestのみが存在する時、新しいStripe Payoutを作成できること", async () => {
+      await createPayoutRequestFixture(ctx, { status: "created", stripePayoutId: "po_old" });
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppSuccess(result);
+      expect(await listPayoutRequests(ctx)).toHaveLength(2);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(1);
+    });
 
     // 入金要求時は履歴状態に関係なくfreshな出金可否を確認する
-    it.todo(
-      "入金要求前に最新のpayout readinessを確認し、payouts_enabledがfalseならStripe Payoutを作成しないこと"
-    );
+    it("入金要求前に最新のpayout readinessを確認し、payouts_enabledがfalseならStripe Payoutを作成しないこと", async () => {
+      await ctx.adminClient
+        .from("payout_profiles")
+        .update({ payouts_enabled: false })
+        .eq("id", ctx.payoutProfileId);
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppFailure(result);
+      expect(await listPayoutRequests(ctx)).toHaveLength(0);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+    });
 
     // 支払い済み履歴は次回要求を妨げないことを固定する
-    it.todo(
-      "同じpayout_profileにpaidのpayout_requestのみが存在する時、新しい入金要求を作成できること"
-    );
+    it("同じpayout_profileにpaidのpayout_requestのみが存在する時、新しい入金要求を作成できること", async () => {
+      await createPayoutRequestFixture(ctx, { status: "paid", stripePayoutId: "po_paid_old" });
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppSuccess(result);
+      expect(await listPayoutRequests(ctx)).toHaveLength(2);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(1);
+    });
 
     // Stripe metadataの追跡可能性を固定する
-    it.todo(
-      "Stripe Payout作成時、payout_request_idとpayout_profile_idとcommunity_idとrequested_byをmetadataに含めること"
-    );
+    it("Stripe Payout作成時、payout_request_idとpayout_profile_idとcommunity_idとrequested_byをmetadataに含めること", async () => {
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+      const success = expectAppSuccess(result);
+
+      const call = stripeDouble.payoutCreateCalls[0];
+      expect(call.params.metadata).toEqual({
+        payout_request_id: success.data.payoutRequestId,
+        payout_profile_id: ctx.payoutProfileId,
+        community_id: ctx.communityId,
+        requested_by: ctx.user.id,
+      });
+      expect(await getPayoutRequestById(ctx, success.data.payoutRequestId)).toBeTruthy();
+    });
 
     // Connectのmanual payoutでは残高source typeを明示し、カード売上以外を誤って入金しない
-    it.todo("Stripe Payout作成時、source_typeにcardを指定すること");
+    it("Stripe Payout作成時、source_typeにcardを指定すること", async () => {
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppSuccess(result);
+      expect(stripeDouble.payoutCreateCalls[0]?.params).toEqual(
+        expect.objectContaining({ source_type: "card" })
+      );
+    });
 
     // 冪等性キーの永続化を固定する
-    it.todo(
-      "Stripe Payout作成時、保存済みpayout_requestのidempotency_keyをStripeリクエストに使用すること"
-    );
+    it("Stripe Payout作成時、保存済みpayout_requestのidempotency_keyをStripeリクエストに使用すること", async () => {
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+      const success = expectAppSuccess(result);
+      const row = await getPayoutRequestById(ctx, success.data.payoutRequestId);
+
+      expect(row?.idempotency_key).toBe("payout_fixed_idempotency_key");
+      expect(stripeDouble.payoutCreateCalls[0]?.options).toEqual(
+        expect.objectContaining({ idempotencyKey: row?.idempotency_key })
+      );
+    });
 
     // DB作成後にStripe作成成功した場合の状態遷移を固定する
-    it.todo(
-      "Stripe Payout作成に成功した時、payout_requestをcreatedに更新しstripe_payout_idを保存すること"
-    );
+    it("Stripe Payout作成に成功した時、payout_requestをcreatedに更新しstripe_payout_idを保存すること", async () => {
+      stripeDouble.setPayoutResponse({ id: "po_created_contract", status: "pending" });
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+      const success = expectAppSuccess(result);
+
+      expect(await getPayoutRequestById(ctx, success.data.payoutRequestId)).toEqual(
+        expect.objectContaining({ stripe_payout_id: "po_created_contract", status: "created" })
+      );
+    });
 
     // active requestはrequesting / creation_unknownのみとし、同時クリックを単一に収束させる
-    it.todo(
-      "同じpayout_profileへの入金要求が同時実行された時、作成されるactiveなpayout_requestとStripe Payoutは1件だけであること"
-    );
+    it("同じpayout_profileへの入金要求が同時実行された時、作成されるactiveなpayout_requestとStripe Payoutは1件だけであること", async () => {
+      const [first, second] = await Promise.all([
+        service.requestPayout({ userId: ctx.user.id, communityId: ctx.communityId }),
+        service.requestPayout({ userId: ctx.user.id, communityId: ctx.communityId }),
+      ]);
+
+      const results = [first, second];
+      expect(results.filter((result) => result.success)).toHaveLength(1);
+      expect(
+        (await listPayoutRequests(ctx)).filter((row) => row.status === "requesting")
+      ).toHaveLength(0);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(1);
+    });
 
     // Stripe API前のDB作成失敗時に外部副作用を起こさないことを固定する
-    it.todo("payout_requestの作成に失敗した時、Stripe Payoutを作成せず失敗Resultを返すこと");
+    it("payout_requestの作成に失敗した時、Stripe Payoutを作成せず失敗Resultを返すこと", async () => {
+      await ctx.adminClient.from("payout_profiles").delete().eq("id", ctx.payoutProfileId);
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppFailure(result);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+    });
 
     // Stripeの業務エラー時の状態を固定する
-    it.todo(
-      "Stripe Payout作成がinsufficient_fundsで失敗した時、payout_requestをfailedに更新して失敗Resultを返すこと"
-    );
+    it("Stripe Payout作成がinsufficient_fundsで失敗した時、payout_requestをfailedに更新して失敗Resultを返すこと", async () => {
+      stripeDouble.setPayoutError(
+        new Stripe.errors.StripeInvalidRequestError({
+          message: "insufficient funds",
+          code: "insufficient_funds",
+        } as any)
+      );
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppFailure(result);
+      expect(await listPayoutRequests(ctx)).toEqual([
+        expect.objectContaining({ status: "failed", failure_code: "insufficient_funds" }),
+      ]);
+    });
 
     // ネットワーク不定状態の扱いを固定する
-    it.todo(
-      "Stripe Payout作成結果がネットワークエラーで不明な時、payout_requestをcreation_unknownに更新して失敗Resultを返すこと"
-    );
+    it("Stripe Payout作成結果がネットワークエラーで不明な時、payout_requestをcreation_unknownに更新して失敗Resultを返すこと", async () => {
+      stripeDouble.setPayoutError(
+        new Stripe.errors.StripeConnectionError({ message: "network failed" } as any)
+      );
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppFailure(result);
+      expect(await listPayoutRequests(ctx)).toEqual([
+        expect.objectContaining({ status: "creation_unknown", failure_message: "network failed" }),
+      ]);
+    });
 
     // creation_unknownは新規作成ではなく同じidempotency_keyで復旧する。Stripeの冪等性キーは少なくとも24時間後にpruneされ得る。
-    it.todo(
-      "creation_unknownのpayout_requestを復旧する時、保存済みidempotency_keyと同じパラメータでStripe Payout作成を再試行すること"
-    );
+    it("creation_unknownのpayout_requestを復旧する時、保存済みidempotency_keyと同じパラメータでStripe Payout作成を再試行すること", async () => {
+      await createPayoutRequestFixture(ctx, {
+        status: "creation_unknown",
+        amount: 1500,
+        idempotencyKey: "stored_recovery_key",
+      });
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppSuccess(result);
+      expect(stripeDouble.payoutCreateCalls[0]?.options).toEqual(
+        expect.objectContaining({ idempotencyKey: "stored_recovery_key" })
+      );
+    });
 
     // Stripeの冪等性契約に合わせ、復旧時に保存済みパラメータ以外で再試行しない
-    it.todo(
-      "creation_unknownのpayout_request復旧時に保存済みamountやcurrencyと異なる条件では再試行しないこと"
-    );
+    it("creation_unknownのpayout_request復旧時に保存済みamountやcurrencyと異なる条件では再試行しないこと", async () => {
+      await createPayoutRequestFixture(ctx, {
+        status: "creation_unknown",
+        amount: 1200,
+        idempotencyKey: "stored_recovery_key",
+      });
+      stripeDouble.setBalance({ available: [{ amount: 1500, currency: "jpy" }] });
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppFailure(result);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+    });
 
     // 予期しないエラーでも境界契約を守ることを固定する
-    it.todo("想定外のエラーが発生した時、例外を外へ投げず失敗Resultを返すこと");
+    it("想定外のエラーが発生した時、例外を外へ投げず失敗Resultを返すこと", async () => {
+      stripeDouble.setPayoutError(new Error("unexpected"));
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppFailure(result);
+      expect(await listPayoutRequests(ctx)).toEqual([
+        expect.objectContaining({ status: "failed", failure_message: "unexpected" }),
+      ]);
+    });
 
     // 残高キャッシュ更新の責務を固定する
-    it.todo("Stripe Payout作成に成功した時、対象stripe_account_idの残高キャッシュを無効化すること");
+    it("Stripe Payout作成に成功した時、対象stripe_account_idの残高キャッシュを無効化すること", async () => {
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppSuccess(result);
+      expect(revalidateTag).toHaveBeenCalledWith(`stripe-balance-${ctx.stripeAccountId}`);
+    });
   });
 
   describe("syncPayoutFromWebhook", () => {
+    let request: PayoutRequestFixture;
+
+    beforeEach(async () => {
+      ctx = await createPayoutContextFixture({ emailPrefix: "sync-payout" });
+      service = new PayoutRequestService(ctx.adminClient);
+      request = await createPayoutRequestFixture(ctx, {
+        status: "created",
+        stripePayoutId: "po_test_fixture",
+        failureCode: "old_failure",
+        failureMessage: "old failure",
+      });
+    });
+
     // metadataは自社DB IDの紐付けに使うが、Connect webhookの外部入力なのでstripe_account_id照合は必須
-    it.todo(
-      "payout.metadata.payout_request_idが存在しevent.accountとpayout_request.stripe_account_idが一致する時、そのpayout_requestを更新すること"
-    );
+    it("payout.metadata.payout_request_idが存在しevent.accountとpayout_request.stripe_account_idが一致する時、そのpayout_requestを更新すること", async () => {
+      const payout = buildPayout(ctx, request, { status: "paid" });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({ status: "paid", stripe_payout_id: payout.id })
+      );
+    });
 
     // metadataが別アカウントのrequestを指す場合に誤更新しないことを固定する
-    it.todo(
-      "payout.metadata.payout_request_idが存在してもevent.accountとpayout_request.stripe_account_idが一致しない時、更新せずリトライ不要の失敗Resultを返すこと"
-    );
+    it("payout.metadata.payout_request_idが存在してもevent.accountとpayout_request.stripe_account_idが一致しない時、更新せずリトライ不要の失敗Resultを返すこと", async () => {
+      const before = await getPayoutRequestById(ctx, request.id);
+      const payout = buildPayout(ctx, request, { status: "paid" });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, "acct_other");
+
+      const failure = expectAppFailure(result);
+      expect(failure.error.retryable).toBe(false);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(before);
+    });
 
     // metadataが正しくても、保存済みstripe_payout_idと別のPayout IDなら誤更新しない
-    it.todo(
-      "payout.metadata.payout_request_idが存在しても保存済みstripe_payout_idとpayout.idが矛盾する時、更新せずリトライ不要の失敗Resultを返すこと"
-    );
+    it("payout.metadata.payout_request_idが存在しても保存済みstripe_payout_idとpayout.idが矛盾する時、更新せずリトライ不要の失敗Resultを返すこと", async () => {
+      const before = await getPayoutRequestById(ctx, request.id);
+      const payout = buildPayout(ctx, request, { id: "po_different", status: "paid" });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      const failure = expectAppFailure(result);
+      expect(failure.error.retryable).toBe(false);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(before);
+    });
 
     // metadata欠落時の復旧経路を固定する
-    it.todo(
-      "payout.metadata.payout_request_idが存在しない時、stripe_payout_idでpayout_requestを特定して更新すること"
-    );
+    it("payout.metadata.payout_request_idが存在しない時、stripe_payout_idでpayout_requestを特定して更新すること", async () => {
+      const payout = buildPayout(ctx, request, { metadata: {}, status: "paid" });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({ status: "paid" })
+      );
+    });
 
     // 作成イベントの状態反映を固定する
-    it.todo("payout.createdを受け取った時、payout_requestをcreatedに更新すること");
+    it("payout.createdを受け取った時、payout_requestをcreatedに更新すること", async () => {
+      const payout = buildPayout(ctx, request, { status: "pending" });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({ status: "created" })
+      );
+    });
 
     // 汎用更新イベントの状態反映を固定する
-    it.todo("payout.updatedを受け取った時、Stripe Payoutのstatusに対応する状態へ更新すること");
+    it("payout.updatedを受け取った時、Stripe Payoutのstatusに対応する状態へ更新すること", async () => {
+      const payout = buildPayout(ctx, request, { status: "canceled" });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({ status: "canceled" })
+      );
+    });
 
     // 入金完了の状態反映を固定する
-    it.todo("payout.paidを受け取った時、payout_requestをpaidに更新しfailure情報を残さないこと");
+    it("payout.paidを受け取った時、payout_requestをpaidに更新しfailure情報を残さないこと", async () => {
+      const payout = buildPayout(ctx, request, { status: "paid" });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({ status: "paid", failure_code: null, failure_message: null })
+      );
+    });
 
     // 入金失敗の状態反映を固定する
-    it.todo(
-      "payout.failedを受け取った時、payout_requestをfailedに更新しfailure_codeとfailure_messageを保存すること"
-    );
+    it("payout.failedを受け取った時、payout_requestをfailedに更新しfailure_codeとfailure_messageを保存すること", async () => {
+      const payout = buildPayout(ctx, request, {
+        status: "failed",
+        failure_code: "account_closed",
+        failure_message: "account closed",
+      });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({
+          status: "failed",
+          failure_code: "account_closed",
+          failure_message: "account closed",
+        })
+      );
+    });
 
     // キャンセルの状態反映を固定する
-    it.todo("payout.canceledを受け取った時、payout_requestをcanceledに更新すること");
+    it("payout.canceledを受け取った時、payout_requestをcanceledに更新すること", async () => {
+      const payout = buildPayout(ctx, request, { status: "canceled" });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({ status: "canceled" })
+      );
+    });
 
     // webhook冪等性を固定する
-    it.todo("同じStripe Payoutイベントを複数回受け取った時、同じ最終状態に更新されること");
+    it("同じStripe Payoutイベントを複数回受け取った時、同じ最終状態に更新されること", async () => {
+      const payout = buildPayout(ctx, request, { status: "paid" });
+
+      const first = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+      const second = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      expectAppSuccess(first);
+      expectAppSuccess(second);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({ status: "paid" })
+      );
+    });
 
     // Stripeはイベント順序を保証しない。古いpending/in_transit系イベントでpaid/failedを巻き戻さない。
-    it.todo(
-      "paidまたはfailedのpayout_requestに古いpayout.createdやpendingのpayout.updatedが届いても、状態をcreatedへ巻き戻さないこと"
-    );
+    it("paidまたはfailedのpayout_requestに古いpayout.createdやpendingのpayout.updatedが届いても、状態をcreatedへ巻き戻さないこと", async () => {
+      await ctx.adminClient.from("payout_requests").update({ status: "paid" }).eq("id", request.id);
+      const payout = buildPayout(ctx, request, { status: "pending" });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({ status: "paid" })
+      );
+    });
 
     // Stripeでは失敗するPayoutが一度paidに見えてからfailedへ変わる場合があるため、この遷移だけは許可する
-    it.todo(
-      "paidのpayout_requestにpayout.failedが届いた時、failedへ更新しfailure情報を保存すること"
-    );
+    it("paidのpayout_requestにpayout.failedが届いた時、failedへ更新しfailure情報を保存すること", async () => {
+      await ctx.adminClient.from("payout_requests").update({ status: "paid" }).eq("id", request.id);
+      const payout = buildPayout(ctx, request, {
+        status: "failed",
+        failure_code: "bank_account_restricted",
+        failure_message: "restricted",
+      });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({
+          status: "failed",
+          failure_code: "bank_account_restricted",
+          failure_message: "restricted",
+        })
+      );
+    });
 
     // 未知Payoutの扱いを固定する
-    it.todo("対応するpayout_requestが存在しない時、リトライ不要の失敗Resultを返すこと");
+    it("対応するpayout_requestが存在しない時、リトライ不要の失敗Resultを返すこと", async () => {
+      const payout = buildPayout(
+        ctx,
+        { id: "missing", amount: 1000 },
+        {
+          id: "po_missing",
+          metadata: { payout_request_id: "00000000-0000-0000-0000-000000000000" },
+        }
+      );
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      const failure = expectAppFailure(result);
+      expect(failure.error.retryable).toBe(false);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({ status: "created" })
+      );
+    });
   });
 
   describe("configureManualPayoutSchedule", () => {
+    beforeEach(async () => {
+      ctx = await createPayoutContextFixture({
+        emailPrefix: "manual-schedule",
+        attachPayoutProfileToCommunity: false,
+      });
+      // 新規アカウント作成ロジックを通すため、fixtureで作成されたプロファイルを削除しておく
+      await ctx.adminClient.from("payout_profiles").delete().eq("id", ctx.payoutProfileId);
+    });
+
     // 新規Connectアカウントはアプリ内入金管理が標準。外部API実状態ではなくStripe呼び出し引数をunitで固定する。
-    it.todo(
-      "新規Connectアカウント作成後、payout scheduleをmanualに更新するStripe APIを呼び出すこと"
-    );
+    it("新規Connectアカウント作成後、payout scheduleをmanualに更新するStripe APIを呼び出すこと", async () => {
+      const service = new StripeConnectService(ctx.adminClient, new StripeConnectErrorHandler());
+
+      await service.createExpressAccount({ userId: ctx.user.id, email: ctx.user.email });
+
+      expect(stripeDouble.balanceSettingsUpdateCalls).toHaveLength(1);
+    });
 
     // StripeのBalance Settings APIへ渡すmanual schedule引数を固定する
-    it.todo(
-      "payout scheduleのmanual設定時、payments.payouts.schedule.intervalにmanualを指定すること"
-    );
+    it("payout scheduleのmanual設定時、payments.payouts.schedule.intervalにmanualを指定すること", async () => {
+      const service = new StripeConnectService(ctx.adminClient, new StripeConnectErrorHandler());
+
+      await service.createExpressAccount({ userId: ctx.user.id, email: ctx.user.email });
+
+      expect(stripeDouble.balanceSettingsUpdateCalls[0]?.params).toEqual({
+        payments: { payouts: { schedule: { interval: "manual" } } },
+      });
+    });
 
     // manual化に失敗したアカウントは、アプリ内入金の前提を満たさないためready扱いしない
-    it.todo(
-      "payout scheduleのmanual設定に失敗した時、payout_profileを入金可能状態として扱わない失敗Resultを返すこと"
-    );
+    it("payout scheduleのmanual設定に失敗した時、payout_profileを入金可能状態として扱わない失敗Resultを返すこと", async () => {
+      stripeDouble.setBalanceSettingsError(new Error("manual schedule failed"));
+      const service = new StripeConnectService(ctx.adminClient, new StripeConnectErrorHandler());
+
+      await expect(
+        service.createExpressAccount({ userId: ctx.user.id, email: ctx.user.email })
+      ).rejects.toThrow("入金スケジュールの設定に失敗しました");
+    });
   });
 });
