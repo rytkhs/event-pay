@@ -413,6 +413,18 @@ describe("PayoutRequestService", () => {
       expect(await listPayoutRequests(ctx)).toEqual([
         expect.objectContaining({ status: "failed", failure_code: "insufficient_funds" }),
       ]);
+
+      const panelResult = await service.getPayoutPanelState({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+      const panelSuccess = expectAppSuccess(panelResult);
+      expect(panelSuccess.data.latestRequest).toEqual(
+        expect.objectContaining({
+          status: "failed",
+          failureCode: "insufficient_funds",
+        })
+      );
     });
 
     // ネットワーク不定状態の扱いを固定する

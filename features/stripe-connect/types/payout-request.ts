@@ -18,6 +18,7 @@ export type LatestPayoutRequest = {
   currency: "jpy";
   status: PayoutRequestStatus;
   requestedAt: string;
+  failureCode: string | null;
   failureMessage: string | null;
 };
 

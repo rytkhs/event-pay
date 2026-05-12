@@ -27,6 +27,7 @@ type PayoutRequestRow = {
   currency: string;
   status: PayoutRequestStatus;
   requested_at: string;
+  failure_code: string | null;
   failure_message: string | null;
 };
 
@@ -82,6 +83,7 @@ function toLatestPayoutRequest(row: PayoutRequestRow | null): LatestPayoutReques
     currency: "jpy",
     status: row.status,
     requestedAt: row.requested_at,
+    failureCode: row.failure_code,
     failureMessage: row.failure_message,
   };
 }
@@ -537,7 +539,7 @@ export class PayoutRequestService {
   private async getLatestRequest(payoutProfileId: string): Promise<LatestPayoutRequest | null> {
     const { data, error } = await this.supabase
       .from("payout_requests")
-      .select("id, amount, currency, status, requested_at, failure_message")
+      .select("id, amount, currency, status, requested_at, failure_code, failure_message")
       .eq("payout_profile_id", payoutProfileId)
       .order("requested_at", { ascending: false })
       .limit(1)

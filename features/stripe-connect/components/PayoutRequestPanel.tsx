@@ -39,10 +39,43 @@ const DISABLED_LABELS: Record<NonNullable<PayoutPanelState["disabledReason"]>, s
   request_in_progress: "処理中の入金があります",
 };
 
+const ACCOUNT_FAILURE_CODES = new Set([
+  "account_closed",
+  "account_frozen",
+  "bank_account_restricted",
+  "bank_account_unusable",
+  "bank_ownership_changed",
+  "debit_not_authorized",
+  "incorrect_account_holder_address",
+  "incorrect_account_holder_name",
+  "incorrect_account_holder_tax_id",
+  "incorrect_account_type",
+  "invalid_account_number",
+  "invalid_account_number_length",
+  "invalid_currency",
+  "no_account",
+  "unsupported_card",
+]);
+
+function getPayoutFailureLabel(failureCode: string | null): string {
+  if (failureCode === "insufficient_funds") {
+    return "入金可能額が不足しています。";
+  }
+  if (failureCode === "declined" || failureCode === "could_not_process") {
+    return "入金処理が銀行側で完了できませんでした。";
+  }
+  if (failureCode !== null && ACCOUNT_FAILURE_CODES.has(failureCode)) {
+    return "入金先口座を確認してください。";
+  }
+  return "入金処理に失敗しました。";
+}
+
 export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutRequestPanelProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const latestRequest = payoutPanel.latestRequest;
+  const latestFailureLabel =
+    latestRequest?.status === "failed" ? getPayoutFailureLabel(latestRequest.failureCode) : null;
   const buttonDisabled = !payoutPanel.canRequestPayout || isPending;
 
   const handleRequestPayout = () => {
@@ -99,7 +132,7 @@ export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutR
               <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                 前回: {formatCurrency(latestRequest.amount)}円 /{" "}
                 {new Date(latestRequest.requestedAt).toLocaleDateString("ja-JP")}
-                {latestRequest.failureMessage ? ` / ${latestRequest.failureMessage}` : ""}
+                {latestFailureLabel ? ` / ${latestFailureLabel}` : ""}
               </p>
             )}
           </div>
