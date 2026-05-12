@@ -66,6 +66,10 @@ function isUnknownCreationError(error: unknown): boolean {
   );
 }
 
+function getCardSourceAmount(balanceEntry: Stripe.Balance.Available | undefined): number {
+  return balanceEntry?.source_types?.card ?? 0;
+}
+
 function toLatestPayoutRequest(row: PayoutRequestRow | null): LatestPayoutRequest | null {
   if (!row) {
     return null;
@@ -98,8 +102,8 @@ export class PayoutRequestService {
       const pendingJpy = balance.pending.find((entry) => entry.currency === "jpy");
 
       return okResult({
-        availableAmount: availableJpy?.amount ?? 0,
-        pendingAmount: pendingJpy?.amount ?? 0,
+        availableAmount: getCardSourceAmount(availableJpy),
+        pendingAmount: getCardSourceAmount(pendingJpy),
         currency: "jpy",
       });
     } catch (error) {

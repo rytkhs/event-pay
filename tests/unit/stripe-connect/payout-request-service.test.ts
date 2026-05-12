@@ -46,11 +46,11 @@ describe("PayoutRequestService", () => {
       service = new PayoutRequestService(ctx.adminClient);
     });
 
-    // Stripe残高のうち、入金実行可能額はavailableのみであることを固定する
-    it("JPYのavailable残高とpending残高が存在する時、availableAmountとpendingAmountを分離して返すこと", async () => {
+    // Stripe Payoutはsource_type: cardで作成するため、表示・実行可能額もcard source残高に揃える
+    it("JPYのcard source available残高とpending残高が存在する時、availableAmountとpendingAmountを分離して返すこと", async () => {
       stripeDouble.setBalance({
-        available: [{ amount: 1200, currency: "jpy" }],
-        pending: [{ amount: 800, currency: "jpy" }],
+        available: [{ amount: 1200, currency: "jpy", source_types: { card: 1200 } }],
+        pending: [{ amount: 800, currency: "jpy", source_types: { card: 800 } }],
       });
 
       const result = await service.getFreshPayoutBalance(ctx.stripeAccountId);
@@ -68,7 +68,9 @@ describe("PayoutRequestService", () => {
 
     // pendingは入金可能額に含めないことを固定する
     it("JPYのpending残高のみが存在する時、availableAmountは0でpendingAmountのみを返すこと", async () => {
-      stripeDouble.setBalance({ pending: [{ amount: 900, currency: "jpy" }] });
+      stripeDouble.setBalance({
+        pending: [{ amount: 900, currency: "jpy", source_types: { card: 900 } }],
+      });
 
       const result = await service.getFreshPayoutBalance(ctx.stripeAccountId);
 
@@ -98,6 +100,25 @@ describe("PayoutRequestService", () => {
       );
     });
 
+    // 通貨合算額ではなく、Payout作成時に指定するcard sourceの残高を使うことを固定する
+    it("JPYのavailable合算額にcard以外が含まれる時、availableAmountはcard source残高だけを返すこと", async () => {
+      stripeDouble.setBalance({
+        available: [
+          { amount: 1800, currency: "jpy", source_types: { card: 1200, bank_account: 600 } },
+        ],
+        pending: [{ amount: 900, currency: "jpy", source_types: { card: 700, bank_account: 200 } }],
+      });
+
+      const result = await service.getFreshPayoutBalance(ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(result).toEqual(
+        expect.objectContaining({
+          data: { availableAmount: 1200, pendingAmount: 700, currency: "jpy" },
+        })
+      );
+    });
+
     // Stripe API障害時のResult契約を固定する
     it("Stripe残高取得に失敗した時、例外を外へ投げず失敗Resultを返すこと", async () => {
       stripeDouble.setBalanceError(new Error("stripe balance failed"));
@@ -114,7 +135,9 @@ describe("PayoutRequestService", () => {
     beforeEach(async () => {
       ctx = await createPayoutContextFixture({ emailPrefix: "request-payout" });
       service = new PayoutRequestService(ctx.adminClient);
-      stripeDouble.setBalance({ available: [{ amount: 1500, currency: "jpy" }] });
+      stripeDouble.setBalance({
+        available: [{ amount: 1500, currency: "jpy", source_types: { card: 1500 } }],
+      });
       stripeDouble.setPayoutResponse({
         id: "po_test_created",
         amount: 1500,
@@ -177,7 +200,9 @@ describe("PayoutRequestService", () => {
 
     // available残高がない場合に空のPayoutを作らないことを固定する
     it("available残高が0円の時、payout_requestもStripe Payoutも作成せず失敗Resultを返すこと", async () => {
-      stripeDouble.setBalance({ available: [{ amount: 0, currency: "jpy" }] });
+      stripeDouble.setBalance({
+        available: [{ amount: 0, currency: "jpy", source_types: { card: 0 } }],
+      });
 
       const result = await service.requestPayout({
         userId: ctx.user.id,
@@ -191,7 +216,9 @@ describe("PayoutRequestService", () => {
 
     // pending残高だけでは入金可能にしないことを固定する
     it("pending残高が存在してavailable残高が0円の時、Stripe Payoutを作成せず失敗Resultを返すこと", async () => {
-      stripeDouble.setBalance({ pending: [{ amount: 1500, currency: "jpy" }] });
+      stripeDouble.setBalance({
+        pending: [{ amount: 1500, currency: "jpy", source_types: { card: 1500 } }],
+      });
 
       const result = await service.requestPayout({
         userId: ctx.user.id,
@@ -431,7 +458,9 @@ describe("PayoutRequestService", () => {
         amount: 1200,
         idempotencyKey: "stored_recovery_key",
       });
-      stripeDouble.setBalance({ available: [{ amount: 1500, currency: "jpy" }] });
+      stripeDouble.setBalance({
+        available: [{ amount: 1500, currency: "jpy", source_types: { card: 1500 } }],
+      });
 
       const result = await service.requestPayout({
         userId: ctx.user.id,
