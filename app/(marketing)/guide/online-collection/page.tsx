@@ -23,7 +23,7 @@ export const dynamic = "force-static";
 
 const title = "オンライン集金・振込のしくみ";
 const description =
-  "みんなの集金でオンライン決済を受け付けたときのお金の流れ、Stripeの売上・振込確認画面での手動振込、振込タイミングの目安を主催者向けにまとめました。";
+  "みんなの集金でオンライン決済を受け付けたときのお金の流れ、アプリ内での振込操作、振込タイミングの目安を主催者向けにまとめました。";
 
 export const metadata: Metadata = {
   title,
@@ -78,16 +78,15 @@ const flowSteps: FlowStep[] = [
     icon: ReceiptText,
   },
   {
-    title: "Stripe残高に反映される",
+    title: "振込可能額に反映される",
     body: "オンライン集金分は、主催者用のStripeアカウント残高に反映されます。",
-    detail: "決済直後は処理中の残高として扱われ、Stripe側の処理後に利用可能残高へ移ります。",
+    detail: "決済直後は処理中の残高として扱われ、Stripe側の処理後に振込できる残高へ移ります。",
     icon: Wallet,
   },
   {
     title: "口座に振り込む",
-    body: "利用可能残高になったら、Stripeダッシュボードで手動振込します。",
-    detail:
-      "みんなの集金の管理画面にあるリンクからStripeへ移動して、主催者自身が振込操作を行います。",
+    body: "利用可能残高になったら振込。",
+    detail: "振込操作画面から、好きなタイミングで登録済みの口座への振込操作を行います。",
     icon: BanknoteArrowDown,
   },
 ];
@@ -104,8 +103,8 @@ const payoutDetails: PayoutDetail[] = [
     icon: BanknoteArrowDown,
   },
   {
-    title: "確認と振込操作はStripeで行います",
-    body: "残高、振込可能額、振込予定、振込履歴、振込先口座はStripeダッシュボードで確認します。",
+    title: "詳細はStripeダッシュボードで確認",
+    body: "残高、振込可能額、振込予定、振込履歴、振込先口座はStripeダッシュボードで確認します。振込はアプリから行うことができます。",
     icon: Landmark,
   },
 ];
@@ -161,7 +160,7 @@ export default function OnlineCollectionGuidePage() {
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-9 text-slate-700">
               参加者がオンラインで支払った参加費は、Stripeを通じて主催者の残高に反映されます。
-              銀行口座への振込は、主催者がStripeの売上・振込確認画面で手動で行います。
+              銀行口座への振込は、主催者が振込画面から手動で行います。
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg" className="h-12 rounded-full px-6">
@@ -222,8 +221,8 @@ export default function OnlineCollectionGuidePage() {
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
           <SectionHeading
             eyebrow="Payout"
-            title="Stripeで残高を確認し、口座へ振り込みます。"
-            body="オンライン集金分はStripeダッシュボードで確認します。決済直後は処理中の残高として扱われ、利用可能残高になってから主催者が銀行口座へ手動で振り込みます。"
+            title="アプリ内で残高を確認し、口座へ振り込みます。"
+            body="決済直後は処理中の残高として扱われ、利用可能残高になってから主催者が銀行口座へ振り込みます。"
           />
 
           <div className="grid gap-4">
@@ -277,7 +276,7 @@ export default function OnlineCollectionGuidePage() {
       <GuideBottomCTA
         eyebrow="Start online collection"
         title="オンライン集金は、必要なイベントから始められます。"
-        body="現金集金と併用しながら、参加費の事前回収と振込管理をStripeでまとめて確認できます。"
+        body="現金集金と併用しながら、参加費の事前回収と振込管理をまとめて確認できます。"
         secondaryHref="/guide/participant-flow"
         secondaryLabel="参加者の流れを見る"
       />

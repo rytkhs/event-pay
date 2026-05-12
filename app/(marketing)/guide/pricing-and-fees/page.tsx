@@ -111,8 +111,8 @@ const payerItems: ExplanationItem[] = [
     icon: Calculator,
   },
   {
-    title: "振込と残高確認はStripeで行います",
-    body: "オンライン決済はStripeを通じて処理されます。残高、振込可能額、振込履歴はStripeの売上・振込確認画面で確認します。",
+    title: "振込と残高確認はアプリ内で行います",
+    body: "オンライン決済はStripeを通じて処理されます。振込可能額、反映待ち金額、振込処理の状態は、みんなの集金のオンライン集金画面で確認します。",
     icon: Landmark,
   },
 ];
