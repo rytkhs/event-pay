@@ -80,7 +80,7 @@ describe("PayoutRequestPanel", () => {
       />
     );
 
-    const button = screen.getByRole("button", { name: "入金状況を再確認" });
+    const button = screen.getByRole("button", { name: "再試行" });
     expect(button).not.toBeDisabled();
 
     await user.click(button);

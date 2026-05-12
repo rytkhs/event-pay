@@ -94,7 +94,7 @@ export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutR
     payoutPanel.disabledReason === "request_in_progress";
   const buttonDisabled = (!payoutPanel.canRequestPayout && !canRecoverCreationUnknown) || isPending;
   const buttonLabel = canRecoverCreationUnknown
-    ? "入金状況を再確認"
+    ? "再試行"
     : payoutPanel.canRequestPayout
       ? `${formatCurrency(payoutPanel.availableAmount)}円を入金`
       : payoutPanel.disabledReason
