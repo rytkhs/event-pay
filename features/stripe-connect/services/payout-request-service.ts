@@ -1,7 +1,5 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
-
 import Stripe from "stripe";
 
 import { AppError, errFrom, errResult, okResult, type AppResult } from "@core/errors";
@@ -283,8 +281,6 @@ export class PayoutRequestService {
           outcome: "success",
         });
 
-        revalidateTag(`stripe-balance-${payoutProfile.stripe_account_id}`);
-
         return okResult({
           payoutRequestId: inserted.id,
           stripePayoutId: payout.id,
@@ -477,8 +473,6 @@ export class PayoutRequestService {
         stripe_account_id: payoutProfile.stripe_account_id,
         outcome: "success",
       });
-
-      revalidateTag(`stripe-balance-${payoutProfile.stripe_account_id}`);
 
       return okResult({
         payoutRequestId: unknownRequest.id,

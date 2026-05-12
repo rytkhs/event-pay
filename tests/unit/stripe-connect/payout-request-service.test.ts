@@ -1,7 +1,5 @@
 import Stripe from "stripe";
 
-import { revalidateTag } from "next/cache";
-
 import { PayoutRequestService } from "@features/stripe-connect/services/payout-request-service";
 import { StripeConnectErrorHandler, StripeConnectService } from "@features/stripe-connect/server";
 
@@ -498,16 +496,6 @@ describe("PayoutRequestService", () => {
       ]);
     });
 
-    // 残高キャッシュ更新の責務を固定する
-    it("Stripe Payout作成に成功した時、対象stripe_account_idの残高キャッシュを無効化すること", async () => {
-      const result = await service.requestPayout({
-        userId: ctx.user.id,
-        communityId: ctx.communityId,
-      });
-
-      expectAppSuccess(result);
-      expect(revalidateTag).toHaveBeenCalledWith(`stripe-balance-${ctx.stripeAccountId}`);
-    });
   });
 
   describe("syncPayoutFromWebhook", () => {
