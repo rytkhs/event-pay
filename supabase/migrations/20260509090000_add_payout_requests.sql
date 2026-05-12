@@ -55,6 +55,10 @@ CREATE INDEX idx_payout_requests_pending_requested_at
   ON public.payout_requests USING btree (requested_at ASC)
   WHERE status IN ('requesting', 'created', 'creation_unknown');
 
+CREATE UNIQUE INDEX uniq_payout_requests_active_per_profile
+  ON public.payout_requests USING btree (payout_profile_id)
+  WHERE status IN ('requesting', 'creation_unknown');
+
 CREATE TRIGGER update_payout_requests_updated_at
 BEFORE UPDATE ON public.payout_requests
 FOR EACH ROW

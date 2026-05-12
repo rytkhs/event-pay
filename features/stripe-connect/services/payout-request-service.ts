@@ -7,6 +7,7 @@ import Stripe from "stripe";
 import { AppError, errFrom, errResult, okResult, type AppResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { generateIdempotencyKey, getStripe } from "@core/stripe/client";
+import { hasPostgrestCode } from "@core/supabase/postgrest-error-guards";
 import type { AppSupabaseClient } from "@core/types/supabase";
 
 import type {
@@ -236,6 +237,15 @@ export class PayoutRequestService {
         .single<{ id: string }>();
 
       if (insertError) {
+        if (hasPostgrestCode(insertError, "23505")) {
+          return errResult(
+            new AppError("RESOURCE_CONFLICT", {
+              userMessage: "処理中の入金リクエストがあります。",
+              cause: insertError,
+              retryable: true,
+            })
+          );
+        }
         return errFrom(insertError, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
       }
 

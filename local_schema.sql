@@ -3785,6 +3785,10 @@ CREATE INDEX "line_accounts_channel_id_line_sub_idx" ON "public"."line_accounts"
 
 
 
+CREATE UNIQUE INDEX "uniq_payout_requests_active_per_profile" ON "public"."payout_requests" USING "btree" ("payout_profile_id") WHERE ("status" = ANY (ARRAY['requesting'::"public"."payout_request_status", 'creation_unknown'::"public"."payout_request_status"]));
+
+
+
 CREATE UNIQUE INDEX "unique_open_payment_per_attendance" ON "public"."payments" USING "btree" ("attendance_id") WHERE ("status" = 'pending'::"public"."payment_status_enum");
 
 
