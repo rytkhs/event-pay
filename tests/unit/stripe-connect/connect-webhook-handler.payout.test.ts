@@ -18,7 +18,7 @@ describe("ConnectWebhookHandler - Payout events", () => {
   beforeEach(async () => {
     ctx = await createPayoutContextFixture({ emailPrefix: "connect-webhook-payout" });
     request = await createPayoutRequestFixture(ctx, {
-      status: "created",
+      status: "pending",
       stripePayoutId: "po_webhook_fixture",
     });
     handler = await ConnectWebhookHandler.create();
@@ -31,7 +31,7 @@ describe("ConnectWebhookHandler - Payout events", () => {
 
   describe("handlePayoutCreated", () => {
     // payout.createdの委譲先を固定する。event.account照合はサービス側で必ず行う。
-    it("payout.createdを受け取った時、event.account付きでpayout_requestをcreatedへ同期すること", async () => {
+    it("payout.createdを受け取った時、event.account付きでpayout_requestをpendingへ同期すること", async () => {
       const payout = buildPayout(ctx, request, { id: "po_webhook_fixture", status: "pending" });
 
       const result = await (handler.handlePayoutCreated as any)(payout, ctx.stripeAccountId);
@@ -39,7 +39,7 @@ describe("ConnectWebhookHandler - Payout events", () => {
       expectAppSuccess(result);
       expect(result.meta).toEqual(expect.objectContaining({ reason: "payout_created_processed" }));
       expect(await getPayoutRequestById(ctx, request.id)).toEqual(
-        expect.objectContaining({ status: "created", stripe_payout_id: "po_webhook_fixture" })
+        expect.objectContaining({ status: "pending", stripe_payout_id: "po_webhook_fixture" })
       );
     });
   });

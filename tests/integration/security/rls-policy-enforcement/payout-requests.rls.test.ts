@@ -122,7 +122,7 @@ function buildPayoutRequestInsert(
     stripe_payout_id: `po_rls_${suffix}`,
     amount: 1200,
     currency: "jpy",
-    status: "created",
+    status: "pending",
     idempotency_key: `payout_rls_${suffix}`,
     ...overrides,
   };
@@ -354,7 +354,7 @@ describe("payout_requests RLS 統合テスト", () => {
           stripe_payout_id: fixture.payoutRequest.stripe_payout_id,
           amount: fixture.payoutRequest.amount,
           currency: "jpy",
-          status: "created",
+          status: "pending",
           idempotency_key: fixture.payoutRequest.idempotency_key,
         })
       );
@@ -501,7 +501,7 @@ describe("payout_requests RLS 統合テスト", () => {
           stripe_payout_id: createInput.stripe_payout_id,
           amount: 3400,
           currency: "jpy",
-          status: "created",
+          status: "pending",
           idempotency_key: createInput.idempotency_key,
         })
       );

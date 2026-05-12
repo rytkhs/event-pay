@@ -38,7 +38,9 @@ describe("requestPayoutAction", () => {
 
   beforeEach(async () => {
     ctx = await createPayoutContextFixture({ emailPrefix: "request-payout-action" });
-    mockStripeDouble.setBalance({ available: [{ amount: 2400, currency: "jpy" }] });
+    mockStripeDouble.setBalance({
+      available: [{ amount: 2400, currency: "jpy", source_types: { card: 2400 } }],
+    });
     mockStripeDouble.setPayoutResponse({
       id: "po_action_created",
       amount: 2400,
@@ -70,7 +72,7 @@ describe("requestPayoutAction", () => {
       expect.objectContaining({
         payoutRequestId: expect.any(String),
         amount: 2400,
-        status: "created",
+        status: "pending",
         stripePayoutId: "po_action_created",
       })
     );
@@ -78,7 +80,7 @@ describe("requestPayoutAction", () => {
       expect.objectContaining({
         amount: 2400,
         stripe_payout_id: "po_action_created",
-        status: "created",
+        status: "pending",
       })
     );
     expect(revalidateTag).toHaveBeenCalledWith("stripe-balance");

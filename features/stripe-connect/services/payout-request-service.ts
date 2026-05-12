@@ -15,6 +15,7 @@ import type {
   PayoutRequestStatus,
   RequestPayoutInput,
   RequestPayoutPayload,
+  StripePayoutRequestStatus,
 } from "../types/payout-request";
 
 import { resolveCurrentCommunityPayoutProfile } from "./payout-profile-resolver";
@@ -25,6 +26,7 @@ type PayoutRequestRow = {
   currency: string;
   status: PayoutRequestStatus;
   requested_at: string;
+  arrival_date: string | null;
   failure_code: string | null;
   failure_message: string | null;
 };
@@ -45,17 +47,21 @@ function toTimestamp(seconds: number | null | undefined): string | null {
   return typeof seconds === "number" ? new Date(seconds * 1000).toISOString() : null;
 }
 
-function mapStripePayoutStatus(status: Stripe.Payout["status"]): PayoutRequestStatus {
+function mapStripePayoutStatus(status: Stripe.Payout["status"]): StripePayoutRequestStatus | null {
   switch (status) {
+    case "pending":
+      return "pending";
+    case "in_transit":
+      return "in_transit";
     case "paid":
       return "paid";
     case "failed":
       return "failed";
     case "canceled":
       return "canceled";
-    default:
-      return "created";
   }
+
+  return null;
 }
 
 function isUnknownCreationError(error: unknown): boolean {
@@ -81,6 +87,7 @@ function toLatestPayoutRequest(row: PayoutRequestRow | null): LatestPayoutReques
     currency: "jpy",
     status: row.status,
     requestedAt: row.requested_at,
+    arrivalDate: row.arrival_date,
     failureCode: row.failure_code,
     failureMessage: row.failure_message,
   };
@@ -268,6 +275,17 @@ export class PayoutRequestService {
           }
         );
 
+        const payoutStatus = mapStripePayoutStatus(payout.status);
+        if (payoutStatus === null) {
+          return errResult(
+            new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
+              userMessage: "未対応の入金ステータスです。",
+              retryable: true,
+              details: { status: payout.status },
+            })
+          );
+        }
+
         const updateResult = await this.updateRequestFromPayout(inserted.id, payout);
         if (!updateResult.success) {
           return updateResult;
@@ -287,7 +305,7 @@ export class PayoutRequestService {
           stripeAccountId: payoutProfile.stripe_account_id,
           amount,
           currency: "jpy",
-          status: "created",
+          status: payoutStatus,
         });
       } catch (stripeError) {
         const status: PayoutRequestStatus = isUnknownCreationError(stripeError)
@@ -382,6 +400,15 @@ export class PayoutRequestService {
     // 5. ステータス遷移ガード
     const currentStatus = existing.status as PayoutRequestStatus;
     const newStatus = mapStripePayoutStatus(payout.status);
+    if (newStatus === null) {
+      return errResult(
+        new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
+          userMessage: "未対応の入金ステータスです。",
+          retryable: true,
+          details: { status: payout.status },
+        })
+      );
+    }
 
     if (TERMINAL_STATUSES.includes(currentStatus)) {
       const allowed = ALLOWED_TRANSITIONS[currentStatus];
@@ -461,6 +488,17 @@ export class PayoutRequestService {
         }
       );
 
+      const payoutStatus = mapStripePayoutStatus(payout.status);
+      if (payoutStatus === null) {
+        return errResult(
+          new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
+            userMessage: "未対応の入金ステータスです。",
+            retryable: true,
+            details: { status: payout.status },
+          })
+        );
+      }
+
       const updateResult = await this.updateRequestFromPayout(unknownRequest.id, payout);
       if (!updateResult.success) {
         return updateResult;
@@ -480,7 +518,7 @@ export class PayoutRequestService {
         stripeAccountId: payoutProfile.stripe_account_id,
         amount: unknownRequest.amount,
         currency: "jpy",
-        status: "created",
+        status: payoutStatus,
       });
     } catch (stripeError) {
       const status: PayoutRequestStatus = isUnknownCreationError(stripeError)
@@ -533,7 +571,9 @@ export class PayoutRequestService {
   private async getLatestRequest(payoutProfileId: string): Promise<LatestPayoutRequest | null> {
     const { data, error } = await this.supabase
       .from("payout_requests")
-      .select("id, amount, currency, status, requested_at, failure_code, failure_message")
+      .select(
+        "id, amount, currency, status, requested_at, arrival_date, failure_code, failure_message"
+      )
       .eq("payout_profile_id", payoutProfileId)
       .order("requested_at", { ascending: false })
       .limit(1)
@@ -550,11 +590,22 @@ export class PayoutRequestService {
     payoutRequestId: string,
     payout: Stripe.Payout
   ): Promise<AppResult<void>> {
+    const status = mapStripePayoutStatus(payout.status);
+    if (status === null) {
+      return errResult(
+        new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
+          userMessage: "未対応の入金ステータスです。",
+          retryable: true,
+          details: { status: payout.status },
+        })
+      );
+    }
+
     const { error } = await this.supabase
       .from("payout_requests")
       .update({
         stripe_payout_id: payout.id,
-        status: mapStripePayoutStatus(payout.status),
+        status,
         arrival_date: toTimestamp(payout.arrival_date),
         stripe_created_at: toTimestamp(payout.created),
         failure_code: payout.failure_code,

@@ -24,9 +24,10 @@ type PayoutRequestPanelProps = {
 };
 
 const STATUS_LABELS: Record<PayoutRequestStatus, string> = {
-  requesting: "作成中",
-  created: "処理中",
-  paid: "入金完了",
+  requesting: "申請中",
+  pending: "準備中",
+  in_transit: "処理中",
+  paid: "完了",
   failed: "失敗",
   canceled: "キャンセル",
   creation_unknown: "確認中",
@@ -76,23 +77,51 @@ export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutR
   const latestRequest = payoutPanel.latestRequest;
   const latestFailureLabel =
     latestRequest?.status === "failed" ? getPayoutFailureLabel(latestRequest.failureCode) : null;
-  const buttonDisabled = !payoutPanel.canRequestPayout || isPending;
+  const latestRequestDetails = latestRequest
+    ? [
+        `${formatCurrency(latestRequest.amount)}円`,
+        new Date(latestRequest.requestedAt).toLocaleDateString("ja-JP"),
+        latestRequest.arrivalDate
+          ? `予定: ${new Date(latestRequest.arrivalDate).toLocaleDateString("ja-JP")}`
+          : null,
+        latestFailureLabel,
+      ].filter((detail): detail is string => detail !== null)
+    : [];
+  const canRecoverCreationUnknown =
+    latestRequest?.status === "creation_unknown" &&
+    payoutPanel.disabledReason === "request_in_progress";
+  const buttonDisabled = (!payoutPanel.canRequestPayout && !canRecoverCreationUnknown) || isPending;
+  const buttonLabel = canRecoverCreationUnknown
+    ? "入金状況を再確認"
+    : payoutPanel.canRequestPayout
+      ? `${formatCurrency(payoutPanel.availableAmount)}円を入金`
+      : payoutPanel.disabledReason
+        ? DISABLED_LABELS[payoutPanel.disabledReason]
+        : "入金できません";
 
   const handleRequestPayout = () => {
     startTransition(async () => {
       try {
         const result = await requestPayoutAction();
         if (!result.success) {
-          toast.error("入金リクエストに失敗しました", {
-            description: result.error.userMessage,
-          });
+          toast.error(
+            canRecoverCreationUnknown
+              ? "入金状況を確認できませんでした"
+              : "入金リクエストに失敗しました",
+            {
+              description: result.error.userMessage,
+            }
+          );
           router.refresh();
           return;
         }
 
-        toast.success("入金リクエストを作成しました", {
-          description: `${formatCurrency(result.data.amount)}円の入金処理を開始しました。`,
-        });
+        toast.success(
+          canRecoverCreationUnknown ? "入金状況を確認しました" : "入金リクエストを作成しました",
+          {
+            description: `${formatCurrency(result.data.amount)}円の入金処理を開始しました。`,
+          }
+        );
         router.refresh();
       } catch {
         toast.error("通信に失敗しました");
@@ -130,9 +159,7 @@ export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutR
             </div>
             {latestRequest && (
               <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                前回: {formatCurrency(latestRequest.amount)}円 /{" "}
-                {new Date(latestRequest.requestedAt).toLocaleDateString("ja-JP")}
-                {latestFailureLabel ? ` / ${latestFailureLabel}` : ""}
+                前回: {latestRequestDetails.join(" / ")}
               </p>
             )}
           </div>
@@ -145,11 +172,7 @@ export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutR
           onClick={handleRequestPayout}
         >
           {isPending && <Loader2 className="size-4 animate-spin" />}
-          {payoutPanel.canRequestPayout
-            ? `${formatCurrency(payoutPanel.availableAmount)}円を入金`
-            : payoutPanel.disabledReason
-              ? DISABLED_LABELS[payoutPanel.disabledReason]
-              : "入金できません"}
+          {buttonLabel}
         </Button>
       </div>
     </div>

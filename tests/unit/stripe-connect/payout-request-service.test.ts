@@ -139,7 +139,7 @@ describe("PayoutRequestService", () => {
       stripeDouble.setPayoutResponse({
         id: "po_test_created",
         amount: 1500,
-        status: "paid",
+        status: "pending",
       });
     });
 
@@ -153,9 +153,9 @@ describe("PayoutRequestService", () => {
       const success = expectAppSuccess(result);
       const row = await getPayoutRequestById(ctx, success.data.payoutRequestId);
       expect(success.data).toEqual(
-        expect.objectContaining({ amount: 1500, currency: "jpy", status: "created" })
+        expect.objectContaining({ amount: 1500, currency: "jpy", status: "pending" })
       );
-      expect(row).toEqual(expect.objectContaining({ amount: 1500, status: "paid" }));
+      expect(row).toEqual(expect.objectContaining({ amount: 1500, status: "pending" }));
       expect(stripeDouble.payoutCreateCalls).toHaveLength(1);
     });
 
@@ -260,8 +260,8 @@ describe("PayoutRequestService", () => {
     });
 
     // Stripe作成済みのPayoutは履歴扱いにし、freshなavailable残高があれば次の入金を許可する
-    it("同じpayout_profileにcreatedのpayout_requestのみが存在する時、新しいStripe Payoutを作成できること", async () => {
-      await createPayoutRequestFixture(ctx, { status: "created", stripePayoutId: "po_old" });
+    it("同じpayout_profileにpendingのpayout_requestのみが存在する時、新しいStripe Payoutを作成できること", async () => {
+      await createPayoutRequestFixture(ctx, { status: "pending", stripePayoutId: "po_old" });
 
       const result = await service.requestPayout({
         userId: ctx.user.id,
@@ -351,7 +351,7 @@ describe("PayoutRequestService", () => {
     });
 
     // DB作成後にStripe作成成功した場合の状態遷移を固定する
-    it("Stripe Payout作成に成功した時、payout_requestをcreatedに更新しstripe_payout_idを保存すること", async () => {
+    it("Stripe Payout作成に成功した時、payout_requestをpendingに更新しstripe_payout_idを保存すること", async () => {
       stripeDouble.setPayoutResponse({ id: "po_created_contract", status: "pending" });
 
       const result = await service.requestPayout({
@@ -361,7 +361,7 @@ describe("PayoutRequestService", () => {
       const success = expectAppSuccess(result);
 
       expect(await getPayoutRequestById(ctx, success.data.payoutRequestId)).toEqual(
-        expect.objectContaining({ stripe_payout_id: "po_created_contract", status: "created" })
+        expect.objectContaining({ stripe_payout_id: "po_created_contract", status: "pending" })
       );
     });
 
@@ -505,7 +505,7 @@ describe("PayoutRequestService", () => {
       ctx = await createPayoutContextFixture({ emailPrefix: "sync-payout" });
       service = new PayoutRequestService(ctx.adminClient);
       request = await createPayoutRequestFixture(ctx, {
-        status: "created",
+        status: "pending",
         stripePayoutId: "po_test_fixture",
         failureCode: "old_failure",
         failureMessage: "old failure",
@@ -561,14 +561,14 @@ describe("PayoutRequestService", () => {
     });
 
     // 作成イベントの状態反映を固定する
-    it("payout.createdを受け取った時、payout_requestをcreatedに更新すること", async () => {
+    it("payout.createdを受け取った時、payout_requestをpendingに更新すること", async () => {
       const payout = buildPayout(ctx, request, { status: "pending" });
 
       const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
 
       expectAppSuccess(result);
       expect(await getPayoutRequestById(ctx, request.id)).toEqual(
-        expect.objectContaining({ status: "created" })
+        expect.objectContaining({ status: "pending" })
       );
     });
 
@@ -581,6 +581,18 @@ describe("PayoutRequestService", () => {
       expectAppSuccess(result);
       expect(await getPayoutRequestById(ctx, request.id)).toEqual(
         expect.objectContaining({ status: "canceled" })
+      );
+    });
+
+    // Stripeの銀行送信後状態をcreatedに潰さず保存する
+    it("payout.updatedでin_transitを受け取った時、payout_requestをin_transitへ更新すること", async () => {
+      const payout = buildPayout(ctx, request, { status: "in_transit" });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({ status: "in_transit" })
       );
     });
 
@@ -643,7 +655,7 @@ describe("PayoutRequestService", () => {
     });
 
     // Stripeはイベント順序を保証しない。古いpending/in_transit系イベントでpaid/failedを巻き戻さない。
-    it("paidまたはfailedのpayout_requestに古いpayout.createdやpendingのpayout.updatedが届いても、状態をcreatedへ巻き戻さないこと", async () => {
+    it("paidまたはfailedのpayout_requestに古いpayout.createdやpendingのpayout.updatedが届いても、状態をpendingへ巻き戻さないこと", async () => {
       await ctx.adminClient.from("payout_requests").update({ status: "paid" }).eq("id", request.id);
       const payout = buildPayout(ctx, request, { status: "pending" });
 
@@ -692,7 +704,7 @@ describe("PayoutRequestService", () => {
       const failure = expectAppFailure(result);
       expect(failure.error.retryable).toBe(false);
       expect(await getPayoutRequestById(ctx, request.id)).toEqual(
-        expect.objectContaining({ status: "created" })
+        expect.objectContaining({ status: "pending" })
       );
     });
   });

@@ -173,7 +173,8 @@ COMMENT ON TYPE "public"."payment_status_enum" IS '決済状況: pending, paid, 
 
 CREATE TYPE "public"."payout_request_status" AS ENUM (
     'requesting',
-    'created',
+    'pending',
+    'in_transit',
     'paid',
     'failed',
     'canceled',
@@ -3681,7 +3682,7 @@ CREATE INDEX "idx_payout_requests_community_requested_at" ON "public"."payout_re
 
 
 
-CREATE INDEX "idx_payout_requests_pending_requested_at" ON "public"."payout_requests" USING "btree" ("requested_at") WHERE ("status" = ANY (ARRAY['requesting'::"public"."payout_request_status", 'created'::"public"."payout_request_status", 'creation_unknown'::"public"."payout_request_status"]));
+CREATE INDEX "idx_payout_requests_pending_requested_at" ON "public"."payout_requests" USING "btree" ("requested_at") WHERE ("status" = ANY (ARRAY['requesting'::"public"."payout_request_status", 'pending'::"public"."payout_request_status", 'in_transit'::"public"."payout_request_status", 'creation_unknown'::"public"."payout_request_status"]));
 
 
 

@@ -1,6 +1,7 @@
 CREATE TYPE public.payout_request_status AS ENUM (
   'requesting',
-  'created',
+  'pending',
+  'in_transit',
   'paid',
   'failed',
   'canceled',
@@ -53,7 +54,7 @@ CREATE INDEX idx_payout_requests_community_requested_at
   ON public.payout_requests USING btree (community_id, requested_at DESC);
 CREATE INDEX idx_payout_requests_pending_requested_at
   ON public.payout_requests USING btree (requested_at ASC)
-  WHERE status IN ('requesting', 'created', 'creation_unknown');
+  WHERE status IN ('requesting', 'pending', 'in_transit', 'creation_unknown');
 
 CREATE UNIQUE INDEX uniq_payout_requests_active_per_profile
   ON public.payout_requests USING btree (payout_profile_id)

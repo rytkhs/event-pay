@@ -1,4 +1,4 @@
-import { beforeEach, afterEach, describe, expect, it } from "@jest/globals";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "@jest/globals";
 import type Stripe from "stripe";
 
 import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
@@ -16,6 +16,9 @@ import {
   type PayoutContextFixture,
   type PayoutRequestFixture,
 } from "@tests/helpers/stripe-connect-payout-fixtures";
+import {
+  acquireStripeConnectSharedAccountLock,
+} from "@tests/helpers/stripe-connect-shared-account-lock";
 
 const SHARED_STRIPE_ACCOUNT_ID = "acct_1TNaiwEPOXwA4bzb";
 const FUNDING_AMOUNT_JPY = 5000;
@@ -182,6 +185,18 @@ async function releaseSharedStripeAccountDbRows(): Promise<void> {
 }
 
 describe("PayoutRequestService 統合テスト", () => {
+  let releaseSharedAccountLock: (() => Promise<void>) | undefined;
+
+  beforeAll(async () => {
+    releaseSharedAccountLock = await acquireStripeConnectSharedAccountLock(
+      "stripe-connect-payout-integration"
+    );
+  }, 130_000);
+
+  afterAll(async () => {
+    await releaseSharedAccountLock?.();
+  });
+
   describe("入金要求の作成", () => {
     let ctx: PayoutContextFixture;
     let service: PayoutRequestService;
@@ -215,7 +230,7 @@ describe("PayoutRequestService 統合テスト", () => {
       }
       if (testName.includes("追跡用カラム")) {
         existingRequestForTraceability = await createPayoutRequestFixture(ctx, {
-          status: "created",
+          status: "pending",
           stripePayoutId: `po_trace_existing_${uniqueTestId()}`,
           idempotencyKey: `payout_trace_existing_${uniqueTestId()}`,
         });
@@ -231,7 +246,7 @@ describe("PayoutRequestService 統合テスト", () => {
     });
 
     // Service境界から実DB保存とStripe Payout作成まで到達する代表ケースを固定する
-    it("現在のコミュニティに入金可能なpayout_profileとavailable残高が存在する時、payout_requestがcreatedで保存されStripe Payout IDが保存されること", async () => {
+    it("現在のコミュニティに入金可能なpayout_profileとavailable残高が存在する時、payout_requestがpendingで保存されStripe Payout IDが保存されること", async () => {
       const result = await service.requestPayout({
         userId: ctx.user.id,
         communityId: ctx.communityId,
@@ -250,7 +265,7 @@ describe("PayoutRequestService 統合テスト", () => {
           stripeAccountId: SHARED_STRIPE_ACCOUNT_ID,
           amount: expect.any(Number),
           currency: "jpy",
-          status: "created",
+          status: "pending",
         })
       );
       expect(success.data!.amount).toBeGreaterThan(0);
@@ -264,7 +279,7 @@ describe("PayoutRequestService 統合テスト", () => {
           stripe_payout_id: success.data!.stripePayoutId,
           amount: success.data!.amount,
           currency: "jpy",
-          status: "created",
+          status: "pending",
         })
       );
       expect(stripePayout.id).toBe(success.data!.stripePayoutId);
@@ -325,7 +340,7 @@ describe("PayoutRequestService 統合テスト", () => {
           stripe_payout_id: success.data!.stripePayoutId,
           amount: success.data!.amount,
           currency: "jpy",
-          status: "created",
+          status: "pending",
           idempotency_key: expect.stringMatching(/^payout_/),
         })
       );
@@ -340,7 +355,7 @@ describe("PayoutRequestService 統合テスト", () => {
     beforeEach(async () => {
       ctx = await createContext({ emailPrefix: "payout-db-constraint" });
       existingRequest = await createPayoutRequestFixture(ctx, {
-        status: "created",
+        status: "pending",
         stripePayoutId: `po_unique_${uniqueTestId()}`,
         idempotencyKey: `payout_unique_${uniqueTestId()}`,
       });
@@ -362,7 +377,7 @@ describe("PayoutRequestService 統合テスト", () => {
         stripe_payout_id: existingRequest.stripe_payout_id,
         amount: 1000,
         currency: "jpy",
-        status: "created",
+        status: "pending",
         idempotency_key: `payout_duplicate_stripe_id_${uniqueTestId()}`,
       });
 
@@ -382,7 +397,7 @@ describe("PayoutRequestService 統合テスト", () => {
         stripe_payout_id: `po_duplicate_key_${uniqueTestId()}`,
         amount: 1000,
         currency: "jpy",
-        status: "created",
+        status: "pending",
         idempotency_key: existingRequest.idempotency_key,
       });
 
@@ -404,9 +419,9 @@ describe("PayoutRequestService 統合テスト", () => {
       if (testName.includes("requestingのpayout_request")) {
         await createPayoutRequestFixture(ctx, { status: "requesting" });
       }
-      if (testName.includes("createdのpayout_request")) {
+      if (testName.includes("pendingのpayout_request")) {
         await createPayoutRequestFixture(ctx, {
-          status: "created",
+          status: "pending",
           stripePayoutId: `po_created_old_${uniqueTestId()}`,
         });
         await fundSharedAccountAvailableBalance();
@@ -433,8 +448,8 @@ describe("PayoutRequestService 統合テスト", () => {
       expect(await listPayoutRequests(ctx)).toEqual(payoutRequestsBefore);
     });
 
-    // 作成済みリクエストは履歴扱いにし、freshなavailable残高があれば次の入金を許可する代表ケースを固定する
-    it("同じpayout_profileにcreatedのpayout_requestのみが存在する時、新しい入金要求を作成できること", async () => {
+    // Stripe作成済みリクエストは履歴扱いにし、freshなavailable残高があれば次の入金を許可する代表ケースを固定する
+    it("同じpayout_profileにpendingのpayout_requestのみが存在する時、新しい入金要求を作成できること", async () => {
       const result = await service.requestPayout({
         userId: ctx.user.id,
         communityId: ctx.communityId,
@@ -445,10 +460,10 @@ describe("PayoutRequestService 統合テスト", () => {
       expect(after).toHaveLength(payoutRequestsBefore.length + 1);
       expect(after).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ id: payoutRequestsBefore[0]?.id, status: "created" }),
+          expect.objectContaining({ id: payoutRequestsBefore[0]?.id, status: "pending" }),
           expect.objectContaining({
             id: success.data!.payoutRequestId,
-            status: "created",
+            status: "pending",
             stripe_payout_id: success.data!.stripePayoutId,
           }),
         ])
@@ -472,7 +487,7 @@ describe("PayoutRequestService 統合テスト", () => {
       expect(activeRequests).toHaveLength(0);
       expect(after[0]).toEqual(
         expect.objectContaining({
-          status: "created",
+          status: "pending",
           stripe_payout_id: expect.stringMatching(/^po_/),
         })
       );

@@ -1282,7 +1282,8 @@ export type Database = {
         | "canceled";
       payout_request_status:
         | "requesting"
-        | "created"
+        | "pending"
+        | "in_transit"
         | "paid"
         | "failed"
         | "canceled"
@@ -1445,7 +1446,8 @@ export const Constants = {
       ],
       payout_request_status: [
         "requesting",
-        "created",
+        "pending",
+        "in_transit",
         "paid",
         "failed",
         "canceled",

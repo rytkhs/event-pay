@@ -1,10 +1,16 @@
 export type PayoutRequestStatus =
   | "requesting"
-  | "created"
+  | "pending"
+  | "in_transit"
   | "paid"
   | "failed"
   | "canceled"
   | "creation_unknown";
+
+export type StripePayoutRequestStatus = Exclude<
+  PayoutRequestStatus,
+  "requesting" | "creation_unknown"
+>;
 
 export type PayoutBalance = {
   availableAmount: number;
@@ -18,6 +24,7 @@ export type LatestPayoutRequest = {
   currency: "jpy";
   status: PayoutRequestStatus;
   requestedAt: string;
+  arrivalDate: string | null;
   failureCode: string | null;
   failureMessage: string | null;
 };
@@ -43,5 +50,5 @@ export type RequestPayoutPayload = {
   stripeAccountId: string;
   amount: number;
   currency: "jpy";
-  status: "created";
+  status: StripePayoutRequestStatus;
 };

@@ -1,4 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+} from "@jest/globals";
 import { type CookieOptions } from "@supabase/ssr";
 
 jest.unmock("@core/auth/auth-utils");
@@ -52,6 +61,7 @@ import {
   type PayoutContextFixture,
   type PayoutRequestFixture,
 } from "@tests/helpers/stripe-connect-payout-fixtures";
+import { acquireStripeConnectSharedAccountLock } from "@tests/helpers/stripe-connect-shared-account-lock";
 
 const SHARED_STRIPE_ACCOUNT_ID = "acct_1TNaiwEPOXwA4bzb";
 const FUNDING_AMOUNT_JPY = 5000;
@@ -203,6 +213,18 @@ async function signInActionRequest(ctx: PayoutContextFixture): Promise<void> {
 }
 
 describe("requestPayoutAction 統合テスト", () => {
+  let releaseSharedAccountLock: (() => Promise<void>) | undefined;
+
+  beforeAll(async () => {
+    releaseSharedAccountLock = await acquireStripeConnectSharedAccountLock(
+      "stripe-connect-payout-integration"
+    );
+  }, 130_000);
+
+  afterAll(async () => {
+    await releaseSharedAccountLock?.();
+  });
+
   describe("Action境界", () => {
     let ctx: PayoutContextFixture;
     let payoutRequestsBefore: PayoutRequestSnapshot;
@@ -247,7 +269,7 @@ describe("requestPayoutAction 統合テスト", () => {
             stripeAccountId: SHARED_STRIPE_ACCOUNT_ID,
             amount: expect.any(Number),
             currency: "jpy",
-            status: "created",
+            status: "pending",
           })
         );
         expect(data.amount).toBeGreaterThan(0);
@@ -261,7 +283,7 @@ describe("requestPayoutAction 統合テスト", () => {
             stripe_payout_id: data.stripePayoutId,
             amount: data.amount,
             currency: "jpy",
-            status: "created",
+            status: "pending",
           })
         );
         expect(stripePayout.id).toBe(data.stripePayoutId);
