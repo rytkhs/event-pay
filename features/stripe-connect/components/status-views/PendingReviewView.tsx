@@ -1,35 +1,23 @@
 /**
  * PendingReviewView - 審査待ち状態のビュー
- * Stripeによる情報確認中の表示
+ * ステータス通知カード1つに集約。
  */
 
 "use client";
 
-import { Clock, ExternalLink } from "lucide-react";
+import { Clock } from "lucide-react";
 
-import type { ActionResult } from "@core/errors/adapters/server-actions";
-
-import { Button } from "@/components/ui/button";
-
-import type { PayoutPanelState, RequestPayoutPayload } from "../../types/payout-request";
-import { PayoutRequestPanel } from "../PayoutRequestPanel";
+import type { StatusConfig } from "../StatusBadge";
+import { StatusBadge } from "../StatusBadge";
 
 interface PendingReviewViewProps {
-  expressDashboardAction?: (formData: FormData) => Promise<void>;
-  expressDashboardAvailable?: boolean;
-  payoutPanel?: PayoutPanelState;
-  requestPayoutAction?: () => Promise<ActionResult<RequestPayoutPayload>>;
+  statusConfig: StatusConfig;
 }
 
-export function PendingReviewView({
-  expressDashboardAction,
-  expressDashboardAvailable,
-  payoutPanel,
-  requestPayoutAction,
-}: PendingReviewViewProps) {
+export function PendingReviewView({ statusConfig }: PendingReviewViewProps) {
   return (
-    <div className="flex flex-col gap-4">
-      <div className="rounded-lg border border-border/60 bg-muted/30 p-3.5 sm:p-4">
+    <div className="rounded-lg border border-border/60 bg-muted/30 p-3.5 sm:p-4">
+      <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-primary/20 text-primary">
             <Clock className="size-4" />
@@ -41,24 +29,8 @@ export function PendingReviewView({
             </p>
           </div>
         </div>
+        <StatusBadge config={statusConfig} />
       </div>
-
-      {expressDashboardAvailable && expressDashboardAction && (
-        <form action={expressDashboardAction}>
-          <Button
-            type="submit"
-            variant="outline"
-            className="group h-11 w-full text-sm font-semibold"
-          >
-            Stripeで審査状況を確認
-            <ExternalLink className="ml-2 size-3.5 opacity-70 transition-opacity group-hover:opacity-100" />
-          </Button>
-        </form>
-      )}
-
-      {payoutPanel && requestPayoutAction && (
-        <PayoutRequestPanel payoutPanel={payoutPanel} requestPayoutAction={requestPayoutAction} />
-      )}
     </div>
   );
 }
