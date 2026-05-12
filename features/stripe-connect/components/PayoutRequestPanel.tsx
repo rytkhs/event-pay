@@ -34,12 +34,12 @@ const STATUS_LABELS: Record<PayoutRequestStatus, string> = {
 };
 
 const DISABLED_LABELS: Record<NonNullable<PayoutPanelState["disabledReason"]>, string> = {
-  no_account: "入金先が未設定です",
-  payouts_disabled: "入金設定を確認してください",
-  external_account_missing: "入金先口座を確認してください",
-  external_account_unavailable: "入金先口座を確認してください",
-  no_available_balance: "入金可能残高がありません",
-  request_in_progress: "処理中の入金があります",
+  no_account: "振込先が未設定です",
+  payouts_disabled: "振込設定を確認してください",
+  external_account_missing: "振込先口座を確認してください",
+  external_account_unavailable: "振込先口座を確認してください",
+  no_available_balance: "振込可能残高がありません",
+  request_in_progress: "処理中の振込があります",
 };
 
 const ACCOUNT_FAILURE_CODES = new Set([
@@ -62,15 +62,15 @@ const ACCOUNT_FAILURE_CODES = new Set([
 
 function getPayoutFailureLabel(failureCode: string | null): string {
   if (failureCode === "insufficient_funds") {
-    return "入金可能額が不足しています。";
+    return "振込可能額が不足しています。";
   }
   if (failureCode === "declined" || failureCode === "could_not_process") {
-    return "入金処理が銀行側で完了できませんでした。";
+    return "振込処理が銀行側で完了できませんでした。";
   }
   if (failureCode !== null && ACCOUNT_FAILURE_CODES.has(failureCode)) {
-    return "入金先口座を確認してください。";
+    return "振込先口座を確認してください。";
   }
-  return "入金処理に失敗しました。";
+  return "振込処理に失敗しました。";
 }
 
 export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutRequestPanelProps) {
@@ -96,10 +96,10 @@ export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutR
   const buttonLabel = canRecoverCreationUnknown
     ? "再試行"
     : payoutPanel.canRequestPayout
-      ? `${formatCurrency(payoutPanel.availableAmount)}円を入金`
+      ? `${formatCurrency(payoutPanel.availableAmount)}円を振込`
       : payoutPanel.disabledReason
         ? DISABLED_LABELS[payoutPanel.disabledReason]
-        : "入金できません";
+        : "振込できません";
 
   const handleRequestPayout = () => {
     startTransition(async () => {
@@ -108,8 +108,8 @@ export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutR
         if (!result.success) {
           toast.error(
             canRecoverCreationUnknown
-              ? "入金状況を確認できませんでした"
-              : "入金リクエストに失敗しました",
+              ? "振込状況を確認できませんでした"
+              : "振込リクエストに失敗しました",
             {
               description: result.error.userMessage,
             }
@@ -119,9 +119,9 @@ export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutR
         }
 
         toast.success(
-          canRecoverCreationUnknown ? "入金状況を確認しました" : "入金リクエストを作成しました",
+          canRecoverCreationUnknown ? "振込状況を確認しました" : "振込リクエストを作成しました",
           {
-            description: `${formatCurrency(result.data.amount)}円の入金処理を開始しました。`,
+            description: `${formatCurrency(result.data.amount)}円の振込処理を開始しました。`,
           }
         );
         router.refresh();
@@ -140,7 +140,7 @@ export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutR
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <p className="text-sm font-semibold">登録口座への入金</p>
+              <p className="text-sm font-semibold">登録口座への振込</p>
               {latestRequest && (
                 <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
                   {STATUS_LABELS[latestRequest.status]}
@@ -149,7 +149,7 @@ export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutR
             </div>
             <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
               <div>
-                <p className="text-xs text-muted-foreground">入金可能</p>
+                <p className="text-xs text-muted-foreground">振込可能</p>
                 <p className="mt-1 font-semibold">
                   {formatCurrency(payoutPanel.availableAmount)}円
                 </p>

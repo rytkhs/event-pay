@@ -22,7 +22,7 @@ const settingsPages = [
     title: "オンライン集金",
     href: "/settings/payments",
     icon: CreditCard,
-    description: "受取先設定と売上・入金状況の確認",
+    description: "受取先設定と集金・振込状況の確認",
   },
   {
     title: "アカウント",

@@ -17,8 +17,8 @@ const BENEFITS = [
   },
   {
     icon: Zap,
-    title: "入金確認",
-    description: "Stripe上の残高と入金状況を確認できます",
+    title: "振込確認",
+    description: "Stripe上の残高と振込状況を確認できます",
   },
 ] as const;
 

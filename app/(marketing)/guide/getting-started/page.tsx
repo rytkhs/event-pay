@@ -79,7 +79,7 @@ const steps: Step[] = [
     title: "必要な場合だけオンライン集金を設定する",
     body: "クレジットカード決済やApple Pay、Google Payによる集金を有効にしたい場合は設定を行います。",
     detail:
-      "コミュニティの簡単な説明を入力後、本人確認書類と入金先口座を用意して、Stripeの安全な画面で進めます。設定はあとからでも可能です。",
+      "コミュニティの簡単な説明を入力後、本人確認書類と振込先口座を用意して、Stripeの安全な画面で進めます。設定はあとからでも可能です。",
     icon: ShieldCheck,
   },
   {
@@ -148,8 +148,8 @@ const guideLinks: GuideLink[] = [
     href: "/guide/participant-flow",
   },
   {
-    title: "オンライン集金・入金のしくみ",
-    body: "カード決済、入金、Stripe設定の考え方を詳しく確認できます。",
+    title: "オンライン集金・振込のしくみ",
+    body: "カード決済、振込、Stripe設定のについて詳しく確認できます。",
     href: "/guide/online-collection",
   },
   {

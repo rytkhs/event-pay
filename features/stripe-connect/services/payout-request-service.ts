@@ -91,9 +91,9 @@ function isBankAccount(account: Stripe.ExternalAccount): account is Stripe.BankA
   return account.object === "bank_account";
 }
 
-function findDefaultJpyBankAccount(
-  accounts: { data: Stripe.ExternalAccount[] }
-): Stripe.BankAccount | null {
+function findDefaultJpyBankAccount(accounts: {
+  data: Stripe.ExternalAccount[];
+}): Stripe.BankAccount | null {
   return (
     accounts.data
       .filter(isBankAccount)
@@ -106,28 +106,28 @@ function getDisabledReasonError(disabledReason: PayoutPanelDisabledReason): AppE
   switch (disabledReason) {
     case "no_account":
       return new AppError("CONNECT_ACCOUNT_NOT_FOUND", {
-        userMessage: "入金先の設定が見つかりません。",
+        userMessage: "振込先の設定が見つかりません。",
         retryable: false,
       });
     case "payouts_disabled":
       return new AppError("CONNECT_ACCOUNT_RESTRICTED", {
-        userMessage: "入金を実行できる状態ではありません。",
+        userMessage: "振込を実行できる状態ではありません。",
         retryable: false,
       });
     case "external_account_missing":
     case "external_account_unavailable":
       return new AppError("CONNECT_ACCOUNT_RESTRICTED", {
-        userMessage: "入金先口座を確認してください。",
+        userMessage: "振込先口座を確認してください。",
         retryable: false,
       });
     case "no_available_balance":
       return new AppError("INSUFFICIENT_BALANCE", {
-        userMessage: "入金可能な残高がありません。",
+        userMessage: "振込可能な残高がありません。",
         retryable: false,
       });
     case "request_in_progress":
       return new AppError("RESOURCE_CONFLICT", {
-        userMessage: "処理中の入金リクエストがあります。",
+        userMessage: "処理中の振込リクエストがあります。",
         retryable: true,
       });
   }
@@ -135,7 +135,7 @@ function getDisabledReasonError(disabledReason: PayoutPanelDisabledReason): AppE
 
 function getMissingEligibilityDataError(): AppError {
   return new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
-    userMessage: "入金可否の確認に失敗しました。",
+    userMessage: "振込可否の確認に失敗しました。",
     retryable: true,
   });
 }
@@ -281,7 +281,7 @@ export class PayoutRequestService {
       if (!payoutProfile) {
         return errResult(
           new AppError("CONNECT_ACCOUNT_NOT_FOUND", {
-            userMessage: "入金先の設定が見つかりません。",
+            userMessage: "振込先の設定が見つかりません。",
             retryable: false,
           })
         );
@@ -290,7 +290,7 @@ export class PayoutRequestService {
       if (payoutProfile.owner_user_id !== params.userId) {
         return errResult(
           new AppError("FORBIDDEN", {
-            userMessage: "この入金先を操作する権限がありません。",
+            userMessage: "この振込先を操作する権限がありません。",
             retryable: false,
           })
         );
@@ -343,7 +343,7 @@ export class PayoutRequestService {
         if (hasPostgrestCode(insertError, "23505")) {
           return errResult(
             new AppError("RESOURCE_CONFLICT", {
-              userMessage: "処理中の入金リクエストがあります。",
+              userMessage: "処理中の振込リクエストがあります。",
               cause: insertError,
               retryable: true,
             })
@@ -375,7 +375,7 @@ export class PayoutRequestService {
         if (payoutStatus === null) {
           return errResult(
             new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
-              userMessage: "未対応の入金ステータスです。",
+              userMessage: "未対応の振込ステータスです。",
               retryable: true,
               details: { status: payout.status },
             })
@@ -423,8 +423,8 @@ export class PayoutRequestService {
           new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
             userMessage:
               status === "creation_unknown"
-                ? "入金リクエストの処理状況を確認中です。しばらくしてから再度確認してください。"
-                : "入金リクエストの作成に失敗しました。",
+                ? "振込リクエストの処理状況を確認中です。しばらくしてから再度確認してください。"
+                : "振込リクエストの作成に失敗しました。",
             cause: stripeError,
             retryable: status === "creation_unknown",
             details: { payoutRequestId: inserted.id, status },
@@ -467,7 +467,7 @@ export class PayoutRequestService {
     if (!existing) {
       return errResult(
         new AppError("PAYOUT_REQUEST_NOT_FOUND", {
-          userMessage: "対応する入金リクエストが見つかりません。",
+          userMessage: "対応する振込リクエストが見つかりません。",
           retryable: false,
         })
       );
@@ -499,7 +499,7 @@ export class PayoutRequestService {
     if (newStatus === null) {
       return errResult(
         new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
-          userMessage: "未対応の入金ステータスです。",
+          userMessage: "未対応の振込ステータスです。",
           retryable: true,
           details: { status: payout.status },
         })
@@ -544,15 +544,18 @@ export class PayoutRequestService {
     if (!unknownRequest) {
       return errResult(
         new AppError("PAYOUT_REQUEST_NOT_FOUND", {
-          userMessage: "復旧対象の入金リクエストが見つかりません。",
+          userMessage: "復旧対象の振込リクエストが見つかりません。",
           retryable: false,
         })
       );
     }
 
-    const eligibilityResult = await this.getFreshPayoutEligibility(payoutProfile.stripe_account_id, {
-      hasInProgressRequest: false,
-    });
+    const eligibilityResult = await this.getFreshPayoutEligibility(
+      payoutProfile.stripe_account_id,
+      {
+        hasInProgressRequest: false,
+      }
+    );
     if (!eligibilityResult.success) {
       return eligibilityResult;
     }
@@ -564,10 +567,13 @@ export class PayoutRequestService {
       return errResult(getDisabledReasonError(eligibility.disabledReason ?? "payouts_disabled"));
     }
 
-    if (unknownRequest.amount !== eligibility.availableAmount || unknownRequest.currency !== "jpy") {
+    if (
+      unknownRequest.amount !== eligibility.availableAmount ||
+      unknownRequest.currency !== "jpy"
+    ) {
       return errResult(
         new AppError("RESOURCE_CONFLICT", {
-          userMessage: "残高が変動したため、前回の入金リクエストを復旧できません。",
+          userMessage: "残高が変動したため、前回の振込リクエストを復旧できません。",
           retryable: false,
         })
       );
@@ -596,7 +602,7 @@ export class PayoutRequestService {
       if (payoutStatus === null) {
         return errResult(
           new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
-            userMessage: "未対応の入金ステータスです。",
+            userMessage: "未対応の振込ステータスです。",
             retryable: true,
             details: { status: payout.status },
           })
@@ -643,8 +649,8 @@ export class PayoutRequestService {
         new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
           userMessage:
             status === "creation_unknown"
-              ? "入金リクエストの処理状況を確認中です。しばらくしてから再度確認してください。"
-              : "入金リクエストの復旧に失敗しました。",
+              ? "振込リクエストの処理状況を確認中です。しばらくしてから再度確認してください。"
+              : "振込リクエストの復旧に失敗しました。",
           cause: stripeError,
           retryable: status === "creation_unknown",
           details: { payoutRequestId: unknownRequest.id, status },
@@ -698,7 +704,7 @@ export class PayoutRequestService {
     if (status === null) {
       return errResult(
         new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
-          userMessage: "未対応の入金ステータスです。",
+          userMessage: "未対応の振込ステータスです。",
           retryable: true,
           details: { status: payout.status },
         })

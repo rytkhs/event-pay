@@ -1,10 +1,10 @@
 /**
- * Stripe 入金設定ステータス表示コンポーネント
+ * Stripe 振込設定ステータス表示コンポーネント
  * UI Statusに基づいて適切なビューを表示
  *
  * レイアウト責務:
  * ❶ ステータスヘッダー（各ビューに委譲、バッジ統合）
- * ❷ 入金パネル（一元管理）
+ * ❷ 振込パネル（一元管理）
  * ❸ Stripeダッシュボード（一元管理）
  * ❹ ヘルプ（Ready以外で表示）
  */
@@ -121,7 +121,7 @@ export function AccountStatus({
       {/* ❶ ステータスヘッダー */}
       {renderStatusView()}
 
-      {/* ❷ 入金パネル */}
+      {/* ❷ 振込パネル */}
       {payoutPanel && requestPayoutAction && (
         <PayoutRequestPanel payoutPanel={payoutPanel} requestPayoutAction={requestPayoutAction} />
       )}

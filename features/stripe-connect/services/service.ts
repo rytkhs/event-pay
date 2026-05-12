@@ -335,7 +335,7 @@ export class StripeConnectService implements IStripeConnectService {
           if (manualScheduleError instanceof Stripe.errors.StripeError) {
             throw new StripeConnectError(
               StripeConnectErrorType.STRIPE_API_ERROR,
-              "入金スケジュールの設定に失敗しました",
+              "振込スケジュールの設定に失敗しました",
               manualScheduleError,
               { accountId: stripeAccount.id, userId }
             );
@@ -343,7 +343,7 @@ export class StripeConnectService implements IStripeConnectService {
 
           throw new StripeConnectError(
             StripeConnectErrorType.STRIPE_API_ERROR,
-            "入金スケジュールの設定に失敗しました",
+            "振込スケジュールの設定に失敗しました",
             manualScheduleError as Error,
             { accountId: stripeAccount.id, userId }
           );

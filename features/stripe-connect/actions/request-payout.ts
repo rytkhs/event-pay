@@ -47,7 +47,7 @@ export async function requestPayoutAction(): Promise<ActionResult<RequestPayoutP
     const payout = result.data;
     if (!payout) {
       return fail("STRIPE_CONNECT_SERVICE_ERROR", {
-        userMessage: "入金リクエストの作成に失敗しました。",
+        userMessage: "振込リクエストの作成に失敗しました。",
       });
     }
 
@@ -57,7 +57,7 @@ export async function requestPayoutAction(): Promise<ActionResult<RequestPayoutP
     revalidatePath("/dashboard");
 
     return toActionResultFromAppResult(result, {
-      userMessage: "入金リクエストを作成しました。",
+      userMessage: "振込リクエストを作成しました。",
     });
   } catch (error) {
     handleServerError(error, {
@@ -66,7 +66,7 @@ export async function requestPayoutAction(): Promise<ActionResult<RequestPayoutP
     });
     return failFrom(error, {
       defaultCode: "INTERNAL_ERROR",
-      userMessage: "入金リクエストの作成に失敗しました。",
+      userMessage: "振込リクエストの作成に失敗しました。",
     });
   }
 }

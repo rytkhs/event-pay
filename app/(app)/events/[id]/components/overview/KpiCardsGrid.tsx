@@ -53,7 +53,7 @@ export function KpiCardsGrid({
 
   const collectionChartConfig = {
     collected: {
-      label: "入金済み",
+      label: "集金済み",
       color: "hsl(var(--success))",
     },
     remaining: {
@@ -170,7 +170,7 @@ export function KpiCardsGrid({
               <div className="p-1.5 bg-green-100 rounded-lg">
                 <TrendingUp className="h-4 w-4 text-green-600" />
               </div>
-              <span className="text-xs font-medium text-green-700">入金状況</span>
+              <span className="text-xs font-medium text-green-700">集金状況</span>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button type="button" className="cursor-help">
@@ -178,7 +178,7 @@ export function KpiCardsGrid({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>現在の参加確定者のうち、集金対象者に対する入金進捗</p>
+                  <p>現在の参加確定者のうち、集金対象者に対する集金進捗</p>
                 </TooltipContent>
               </Tooltip>
             </div>

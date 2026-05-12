@@ -414,7 +414,7 @@ export function OnboardingForm({
                 </li>
                 <li className="flex items-start gap-2.5 text-xs text-muted-foreground">
                   <Building2 className="mt-0.5 size-3.5 shrink-0 text-primary" />
-                  銀行口座情報（入金先として登録します）
+                  銀行口座情報（振込先として登録します）
                 </li>
               </ul>
             </div>

@@ -21,9 +21,9 @@ import { GuideBottomCTA } from "../_components/GuideBottomCTA";
 
 export const dynamic = "force-static";
 
-const title = "オンライン集金・入金のしくみ";
+const title = "オンライン集金・振込のしくみ";
 const description =
-  "みんなの集金でオンライン決済を受け付けたときのお金の流れ、Stripeの売上・入金確認画面での手動入金、入金タイミングの目安を主催者向けにまとめました。";
+  "みんなの集金でオンライン決済を受け付けたときのお金の流れ、Stripeの売上・振込確認画面での手動振込、振込タイミングの目安を主催者向けにまとめました。";
 
 export const metadata: Metadata = {
   title,
@@ -62,7 +62,7 @@ const flowSteps: FlowStep[] = [
     title: "オンライン集金を有効にする",
     body: "主催者がStripe連携を完了すると、イベントでオンライン決済を選べるようになります。",
     detail:
-      "コミュニティの説明を入力後、本人確認情報、入金先銀行口座、コミュニティ情報をStripeの安全な画面で登録します。",
+      "コミュニティの説明を入力後、本人確認情報、振込先銀行口座、コミュニティ情報をStripeの安全な画面で登録します。",
     icon: ShieldCheck,
   },
   {
@@ -84,10 +84,10 @@ const flowSteps: FlowStep[] = [
     icon: Wallet,
   },
   {
-    title: "口座に入金する",
-    body: "利用可能残高になったら、Stripeダッシュボードで手動入金します。",
+    title: "口座に振り込む",
+    body: "利用可能残高になったら、Stripeダッシュボードで手動振込します。",
     detail:
-      "みんなの集金の管理画面にあるリンクからStripeへ移動して、主催者自身が入金操作を行います。",
+      "みんなの集金の管理画面にあるリンクからStripeへ移動して、主催者自身が振込操作を行います。",
     icon: BanknoteArrowDown,
   },
 ];
@@ -95,17 +95,17 @@ const flowSteps: FlowStep[] = [
 const payoutDetails: PayoutDetail[] = [
   {
     title: "処理中の残高があります",
-    body: "支払い完了後すぐに銀行口座へ入るわけではありません。Stripe側の処理が終わると、利用可能残高として入金できる状態になります。",
+    body: "支払い完了後すぐに銀行口座へ入るわけではありません。Stripe側の処理が終わると、利用可能残高として振込できる状態になります。",
     icon: Clock,
   },
   {
-    title: "入金タイミング",
-    body: "通常、決済完了から数営業日で残高が利用可能になります。ただし、初回入金に関しては7〜14日程度が目安です。銀行営業日やStripeの状況によって前後する場合があります。",
+    title: "振込タイミング",
+    body: "通常、決済完了から数営業日で残高が利用可能になります。ただし、初回振込に関しては7〜14日程度が目安です。銀行営業日やStripeの状況によって前後する場合があります。",
     icon: BanknoteArrowDown,
   },
   {
-    title: "確認と入金操作はStripeで行います",
-    body: "残高、入金可能額、入金予定、入金履歴、入金先口座はStripeダッシュボードで確認します。",
+    title: "確認と振込操作はStripeで行います",
+    body: "残高、振込可能額、振込予定、振込履歴、振込先口座はStripeダッシュボードで確認します。",
     icon: Landmark,
   },
 ];
@@ -157,11 +157,11 @@ export default function OnlineCollectionGuidePage() {
             <p className="text-sm font-bold text-primary">Online collection</p>
             <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
               オンライン集金・
-              <span className="text-primary">入金のしくみ</span>
+              <span className="text-primary">振込のしくみ</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-9 text-slate-700">
               参加者がオンラインで支払った参加費は、Stripeを通じて主催者の残高に反映されます。
-              銀行口座への入金は、主催者がStripeの売上・入金確認画面で手動で行います。
+              銀行口座への振込は、主催者がStripeの売上・振込確認画面で手動で行います。
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg" className="h-12 rounded-full px-6">
@@ -186,8 +186,8 @@ export default function OnlineCollectionGuidePage() {
       <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <SectionHeading
           eyebrow="Money flow"
-          title="参加者の支払いから、主催者の入金操作まで。"
-          body="オンライン集金では、参加者の支払い、みんなの集金上の支払い状況、Stripe上の残高、銀行口座への入金を分けて考えると流れを理解しやすくなります。"
+          title="参加者の支払いから、主催者の振込操作まで。"
+          body="オンライン集金では、参加者の支払い、みんなの集金上の支払い状況、Stripe上の残高、銀行口座への振込を分けて考えると流れを理解しやすくなります。"
         />
 
         <div className="mt-12 divide-y divide-slate-900/10 border-y border-slate-900/10 bg-white/60">
@@ -222,8 +222,8 @@ export default function OnlineCollectionGuidePage() {
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
           <SectionHeading
             eyebrow="Payout"
-            title="Stripeで残高を確認し、口座へ入金します。"
-            body="オンライン集金分はStripeダッシュボードで確認します。決済直後は処理中の残高として扱われ、利用可能残高になってから主催者が銀行口座へ手動で入金します。"
+            title="Stripeで残高を確認し、口座へ振り込みます。"
+            body="オンライン集金分はStripeダッシュボードで確認します。決済直後は処理中の残高として扱われ、利用可能残高になってから主催者が銀行口座へ手動で振り込みます。"
           />
 
           <div className="grid gap-4">
@@ -277,7 +277,7 @@ export default function OnlineCollectionGuidePage() {
       <GuideBottomCTA
         eyebrow="Start online collection"
         title="オンライン集金は、必要なイベントから始められます。"
-        body="現金集金と併用しながら、参加費の事前回収と入金管理をStripeでまとめて確認できます。"
+        body="現金集金と併用しながら、参加費の事前回収と振込管理をStripeでまとめて確認できます。"
         secondaryHref="/guide/participant-flow"
         secondaryLabel="参加者の流れを見る"
       />
