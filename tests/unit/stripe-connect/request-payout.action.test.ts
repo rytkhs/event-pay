@@ -116,10 +116,7 @@ describe("requestPayoutAction", () => {
 
   // 内部AppResultをUI向けActionResultへ投影することを固定する
   it("PayoutRequestServiceが失敗Resultを返した時、userMessageを含む失敗ActionResultを返すこと", async () => {
-    await ctx.adminClient
-      .from("payout_profiles")
-      .update({ payouts_enabled: false })
-      .eq("id", ctx.payoutProfileId);
+    mockStripeDouble.setAccount({ payouts_enabled: false });
 
     const result = await requestPayoutAction();
 

@@ -219,12 +219,6 @@ describe("PayoutRequestService 統合テスト", () => {
           .update({ current_payout_profile_id: null })
           .eq("id", ctx.communityId);
       }
-      if (testName.includes("payouts_enabledがfalse")) {
-        await ctx.adminClient
-          .from("payout_profiles")
-          .update({ payouts_enabled: false })
-          .eq("id", ctx.payoutProfileId);
-      }
       if (testName.includes("available残高が0円")) {
         await drainSharedAccountAvailableBalance();
       }
@@ -288,18 +282,6 @@ describe("PayoutRequestService 統合テスト", () => {
 
     // アプリ内入金は現在のコミュニティの受取先に限定することを固定する
     it("現在のコミュニティにpayout_profileが紐付かない時、payout_requestもStripe Payoutも作成されないこと", async () => {
-      const result = await service.requestPayout({
-        userId: ctx.user.id,
-        communityId: ctx.communityId,
-      });
-
-      expectAppFailure(result);
-      expect(await listPayoutRequests(ctx)).toEqual(payoutRequestsBefore);
-      expect(await listSharedStripePayoutIds()).toEqual(stripePayoutIdsBefore);
-    });
-
-    // 入金実行可否はオンライン集金可否ではなくpayouts_enabledで判定する
-    it("payouts_enabledがfalseの時、payout_requestもStripe Payoutも作成されないこと", async () => {
       const result = await service.requestPayout({
         userId: ctx.user.id,
         communityId: ctx.communityId,

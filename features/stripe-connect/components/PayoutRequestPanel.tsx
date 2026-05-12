@@ -36,6 +36,8 @@ const STATUS_LABELS: Record<PayoutRequestStatus, string> = {
 const DISABLED_LABELS: Record<NonNullable<PayoutPanelState["disabledReason"]>, string> = {
   no_account: "入金先が未設定です",
   payouts_disabled: "入金設定を確認してください",
+  external_account_missing: "入金先口座を確認してください",
+  external_account_unavailable: "入金先口座を確認してください",
   no_available_balance: "入金可能残高がありません",
   request_in_progress: "処理中の入金があります",
 };

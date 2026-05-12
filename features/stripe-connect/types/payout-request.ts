@@ -29,14 +29,18 @@ export type LatestPayoutRequest = {
   failureMessage: string | null;
 };
 
+export type PayoutPanelDisabledReason =
+  | "no_account"
+  | "payouts_disabled"
+  | "external_account_missing"
+  | "external_account_unavailable"
+  | "no_available_balance"
+  | "request_in_progress";
+
 export type PayoutPanelState = PayoutBalance & {
   latestRequest: LatestPayoutRequest | null;
   canRequestPayout: boolean;
-  disabledReason?:
-    | "no_account"
-    | "payouts_disabled"
-    | "no_available_balance"
-    | "request_in_progress";
+  disabledReason?: PayoutPanelDisabledReason;
 };
 
 export type RequestPayoutInput = {

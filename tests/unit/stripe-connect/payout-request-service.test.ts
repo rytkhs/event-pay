@@ -159,15 +159,9 @@ describe("PayoutRequestService", () => {
       expect(stripeDouble.payoutCreateCalls).toHaveLength(1);
     });
 
-    // 入金実行可否はオンライン集金可否ではなくpayouts_enabledで判定する
-    it("payouts_enabledがfalseの時、Stripe Payoutを作成せず失敗Resultを返すこと", async () => {
-      await ctx.cleanup();
-      ctx = await createPayoutContextFixture({
-        emailPrefix: "payout-disabled",
-        payoutsEnabled: false,
-        collectionReady: true,
-      });
-      service = new PayoutRequestService(ctx.adminClient);
+    // 入金実行可否はDBキャッシュではなくStripe Accountの最新payouts_enabledで判定する
+    it("Stripe Accountのpayouts_enabledがfalseの時、Stripe Payoutを作成せず失敗Resultを返すこと", async () => {
+      stripeDouble.setAccount({ payouts_enabled: false });
 
       const result = await service.requestPayout({
         userId: ctx.user.id,
@@ -175,6 +169,57 @@ describe("PayoutRequestService", () => {
       });
 
       expectAppFailure(result);
+      expect(await listPayoutRequests(ctx)).toHaveLength(0);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+    });
+
+    // 対象通貨のdefault外部口座がない時はStripe Payout作成前に止める
+    it("JPYのdefault外部銀行口座がない時、Stripe Payoutを作成せず失敗Resultを返すこと", async () => {
+      stripeDouble.setExternalAccounts([
+        { id: "ba_usd_default", currency: "usd", default_for_currency: true },
+      ]);
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      const failure = expectAppFailure(result);
+      expect(failure.error.code).toBe("CONNECT_ACCOUNT_RESTRICTED");
+      expect(failure.error.userMessage).toBe("入金先口座を確認してください。");
+      expect(await listPayoutRequests(ctx)).toHaveLength(0);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+    });
+
+    it.each(["errored", "verification_failed", "tokenized_account_number_deactivated"])(
+      "default外部銀行口座のstatusが%sの時、Stripe Payoutを作成せず失敗Resultを返すこと",
+      async (status) => {
+        stripeDouble.setExternalAccounts([{ status }]);
+
+        const result = await service.requestPayout({
+          userId: ctx.user.id,
+          communityId: ctx.communityId,
+        });
+
+        const failure = expectAppFailure(result);
+        expect(failure.error.code).toBe("CONNECT_ACCOUNT_RESTRICTED");
+        expect(failure.error.userMessage).toBe("入金先口座を確認してください。");
+        expect(await listPayoutRequests(ctx)).toHaveLength(0);
+        expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+      }
+    );
+
+    // Payout APIのmethod: standardで利用できない口座はアプリ内入金に使わない
+    it("default外部銀行口座のavailable_payout_methodsにstandardがない時、Stripe Payoutを作成しないこと", async () => {
+      stripeDouble.setExternalAccounts([{ available_payout_methods: ["instant"] }]);
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      const failure = expectAppFailure(result);
+      expect(failure.error.code).toBe("CONNECT_ACCOUNT_RESTRICTED");
       expect(await listPayoutRequests(ctx)).toHaveLength(0);
       expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
     });
@@ -274,11 +319,8 @@ describe("PayoutRequestService", () => {
     });
 
     // 入金要求時は履歴状態に関係なくfreshな出金可否を確認する
-    it("入金要求前に最新のpayout readinessを確認し、payouts_enabledがfalseならStripe Payoutを作成しないこと", async () => {
-      await ctx.adminClient
-        .from("payout_profiles")
-        .update({ payouts_enabled: false })
-        .eq("id", ctx.payoutProfileId);
+    it("入金要求前に最新のStripe Accountを確認し、payouts_enabledがfalseならStripe Payoutを作成しないこと", async () => {
+      stripeDouble.setAccount({ payouts_enabled: false });
 
       const result = await service.requestPayout({
         userId: ctx.user.id,
@@ -461,6 +503,25 @@ describe("PayoutRequestService", () => {
       );
     });
 
+    // 復旧時もfreshな外部口座状態を確認し、無効化された口座へ再作成しない
+    it("creation_unknownのpayout_request復旧時に外部銀行口座が利用不可ならStripe Payoutを再試行しないこと", async () => {
+      await createPayoutRequestFixture(ctx, {
+        status: "creation_unknown",
+        amount: 1500,
+        idempotencyKey: "stored_recovery_key",
+      });
+      stripeDouble.setExternalAccounts([{ status: "errored" }]);
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      const failure = expectAppFailure(result);
+      expect(failure.error.code).toBe("CONNECT_ACCOUNT_RESTRICTED");
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+    });
+
     // Stripeの冪等性契約に合わせ、復旧時に保存済みパラメータ以外で再試行しない
     it("creation_unknownのpayout_request復旧時に保存済みamountやcurrencyと異なる条件では再試行しないこと", async () => {
       await createPayoutRequestFixture(ctx, {
@@ -494,6 +555,92 @@ describe("PayoutRequestService", () => {
       expect(await listPayoutRequests(ctx)).toEqual([
         expect.objectContaining({ status: "failed", failure_message: "unexpected" }),
       ]);
+    });
+  });
+
+  describe("getPayoutPanelState", () => {
+    beforeEach(async () => {
+      ctx = await createPayoutContextFixture({ emailPrefix: "payout-panel-state" });
+      service = new PayoutRequestService(ctx.adminClient);
+      stripeDouble.setBalance({
+        available: [{ amount: 1500, currency: "jpy", source_types: { card: 1500 } }],
+      });
+    });
+
+    it("Stripe Accountのpayouts_enabledがfalseの時、payouts_disabledで入金不可を返すこと", async () => {
+      stripeDouble.setAccount({ payouts_enabled: false });
+
+      const result = await service.getPayoutPanelState({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      const success = expectAppSuccess(result);
+      expect(success.data).toEqual(
+        expect.objectContaining({
+          canRequestPayout: false,
+          disabledReason: "payouts_disabled",
+        })
+      );
+    });
+
+    it("JPYのdefault外部銀行口座がない時、external_account_missingで入金不可を返すこと", async () => {
+      stripeDouble.setExternalAccounts([
+        { id: "ba_non_default", currency: "jpy", default_for_currency: false },
+      ]);
+
+      const result = await service.getPayoutPanelState({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      const success = expectAppSuccess(result);
+      expect(success.data).toEqual(
+        expect.objectContaining({
+          canRequestPayout: false,
+          disabledReason: "external_account_missing",
+        })
+      );
+    });
+
+    it("default外部銀行口座が利用不可状態の時、external_account_unavailableで入金不可を返すこと", async () => {
+      stripeDouble.setExternalAccounts([{ status: "errored" }]);
+
+      const result = await service.getPayoutPanelState({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      const success = expectAppSuccess(result);
+      expect(success.data).toEqual(
+        expect.objectContaining({
+          canRequestPayout: false,
+          disabledReason: "external_account_unavailable",
+        })
+      );
+    });
+
+    it("validな外部銀行口座とavailable残高がある時、入金可能を返すこと", async () => {
+      const result = await service.getPayoutPanelState({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      const success = expectAppSuccess(result);
+      expect(success.data).toEqual(
+        expect.objectContaining({
+          availableAmount: 1500,
+          canRequestPayout: true,
+          disabledReason: undefined,
+        })
+      );
+      expect(stripeDouble.accountRetrieveCalls[0]?.id).toBe(ctx.stripeAccountId);
+      expect(stripeDouble.externalAccountsListCalls[0]).toEqual(
+        expect.objectContaining({
+          id: ctx.stripeAccountId,
+          params: expect.objectContaining({ object: "bank_account", limit: 100 }),
+        })
+      );
     });
 
   });
