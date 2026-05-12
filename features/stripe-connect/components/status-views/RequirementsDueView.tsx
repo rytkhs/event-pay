@@ -9,16 +9,27 @@ import Link from "next/link";
 
 import { ArrowRight, TriangleAlert } from "lucide-react";
 
+import type { ActionResult } from "@core/errors/adapters/server-actions";
+
 import { Button } from "@/components/ui/button";
 
+import type { PayoutPanelState, RequestPayoutPayload } from "../../types/payout-request";
 import type { AccountStatusData } from "../../types/status-classification";
+import { PayoutRequestPanel } from "../PayoutRequestPanel";
 
 interface RequirementsDueViewProps {
   status: AccountStatusData;
   refreshUrl: string;
+  payoutPanel?: PayoutPanelState;
+  requestPayoutAction?: () => Promise<ActionResult<RequestPayoutPayload>>;
 }
 
-export function RequirementsDueView({ status, refreshUrl }: RequirementsDueViewProps) {
+export function RequirementsDueView({
+  status,
+  refreshUrl,
+  payoutPanel,
+  requestPayoutAction,
+}: RequirementsDueViewProps) {
   const requirements = status.requirements ?? {
     currently_due: [],
     eventually_due: [],
@@ -75,6 +86,10 @@ export function RequirementsDueView({ status, refreshUrl }: RequirementsDueViewP
           <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
         </Link>
       </Button>
+
+      {payoutPanel && requestPayoutAction && (
+        <PayoutRequestPanel payoutPanel={payoutPanel} requestPayoutAction={requestPayoutAction} />
+      )}
     </div>
   );
 }

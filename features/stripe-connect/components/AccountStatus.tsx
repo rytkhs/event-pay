@@ -88,12 +88,21 @@ export function AccountStatus({
       case "unverified":
         return <UnverifiedView refreshUrl={refreshUrl} />;
       case "requirements_due":
-        return <RequirementsDueView status={status} refreshUrl={refreshUrl} />;
+        return (
+          <RequirementsDueView
+            status={status}
+            refreshUrl={refreshUrl}
+            payoutPanel={payoutPanel}
+            requestPayoutAction={requestPayoutAction}
+          />
+        );
       case "pending_review":
         return (
           <PendingReviewView
             expressDashboardAction={expressDashboardAction}
             expressDashboardAvailable={status.expressDashboardAvailable}
+            payoutPanel={payoutPanel}
+            requestPayoutAction={requestPayoutAction}
           />
         );
       case "restricted":
@@ -101,6 +110,8 @@ export function AccountStatus({
           <RestrictedView
             expressDashboardAction={expressDashboardAction}
             expressDashboardAvailable={status.expressDashboardAvailable}
+            payoutPanel={payoutPanel}
+            requestPayoutAction={requestPayoutAction}
           />
         );
       case "ready":

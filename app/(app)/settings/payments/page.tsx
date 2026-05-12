@@ -97,18 +97,20 @@ async function PaymentSettingsContent() {
     };
   })();
 
-  const payoutPanel =
-    status.uiStatus === "ready"
-      ? await (async () => {
-          const supabase = await createServerComponentSupabaseClient();
-          const payoutService = new PayoutRequestService(supabase);
-          const result = await payoutService.getPayoutPanelState({
-            userId: workspace.currentUser.id,
-            communityId: currentCommunity.id,
-          });
-          return result.success ? result.data : undefined;
-        })()
-      : undefined;
+  const shouldLoadPayoutPanel =
+    status.uiStatus !== "no_account" && status.uiStatus !== "unverified";
+
+  const payoutPanel = shouldLoadPayoutPanel
+    ? await (async () => {
+        const supabase = await createServerComponentSupabaseClient();
+        const payoutService = new PayoutRequestService(supabase);
+        const result = await payoutService.getPayoutPanelState({
+          userId: workspace.currentUser.id,
+          communityId: currentCommunity.id,
+        });
+        return result.success ? result.data : undefined;
+      })()
+    : undefined;
 
   return (
     <AccountStatus

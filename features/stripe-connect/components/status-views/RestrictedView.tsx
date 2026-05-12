@@ -7,16 +7,25 @@
 
 import { ExternalLink, ShieldX } from "lucide-react";
 
+import type { ActionResult } from "@core/errors/adapters/server-actions";
+
 import { Button } from "@/components/ui/button";
+
+import type { PayoutPanelState, RequestPayoutPayload } from "../../types/payout-request";
+import { PayoutRequestPanel } from "../PayoutRequestPanel";
 
 interface RestrictedViewProps {
   expressDashboardAction?: (formData: FormData) => Promise<void>;
   expressDashboardAvailable?: boolean;
+  payoutPanel?: PayoutPanelState;
+  requestPayoutAction?: () => Promise<ActionResult<RequestPayoutPayload>>;
 }
 
 export function RestrictedView({
   expressDashboardAction,
   expressDashboardAvailable,
+  payoutPanel,
+  requestPayoutAction,
 }: RestrictedViewProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -45,6 +54,10 @@ export function RestrictedView({
             <ExternalLink className="ml-2 size-3.5 opacity-70 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
           </Button>
         </form>
+      )}
+
+      {payoutPanel && requestPayoutAction && (
+        <PayoutRequestPanel payoutPanel={payoutPanel} requestPayoutAction={requestPayoutAction} />
       )}
     </div>
   );
