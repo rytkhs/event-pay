@@ -17,6 +17,7 @@ type UserLookupResult = Awaited<ReturnType<typeof getCurrentUserWithClient>>;
 
 export type CurrentAppUser = {
   id: string;
+  createdAt: string;
   email?: string | null;
   name: string | null;
 };
@@ -154,6 +155,7 @@ const getCachedCurrentAppUserForServerComponent = cache(async (): Promise<Curren
 
   return {
     id: user.id,
+    createdAt: user.created_at,
     email: error ? (user.email ?? null) : (profile?.email ?? user.email ?? null),
     name: error ? (user.email ?? null) : (profile?.name ?? profile?.email ?? user.email ?? null),
   };
