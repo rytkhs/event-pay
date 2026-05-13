@@ -67,6 +67,10 @@ const ALLOWED_TRANSITIONS: Partial<Record<PayoutRequestStatus, PayoutRequestStat
   canceled: ["canceled"],
 };
 
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
 function toTimestamp(seconds: number | null | undefined): string | null {
   return typeof seconds === "number" ? new Date(seconds * 1000).toISOString() : null;
 }
@@ -457,9 +461,10 @@ export class PayoutRequestService {
       typeof payout.metadata?.payout_request_id === "string"
         ? payout.metadata.payout_request_id
         : null;
+    const hasValidPayoutRequestId = payoutRequestId !== null && isUuid(payoutRequestId);
 
     // 1. 対象の payout_request を特定
-    const findQuery = payoutRequestId
+    const findQuery = hasValidPayoutRequestId
       ? this.supabase
           .from("payout_requests")
           .select("id, stripe_account_id, stripe_payout_id, status, failure_code")

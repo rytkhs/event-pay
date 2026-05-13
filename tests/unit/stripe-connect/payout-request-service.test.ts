@@ -909,6 +909,21 @@ describe("PayoutRequestService", () => {
       );
     });
 
+    it("payout.metadata.payout_request_idがUUID形式でない時、stripe_payout_idでpayout_requestを特定して更新すること", async () => {
+      const payout = buildPayout(ctx, request, {
+        id: "po_test_fixture",
+        metadata: { payout_request_id: "not-a-uuid" },
+        status: "paid",
+      });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({ status: "paid", stripe_payout_id: payout.id })
+      );
+    });
+
     // 作成イベントの状態反映を固定する
     it("payout.createdを受け取った時、payout_requestをpendingに更新すること", async () => {
       const payout = buildPayout(ctx, request, { status: "pending" });
@@ -1178,6 +1193,28 @@ describe("PayoutRequestService", () => {
       expect(success.meta).toEqual({
         reason: "untracked_payout_skipped",
         payoutId: "po_missing",
+      });
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({ status: "pending" })
+      );
+    });
+
+    it("payout.metadata.payout_request_idがUUID形式でなくstripe_payout_idでも特定できない時、成功Resultとしてスキップすること", async () => {
+      const payout = buildPayout(
+        ctx,
+        { id: "missing", amount: 1000 },
+        {
+          id: "po_invalid_metadata_missing",
+          metadata: { payout_request_id: "not-a-uuid" },
+        }
+      );
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      const success = expectAppSuccess(result);
+      expect(success.meta).toEqual({
+        reason: "untracked_payout_skipped",
+        payoutId: "po_invalid_metadata_missing",
       });
       expect(await getPayoutRequestById(ctx, request.id)).toEqual(
         expect.objectContaining({ status: "pending" })
