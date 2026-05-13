@@ -43,6 +43,10 @@ type PayoutProfileForPayout = {
 };
 
 const IN_PROGRESS_STATUSES: PayoutRequestStatus[] = ["requesting", "creation_unknown"];
+const IDEMPOTENCY_KEY_RECOVERY_WINDOW_MS = 24 * 60 * 60 * 1000;
+const EXPIRED_IDEMPOTENCY_FAILURE_CODE = "idempotency_key_expired";
+const EXPIRED_IDEMPOTENCY_FAILURE_MESSAGE =
+  "Stripe idempotency key の保証期間を超過したため自動復旧できません。";
 const BLOCKED_EXTERNAL_ACCOUNT_STATUSES = new Set([
   "errored",
   "verification_failed",
@@ -83,9 +87,12 @@ function mapStripePayoutStatus(status: Stripe.Payout["status"]): StripePayoutReq
 function isUnknownCreationError(error: unknown): boolean {
   return (
     error instanceof Stripe.errors.StripeConnectionError ||
-    error instanceof Stripe.errors.StripeAPIError ||
-    error instanceof Stripe.errors.StripeRateLimitError
+    error instanceof Stripe.errors.StripeAPIError
   );
+}
+
+function isRateLimitError(error: unknown): boolean {
+  return error instanceof Stripe.errors.StripeRateLimitError;
 }
 
 function getCardSourceAmount(balanceEntry: Stripe.Balance.Available | undefined): number {
@@ -188,27 +195,20 @@ export class PayoutRequestService {
     }
   }
 
-  private async getFreshPayoutEligibility(
-    stripeAccountId: string,
-    params: { hasInProgressRequest: boolean }
-  ): Promise<AppResult<PayoutEligibility>> {
+  private async getFreshPayoutPrerequisiteDisabledReason(
+    stripeAccountId: string
+  ): Promise<AppResult<PayoutPanelDisabledReason | undefined>> {
     try {
       const stripe = getStripe();
-      const [account, externalAccounts, balanceResult] = await Promise.all([
+      const [account, externalAccounts] = await Promise.all([
         stripe.accounts.retrieve(stripeAccountId),
         stripe.accounts.listExternalAccounts(stripeAccountId, {
           object: "bank_account",
           limit: 100,
         }),
-        this.getFreshPayoutBalance(stripeAccountId),
       ]);
 
-      if (!balanceResult.success) {
-        return balanceResult;
-      }
-
       const defaultBankAccount = findDefaultJpyBankAccount(externalAccounts);
-      const balance = balanceResult.data as PayoutBalance;
       const disabledReason = !account.payouts_enabled
         ? "payouts_disabled"
         : defaultBankAccount === null
@@ -216,11 +216,39 @@ export class PayoutRequestService {
           : BLOCKED_EXTERNAL_ACCOUNT_STATUSES.has(defaultBankAccount.status) ||
               !defaultBankAccount.available_payout_methods?.includes("standard")
             ? "external_account_unavailable"
-            : balance.availableAmount <= 0
-              ? "no_available_balance"
-              : params.hasInProgressRequest
-                ? "request_in_progress"
-                : undefined;
+            : undefined;
+
+      return okResult(disabledReason);
+    } catch (error) {
+      return errFrom(error, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
+    }
+  }
+
+  private async getFreshPayoutEligibility(
+    stripeAccountId: string,
+    params: { hasInProgressRequest: boolean }
+  ): Promise<AppResult<PayoutEligibility>> {
+    try {
+      const [prerequisiteResult, balanceResult] = await Promise.all([
+        this.getFreshPayoutPrerequisiteDisabledReason(stripeAccountId),
+        this.getFreshPayoutBalance(stripeAccountId),
+      ]);
+
+      if (!prerequisiteResult.success) {
+        return prerequisiteResult;
+      }
+      if (!balanceResult.success) {
+        return balanceResult;
+      }
+
+      const balance = balanceResult.data as PayoutBalance;
+      const disabledReason =
+        prerequisiteResult.data ??
+        (params.hasInProgressRequest
+          ? "request_in_progress"
+          : balance.availableAmount <= 0
+            ? "no_available_balance"
+            : undefined);
 
       return okResult({
         ...balance,
@@ -302,6 +330,10 @@ export class PayoutRequestService {
       }
 
       const latestRequest = await this.getLatestRequest(payoutProfile.id);
+      if (latestRequest?.status === "creation_unknown") {
+        return this.recoverCreationUnknown(payoutProfile, params);
+      }
+
       const hasInProgressRequest =
         latestRequest !== null && IN_PROGRESS_STATUSES.includes(latestRequest.status);
       const eligibilityResult = await this.getFreshPayoutEligibility(
@@ -317,12 +349,6 @@ export class PayoutRequestService {
       const eligibility = eligibilityResult.data;
 
       if (!eligibility.canRequestPayout) {
-        if (
-          eligibility.disabledReason === "request_in_progress" &&
-          latestRequest?.status === "creation_unknown"
-        ) {
-          return this.recoverCreationUnknown(payoutProfile, params);
-        }
         return errResult(getDisabledReasonError(eligibility.disabledReason ?? "payouts_disabled"));
       }
 
@@ -487,30 +513,42 @@ export class PayoutRequestService {
       );
     }
 
-    const eligibilityResult = await this.getFreshPayoutEligibility(
-      payoutProfile.stripe_account_id,
-      {
-        hasInProgressRequest: false,
-      }
-    );
-    if (!eligibilityResult.success) {
-      return eligibilityResult;
-    }
-    if (eligibilityResult.data === undefined) {
-      return errResult(getMissingEligibilityDataError());
-    }
-    const eligibility = eligibilityResult.data;
-    if (!eligibility.canRequestPayout) {
-      return errResult(getDisabledReasonError(eligibility.disabledReason ?? "payouts_disabled"));
-    }
-
     if (
-      unknownRequest.amount !== eligibility.availableAmount ||
-      unknownRequest.currency !== "jpy"
+      Date.now() - new Date(unknownRequest.requested_at).getTime() >=
+      IDEMPOTENCY_KEY_RECOVERY_WINDOW_MS
     ) {
+      const expireResult = await this.expireCreationUnknownRequest(unknownRequest.id);
+      if (!expireResult.success) {
+        return expireResult;
+      }
+
       return errResult(
         new AppError("RESOURCE_CONFLICT", {
-          userMessage: "残高が変動したため、前回の振込リクエストを復旧できません。",
+          userMessage:
+            "前回の振込リクエストは自動復旧できませんでした。再度振込を実行してください。",
+          retryable: true,
+          details: {
+            payoutRequestId: unknownRequest.id,
+            failureCode: EXPIRED_IDEMPOTENCY_FAILURE_CODE,
+          },
+        })
+      );
+    }
+
+    const prerequisiteResult = await this.getFreshPayoutPrerequisiteDisabledReason(
+      payoutProfile.stripe_account_id
+    );
+    if (!prerequisiteResult.success) {
+      return prerequisiteResult;
+    }
+    if (prerequisiteResult.data !== undefined) {
+      return errResult(getDisabledReasonError(prerequisiteResult.data));
+    }
+
+    if (unknownRequest.currency !== "jpy") {
+      return errResult(
+        new AppError("RESOURCE_CONFLICT", {
+          userMessage: "前回の振込リクエストを復旧できません。",
           retryable: false,
         })
       );
@@ -610,6 +648,7 @@ export class PayoutRequestService {
     const status: PayoutRequestStatus = isUnknownCreationError(params.stripeError)
       ? "creation_unknown"
       : "failed";
+    const retryable = status === "creation_unknown" || isRateLimitError(params.stripeError);
 
     await this.supabase
       .from("payout_requests")
@@ -625,35 +664,67 @@ export class PayoutRequestService {
       .eq("id", params.payoutRequestId);
 
     return errResult(
-      new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
-        userMessage:
-          status === "creation_unknown"
-            ? "振込リクエストの処理状況を確認中です。しばらくしてから再度確認してください。"
-            : params.failedUserMessage,
-        cause: params.stripeError,
-        retryable: status === "creation_unknown",
-        details: { payoutRequestId: params.payoutRequestId, status },
-      })
+      new AppError(
+        isRateLimitError(params.stripeError) ? "RATE_LIMITED" : "STRIPE_CONNECT_SERVICE_ERROR",
+        {
+          userMessage:
+            status === "creation_unknown"
+              ? "振込リクエストの処理状況を確認中です。しばらくしてから再度確認してください。"
+              : params.failedUserMessage,
+          cause: params.stripeError,
+          retryable,
+          details: { payoutRequestId: params.payoutRequestId, status },
+        }
+      )
     );
   }
 
   private async getCreationUnknownRequest(
     payoutProfileId: string
-  ): Promise<{ id: string; amount: number; currency: string; idempotency_key: string } | null> {
+  ): Promise<{
+    id: string;
+    amount: number;
+    currency: string;
+    idempotency_key: string;
+    requested_at: string;
+  } | null> {
     const { data, error } = await this.supabase
       .from("payout_requests")
-      .select("id, amount, currency, idempotency_key")
+      .select("id, amount, currency, idempotency_key, requested_at")
       .eq("payout_profile_id", payoutProfileId)
       .eq("status", "creation_unknown")
       .order("requested_at", { ascending: false })
       .limit(1)
-      .maybeSingle<{ id: string; amount: number; currency: string; idempotency_key: string }>();
+      .maybeSingle<{
+        id: string;
+        amount: number;
+        currency: string;
+        idempotency_key: string;
+        requested_at: string;
+      }>();
 
     if (error) {
       throw error;
     }
 
     return data ?? null;
+  }
+
+  private async expireCreationUnknownRequest(payoutRequestId: string): Promise<AppResult<void>> {
+    const { error } = await this.supabase
+      .from("payout_requests")
+      .update({
+        status: "failed",
+        failure_code: EXPIRED_IDEMPOTENCY_FAILURE_CODE,
+        failure_message: EXPIRED_IDEMPOTENCY_FAILURE_MESSAGE,
+      })
+      .eq("id", payoutRequestId);
+
+    if (error) {
+      return errFrom(error, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
+    }
+
+    return okResult(undefined);
   }
 
   private async getLatestRequest(payoutProfileId: string): Promise<LatestPayoutRequest | null> {

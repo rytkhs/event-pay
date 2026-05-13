@@ -290,18 +290,25 @@ describe("PayoutRequestService", () => {
       expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
     });
 
-    // 作成結果不明の二重実行を防ぐことを固定する
-    it("同じpayout_profileにcreation_unknownのpayout_requestが存在する時、新しいStripe Payoutを作成せず失敗Resultを返すこと", async () => {
-      await createPayoutRequestFixture(ctx, { status: "creation_unknown" });
+    // 作成結果不明の再実行は新規行ではなく保存済みidempotency_keyで復旧する
+    it("同じpayout_profileにcreation_unknownのpayout_requestが存在する時、保存済みidempotency_keyで復旧すること", async () => {
+      await createPayoutRequestFixture(ctx, {
+        status: "creation_unknown",
+        amount: 1500,
+        idempotencyKey: "stored_existing_key",
+      });
 
       const result = await service.requestPayout({
         userId: ctx.user.id,
         communityId: ctx.communityId,
       });
 
-      expectAppFailure(result);
+      expectAppSuccess(result);
       expect(await listPayoutRequests(ctx)).toHaveLength(1);
-      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(1);
+      expect(stripeDouble.payoutCreateCalls[0]?.options).toEqual(
+        expect.objectContaining({ idempotencyKey: "stored_existing_key" })
+      );
     });
 
     // Stripe作成済みのPayoutは履歴扱いにし、freshなavailable残高があれば次の入金を許可する
@@ -484,12 +491,33 @@ describe("PayoutRequestService", () => {
       ]);
     });
 
+    it("Stripe Payout作成がRate Limitで失敗した時、payout_requestをfailedに更新してretryableな失敗Resultを返すこと", async () => {
+      stripeDouble.setPayoutError(
+        new Stripe.errors.StripeRateLimitError({ message: "rate limited" } as any)
+      );
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      const failure = expectAppFailure(result);
+      expect(failure.error.code).toBe("RATE_LIMITED");
+      expect(failure.error.retryable).toBe(true);
+      expect(await listPayoutRequests(ctx)).toEqual([
+        expect.objectContaining({ status: "failed", failure_message: "rate limited" }),
+      ]);
+    });
+
     // creation_unknownは新規作成ではなく同じidempotency_keyで復旧する。Stripeの冪等性キーは少なくとも24時間後にpruneされ得る。
-    it("creation_unknownのpayout_requestを復旧する時、保存済みidempotency_keyと同じパラメータでStripe Payout作成を再試行すること", async () => {
+    it("creation_unknownのpayout_requestを復旧する時、available残高が0でも保存済みidempotency_keyでStripe Payout作成を再試行すること", async () => {
       await createPayoutRequestFixture(ctx, {
         status: "creation_unknown",
         amount: 1500,
         idempotencyKey: "stored_recovery_key",
+      });
+      stripeDouble.setBalance({
+        available: [{ amount: 0, currency: "jpy", source_types: { card: 0 } }],
       });
 
       const result = await service.requestPayout({
@@ -522,8 +550,8 @@ describe("PayoutRequestService", () => {
       expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
     });
 
-    // Stripeの冪等性契約に合わせ、復旧時に保存済みパラメータ以外で再試行しない
-    it("creation_unknownのpayout_request復旧時に保存済みamountやcurrencyと異なる条件では再試行しないこと", async () => {
+    // Stripeの冪等性契約に合わせ、復旧時はfresh balanceではなく保存済みamountで再試行する
+    it("creation_unknownのpayout_request復旧時にfresh balanceと保存済みamountが異なっても保存済みamountで再試行すること", async () => {
       await createPayoutRequestFixture(ctx, {
         status: "creation_unknown",
         amount: 1200,
@@ -538,8 +566,40 @@ describe("PayoutRequestService", () => {
         communityId: ctx.communityId,
       });
 
-      expectAppFailure(result);
+      expectAppSuccess(result);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(1);
+      expect(stripeDouble.payoutCreateCalls[0]?.params).toEqual(
+        expect.objectContaining({ amount: 1200, currency: "jpy" })
+      );
+      expect(stripeDouble.payoutCreateCalls[0]?.options).toEqual(
+        expect.objectContaining({ idempotencyKey: "stored_recovery_key" })
+      );
+    });
+
+    it("24時間超のcreation_unknownはfailedに更新し、Stripe Payoutを再試行しないこと", async () => {
+      const request = await createPayoutRequestFixture(ctx, {
+        status: "creation_unknown",
+        amount: 1500,
+        idempotencyKey: "stored_expired_key",
+        requestedAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      });
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      const failure = expectAppFailure(result);
+      expect(failure.error.retryable).toBe(true);
       expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({
+          status: "failed",
+          failure_code: "idempotency_key_expired",
+          failure_message:
+            "Stripe idempotency key の保証期間を超過したため自動復旧できません。",
+        })
+      );
     });
 
     // 予期しないエラーでも境界契約を守ることを固定する
@@ -639,6 +699,31 @@ describe("PayoutRequestService", () => {
         expect.objectContaining({
           id: ctx.stripeAccountId,
           params: expect.objectContaining({ object: "bank_account", limit: 100 }),
+        })
+      );
+    });
+
+    it("creation_unknownのpayout_requestが存在する時、available残高が0でもrequest_in_progressを返すこと", async () => {
+      await createPayoutRequestFixture(ctx, {
+        status: "creation_unknown",
+        amount: 1500,
+      });
+      stripeDouble.setBalance({
+        available: [{ amount: 0, currency: "jpy", source_types: { card: 0 } }],
+      });
+
+      const result = await service.getPayoutPanelState({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      const success = expectAppSuccess(result);
+      expect(success.data).toEqual(
+        expect.objectContaining({
+          availableAmount: 0,
+          canRequestPayout: false,
+          disabledReason: "request_in_progress",
+          latestRequest: expect.objectContaining({ status: "creation_unknown" }),
         })
       );
     });

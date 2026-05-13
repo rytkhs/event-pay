@@ -91,6 +91,44 @@ describe("PayoutRequestPanel", () => {
     });
   });
 
+  it("creation_unknown の入金リクエストは残高0でも再確認として実行できる", async () => {
+    const user = userEvent.setup();
+    const requestPayoutAction = jest.fn(async () => ({
+      success: true as const,
+      data: successPayload,
+    }));
+
+    render(
+      <PayoutRequestPanel
+        payoutPanel={createPayoutPanel({
+          availableAmount: 0,
+          canRequestPayout: false,
+          disabledReason: "request_in_progress",
+          latestRequest: {
+            id: "req_unknown_zero_balance",
+            amount: 10000,
+            currency: "jpy",
+            status: "creation_unknown",
+            requestedAt: "2026-05-13T00:00:00.000Z",
+            arrivalDate: null,
+            failureCode: null,
+            failureMessage: null,
+          },
+        })}
+        requestPayoutAction={requestPayoutAction}
+      />
+    );
+
+    const button = screen.getByRole("button", { name: "再試行" });
+    expect(button).not.toBeDisabled();
+
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(requestPayoutAction).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it("requesting の入金リクエストは処理中として実行できない", async () => {
     const user = userEvent.setup();
     const requestPayoutAction = jest.fn(async () => ({

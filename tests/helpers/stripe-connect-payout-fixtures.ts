@@ -9,6 +9,7 @@ import type { Database } from "@/types/database";
 
 type AdminClient = Awaited<ReturnType<typeof createAuditedAdminClient>>;
 type PayoutRequestStatus = Database["public"]["Enums"]["payout_request_status"];
+type PayoutRequestInsert = Database["public"]["Tables"]["payout_requests"]["Insert"];
 
 export type PayoutRequestFixture = {
   id: string;
@@ -132,24 +133,28 @@ export async function createPayoutRequestFixture(
     idempotencyKey?: string;
     failureCode?: string | null;
     failureMessage?: string | null;
+    requestedAt?: string;
   } = {}
 ): Promise<PayoutRequestFixture> {
+  const insertPayload: PayoutRequestInsert = {
+    payout_profile_id: ctx.payoutProfileId,
+    community_id: ctx.communityId,
+    requested_by: ctx.user.id,
+    stripe_account_id: options.stripeAccountId ?? ctx.stripeAccountId,
+    stripe_payout_id: options.stripePayoutId ?? null,
+    amount: options.amount ?? 1000,
+    currency: "jpy",
+    status: options.status ?? "requesting",
+    idempotency_key:
+      options.idempotencyKey ?? `payout_test_${Math.random().toString(36).slice(2, 16)}`,
+    failure_code: options.failureCode ?? null,
+    failure_message: options.failureMessage ?? null,
+    ...(options.requestedAt ? { requested_at: options.requestedAt } : {}),
+  };
+
   const { data, error } = await ctx.adminClient
     .from("payout_requests")
-    .insert({
-      payout_profile_id: ctx.payoutProfileId,
-      community_id: ctx.communityId,
-      requested_by: ctx.user.id,
-      stripe_account_id: options.stripeAccountId ?? ctx.stripeAccountId,
-      stripe_payout_id: options.stripePayoutId ?? null,
-      amount: options.amount ?? 1000,
-      currency: "jpy",
-      status: options.status ?? "requesting",
-      idempotency_key:
-        options.idempotencyKey ?? `payout_test_${Math.random().toString(36).slice(2, 16)}`,
-      failure_code: options.failureCode ?? null,
-      failure_message: options.failureMessage ?? null,
-    })
+    .insert(insertPayload)
     .select(
       "id, payout_profile_id, community_id, requested_by, stripe_account_id, stripe_payout_id, amount, currency, status, idempotency_key, failure_code, failure_message"
     )
