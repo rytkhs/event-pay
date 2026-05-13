@@ -499,6 +499,34 @@ describe("PayoutRequestService", () => {
       );
     });
 
+    it("Stripe Payout作成失敗後のpayout_request更新に失敗した時、永続化失敗のResultを返すこと", async () => {
+      const persistError = new Error("persist failed");
+      const eq = jest.fn(async () => ({ error: persistError }));
+      const update = jest.fn(() => ({ eq }));
+      const from = jest.fn(() => ({ update }));
+      const failureService = new PayoutRequestService({ from } as any);
+
+      const result = await (failureService as any).markPayoutCreationFailure({
+        payoutRequestId: "00000000-0000-0000-0000-000000000000",
+        stripeError: new Stripe.errors.StripeInvalidRequestError({
+          message: "insufficient funds",
+          code: "insufficient_funds",
+        } as any),
+        failureMessageFallback: "Payout creation failed",
+        failedUserMessage: "振込リクエストの作成に失敗しました。",
+      });
+
+      const failure = expectAppFailure(result);
+      expect(failure.error.code).toBe("STRIPE_CONNECT_SERVICE_ERROR");
+      expect(failure.error.message).toBe("persist failed");
+      expect(failure.error.userMessage).not.toBe("振込リクエストの作成に失敗しました。");
+      expect(from).toHaveBeenCalledWith("payout_requests");
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: "failed", failure_code: "insufficient_funds" })
+      );
+      expect(eq).toHaveBeenCalledWith("id", "00000000-0000-0000-0000-000000000000");
+    });
+
     // ネットワーク不定状態の扱いを固定する
     it("Stripe Payout作成結果がネットワークエラーで不明な時、payout_requestをcreation_unknownに更新して失敗Resultを返すこと", async () => {
       stripeDouble.setPayoutError(
@@ -1133,8 +1161,8 @@ describe("PayoutRequestService", () => {
       );
     });
 
-    // 未知Payoutの扱いを固定する
-    it("対応するpayout_requestが存在しない時、リトライ不要の失敗Resultを返すこと", async () => {
+    // アプリ外PayoutのwebhookをACKし、DLQノイズにしないことを固定する
+    it("対応するpayout_requestが存在しない時、成功Resultとしてスキップすること", async () => {
       const payout = buildPayout(
         ctx,
         { id: "missing", amount: 1000 },
@@ -1146,8 +1174,11 @@ describe("PayoutRequestService", () => {
 
       const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
 
-      const failure = expectAppFailure(result);
-      expect(failure.error.retryable).toBe(false);
+      const success = expectAppSuccess(result);
+      expect(success.meta).toEqual({
+        reason: "untracked_payout_skipped",
+        payoutId: "po_missing",
+      });
       expect(await getPayoutRequestById(ctx, request.id)).toEqual(
         expect.objectContaining({ status: "pending" })
       );

@@ -452,7 +452,7 @@ export class PayoutRequestService {
   async syncPayoutFromWebhook(
     payout: Stripe.Payout,
     stripeAccountId: string
-  ): Promise<AppResult<void>> {
+  ): Promise<AppResult<void, { reason?: string; payoutId?: string }>> {
     const payoutRequestId =
       typeof payout.metadata?.payout_request_id === "string"
         ? payout.metadata.payout_request_id
@@ -476,14 +476,12 @@ export class PayoutRequestService {
       return errFrom(findError, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
     }
 
-    // 2. 未知の payout_request → リトライ不要の失敗
+    // 2. 未知の payout_request → アプリ外payoutとしてACKする
     if (!existing) {
-      return errResult(
-        new AppError("PAYOUT_REQUEST_NOT_FOUND", {
-          userMessage: "対応する振込リクエストが見つかりません。",
-          retryable: false,
-        })
-      );
+      return okResult(undefined, {
+        reason: "untracked_payout_skipped",
+        payoutId: payout.id,
+      });
     }
 
     // 3. stripe_account_id 照合
@@ -715,7 +713,7 @@ export class PayoutRequestService {
       : "failed";
     const retryable = status === "creation_unknown" || isRateLimitError(params.stripeError);
 
-    await this.supabase
+    const { error: updateError } = await this.supabase
       .from("payout_requests")
       .update({
         status,
@@ -727,6 +725,10 @@ export class PayoutRequestService {
             : params.failureMessageFallback,
       })
       .eq("id", params.payoutRequestId);
+
+    if (updateError) {
+      return errFrom(updateError, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
+    }
 
     return errResult(
       new AppError(
