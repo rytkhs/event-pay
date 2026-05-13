@@ -37,6 +37,11 @@ type PayoutEligibility = PayoutBalance & {
   disabledReason?: PayoutPanelDisabledReason;
 };
 
+type PayoutProfileForPayout = {
+  id: string;
+  stripe_account_id: string;
+};
+
 const IN_PROGRESS_STATUSES: PayoutRequestStatus[] = ["requesting", "creation_unknown"];
 const BLOCKED_EXTERNAL_ACCOUNT_STATUSES = new Set([
   "errored",
@@ -352,85 +357,17 @@ export class PayoutRequestService {
         return errFrom(insertError, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
       }
 
-      try {
-        const payout = await getStripe().payouts.create(
-          {
-            amount,
-            currency: "jpy",
-            source_type: "card",
-            metadata: {
-              payout_request_id: inserted.id,
-              payout_profile_id: payoutProfile.id,
-              community_id: params.communityId,
-              requested_by: params.userId,
-            },
-          },
-          {
-            stripeAccount: payoutProfile.stripe_account_id,
-            idempotencyKey,
-          }
-        );
-
-        const payoutStatus = mapStripePayoutStatus(payout.status);
-        if (payoutStatus === null) {
-          return errResult(
-            new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
-              userMessage: "未対応の振込ステータスです。",
-              retryable: true,
-              details: { status: payout.status },
-            })
-          );
-        }
-
-        const updateResult = await this.updateRequestFromPayout(inserted.id, payout);
-        if (!updateResult.success) {
-          return updateResult;
-        }
-
-        this.logger.info("Payout request created", {
-          payout_request_id: inserted.id,
-          payout_id: payout.id,
-          amount,
-          stripe_account_id: payoutProfile.stripe_account_id,
-          outcome: "success",
-        });
-
-        return okResult({
-          payoutRequestId: inserted.id,
-          stripePayoutId: payout.id,
-          stripeAccountId: payoutProfile.stripe_account_id,
-          amount,
-          currency: "jpy",
-          status: payoutStatus,
-        });
-      } catch (stripeError) {
-        const status: PayoutRequestStatus = isUnknownCreationError(stripeError)
-          ? "creation_unknown"
-          : "failed";
-
-        await this.supabase
-          .from("payout_requests")
-          .update({
-            status,
-            failure_code:
-              stripeError instanceof Stripe.errors.StripeError ? stripeError.code : null,
-            failure_message:
-              stripeError instanceof Error ? stripeError.message : "Payout creation failed",
-          })
-          .eq("id", inserted.id);
-
-        return errResult(
-          new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
-            userMessage:
-              status === "creation_unknown"
-                ? "振込リクエストの処理状況を確認中です。しばらくしてから再度確認してください。"
-                : "振込リクエストの作成に失敗しました。",
-            cause: stripeError,
-            retryable: status === "creation_unknown",
-            details: { payoutRequestId: inserted.id, status },
-          })
-        );
-      }
+      return this.createStripePayoutAndPersist({
+        payoutRequestId: inserted.id,
+        payoutProfile,
+        communityId: params.communityId,
+        userId: params.userId,
+        amount,
+        idempotencyKey,
+        successLogMessage: "Payout request created",
+        failureMessageFallback: "Payout creation failed",
+        failedUserMessage: "振込リクエストの作成に失敗しました。",
+      });
     } catch (error) {
       return errFrom(error, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
     }
@@ -537,7 +474,7 @@ export class PayoutRequestService {
   }
 
   private async recoverCreationUnknown(
-    payoutProfile: { id: string; stripe_account_id: string },
+    payoutProfile: PayoutProfileForPayout,
     params: RequestPayoutInput
   ): Promise<AppResult<RequestPayoutPayload>> {
     const unknownRequest = await this.getCreationUnknownRequest(payoutProfile.id);
@@ -579,22 +516,46 @@ export class PayoutRequestService {
       );
     }
 
+    return this.createStripePayoutAndPersist({
+      payoutRequestId: unknownRequest.id,
+      payoutProfile,
+      communityId: params.communityId,
+      userId: params.userId,
+      amount: unknownRequest.amount,
+      idempotencyKey: unknownRequest.idempotency_key,
+      successLogMessage: "Payout request recovered from creation_unknown",
+      failureMessageFallback: "Payout recovery failed",
+      failedUserMessage: "振込リクエストの復旧に失敗しました。",
+    });
+  }
+
+  private async createStripePayoutAndPersist(params: {
+    payoutRequestId: string;
+    payoutProfile: PayoutProfileForPayout;
+    communityId: string;
+    userId: string;
+    amount: number;
+    idempotencyKey: string;
+    successLogMessage: string;
+    failureMessageFallback: string;
+    failedUserMessage: string;
+  }): Promise<AppResult<RequestPayoutPayload>> {
     try {
       const payout = await getStripe().payouts.create(
         {
-          amount: unknownRequest.amount,
+          amount: params.amount,
           currency: "jpy",
           source_type: "card",
           metadata: {
-            payout_request_id: unknownRequest.id,
-            payout_profile_id: payoutProfile.id,
+            payout_request_id: params.payoutRequestId,
+            payout_profile_id: params.payoutProfile.id,
             community_id: params.communityId,
             requested_by: params.userId,
           },
         },
         {
-          stripeAccount: payoutProfile.stripe_account_id,
-          idempotencyKey: unknownRequest.idempotency_key,
+          stripeAccount: params.payoutProfile.stripe_account_id,
+          idempotencyKey: params.idempotencyKey,
         }
       );
 
@@ -609,54 +570,71 @@ export class PayoutRequestService {
         );
       }
 
-      const updateResult = await this.updateRequestFromPayout(unknownRequest.id, payout);
+      const updateResult = await this.updateRequestFromPayout(params.payoutRequestId, payout);
       if (!updateResult.success) {
         return updateResult;
       }
 
-      this.logger.info("Payout request recovered from creation_unknown", {
-        payout_request_id: unknownRequest.id,
+      this.logger.info(params.successLogMessage, {
+        payout_request_id: params.payoutRequestId,
         payout_id: payout.id,
-        amount: unknownRequest.amount,
-        stripe_account_id: payoutProfile.stripe_account_id,
+        amount: params.amount,
+        stripe_account_id: params.payoutProfile.stripe_account_id,
         outcome: "success",
       });
 
       return okResult({
-        payoutRequestId: unknownRequest.id,
+        payoutRequestId: params.payoutRequestId,
         stripePayoutId: payout.id,
-        stripeAccountId: payoutProfile.stripe_account_id,
-        amount: unknownRequest.amount,
+        stripeAccountId: params.payoutProfile.stripe_account_id,
+        amount: params.amount,
         currency: "jpy",
         status: payoutStatus,
       });
     } catch (stripeError) {
-      const status: PayoutRequestStatus = isUnknownCreationError(stripeError)
-        ? "creation_unknown"
-        : "failed";
-
-      await this.supabase
-        .from("payout_requests")
-        .update({
-          status,
-          failure_code: stripeError instanceof Stripe.errors.StripeError ? stripeError.code : null,
-          failure_message:
-            stripeError instanceof Error ? stripeError.message : "Payout recovery failed",
-        })
-        .eq("id", unknownRequest.id);
-
-      return errResult(
-        new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
-          userMessage:
-            status === "creation_unknown"
-              ? "振込リクエストの処理状況を確認中です。しばらくしてから再度確認してください。"
-              : "振込リクエストの復旧に失敗しました。",
-          cause: stripeError,
-          retryable: status === "creation_unknown",
-          details: { payoutRequestId: unknownRequest.id, status },
-        })
-      );
+      return this.markPayoutCreationFailure({
+        payoutRequestId: params.payoutRequestId,
+        stripeError,
+        failureMessageFallback: params.failureMessageFallback,
+        failedUserMessage: params.failedUserMessage,
+      });
     }
+  }
+
+  private async markPayoutCreationFailure(params: {
+    payoutRequestId: string;
+    stripeError: unknown;
+    failureMessageFallback: string;
+    failedUserMessage: string;
+  }): Promise<AppResult<RequestPayoutPayload>> {
+    const status: PayoutRequestStatus = isUnknownCreationError(params.stripeError)
+      ? "creation_unknown"
+      : "failed";
+
+    await this.supabase
+      .from("payout_requests")
+      .update({
+        status,
+        failure_code:
+          params.stripeError instanceof Stripe.errors.StripeError ? params.stripeError.code : null,
+        failure_message:
+          params.stripeError instanceof Error
+            ? params.stripeError.message
+            : params.failureMessageFallback,
+      })
+      .eq("id", params.payoutRequestId);
+
+    return errResult(
+      new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
+        userMessage:
+          status === "creation_unknown"
+            ? "振込リクエストの処理状況を確認中です。しばらくしてから再度確認してください。"
+            : params.failedUserMessage,
+        cause: params.stripeError,
+        retryable: status === "creation_unknown",
+        details: { payoutRequestId: params.payoutRequestId, status },
+      })
+    );
   }
 
   private async getCreationUnknownRequest(
