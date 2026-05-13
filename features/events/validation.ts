@@ -135,6 +135,8 @@ export const createEventFormSchema = z
       const num = safeParseNumber(val);
       return num >= 1 && num <= 10000;
     }, "定員は1以上10000以下である必要があります"),
+    show_capacity: z.boolean(),
+    show_participant_count: z.boolean(),
     registration_deadline: z.string().min(1, "出欠回答期限は必須です"),
     payment_deadline: z.string(),
     allow_payment_after_deadline: z.boolean().optional(),
@@ -267,6 +269,8 @@ export const eventEditFormSchemaBase = z
         const cap = Number(val);
         return Number.isInteger(cap) && cap >= 1 && cap <= 10_000;
       }, "定員は1以上10,000以下である必要があります"),
+    show_capacity: z.boolean(),
+    show_participant_count: z.boolean(),
     payment_methods: z.array(z.string()),
     registration_deadline: z.string().optional(),
     payment_deadline: z.string().optional(),

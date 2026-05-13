@@ -30,6 +30,7 @@ export const GuestEventSummary: React.FC<GuestEventSummaryProps> = ({ attendance
   const regDeadline = event.registration_deadline
     ? formatUtcToJstByType(event.registration_deadline, "japanese")
     : null;
+  const showCapacity = event.show_capacity && event.capacity !== null;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
@@ -100,17 +101,17 @@ export const GuestEventSummary: React.FC<GuestEventSummaryProps> = ({ attendance
           </div>
 
           {/* Capacity */}
-          <div className="flex items-start gap-3 sm:col-span-2">
-            <div className="bg-slate-50 p-2 rounded-full shrink-0">
-              <Users className="w-4 h-4 text-slate-600" />
+          {showCapacity && (
+            <div className="flex items-start gap-3 sm:col-span-2">
+              <div className="bg-slate-50 p-2 rounded-full shrink-0">
+                <Users className="w-4 h-4 text-slate-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs text-slate-500 mb-0.5 font-medium">定員</p>
+                <p className="text-sm font-bold text-slate-700">{event.capacity}名</p>
+              </div>
             </div>
-            <div className="flex-1">
-              <p className="text-xs text-slate-500 mb-0.5 font-medium">定員</p>
-              <p className="text-sm font-bold text-slate-700">
-                {event.capacity ? `${event.capacity}名` : "無制限"}
-              </p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 

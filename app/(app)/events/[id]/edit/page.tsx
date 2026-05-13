@@ -38,6 +38,8 @@ type EventEditQueryRow = Pick<
   | "payment_deadline"
   | "allow_payment_after_deadline"
   | "grace_period_days"
+  | "show_capacity"
+  | "show_participant_count"
   | "created_at"
   | "updated_at"
   | "created_by"
@@ -100,6 +102,8 @@ export default async function EventEditPage(props: EventEditPageProps) {
       payment_deadline,
       allow_payment_after_deadline,
       grace_period_days,
+      show_capacity,
+      show_participant_count,
       created_at,
       updated_at,
       created_by,
@@ -168,7 +172,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
 
 export function generateMetadata() {
   return {
-    title: "イベント編集 - みんなの集金",
+    title: "イベント編集",
     description: "イベント情報の編集画面",
   };
 }
