@@ -412,12 +412,12 @@ export class PayoutRequestService {
     const findQuery = payoutRequestId
       ? this.supabase
           .from("payout_requests")
-          .select("id, stripe_account_id, stripe_payout_id, status")
+          .select("id, stripe_account_id, stripe_payout_id, status, failure_code")
           .eq("id", payoutRequestId)
           .maybeSingle()
       : this.supabase
           .from("payout_requests")
-          .select("id, stripe_account_id, stripe_payout_id, status")
+          .select("id, stripe_account_id, stripe_payout_id, status, failure_code")
           .eq("stripe_payout_id", payout.id)
           .maybeSingle();
 
@@ -469,7 +469,12 @@ export class PayoutRequestService {
       );
     }
 
-    if (TERMINAL_STATUSES.includes(currentStatus)) {
+    const canRecoverExpiredCreationUnknown =
+      currentStatus === "failed" &&
+      existing.failure_code === EXPIRED_IDEMPOTENCY_FAILURE_CODE &&
+      existing.stripe_payout_id === null;
+
+    if (TERMINAL_STATUSES.includes(currentStatus) && !canRecoverExpiredCreationUnknown) {
       const allowed = ALLOWED_TRANSITIONS[currentStatus];
       if (!allowed?.includes(newStatus)) {
         // 巻き戻し防止: 現在のステータスを維持して成功扱い（冪等）

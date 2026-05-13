@@ -16,6 +16,7 @@ import {
 import { installStripePayoutSdkDouble } from "@tests/helpers/stripe-payout-sdk-double";
 
 const stripeDouble = installStripePayoutSdkDouble();
+const EXPIRED_IDEMPOTENCY_FAILURE_CODE = "idempotency_key_expired";
 
 jest.mock("@core/stripe/client", () => ({
   getStripe: jest.fn(() => stripeDouble.stripe),
@@ -897,6 +898,94 @@ describe("PayoutRequestService", () => {
       expect(await getPayoutRequestById(ctx, request.id)).toEqual(
         expect.objectContaining({ status: "paid" })
       );
+    });
+
+    it("idempotency_key期限切れでfailedにしたpayout_requestにpayout.createdが届いた時、pendingへ同期すること", async () => {
+      const expiredRequest = await createPayoutRequestFixture(ctx, {
+        status: "failed",
+        stripePayoutId: null,
+        failureCode: EXPIRED_IDEMPOTENCY_FAILURE_CODE,
+        failureMessage: "expired",
+      });
+      const payout = buildPayout(ctx, expiredRequest, {
+        id: "po_expired_pending",
+        status: "pending",
+      });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(await getPayoutRequestById(ctx, expiredRequest.id)).toEqual(
+        expect.objectContaining({
+          status: "pending",
+          stripe_payout_id: "po_expired_pending",
+        })
+      );
+    });
+
+    it("idempotency_key期限切れでfailedにしたpayout_requestにpayout.paidが届いた時、paidへ同期しfailure情報を消すこと", async () => {
+      const expiredRequest = await createPayoutRequestFixture(ctx, {
+        status: "failed",
+        stripePayoutId: null,
+        failureCode: EXPIRED_IDEMPOTENCY_FAILURE_CODE,
+        failureMessage: "expired",
+      });
+      const payout = buildPayout(ctx, expiredRequest, { id: "po_expired_paid", status: "paid" });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(await getPayoutRequestById(ctx, expiredRequest.id)).toEqual(
+        expect.objectContaining({
+          status: "paid",
+          stripe_payout_id: "po_expired_paid",
+          failure_code: null,
+          failure_message: null,
+        })
+      );
+    });
+
+    it("Stripe由来のfailedに古いpendingのwebhookが届いても、状態をpendingへ巻き戻さないこと", async () => {
+      await ctx.adminClient
+        .from("payout_requests")
+        .update({
+          status: "failed",
+          failure_code: "account_closed",
+          failure_message: "account closed",
+        })
+        .eq("id", request.id);
+      const payout = buildPayout(ctx, request, { status: "pending" });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      expectAppSuccess(result);
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({
+          status: "failed",
+          failure_code: "account_closed",
+          failure_message: "account closed",
+        })
+      );
+    });
+
+    it("idempotency_key期限切れのfailedでも保存済みstripe_payout_idとpayout.idが矛盾する時、更新しないこと", async () => {
+      const expiredRequest = await createPayoutRequestFixture(ctx, {
+        status: "failed",
+        stripePayoutId: "po_existing_expired",
+        failureCode: EXPIRED_IDEMPOTENCY_FAILURE_CODE,
+        failureMessage: "expired",
+      });
+      const before = await getPayoutRequestById(ctx, expiredRequest.id);
+      const payout = buildPayout(ctx, expiredRequest, {
+        id: "po_different_expired",
+        status: "paid",
+      });
+
+      const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+      const failure = expectAppFailure(result);
+      expect(failure.error.retryable).toBe(false);
+      expect(await getPayoutRequestById(ctx, expiredRequest.id)).toEqual(before);
     });
 
     // Stripeでは失敗するPayoutが一度paidに見えてからfailedへ変わる場合があるため、この遷移だけは許可する
