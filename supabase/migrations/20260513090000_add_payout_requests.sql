@@ -5,7 +5,8 @@ CREATE TYPE public.payout_request_status AS ENUM (
   'paid',
   'failed',
   'canceled',
-  'creation_unknown'
+  'creation_unknown',
+  'manual_review_required'
 );
 
 CREATE TABLE public.payout_requests (
@@ -54,11 +55,21 @@ CREATE INDEX idx_payout_requests_community_requested_at
   ON public.payout_requests USING btree (community_id, requested_at DESC);
 CREATE INDEX idx_payout_requests_pending_requested_at
   ON public.payout_requests USING btree (requested_at ASC)
-  WHERE status IN ('requesting', 'pending', 'in_transit', 'creation_unknown');
+  WHERE status IN (
+    'requesting',
+    'pending',
+    'in_transit',
+    'creation_unknown',
+    'manual_review_required'
+  );
 
 CREATE UNIQUE INDEX uniq_payout_requests_active_per_profile
   ON public.payout_requests USING btree (payout_profile_id)
-  WHERE status IN ('requesting', 'creation_unknown');
+  WHERE status IN (
+    'requesting',
+    'creation_unknown',
+    'manual_review_required'
+  );
 
 CREATE TRIGGER update_payout_requests_updated_at
 BEFORE UPDATE ON public.payout_requests

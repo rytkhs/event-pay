@@ -31,6 +31,7 @@ const STATUS_LABELS: Record<PayoutRequestStatus, string> = {
   failed: "失敗",
   canceled: "キャンセル",
   creation_unknown: "確認中",
+  manual_review_required: "要確認",
 };
 
 const DISABLED_LABELS: Record<NonNullable<PayoutPanelState["disabledReason"]>, string> = {

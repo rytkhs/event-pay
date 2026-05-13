@@ -42,11 +42,15 @@ type PayoutProfileForPayout = {
   stripe_account_id: string;
 };
 
-const IN_PROGRESS_STATUSES: PayoutRequestStatus[] = ["requesting", "creation_unknown"];
+const IN_PROGRESS_STATUSES: PayoutRequestStatus[] = [
+  "requesting",
+  "creation_unknown",
+  "manual_review_required",
+];
 const IDEMPOTENCY_KEY_RECOVERY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const EXPIRED_IDEMPOTENCY_FAILURE_CODE = "idempotency_key_expired";
-const EXPIRED_IDEMPOTENCY_FAILURE_MESSAGE =
-  "Stripe idempotency key の保証期間を超過したため自動復旧できません。";
+const MANUAL_REVIEW_REQUIRED_MESSAGE =
+  "Stripe idempotency key の保証期間を超過したため、振込状況の手動確認が必要です。";
 const BLOCKED_EXTERNAL_ACCOUNT_STATUSES = new Set([
   "errored",
   "verification_failed",
@@ -277,9 +281,38 @@ export class PayoutRequestService {
         });
       }
 
-      const latestRequest = await this.getLatestRequest(payoutProfile.id);
+      let [latestRequest, activeRequest] = await Promise.all([
+        this.getLatestRequest(payoutProfile.id),
+        this.getLatestActiveRequest(payoutProfile.id),
+      ]);
+
+      if (
+        activeRequest?.status === "creation_unknown" &&
+        this.isCreationUnknownExpired(activeRequest)
+      ) {
+        const markResult = await this.markCreationUnknownManualReviewRequired(activeRequest.id);
+        if (!markResult.success) {
+          return markResult;
+        }
+
+        if (markResult.data) {
+          latestRequest = {
+            ...activeRequest,
+            status: "manual_review_required",
+            failureCode: EXPIRED_IDEMPOTENCY_FAILURE_CODE,
+            failureMessage: MANUAL_REVIEW_REQUIRED_MESSAGE,
+          };
+          activeRequest = latestRequest;
+        } else {
+          [latestRequest, activeRequest] = await Promise.all([
+            this.getLatestRequest(payoutProfile.id),
+            this.getLatestActiveRequest(payoutProfile.id),
+          ]);
+        }
+      }
+
       const hasInProgressRequest =
-        latestRequest !== null && IN_PROGRESS_STATUSES.includes(latestRequest.status);
+        activeRequest !== null && IN_PROGRESS_STATUSES.includes(activeRequest.status);
       const eligibilityResult = await this.getFreshPayoutEligibility(
         payoutProfile.stripe_account_id,
         { hasInProgressRequest }
@@ -296,7 +329,7 @@ export class PayoutRequestService {
         availableAmount: eligibility.availableAmount,
         pendingAmount: eligibility.pendingAmount,
         currency: eligibility.currency,
-        latestRequest,
+        latestRequest: activeRequest ?? latestRequest,
         canRequestPayout: eligibility.canRequestPayout,
         disabledReason: eligibility.disabledReason,
       });
@@ -329,16 +362,33 @@ export class PayoutRequestService {
         );
       }
 
-      const latestRequest = await this.getLatestRequest(payoutProfile.id);
-      if (latestRequest?.status === "creation_unknown") {
+      const activeRequest = await this.getLatestActiveRequest(payoutProfile.id);
+      if (activeRequest?.status === "creation_unknown") {
         return this.recoverCreationUnknown(payoutProfile, params);
       }
+      if (activeRequest?.status === "manual_review_required") {
+        return errResult(
+          new AppError("RESOURCE_CONFLICT", {
+            userMessage:
+              "前回の振込リクエストの状況確認が必要です。確認完了まで新しい振込は実行できません。",
+            retryable: false,
+            details: { payoutRequestId: activeRequest.id, status: activeRequest.status },
+          })
+        );
+      }
+      if (activeRequest?.status === "requesting") {
+        return errResult(
+          new AppError("RESOURCE_CONFLICT", {
+            userMessage: "処理中の振込リクエストがあります。",
+            retryable: true,
+            details: { payoutRequestId: activeRequest.id, status: activeRequest.status },
+          })
+        );
+      }
 
-      const hasInProgressRequest =
-        latestRequest !== null && IN_PROGRESS_STATUSES.includes(latestRequest.status);
       const eligibilityResult = await this.getFreshPayoutEligibility(
         payoutProfile.stripe_account_id,
-        { hasInProgressRequest }
+        { hasInProgressRequest: false }
       );
       if (!eligibilityResult.success) {
         return eligibilityResult;
@@ -518,23 +568,33 @@ export class PayoutRequestService {
       );
     }
 
-    if (
-      Date.now() - new Date(unknownRequest.requested_at).getTime() >=
-      IDEMPOTENCY_KEY_RECOVERY_WINDOW_MS
-    ) {
-      const expireResult = await this.expireCreationUnknownRequest(unknownRequest.id);
-      if (!expireResult.success) {
-        return expireResult;
+    if (this.isCreationUnknownExpired({ requestedAt: unknownRequest.requested_at })) {
+      const markResult = await this.markCreationUnknownManualReviewRequired(unknownRequest.id);
+      if (!markResult.success) {
+        return markResult;
+      }
+      if (!markResult.data) {
+        return errResult(
+          new AppError("RESOURCE_CONFLICT", {
+            userMessage: "前回の振込リクエストの状況が更新されました。画面を更新してください。",
+            retryable: false,
+            details: {
+              payoutRequestId: unknownRequest.id,
+              status: "updated",
+            },
+          })
+        );
       }
 
       return errResult(
         new AppError("RESOURCE_CONFLICT", {
           userMessage:
-            "前回の振込リクエストは自動復旧できませんでした。再度振込を実行してください。",
-          retryable: true,
+            "前回の振込リクエストは自動復旧できませんでした。確認完了まで新しい振込は実行できません。",
+          retryable: false,
           details: {
             payoutRequestId: unknownRequest.id,
             failureCode: EXPIRED_IDEMPOTENCY_FAILURE_CODE,
+            status: "manual_review_required",
           },
         })
       );
@@ -715,21 +775,33 @@ export class PayoutRequestService {
     return data ?? null;
   }
 
-  private async expireCreationUnknownRequest(payoutRequestId: string): Promise<AppResult<void>> {
-    const { error } = await this.supabase
+  private async markCreationUnknownManualReviewRequired(
+    payoutRequestId: string
+  ): Promise<AppResult<boolean>> {
+    const { data, error } = await this.supabase
       .from("payout_requests")
       .update({
-        status: "failed",
+        status: "manual_review_required",
         failure_code: EXPIRED_IDEMPOTENCY_FAILURE_CODE,
-        failure_message: EXPIRED_IDEMPOTENCY_FAILURE_MESSAGE,
+        failure_message: MANUAL_REVIEW_REQUIRED_MESSAGE,
       })
-      .eq("id", payoutRequestId);
+      .eq("id", payoutRequestId)
+      .eq("status", "creation_unknown")
+      .select("id");
 
     if (error) {
       return errFrom(error, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
     }
 
-    return okResult(undefined);
+    return okResult((data?.length ?? 0) > 0);
+  }
+
+  private isCreationUnknownExpired(request: Pick<LatestPayoutRequest, "requestedAt">): boolean {
+    const requestedAt = new Date(request.requestedAt).getTime();
+    return (
+      Number.isFinite(requestedAt) &&
+      Date.now() - requestedAt >= IDEMPOTENCY_KEY_RECOVERY_WINDOW_MS
+    );
   }
 
   private async getLatestRequest(payoutProfileId: string): Promise<LatestPayoutRequest | null> {
@@ -739,6 +811,27 @@ export class PayoutRequestService {
         "id, amount, currency, status, requested_at, arrival_date, failure_code, failure_message"
       )
       .eq("payout_profile_id", payoutProfileId)
+      .order("requested_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<PayoutRequestRow>();
+
+    if (error) {
+      throw error;
+    }
+
+    return toLatestPayoutRequest(data ?? null);
+  }
+
+  private async getLatestActiveRequest(
+    payoutProfileId: string
+  ): Promise<LatestPayoutRequest | null> {
+    const { data, error } = await this.supabase
+      .from("payout_requests")
+      .select(
+        "id, amount, currency, status, requested_at, arrival_date, failure_code, failure_message"
+      )
+      .eq("payout_profile_id", payoutProfileId)
+      .in("status", IN_PROGRESS_STATUSES)
       .order("requested_at", { ascending: false })
       .limit(1)
       .maybeSingle<PayoutRequestRow>();

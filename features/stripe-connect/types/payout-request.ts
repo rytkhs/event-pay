@@ -5,11 +5,12 @@ export type PayoutRequestStatus =
   | "paid"
   | "failed"
   | "canceled"
-  | "creation_unknown";
+  | "creation_unknown"
+  | "manual_review_required";
 
 export type StripePayoutRequestStatus = Exclude<
   PayoutRequestStatus,
-  "requesting" | "creation_unknown"
+  "requesting" | "creation_unknown" | "manual_review_required"
 >;
 
 export type PayoutBalance = {

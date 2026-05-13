@@ -291,6 +291,30 @@ describe("PayoutRequestService", () => {
       expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
     });
 
+    it("同じpayout_profileにmanual_review_requiredのpayout_requestが存在する時、新しいStripe Payoutを作成せず失敗Resultを返すこと", async () => {
+      const existing = await createPayoutRequestFixture(ctx, {
+        status: "manual_review_required",
+        failureCode: EXPIRED_IDEMPOTENCY_FAILURE_CODE,
+      });
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      const failure = expectAppFailure(result);
+      expect(failure.error.code).toBe("RESOURCE_CONFLICT");
+      expect(failure.error.retryable).toBe(false);
+      expect(await listPayoutRequests(ctx)).toHaveLength(1);
+      expect(await getPayoutRequestById(ctx, existing.id)).toEqual(
+        expect.objectContaining({ status: "manual_review_required" })
+      );
+      expect(stripeDouble.accountRetrieveCalls).toHaveLength(0);
+      expect(stripeDouble.externalAccountsListCalls).toHaveLength(0);
+      expect(stripeDouble.balanceRetrieveCalls).toHaveLength(0);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+    });
+
     // 作成結果不明の再実行は新規行ではなく保存済みidempotency_keyで復旧する
     it("同じpayout_profileにcreation_unknownのpayout_requestが存在する時、保存済みidempotency_keyで復旧すること", async () => {
       await createPayoutRequestFixture(ctx, {
@@ -415,7 +439,7 @@ describe("PayoutRequestService", () => {
       );
     });
 
-    // active requestはrequesting / creation_unknownのみとし、同時クリックを単一に収束させる
+    // active requestはrequesting / creation_unknown / manual_review_requiredのみとし、同時クリックを単一に収束させる
     it("同じpayout_profileへの入金要求が同時実行された時、作成されるactiveなpayout_requestとStripe Payoutは1件だけであること", async () => {
       const [first, second] = await Promise.all([
         service.requestPayout({ userId: ctx.user.id, communityId: ctx.communityId }),
@@ -577,7 +601,7 @@ describe("PayoutRequestService", () => {
       );
     });
 
-    it("24時間超のcreation_unknownはfailedに更新し、Stripe Payoutを再試行しないこと", async () => {
+    it("24時間超のcreation_unknownはmanual_review_requiredに更新し、Stripe Payoutを再試行しないこと", async () => {
       const request = await createPayoutRequestFixture(ctx, {
         status: "creation_unknown",
         amount: 1500,
@@ -591,14 +615,14 @@ describe("PayoutRequestService", () => {
       });
 
       const failure = expectAppFailure(result);
-      expect(failure.error.retryable).toBe(true);
+      expect(failure.error.retryable).toBe(false);
       expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
       expect(await getPayoutRequestById(ctx, request.id)).toEqual(
         expect.objectContaining({
-          status: "failed",
+          status: "manual_review_required",
           failure_code: "idempotency_key_expired",
           failure_message:
-            "Stripe idempotency key の保証期間を超過したため自動復旧できません。",
+            "Stripe idempotency key の保証期間を超過したため、振込状況の手動確認が必要です。",
         })
       );
     });
@@ -729,6 +753,70 @@ describe("PayoutRequestService", () => {
       );
     });
 
+    it("24時間超のcreation_unknownはpanel state取得時にmanual_review_requiredへ更新すること", async () => {
+      const request = await createPayoutRequestFixture(ctx, {
+        status: "creation_unknown",
+        amount: 1500,
+        requestedAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      });
+      stripeDouble.setBalance({
+        available: [{ amount: 0, currency: "jpy", source_types: { card: 0 } }],
+      });
+
+      const result = await service.getPayoutPanelState({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      const success = expectAppSuccess(result);
+      expect(success.data).toEqual(
+        expect.objectContaining({
+          availableAmount: 0,
+          canRequestPayout: false,
+          disabledReason: "request_in_progress",
+          latestRequest: expect.objectContaining({
+            status: "manual_review_required",
+            failureCode: "idempotency_key_expired",
+            failureMessage:
+              "Stripe idempotency key の保証期間を超過したため、振込状況の手動確認が必要です。",
+          }),
+        })
+      );
+      expect(await getPayoutRequestById(ctx, request.id)).toEqual(
+        expect.objectContaining({
+          status: "manual_review_required",
+          failure_code: "idempotency_key_expired",
+          failure_message:
+            "Stripe idempotency key の保証期間を超過したため、振込状況の手動確認が必要です。",
+        })
+      );
+    });
+
+    it("manual_review_requiredのpayout_requestが存在する時、available残高が0でもrequest_in_progressを返すこと", async () => {
+      await createPayoutRequestFixture(ctx, {
+        status: "manual_review_required",
+        amount: 1500,
+      });
+      stripeDouble.setBalance({
+        available: [{ amount: 0, currency: "jpy", source_types: { card: 0 } }],
+      });
+
+      const result = await service.getPayoutPanelState({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      const success = expectAppSuccess(result);
+      expect(success.data).toEqual(
+        expect.objectContaining({
+          availableAmount: 0,
+          canRequestPayout: false,
+          disabledReason: "request_in_progress",
+          latestRequest: expect.objectContaining({ status: "manual_review_required" }),
+        })
+      );
+    });
+
   });
 
   describe("syncPayoutFromWebhook", () => {
@@ -829,6 +917,42 @@ describe("PayoutRequestService", () => {
       );
     });
 
+    it.each([
+      ["pending", "po_manual_pending"],
+      ["in_transit", "po_manual_in_transit"],
+      ["paid", "po_manual_paid"],
+      ["failed", "po_manual_failed"],
+      ["canceled", "po_manual_canceled"],
+    ] as const)(
+      "manual_review_requiredのpayout_requestに%sのwebhookが届いた時、Stripe状態へ同期すること",
+      async (status, payoutId) => {
+        const manualRequest = await createPayoutRequestFixture(ctx, {
+          status: "manual_review_required",
+          stripePayoutId: null,
+          failureCode: EXPIRED_IDEMPOTENCY_FAILURE_CODE,
+          failureMessage: "manual review required",
+        });
+        const payout = buildPayout(ctx, manualRequest, {
+          id: payoutId,
+          status,
+          failure_code: status === "failed" ? "account_closed" : null,
+          failure_message: status === "failed" ? "account closed" : null,
+        });
+
+        const result = await (service.syncPayoutFromWebhook as any)(payout, ctx.stripeAccountId);
+
+        expectAppSuccess(result);
+        expect(await getPayoutRequestById(ctx, manualRequest.id)).toEqual(
+          expect.objectContaining({
+            status,
+            stripe_payout_id: payoutId,
+            failure_code: status === "failed" ? "account_closed" : null,
+            failure_message: status === "failed" ? "account closed" : null,
+          })
+        );
+      }
+    );
+
     // 入金完了の状態反映を固定する
     it("payout.paidを受け取った時、payout_requestをpaidに更新しfailure情報を残さないこと", async () => {
       const payout = buildPayout(ctx, request, { status: "paid" });
@@ -900,9 +1024,9 @@ describe("PayoutRequestService", () => {
       );
     });
 
-    it("idempotency_key期限切れでfailedにしたpayout_requestにpayout.createdが届いた時、pendingへ同期すること", async () => {
+    it("manual_review_requiredのpayout_requestにpayout.createdが届いた時、pendingへ同期すること", async () => {
       const expiredRequest = await createPayoutRequestFixture(ctx, {
-        status: "failed",
+        status: "manual_review_required",
         stripePayoutId: null,
         failureCode: EXPIRED_IDEMPOTENCY_FAILURE_CODE,
         failureMessage: "expired",
@@ -923,9 +1047,9 @@ describe("PayoutRequestService", () => {
       );
     });
 
-    it("idempotency_key期限切れでfailedにしたpayout_requestにpayout.paidが届いた時、paidへ同期しfailure情報を消すこと", async () => {
+    it("manual_review_requiredのpayout_requestにpayout.paidが届いた時、paidへ同期しfailure情報を消すこと", async () => {
       const expiredRequest = await createPayoutRequestFixture(ctx, {
-        status: "failed",
+        status: "manual_review_required",
         stripePayoutId: null,
         failureCode: EXPIRED_IDEMPOTENCY_FAILURE_CODE,
         failureMessage: "expired",
@@ -968,9 +1092,9 @@ describe("PayoutRequestService", () => {
       );
     });
 
-    it("idempotency_key期限切れのfailedでも保存済みstripe_payout_idとpayout.idが矛盾する時、更新しないこと", async () => {
+    it("manual_review_requiredでも保存済みstripe_payout_idとpayout.idが矛盾する時、更新しないこと", async () => {
       const expiredRequest = await createPayoutRequestFixture(ctx, {
-        status: "failed",
+        status: "manual_review_required",
         stripePayoutId: "po_existing_expired",
         failureCode: EXPIRED_IDEMPOTENCY_FAILURE_CODE,
         failureMessage: "expired",

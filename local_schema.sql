@@ -178,7 +178,8 @@ CREATE TYPE "public"."payout_request_status" AS ENUM (
     'paid',
     'failed',
     'canceled',
-    'creation_unknown'
+    'creation_unknown',
+    'manual_review_required'
 );
 
 
@@ -3682,7 +3683,7 @@ CREATE INDEX "idx_payout_requests_community_requested_at" ON "public"."payout_re
 
 
 
-CREATE INDEX "idx_payout_requests_pending_requested_at" ON "public"."payout_requests" USING "btree" ("requested_at") WHERE ("status" = ANY (ARRAY['requesting'::"public"."payout_request_status", 'pending'::"public"."payout_request_status", 'in_transit'::"public"."payout_request_status", 'creation_unknown'::"public"."payout_request_status"]));
+CREATE INDEX "idx_payout_requests_pending_requested_at" ON "public"."payout_requests" USING "btree" ("requested_at") WHERE ("status" = ANY (ARRAY['requesting'::"public"."payout_request_status", 'pending'::"public"."payout_request_status", 'in_transit'::"public"."payout_request_status", 'creation_unknown'::"public"."payout_request_status", 'manual_review_required'::"public"."payout_request_status"]));
 
 
 
@@ -3786,7 +3787,7 @@ CREATE INDEX "line_accounts_channel_id_line_sub_idx" ON "public"."line_accounts"
 
 
 
-CREATE UNIQUE INDEX "uniq_payout_requests_active_per_profile" ON "public"."payout_requests" USING "btree" ("payout_profile_id") WHERE ("status" = ANY (ARRAY['requesting'::"public"."payout_request_status", 'creation_unknown'::"public"."payout_request_status"]));
+CREATE UNIQUE INDEX "uniq_payout_requests_active_per_profile" ON "public"."payout_requests" USING "btree" ("payout_profile_id") WHERE ("status" = ANY (ARRAY['requesting'::"public"."payout_request_status", 'creation_unknown'::"public"."payout_request_status", 'manual_review_required'::"public"."payout_request_status"]));
 
 
 
@@ -4816,8 +4817,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
-
 
 
 

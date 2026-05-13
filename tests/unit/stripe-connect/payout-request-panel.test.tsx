@@ -70,7 +70,7 @@ describe("PayoutRequestPanel", () => {
             amount: 10000,
             currency: "jpy",
             status: "creation_unknown",
-            requestedAt: "2026-05-13T00:00:00.000Z",
+            requestedAt: new Date().toISOString(),
             arrivalDate: null,
             failureCode: null,
             failureMessage: null,
@@ -109,7 +109,7 @@ describe("PayoutRequestPanel", () => {
             amount: 10000,
             currency: "jpy",
             status: "creation_unknown",
-            requestedAt: "2026-05-13T00:00:00.000Z",
+            requestedAt: new Date().toISOString(),
             arrivalDate: null,
             failureCode: null,
             failureMessage: null,
@@ -127,6 +127,80 @@ describe("PayoutRequestPanel", () => {
     await waitFor(() => {
       expect(requestPayoutAction).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("24時間超のcreation_unknownもサーバー側の判定に委ねて再確認として実行できる", async () => {
+    const user = userEvent.setup();
+    const requestPayoutAction = jest.fn(async () => ({
+      success: true as const,
+      data: successPayload,
+    }));
+
+    render(
+      <PayoutRequestPanel
+        payoutPanel={createPayoutPanel({
+          canRequestPayout: false,
+          disabledReason: "request_in_progress",
+          latestRequest: {
+            id: "req_unknown_expired",
+            amount: 10000,
+            currency: "jpy",
+            status: "creation_unknown",
+            requestedAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+            arrivalDate: null,
+            failureCode: null,
+            failureMessage: null,
+          },
+        })}
+        requestPayoutAction={requestPayoutAction}
+      />
+    );
+
+    const button = screen.getByRole("button", { name: "再試行" });
+    expect(button).not.toBeDisabled();
+
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(requestPayoutAction).toHaveBeenCalledTimes(1);
+      expect(mockRefresh).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("manual_review_required の入金リクエストは要確認として実行できない", async () => {
+    const user = userEvent.setup();
+    const requestPayoutAction = jest.fn(async () => ({
+      success: true as const,
+      data: successPayload,
+    }));
+
+    render(
+      <PayoutRequestPanel
+        payoutPanel={createPayoutPanel({
+          canRequestPayout: false,
+          disabledReason: "request_in_progress",
+          latestRequest: {
+            id: "req_manual_review",
+            amount: 10000,
+            currency: "jpy",
+            status: "manual_review_required",
+            requestedAt: "2026-05-13T00:00:00.000Z",
+            arrivalDate: null,
+            failureCode: null,
+            failureMessage: null,
+          },
+        })}
+        requestPayoutAction={requestPayoutAction}
+      />
+    );
+
+    expect(screen.getByText("要確認")).toBeInTheDocument();
+    const button = screen.getByRole("button", { name: "処理中の振込があります" });
+    expect(button).toBeDisabled();
+
+    await user.click(button);
+
+    expect(requestPayoutAction).not.toHaveBeenCalled();
   });
 
   it("requesting の入金リクエストは処理中として実行できない", async () => {

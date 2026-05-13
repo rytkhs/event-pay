@@ -1297,7 +1297,8 @@ export type Database = {
         | "paid"
         | "failed"
         | "canceled"
-        | "creation_unknown";
+        | "creation_unknown"
+        | "manual_review_required";
       stripe_account_status_enum: "unverified" | "onboarding" | "verified" | "restricted";
     };
     CompositeTypes: {
@@ -1462,6 +1463,7 @@ export const Constants = {
         "failed",
         "canceled",
         "creation_unknown",
+        "manual_review_required",
       ],
       stripe_account_status_enum: ["unverified", "onboarding", "verified", "restricted"],
     },

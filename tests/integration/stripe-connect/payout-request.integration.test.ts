@@ -401,6 +401,12 @@ describe("PayoutRequestService 統合テスト", () => {
       if (testName.includes("requestingのpayout_request")) {
         await createPayoutRequestFixture(ctx, { status: "requesting" });
       }
+      if (testName.includes("manual_review_requiredのpayout_request")) {
+        await createPayoutRequestFixture(ctx, {
+          status: "manual_review_required",
+          failureCode: "idempotency_key_expired",
+        });
+      }
       if (testName.includes("pendingのpayout_request")) {
         await createPayoutRequestFixture(ctx, {
           status: "pending",
@@ -421,6 +427,16 @@ describe("PayoutRequestService 統合テスト", () => {
 
     // 未完了リクエストの二重作成をサービス境界で防ぐことを固定する
     it("同じpayout_profileにrequestingのpayout_requestが存在する時、新しい入金要求は作成されないこと", async () => {
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppFailure(result);
+      expect(await listPayoutRequests(ctx)).toEqual(payoutRequestsBefore);
+    });
+
+    it("同じpayout_profileにmanual_review_requiredのpayout_requestが存在する時、新しい入金要求は作成されないこと", async () => {
       const result = await service.requestPayout({
         userId: ctx.user.id,
         communityId: ctx.communityId,
@@ -452,7 +468,7 @@ describe("PayoutRequestService 統合テスト", () => {
       );
     }, 60000);
 
-    // active requestはrequesting / creation_unknownのみとし、同時クリックを単一に収束させる
+    // active requestはrequesting / creation_unknown / manual_review_requiredのみとし、同時クリックを単一に収束させる
     it("同じpayout_profileへの入金要求が同時実行された時、activeなpayout_requestは1件だけ作成されること", async () => {
       const results = await Promise.all([
         service.requestPayout({ userId: ctx.user.id, communityId: ctx.communityId }),
@@ -462,7 +478,7 @@ describe("PayoutRequestService 統合テスト", () => {
       const after = await listPayoutRequests(ctx);
       const successResults = results.filter((result) => result.success);
       const activeRequests = after.filter((row) =>
-        ["requesting", "creation_unknown"].includes(row.status)
+        ["requesting", "creation_unknown", "manual_review_required"].includes(row.status)
       );
       expect(successResults).toHaveLength(1);
       expect(after).toHaveLength(1);
