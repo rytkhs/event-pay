@@ -186,7 +186,7 @@ describe("PayoutRequestService", () => {
 
       const failure = expectAppFailure(result);
       expect(failure.error.code).toBe("CONNECT_ACCOUNT_RESTRICTED");
-      expect(failure.error.userMessage).toBe("入金先口座を確認してください。");
+      expect(failure.error.userMessage).toBe("振込先口座を確認してください。");
       expect(await listPayoutRequests(ctx)).toHaveLength(0);
       expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
     });
@@ -203,7 +203,7 @@ describe("PayoutRequestService", () => {
 
         const failure = expectAppFailure(result);
         expect(failure.error.code).toBe("CONNECT_ACCOUNT_RESTRICTED");
-        expect(failure.error.userMessage).toBe("入金先口座を確認してください。");
+        expect(failure.error.userMessage).toBe("振込先口座を確認してください。");
         expect(await listPayoutRequests(ctx)).toHaveLength(0);
         expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
       }
@@ -893,7 +893,7 @@ describe("PayoutRequestService", () => {
 
       await expect(
         service.createExpressAccount({ userId: ctx.user.id, email: ctx.user.email })
-      ).rejects.toThrow("入金スケジュールの設定に失敗しました");
+      ).rejects.toThrow("振込スケジュールの設定に失敗しました");
     });
   });
 });

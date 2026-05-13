@@ -26,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
   title: "オンライン集金",
-  description: "受取先設定と売上・入金状況を管理します",
+  description: "受取先設定と売上・振込状況を管理します",
 };
 
 async function PaymentSettingsContent() {

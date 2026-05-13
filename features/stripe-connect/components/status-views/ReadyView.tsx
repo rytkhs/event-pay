@@ -43,7 +43,7 @@ export function ReadyView({ status, statusConfig }: ReadyViewProps) {
           {hasPayoutWarning && (
             <div className="flex items-center gap-2 text-xs text-amber-600">
               <AlertTriangle className="size-3.5 shrink-0" />
-              <span>出金設定の確認が必要です</span>
+              <span>振込設定の確認が必要です</span>
             </div>
           )}
           {eventuallyDueCount > 0 && (

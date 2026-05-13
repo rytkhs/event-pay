@@ -122,7 +122,7 @@ describe("requestPayoutAction", () => {
 
     const error = expectActionFailure(result);
     expect(error.code).toBe("CONNECT_ACCOUNT_RESTRICTED");
-    expect(error.userMessage).toBe("入金を実行できる状態ではありません。");
+    expect(error.userMessage).toBe("振込を実行できる状態ではありません。");
     expect(await listPayoutRequests(ctx)).toHaveLength(0);
     expect(mockStripeDouble.payoutCreateCalls).toHaveLength(0);
   });

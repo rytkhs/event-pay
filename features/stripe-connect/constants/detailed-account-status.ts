@@ -31,8 +31,8 @@ export const PAYOUTS_DISABLED_STATUS: DetailedAccountStatus = {
   statusType: "ready",
   title: "オンライン集金は利用できます",
   description:
-    "集金は可能ですが、出金設定または振込状況の確認が必要です。Stripeで状況を確認してください。",
-  actionText: "出金設定を確認",
+    "集金は可能ですが、振込設定または振込状況の確認が必要です。Stripeで状況を確認してください。",
+  actionText: "振込設定を確認",
   actionUrl: "/settings/payments",
   severity: "warning",
 };

@@ -118,7 +118,7 @@ describe("PayoutRequestPanel", () => {
       />
     );
 
-    const button = screen.getByRole("button", { name: "処理中の入金があります" });
+    const button = screen.getByRole("button", { name: "処理中の振込があります" });
     expect(button).toBeDisabled();
 
     await user.click(button);
@@ -145,7 +145,7 @@ describe("PayoutRequestPanel", () => {
       />
     );
 
-    expect(screen.getByText("入金処理中")).toBeInTheDocument();
+    expect(screen.getByText("処理中")).toBeInTheDocument();
     expect(screen.getByText(/予定: 2026\/5\/15/)).toBeInTheDocument();
   });
 });
