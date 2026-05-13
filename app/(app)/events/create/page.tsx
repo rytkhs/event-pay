@@ -31,7 +31,7 @@ export default async function CreateEventPage() {
   const canUseOnlinePayments = payoutResolution.isReady;
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen">
       <SinglePageEventForm
         canUseOnlinePayments={canUseOnlinePayments}
         connectStatus={connectStatus}

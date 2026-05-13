@@ -152,7 +152,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
   const canUseOnlinePayments = payoutResolution.isReady;
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-3 pb-28 pt-3 sm:gap-6 sm:px-6 sm:pb-32 lg:px-8 lg:pt-8">
         {/* 編集フォーム（シングルページ版） */}
         <SinglePageEventEditForm

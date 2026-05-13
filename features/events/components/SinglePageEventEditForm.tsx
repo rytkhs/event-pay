@@ -22,7 +22,7 @@ import type { Event } from "@core/types/event";
 
 import { useMobileBottomOverlay } from "@/components/layout/mobile-chrome-context";
 import { cn } from "@/components/ui/_lib/cn";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
@@ -678,7 +678,7 @@ export function SinglePageEventEditForm({
                   />
 
                   {/* 決済方法選択（有料イベント時のみ） */}
-                  {!isFreeEvent ? (
+                  {!isFreeEvent && (
                     <FormField
                       control={form.control}
                       name="payment_methods"
@@ -844,17 +844,6 @@ export function SinglePageEventEditForm({
                         </FormItem>
                       )}
                     />
-                  ) : (
-                    <Alert
-                      variant="success"
-                      className="border-primary/20 bg-primary/5 text-foreground"
-                    >
-                      <CheckIcon className="size-4" />
-                      <AlertTitle>参加費が0円のため、決済方法の設定は不要です</AlertTitle>
-                      <AlertDescription className="text-muted-foreground">
-                        参加者は無料でイベントに参加できます
-                      </AlertDescription>
-                    </Alert>
                   )}
 
                   {/* オンライン決済設定（Stripe選択時のみ表示） */}
