@@ -52,6 +52,11 @@ export const metadata: Metadata = {
     ],
     other: [{ rel: "mask-icon", url: "/safari-pinned-tab.svg", color: "#24a6b5" }],
   },
+  appleWebApp: {
+    capable: true,
+    title: "みんなの集金",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
