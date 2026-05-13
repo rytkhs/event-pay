@@ -166,7 +166,7 @@ describe("dashboard stripe summary", () => {
       expect.objectContaining({
         statusType: "ready",
         severity: "warning",
-        actionText: "出金設定を確認",
+        actionText: "振込設定を確認",
       })
     );
   });

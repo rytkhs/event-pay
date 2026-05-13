@@ -33,9 +33,9 @@ export const footerNavigationGroups: FooterLinkGroup[] = [
         ariaLabel: "参加者の登録と支払いの流れを確認する",
       },
       {
-        label: "オンライン集金・入金のしくみ",
+        label: "オンライン集金・振込のしくみ",
         href: "/guide/online-collection",
-        ariaLabel: "オンライン集金・入金のしくみを確認する",
+        ariaLabel: "オンライン集金・振込のしくみを確認する",
       },
       {
         label: "料金と手数料",

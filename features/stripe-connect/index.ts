@@ -7,6 +7,7 @@
 export { AccountStatus } from "./components/AccountStatus";
 export { ConnectAccountCta } from "./components/ConnectAccountCta";
 export { OnboardingForm } from "./components/OnboardingForm";
+export { PayoutRequestPanel } from "./components/PayoutRequestPanel";
 export { NoAccountView } from "./components/status-views/NoAccountView";
 export { PendingReviewView } from "./components/status-views/PendingReviewView";
 export { ReadyView } from "./components/status-views/ReadyView";
@@ -16,6 +17,7 @@ export { UnverifiedView } from "./components/status-views/UnverifiedView";
 
 // Types & Validation
 export * from "./types";
+export * from "./types/payout-request";
 export * from "./validation";
 
 // Routes

@@ -27,8 +27,8 @@ export const MoneyFlowSection: React.FC = () => {
     },
     {
       number: "4",
-      title: "主催者の口座へ入金",
-      desc: "オンラインで支払われた参加費は、オンライン集金手数料を差し引いた後にStripe経由で主催者の口座へ入金されます。",
+      title: "主催者の口座へ振込",
+      desc: "オンラインで支払われた参加費は、オンライン集金手数料を差し引いた後にStripe経由で主催者の口座へ振込されます。",
     },
   ];
 
@@ -36,7 +36,7 @@ export const MoneyFlowSection: React.FC = () => {
     { icon: Shield, title: "カード情報の非保持" },
     { icon: CreditCard, title: "Stripeによる決済処理" },
     { icon: Lock, title: "通信の暗号化" },
-    { icon: Landmark, title: "入金はStripeに準拠" },
+    { icon: Landmark, title: "振込はStripeに準拠" },
   ];
 
   return (
@@ -50,7 +50,7 @@ export const MoneyFlowSection: React.FC = () => {
             <p className="text-slate-500 text-lg">
               オンライン決済を利用する場合、主催者はStripeアカウントを連携します。
               <br className="hidden md:block" />
-              参加者が支払った参加費はStripeで処理され、主催者の口座へ入金されます。
+              参加者が支払った参加費はStripeで処理され、主催者の口座へ振り込まれます。
             </p>
           </FadeIn>
 
@@ -187,7 +187,7 @@ export const MoneyFlowSection: React.FC = () => {
                 href="/guide/online-collection"
                 className="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
               >
-                オンライン集金・入金のしくみを見る →
+                オンライン集金・振込のしくみを見る →
               </Link>
             </div>
           </FadeIn>

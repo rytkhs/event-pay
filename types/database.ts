@@ -709,6 +709,92 @@ export type Database = {
           },
         ];
       };
+      payout_requests: {
+        Row: {
+          amount: number;
+          arrival_date: string | null;
+          community_id: string;
+          currency: string;
+          failure_code: string | null;
+          failure_message: string | null;
+          id: string;
+          idempotency_key: string;
+          payout_profile_id: string;
+          requested_at: string;
+          requested_by: string;
+          status: Database["public"]["Enums"]["payout_request_status"];
+          stripe_account_id: string;
+          stripe_created_at: string | null;
+          stripe_payout_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          amount: number;
+          arrival_date?: string | null;
+          community_id: string;
+          currency?: string;
+          failure_code?: string | null;
+          failure_message?: string | null;
+          id?: string;
+          idempotency_key: string;
+          payout_profile_id: string;
+          requested_at?: string;
+          requested_by: string;
+          status?: Database["public"]["Enums"]["payout_request_status"];
+          stripe_account_id: string;
+          stripe_created_at?: string | null;
+          stripe_payout_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          amount?: number;
+          arrival_date?: string | null;
+          community_id?: string;
+          currency?: string;
+          failure_code?: string | null;
+          failure_message?: string | null;
+          id?: string;
+          idempotency_key?: string;
+          payout_profile_id?: string;
+          requested_at?: string;
+          requested_by?: string;
+          status?: Database["public"]["Enums"]["payout_request_status"];
+          stripe_account_id?: string;
+          stripe_created_at?: string | null;
+          stripe_payout_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payout_requests_community_id_fkey";
+            columns: ["community_id"];
+            isOneToOne: false;
+            referencedRelation: "communities";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payout_requests_payout_profile_id_fkey";
+            columns: ["payout_profile_id"];
+            isOneToOne: false;
+            referencedRelation: "payout_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payout_requests_requested_by_fkey";
+            columns: ["requested_by"];
+            isOneToOne: false;
+            referencedRelation: "public_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payout_requests_requested_by_fkey";
+            columns: ["requested_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       stripe_connect_accounts: {
         Row: {
           charges_enabled: boolean;
@@ -1204,6 +1290,15 @@ export type Database = {
         | "refunded"
         | "waived"
         | "canceled";
+      payout_request_status:
+        | "requesting"
+        | "pending"
+        | "in_transit"
+        | "paid"
+        | "failed"
+        | "canceled"
+        | "creation_unknown"
+        | "manual_review_required";
       stripe_account_status_enum: "unverified" | "onboarding" | "verified" | "restricted";
     };
     CompositeTypes: {
@@ -1359,6 +1454,16 @@ export const Constants = {
         "refunded",
         "waived",
         "canceled",
+      ],
+      payout_request_status: [
+        "requesting",
+        "pending",
+        "in_transit",
+        "paid",
+        "failed",
+        "canceled",
+        "creation_unknown",
+        "manual_review_required",
       ],
       stripe_account_status_enum: ["unverified", "onboarding", "verified", "restricted"],
     },

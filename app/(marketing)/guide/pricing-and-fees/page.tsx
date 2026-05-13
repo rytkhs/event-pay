@@ -111,8 +111,8 @@ const payerItems: ExplanationItem[] = [
     icon: Calculator,
   },
   {
-    title: "入金と残高確認はStripeで行います",
-    body: "オンライン決済はStripeを通じて処理されます。残高、入金可能額、入金履歴はStripeの売上・入金確認画面で確認します。",
+    title: "振込と残高確認はアプリ内で行います",
+    body: "オンライン決済はStripeを通じて処理されます。振込可能額、反映待ち金額、振込処理の状態は、みんなの集金のオンライン集金画面で確認します。",
     icon: Landmark,
   },
 ];
@@ -129,8 +129,8 @@ const guideLinks: GuideLink[] = [
     href: "/guide/participant-flow",
   },
   {
-    title: "オンライン集金・入金のしくみ",
-    body: "カード決済、Stripe、入金の考え方を詳しく確認できます。",
+    title: "オンライン集金・振込のしくみ",
+    body: "カード決済、Stripe、振込の考え方を詳しく確認できます。",
     href: "/guide/online-collection",
   },
 ];

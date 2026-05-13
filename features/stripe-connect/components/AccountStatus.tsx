@@ -1,6 +1,12 @@
 /**
- * Stripe 入金設定ステータス表示コンポーネント
+ * Stripe 振込設定ステータス表示コンポーネント
  * UI Statusに基づいて適切なビューを表示
+ *
+ * レイアウト責務:
+ * ❶ ステータスヘッダー（各ビューに委譲、バッジ統合）
+ * ❷ 振込パネル（一元管理）
+ * ❸ Stripeダッシュボード（一元管理）
+ * ❹ ヘルプ（Ready以外で表示）
  */
 
 "use client";
@@ -11,28 +17,29 @@ import Link from "next/link";
 
 import { BookOpen, ExternalLink } from "lucide-react";
 
-import { cn } from "@/components/ui/_lib/cn";
+import type { ActionResult } from "@core/errors/adapters/server-actions";
 
+import { Button } from "@/components/ui/button";
+
+import type { PayoutPanelState, RequestPayoutPayload } from "../types/payout-request";
 import type { AccountStatusData } from "../types/status-classification";
 
+import { PayoutRequestPanel } from "./PayoutRequestPanel";
 import { NoAccountView } from "./status-views/NoAccountView";
 import { PendingReviewView } from "./status-views/PendingReviewView";
 import { ReadyView } from "./status-views/ReadyView";
 import { RequirementsDueView } from "./status-views/RequirementsDueView";
 import { RestrictedView } from "./status-views/RestrictedView";
 import { UnverifiedView } from "./status-views/UnverifiedView";
+import type { StatusConfig } from "./StatusBadge";
 
 interface AccountStatusProps {
   refreshUrl: string;
   status: AccountStatusData;
   expressDashboardAction?: (formData: FormData) => Promise<void>;
+  payoutPanel?: PayoutPanelState;
+  requestPayoutAction?: () => Promise<ActionResult<RequestPayoutPayload>>;
 }
-
-type StatusConfig = {
-  label: string;
-  dotClass: string;
-  pulse?: boolean;
-};
 
 const STATUS_CONFIG: Record<string, StatusConfig> = {
   no_account: {
@@ -64,11 +71,23 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
   },
 };
 
-export function AccountStatus({ refreshUrl, status, expressDashboardAction }: AccountStatusProps) {
+export function AccountStatus({
+  refreshUrl,
+  status,
+  expressDashboardAction,
+  payoutPanel,
+  requestPayoutAction,
+}: AccountStatusProps) {
   const config = STATUS_CONFIG[status.uiStatus] ?? {
     label: "不明",
     dotClass: "bg-muted-foreground/40",
   };
+
+  // Restricted は Express Dashboard をカード内に主アクションとして内包するため除外
+  const showExpressDashboard =
+    status.expressDashboardAvailable && expressDashboardAction && status.uiStatus !== "restricted";
+
+  const showHelp = status.uiStatus !== "ready";
 
   const renderStatusView = () => {
     switch (status.uiStatus) {
@@ -77,29 +96,21 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
       case "unverified":
         return <UnverifiedView refreshUrl={refreshUrl} />;
       case "requirements_due":
-        return <RequirementsDueView status={status} refreshUrl={refreshUrl} />;
-      case "pending_review":
         return (
-          <PendingReviewView
-            expressDashboardAction={expressDashboardAction}
-            expressDashboardAvailable={status.expressDashboardAvailable}
-          />
+          <RequirementsDueView status={status} refreshUrl={refreshUrl} statusConfig={config} />
         );
+      case "pending_review":
+        return <PendingReviewView statusConfig={config} />;
       case "restricted":
         return (
           <RestrictedView
             expressDashboardAction={expressDashboardAction}
             expressDashboardAvailable={status.expressDashboardAvailable}
+            statusConfig={config}
           />
         );
       case "ready":
-        return (
-          <ReadyView
-            status={status}
-            expressDashboardAction={expressDashboardAction}
-            expressDashboardAvailable={status.expressDashboardAvailable}
-          />
-        );
+        return <ReadyView status={status} statusConfig={config} />;
       default:
         return null;
     }
@@ -107,25 +118,26 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-border/60 bg-background px-3.5 py-3 sm:px-4">
-        <span className="relative flex h-2 w-2">
-          {config.pulse && (
-            <span
-              className={cn(
-                "absolute inline-flex h-full w-full animate-ping rounded-full opacity-60",
-                config.dotClass
-              )}
-            />
-          )}
-          <span className={cn("relative inline-flex h-2 w-2 rounded-full", config.dotClass)} />
-        </span>
-        <span className="text-xs font-medium text-foreground">{config.label}</span>
-        <span className="text-xs text-muted-foreground/60">現在のStripe連携状況</span>
-      </div>
-
+      {/* ❶ ステータスヘッダー */}
       {renderStatusView()}
 
-      <div className="pt-1 sm:pt-2">
+      {/* ❷ 振込パネル */}
+      {payoutPanel && requestPayoutAction && (
+        <PayoutRequestPanel payoutPanel={payoutPanel} requestPayoutAction={requestPayoutAction} />
+      )}
+
+      {/* ❸ Stripeダッシュボード */}
+      {showExpressDashboard && (
+        <form action={expressDashboardAction}>
+          <Button type="submit" variant="outline" className="group h-11 w-full text-sm font-medium">
+            Stripeダッシュボード
+            <ExternalLink className="ml-2 size-3.5 opacity-60 transition-opacity group-hover:opacity-100" />
+          </Button>
+        </form>
+      )}
+
+      {/* ❹ ヘルプ */}
+      {showHelp && (
         <Link
           href="/settings/payments/guide"
           target="_blank"
@@ -147,7 +159,7 @@ export function AccountStatus({ refreshUrl, status, expressDashboardAction }: Ac
             </div>
           </div>
         </Link>
-      </div>
+      )}
     </div>
   );
 }

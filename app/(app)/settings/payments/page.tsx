@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 
 import { requireNonEmptyCommunityWorkspaceForServerComponent } from "@core/community/app-workspace";
 import { getPublicUrl } from "@core/seo/metadata";
+import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 
 import { AccountStatus, CONNECT_REFRESH_PATH, OnboardingForm } from "@features/stripe-connect";
 import {
@@ -13,17 +14,19 @@ import {
   checkExpressDashboardAccessAction,
   createUserStripeConnectServiceForServerComponent,
   getConnectAccountStatusAction,
+  PayoutRequestService,
 } from "@features/stripe-connect/server";
 
 import {
   createExpressDashboardLoginLinkAction,
+  requestPayoutAction,
   startOnboardingAction,
 } from "@/app/_actions/stripe-connect/actions";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
-  title: "オンライン集金設定",
-  description: "オンライン集金の受け取り方法を設定します",
+  title: "オンライン集金",
+  description: "受取先設定と売上・振込状況を管理します",
 };
 
 async function PaymentSettingsContent() {
@@ -67,36 +70,55 @@ async function PaymentSettingsContent() {
     );
   }
 
+  const status = await (async () => {
+    const r = await getConnectAccountStatusAction();
+
+    if (!r.success) {
+      const cachedStatus = buildConnectAccountStatusPayloadFromCachedAccount(existingAccount);
+      return {
+        ...cachedStatus,
+        expressDashboardAvailable: false,
+      };
+    }
+
+    const expressAccess = await checkExpressDashboardAccessAction();
+
+    return {
+      hasAccount: true,
+      accountId: r.data?.accountId,
+      dbStatus: r.data?.dbStatus,
+      uiStatus: r.data?.uiStatus ?? "no_account",
+      collectionReady: r.data?.collectionReady ?? false,
+      payoutsEnabled: r.data?.payoutsEnabled ?? false,
+      requirementsSummary: r.data?.requirementsSummary,
+      requirements: r.data?.requirements,
+      capabilities: r.data?.capabilities,
+      expressDashboardAvailable: expressAccess.success && !!expressAccess.data?.hasAccount,
+    };
+  })();
+
+  const shouldLoadPayoutPanel =
+    status.uiStatus !== "no_account" && status.uiStatus !== "unverified";
+
+  const payoutPanel = shouldLoadPayoutPanel
+    ? await (async () => {
+        const supabase = await createServerComponentSupabaseClient();
+        const payoutService = new PayoutRequestService(supabase);
+        const result = await payoutService.getPayoutPanelState({
+          userId: workspace.currentUser.id,
+          communityId: currentCommunity.id,
+        });
+        return result.success ? result.data : undefined;
+      })()
+    : undefined;
+
   return (
     <AccountStatus
       refreshUrl={refreshUrl}
-      status={await (async () => {
-        const r = await getConnectAccountStatusAction();
-
-        if (!r.success) {
-          const cachedStatus = buildConnectAccountStatusPayloadFromCachedAccount(existingAccount);
-          return {
-            ...cachedStatus,
-            expressDashboardAvailable: false,
-          };
-        }
-
-        const expressAccess = await checkExpressDashboardAccessAction();
-
-        return {
-          hasAccount: true,
-          accountId: r.data?.accountId,
-          dbStatus: r.data?.dbStatus,
-          uiStatus: r.data?.uiStatus ?? "no_account",
-          collectionReady: r.data?.collectionReady ?? false,
-          payoutsEnabled: r.data?.payoutsEnabled ?? false,
-          requirementsSummary: r.data?.requirementsSummary,
-          requirements: r.data?.requirements,
-          capabilities: r.data?.capabilities,
-          expressDashboardAvailable: expressAccess.success && !!expressAccess.data?.hasAccount,
-        };
-      })()}
+      status={status}
       expressDashboardAction={createExpressDashboardLoginLinkAction}
+      payoutPanel={payoutPanel}
+      requestPayoutAction={requestPayoutAction}
     />
   );
 }

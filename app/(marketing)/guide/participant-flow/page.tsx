@@ -113,8 +113,8 @@ const guideLinks: GuideLink[] = [
     href: "/guide/getting-started",
   },
   {
-    title: "オンライン集金・入金のしくみ",
-    body: "カード決済、Stripe、入金の考え方を詳しく確認できます。",
+    title: "オンライン集金・振込のしくみ",
+    body: "カード決済、Stripe、振込の考え方を詳しく確認できます。",
     href: "/guide/online-collection",
   },
   {

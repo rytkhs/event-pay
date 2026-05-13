@@ -171,6 +171,21 @@ COMMENT ON TYPE "public"."payment_status_enum" IS '決済状況: pending, paid, 
 
 
 
+CREATE TYPE "public"."payout_request_status" AS ENUM (
+    'requesting',
+    'pending',
+    'in_transit',
+    'paid',
+    'failed',
+    'canceled',
+    'creation_unknown',
+    'manual_review_required'
+);
+
+
+ALTER TYPE "public"."payout_request_status" OWNER TO "postgres";
+
+
 CREATE TYPE "public"."stripe_account_status_enum" AS ENUM (
     'unverified',
     'onboarding',
@@ -3005,6 +3020,49 @@ COMMENT ON COLUMN "public"."payout_profiles"."stripe_status_synced_at" IS 'Strip
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."payout_requests" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "payout_profile_id" "uuid" NOT NULL,
+    "community_id" "uuid" NOT NULL,
+    "requested_by" "uuid" NOT NULL,
+    "stripe_account_id" character varying(255) NOT NULL,
+    "stripe_payout_id" character varying(255),
+    "amount" integer NOT NULL,
+    "currency" "text" DEFAULT 'jpy'::"text" NOT NULL,
+    "status" "public"."payout_request_status" DEFAULT 'requesting'::"public"."payout_request_status" NOT NULL,
+    "idempotency_key" "text" NOT NULL,
+    "arrival_date" timestamp with time zone,
+    "stripe_created_at" timestamp with time zone,
+    "failure_code" "text",
+    "failure_message" "text",
+    "requested_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "payout_requests_amount_positive" CHECK (("amount" > 0)),
+    CONSTRAINT "payout_requests_currency_jpy" CHECK (("currency" = 'jpy'::"text"))
+);
+
+ALTER TABLE ONLY "public"."payout_requests" FORCE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."payout_requests" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."payout_requests" IS 'アプリ内から実行したStripe connected accountの入金リクエスト履歴';
+
+
+
+COMMENT ON COLUMN "public"."payout_requests"."amount" IS 'JPY最小通貨単位。JPYでは円単位';
+
+
+
+COMMENT ON COLUMN "public"."payout_requests"."status" IS 'Stripe payout作成から入金完了・失敗までのアプリ内追跡ステータス';
+
+
+
+COMMENT ON COLUMN "public"."payout_requests"."idempotency_key" IS 'Stripe payout作成時のIdempotency-Key';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."users" (
     "id" "uuid" NOT NULL,
     "name" character varying(255) NOT NULL,
@@ -3384,6 +3442,21 @@ ALTER TABLE ONLY "public"."payout_profiles"
 
 
 
+ALTER TABLE ONLY "public"."payout_requests"
+    ADD CONSTRAINT "payout_requests_idempotency_key_key" UNIQUE ("idempotency_key");
+
+
+
+ALTER TABLE ONLY "public"."payout_requests"
+    ADD CONSTRAINT "payout_requests_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."payout_requests"
+    ADD CONSTRAINT "payout_requests_stripe_payout_id_key" UNIQUE ("stripe_payout_id");
+
+
+
 ALTER TABLE ONLY "public"."stripe_connect_accounts"
     ADD CONSTRAINT "stripe_connect_accounts_pkey" PRIMARY KEY ("user_id");
 
@@ -3606,6 +3679,22 @@ CREATE INDEX "idx_payout_profiles_representative_community_id" ON "public"."payo
 
 
 
+CREATE INDEX "idx_payout_requests_community_requested_at" ON "public"."payout_requests" USING "btree" ("community_id", "requested_at" DESC);
+
+
+
+CREATE INDEX "idx_payout_requests_pending_requested_at" ON "public"."payout_requests" USING "btree" ("requested_at") WHERE ("status" = ANY (ARRAY['requesting'::"public"."payout_request_status", 'pending'::"public"."payout_request_status", 'in_transit'::"public"."payout_request_status", 'creation_unknown'::"public"."payout_request_status", 'manual_review_required'::"public"."payout_request_status"]));
+
+
+
+CREATE INDEX "idx_payout_requests_profile_requested_at" ON "public"."payout_requests" USING "btree" ("payout_profile_id", "requested_at" DESC);
+
+
+
+CREATE INDEX "idx_payout_requests_requested_by_requested_at" ON "public"."payout_requests" USING "btree" ("requested_by", "requested_at" DESC);
+
+
+
 CREATE INDEX "idx_stripe_connect_accounts_status" ON "public"."stripe_connect_accounts" USING "btree" ("status");
 
 
@@ -3698,6 +3787,10 @@ CREATE INDEX "line_accounts_channel_id_line_sub_idx" ON "public"."line_accounts"
 
 
 
+CREATE UNIQUE INDEX "uniq_payout_requests_active_per_profile" ON "public"."payout_requests" USING "btree" ("payout_profile_id") WHERE ("status" = ANY (ARRAY['requesting'::"public"."payout_request_status", 'creation_unknown'::"public"."payout_request_status", 'manual_review_required'::"public"."payout_request_status"]));
+
+
+
 CREATE UNIQUE INDEX "unique_open_payment_per_attendance" ON "public"."payments" USING "btree" ("attendance_id") WHERE ("status" = 'pending'::"public"."payment_status_enum");
 
 
@@ -3755,6 +3848,10 @@ CREATE OR REPLACE TRIGGER "update_payments_updated_at" BEFORE UPDATE ON "public"
 
 
 CREATE OR REPLACE TRIGGER "update_payout_profiles_updated_at" BEFORE UPDATE ON "public"."payout_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_payout_requests_updated_at" BEFORE UPDATE ON "public"."payout_requests" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 
@@ -3840,6 +3937,21 @@ ALTER TABLE ONLY "public"."payout_profiles"
 
 
 
+ALTER TABLE ONLY "public"."payout_requests"
+    ADD CONSTRAINT "payout_requests_community_id_fkey" FOREIGN KEY ("community_id") REFERENCES "public"."communities"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."payout_requests"
+    ADD CONSTRAINT "payout_requests_payout_profile_id_fkey" FOREIGN KEY ("payout_profile_id") REFERENCES "public"."payout_profiles"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."payout_requests"
+    ADD CONSTRAINT "payout_requests_requested_by_fkey" FOREIGN KEY ("requested_by") REFERENCES "public"."users"("id") ON DELETE RESTRICT;
+
+
+
 ALTER TABLE ONLY "public"."stripe_connect_accounts"
     ADD CONSTRAINT "stripe_connect_accounts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
 
@@ -3910,6 +4022,10 @@ CREATE POLICY "Owners can view own payout profiles" ON "public"."payout_profiles
 
 
 
+CREATE POLICY "Owners can view own payout requests" ON "public"."payout_requests" FOR SELECT TO "authenticated" USING ((("requested_by" = ( SELECT "auth"."uid"() AS "uid")) OR "public"."is_payout_profile_owner"("payout_profile_id")));
+
+
+
 CREATE POLICY "Public can insert community contacts" ON "public"."community_contacts" FOR INSERT TO "authenticated", "anon" WITH CHECK ("public"."is_public_community"("community_id"));
 
 
@@ -3931,6 +4047,10 @@ CREATE POLICY "Service role can manage payments" ON "public"."payments" TO "serv
 
 
 CREATE POLICY "Service role can manage payout profiles" ON "public"."payout_profiles" TO "service_role" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "Service role can manage payout requests" ON "public"."payout_requests" TO "service_role" USING (true) WITH CHECK (true);
 
 
 
@@ -4043,6 +4163,9 @@ ALTER TABLE "public"."payments" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."payout_profiles" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."payout_requests" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."stripe_connect_accounts" ENABLE ROW LEVEL SECURITY;
@@ -4618,6 +4741,12 @@ GRANT SELECT,INSERT,UPDATE ON TABLE "public"."payout_profiles" TO "authenticated
 
 
 
+GRANT ALL ON TABLE "public"."payout_requests" TO "anon";
+GRANT ALL ON TABLE "public"."payout_requests" TO "authenticated";
+GRANT ALL ON TABLE "public"."payout_requests" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."users" TO "anon";
 GRANT ALL ON TABLE "public"."users" TO "authenticated";
 GRANT ALL ON TABLE "public"."users" TO "service_role";
@@ -4688,8 +4817,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
-
 
 
 

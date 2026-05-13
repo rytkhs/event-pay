@@ -142,7 +142,7 @@ export default function OnboardingGuidePage() {
                   body: "Stripeの安全な画面で、本人確認に必要な情報を入力します。",
                 },
                 {
-                  title: "入金先口座",
+                  title: "振込先口座",
                   body: "オンライン集金した金額を受け取る銀行口座を登録します。",
                 },
                 {

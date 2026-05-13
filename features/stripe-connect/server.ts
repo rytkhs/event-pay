@@ -12,6 +12,7 @@ export {
 } from "./actions/express-dashboard";
 export { getStripeBalanceAction } from "./actions/get-balance";
 export { fetchStripeBalanceByAccountId } from "./actions/get-balance";
+export { requestPayoutAction } from "./actions/request-payout";
 export {
   createUserStripeConnectServiceForServerAction,
   createUserStripeConnectServiceForServerComponent,
@@ -27,6 +28,14 @@ export { logStatusChange } from "./services/audit-logger";
 export { StripeConnectErrorHandler } from "./services/error-handler";
 export type { IStripeConnectService } from "./services/interface";
 export { StripeConnectService } from "./services/service";
+export { PayoutRequestService } from "./services/payout-request-service";
+export type {
+  LatestPayoutRequest,
+  PayoutBalance,
+  PayoutPanelState,
+  PayoutRequestStatus,
+  RequestPayoutPayload,
+} from "./types/payout-request";
 export {
   StatusSyncError,
   StatusSyncErrorType,

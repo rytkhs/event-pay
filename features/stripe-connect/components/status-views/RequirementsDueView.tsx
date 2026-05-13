@@ -1,6 +1,6 @@
 /**
  * RequirementsDueView - 情報更新が必要な状態のビュー
- * requirements_due状態の表示
+ * ステータス通知カード1つに集約。設定続行ボタンをカード内に内包。
  */
 
 "use client";
@@ -12,13 +12,20 @@ import { ArrowRight, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import type { AccountStatusData } from "../../types/status-classification";
+import type { StatusConfig } from "../StatusBadge";
+import { StatusBadge } from "../StatusBadge";
 
 interface RequirementsDueViewProps {
   status: AccountStatusData;
   refreshUrl: string;
+  statusConfig: StatusConfig;
 }
 
-export function RequirementsDueView({ status, refreshUrl }: RequirementsDueViewProps) {
+export function RequirementsDueView({
+  status,
+  refreshUrl,
+  statusConfig,
+}: RequirementsDueViewProps) {
   const requirements = status.requirements ?? {
     currently_due: [],
     eventually_due: [],
@@ -40,14 +47,14 @@ export function RequirementsDueView({ status, refreshUrl }: RequirementsDueViewP
       : "Stripeで対応が必要な確認事項があります。案内に従って状況を確認してください。";
 
   return (
-    <div className="flex flex-col gap-4">
-      <div
-        className={
-          hasPastDue
-            ? "rounded-lg border border-destructive/25 bg-destructive/5 p-3.5 sm:p-4"
-            : "rounded-lg border border-amber-500/25 bg-amber-500/5 p-3.5 sm:p-4"
-        }
-      >
+    <div
+      className={
+        hasPastDue
+          ? "rounded-lg border border-destructive/25 bg-destructive/5 p-3.5 sm:p-4"
+          : "rounded-lg border border-amber-500/25 bg-amber-500/5 p-3.5 sm:p-4"
+      }
+    >
+      <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <span
             className={
@@ -63,18 +70,21 @@ export function RequirementsDueView({ status, refreshUrl }: RequirementsDueViewP
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
           </div>
         </div>
+        <StatusBadge config={statusConfig} />
       </div>
 
-      <Button
-        asChild
-        className="group h-11 w-full text-sm font-semibold"
-        variant={hasPastDue ? "destructive" : "outline"}
-      >
-        <Link href={refreshUrl} prefetch={false}>
-          Stripeで設定を続行
-          <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
-        </Link>
-      </Button>
+      <div className="mt-4">
+        <Button
+          asChild
+          className="group h-11 w-full text-sm font-semibold"
+          variant={hasPastDue ? "destructive" : "outline"}
+        >
+          <Link href={refreshUrl} prefetch={false}>
+            Stripeで設定を続行
+            <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }

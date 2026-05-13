@@ -4,6 +4,7 @@ import type { ActionResult } from "@core/errors/adapters/server-actions";
 
 import {
   createExpressDashboardLoginLinkAction as createExpressDashboardLoginLinkActionImpl,
+  requestPayoutAction as requestPayoutActionImpl,
   startOnboardingAction as startOnboardingActionImpl,
 } from "@features/stripe-connect/server";
 
@@ -39,4 +40,9 @@ export async function startOnboardingAction(
 export async function createExpressDashboardLoginLinkAction() {
   ensureFeaturesRegistered();
   return createExpressDashboardLoginLinkActionImpl();
+}
+
+export async function requestPayoutAction() {
+  ensureFeaturesRegistered();
+  return requestPayoutActionImpl();
 }

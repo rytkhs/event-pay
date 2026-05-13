@@ -42,6 +42,12 @@ export const navigationConfig: NavigationConfig = {
       icon: createElement(Calendar),
       exactMatch: false,
     },
+    {
+      label: "設定",
+      href: "/settings",
+      icon: createElement(Settings),
+      exactMatch: false,
+    },
   ],
 
   /**
@@ -98,7 +104,7 @@ export const guideNavigation: NavItem[] = [
     exactMatch: false,
   },
   {
-    label: "オンライン集金・入金のしくみ",
+    label: "オンライン集金・振込のしくみ",
     href: "/guide/online-collection",
     exactMatch: false,
   },
