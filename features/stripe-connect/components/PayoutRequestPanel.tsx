@@ -210,7 +210,7 @@ export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutR
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>振込を申請しますか？</DialogTitle>
+            <DialogTitle>振込を申請する</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 rounded-md border border-border/60 p-4 text-sm">
             <div className="flex items-center justify-between gap-4">
