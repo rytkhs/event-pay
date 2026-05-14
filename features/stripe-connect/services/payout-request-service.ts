@@ -5,10 +5,10 @@ import Stripe from "stripe";
 import { AppError, errFrom, errResult, okResult, type AppResult } from "@core/errors";
 import { logger } from "@core/logging/app-logger";
 import { generateIdempotencyKey, getStripe } from "@core/stripe/client";
+import { FeeConfigService } from "@core/stripe/fee-config/service";
 import { hasPostgrestCode } from "@core/supabase/postgrest-error-guards";
 import type { AppSupabaseClient } from "@core/types/supabase";
 
-import { FeeConfigService } from "../../payments/services/fee-config/service";
 import type {
   LatestPayoutRequest,
   PayoutBalance,

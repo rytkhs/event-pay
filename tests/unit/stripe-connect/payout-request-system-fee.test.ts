@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 
-import { FeeConfigService } from "@features/payments/services/fee-config/service";
+import { FeeConfigService } from "@core/stripe/fee-config/service";
 import { PayoutRequestService } from "@features/stripe-connect/services/payout-request-service";
 
 import { expectAppFailure, expectAppSuccess } from "@tests/helpers/assert-result";

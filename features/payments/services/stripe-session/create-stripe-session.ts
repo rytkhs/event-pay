@@ -6,12 +6,13 @@ import type { PaymentLogger } from "@core/logging/payment-logger";
 import { generateSecureUuid } from "@core/security/crypto";
 import * as DestinationCharges from "@core/stripe/destination-charges";
 import { convertStripeError } from "@core/stripe/error-handler";
+import { ApplicationFeeCalculator } from "@core/stripe/fee-config/application-fee-calculator";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 import type { AppSupabaseClient } from "@core/types/supabase";
 import { maskSessionId } from "@core/utils/mask";
 import { toErrorLike } from "@core/utils/type-guards";
 
-import { ApplicationFeeCalculator } from "../fee-config/application-fee-calculator";
+
 import { IPaymentErrorHandler } from "../interface";
 import type { CreateStripeSessionParams, CreateStripeSessionResult } from "../types";
 import { updateWithRetries } from "../utils/supabase-retry";
@@ -151,8 +152,7 @@ export async function createStripeSession(
     if (lastDbError || !updatedPayment) {
       const dbError = new PaymentError(
         PaymentErrorType.DATABASE_ERROR,
-        `Failed to update payment record with destination charges data after retries: ${
-          lastDbError?.message ?? "no rows updated"
+        `Failed to update payment record with destination charges data after retries: ${lastDbError?.message ?? "no rows updated"
         }`,
         lastDbError ?? undefined
       );

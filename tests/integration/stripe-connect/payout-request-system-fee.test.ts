@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "@jest/globals";
 import type Stripe from "stripe";
 
-import { FeeConfigService } from "@features/payments/services/fee-config/service";
+import { FeeConfigService } from "@core/stripe/fee-config/service";
 import { PayoutRequestService } from "@features/stripe-connect/server";
 
 import { createAuditedAdminClient } from "@core/security/secure-client-factory.impl";
