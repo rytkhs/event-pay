@@ -8,12 +8,14 @@ import { generateIdempotencyKey, getStripe } from "@core/stripe/client";
 import { hasPostgrestCode } from "@core/supabase/postgrest-error-guards";
 import type { AppSupabaseClient } from "@core/types/supabase";
 
+import { FeeConfigService } from "../../payments/services/fee-config/service";
 import type {
   LatestPayoutRequest,
   PayoutBalance,
   PayoutPanelDisabledReason,
   PayoutPanelState,
   PayoutRequestStatus,
+  PayoutSystemFeeState,
   RequestPayoutInput,
   RequestPayoutPayload,
   StripePayoutRequestStatus,
@@ -24,8 +26,11 @@ import { resolveCurrentCommunityPayoutProfile } from "./payout-profile-resolver"
 type PayoutRequestRow = {
   id: string;
   amount: number;
+  gross_amount: number;
   currency: string;
   status: PayoutRequestStatus;
+  system_fee_amount: number;
+  system_fee_state: PayoutSystemFeeState;
   requested_at: string;
   arrival_date: string | null;
   failure_code: string | null;
@@ -49,6 +54,12 @@ const IN_PROGRESS_STATUSES: PayoutRequestStatus[] = [
 ];
 const IDEMPOTENCY_KEY_RECOVERY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const EXPIRED_IDEMPOTENCY_FAILURE_CODE = "idempotency_key_expired";
+const PAYOUT_CREATION_FAILED_AFTER_FEE_COLLECTED = "payout_creation_failed_after_fee_collected";
+const ACCOUNT_DEBIT_TRANSFER_ID_MISSING = "account_debit_transfer_id_missing";
+const SYSTEM_FEE_CREATION_UNKNOWN_MESSAGE =
+  "システム手数料回収の処理状況を確認中です。確認完了まで新しい振込は実行できません。";
+const ACCOUNT_DEBIT_TRANSFER_ID_MISSING_MESSAGE =
+  "システム手数料回収のTransfer IDを確認できませんでした。";
 const MANUAL_REVIEW_REQUIRED_MESSAGE =
   "Stripe idempotency key の保証期間を超過したため、振込状況の手動確認が必要です。";
 const BLOCKED_EXTERNAL_ACCOUNT_STATUSES = new Set([
@@ -122,6 +133,13 @@ function findDefaultJpyBankAccount(accounts: {
   );
 }
 
+function getExpandableId(value: string | { id?: string } | null | undefined): string | null {
+  if (typeof value === "string") {
+    return value;
+  }
+  return typeof value?.id === "string" ? value.id : null;
+}
+
 function getDisabledReasonError(disabledReason: PayoutPanelDisabledReason): AppError {
   switch (disabledReason) {
     case "no_account":
@@ -143,6 +161,11 @@ function getDisabledReasonError(disabledReason: PayoutPanelDisabledReason): AppE
     case "no_available_balance":
       return new AppError("INSUFFICIENT_BALANCE", {
         userMessage: "振込可能な残高がありません。",
+        retryable: false,
+      });
+    case "below_payout_fee":
+      return new AppError("INSUFFICIENT_BALANCE", {
+        userMessage: "振込可能額がシステム手数料と最小振込額を下回っています。",
         retryable: false,
       });
     case "request_in_progress":
@@ -168,8 +191,11 @@ function toLatestPayoutRequest(row: PayoutRequestRow | null): LatestPayoutReques
   return {
     id: row.id,
     amount: row.amount,
+    grossAmount: row.gross_amount,
     currency: "jpy",
     status: row.status,
+    systemFeeAmount: row.system_fee_amount,
+    systemFeeState: row.system_fee_state,
     requestedAt: row.requested_at,
     arrivalDate: row.arrival_date,
     failureCode: row.failure_code,
@@ -189,14 +215,21 @@ export class PayoutRequestService {
 
   async getFreshPayoutBalance(stripeAccountId: string): Promise<AppResult<PayoutBalance>> {
     try {
-      const balance = await getStripe().balance.retrieve({}, { stripeAccount: stripeAccountId });
+      const [balance, feeConfig] = await Promise.all([
+        getStripe().balance.retrieve({}, { stripeAccount: stripeAccountId }),
+        new FeeConfigService(this.supabase).getConfig(),
+      ]);
       const availableJpy = balance.available.find((entry) => entry.currency === "jpy");
       const pendingJpy = balance.pending.find((entry) => entry.currency === "jpy");
+      const availableAmount = getCardSourceAmount(availableJpy);
+      const payoutRequestFeeAmount = feeConfig.payoutRequestFeeAmount;
 
       return okResult({
-        availableAmount: getCardSourceAmount(availableJpy),
+        availableAmount,
         pendingAmount: getCardSourceAmount(pendingJpy),
         currency: "jpy",
+        payoutRequestFeeAmount,
+        payoutAmount: Math.max(availableAmount - payoutRequestFeeAmount, 0),
       });
     } catch (error) {
       return errFrom(error, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
@@ -250,12 +283,16 @@ export class PayoutRequestService {
       }
 
       const balance = balanceResult.data as PayoutBalance;
+      const feeConfig = await new FeeConfigService(this.supabase).getConfig();
+      const minimumRequiredAmount = balance.payoutRequestFeeAmount + feeConfig.minPayoutAmount;
       const disabledReason =
         prerequisiteResult.data ??
         (params.hasInProgressRequest
           ? "request_in_progress"
           : balance.availableAmount <= 0
             ? "no_available_balance"
+            : balance.availableAmount < minimumRequiredAmount
+              ? "below_payout_fee"
             : undefined);
 
       return okResult({
@@ -279,6 +316,8 @@ export class PayoutRequestService {
           availableAmount: 0,
           pendingAmount: 0,
           currency: "jpy",
+          payoutRequestFeeAmount: 0,
+          payoutAmount: 0,
           latestRequest: null,
           canRequestPayout: false,
           disabledReason: "no_account",
@@ -294,7 +333,10 @@ export class PayoutRequestService {
         activeRequest?.status === "creation_unknown" &&
         this.isCreationUnknownExpired(activeRequest)
       ) {
-        const markResult = await this.markCreationUnknownManualReviewRequired(activeRequest.id);
+        const markResult = await this.markCreationUnknownManualReviewRequired(
+          activeRequest.id,
+          activeRequest.systemFeeState
+        );
         if (!markResult.success) {
           return markResult;
         }
@@ -333,6 +375,8 @@ export class PayoutRequestService {
         availableAmount: eligibility.availableAmount,
         pendingAmount: eligibility.pendingAmount,
         currency: eligibility.currency,
+        payoutRequestFeeAmount: eligibility.payoutRequestFeeAmount,
+        payoutAmount: eligibility.payoutAmount,
         latestRequest: activeRequest ?? latestRequest,
         canRequestPayout: eligibility.canRequestPayout,
         disabledReason: eligibility.disabledReason,
@@ -406,9 +450,12 @@ export class PayoutRequestService {
         return errResult(getDisabledReasonError(eligibility.disabledReason ?? "payouts_disabled"));
       }
 
-      const amount = eligibility.availableAmount;
+      const grossAmount = eligibility.availableAmount;
+      const systemFeeAmount = eligibility.payoutRequestFeeAmount;
+      const amount = eligibility.payoutAmount;
 
       const idempotencyKey = generateIdempotencyKey("payout");
+      const systemFeeIdempotencyKey = generateIdempotencyKey("payout_fee");
       const { data: inserted, error: insertError } = await this.supabase
         .from("payout_requests")
         .insert({
@@ -417,7 +464,10 @@ export class PayoutRequestService {
           requested_by: params.userId,
           stripe_account_id: payoutProfile.stripe_account_id,
           amount,
+          gross_amount: grossAmount,
           currency: "jpy",
+          system_fee_amount: systemFeeAmount,
+          system_fee_idempotency_key: systemFeeIdempotencyKey,
           status: "requesting",
           idempotency_key: idempotencyKey,
         })
@@ -444,6 +494,9 @@ export class PayoutRequestService {
         userId: params.userId,
         amount,
         idempotencyKey,
+        systemFeeAmount,
+        systemFeeIdempotencyKey,
+        shouldCollectSystemFee: true,
         successLogMessage: "Payout request created",
         failureMessageFallback: "Payout creation failed",
         failedUserMessage: "振込リクエストの作成に失敗しました。",
@@ -572,7 +625,10 @@ export class PayoutRequestService {
     }
 
     if (this.isCreationUnknownExpired({ requestedAt: unknownRequest.requested_at })) {
-      const markResult = await this.markCreationUnknownManualReviewRequired(unknownRequest.id);
+      const markResult = await this.markCreationUnknownManualReviewRequired(
+        unknownRequest.id,
+        unknownRequest.system_fee_state
+      );
       if (!markResult.success) {
         return markResult;
       }
@@ -629,6 +685,10 @@ export class PayoutRequestService {
       userId: params.userId,
       amount: unknownRequest.amount,
       idempotencyKey: unknownRequest.idempotency_key,
+      systemFeeAmount: unknownRequest.system_fee_amount,
+      systemFeeIdempotencyKey: unknownRequest.system_fee_idempotency_key,
+      shouldCollectSystemFee:
+        unknownRequest.system_fee_state !== "succeeded" && unknownRequest.system_fee_amount > 0,
       successLogMessage: "Payout request recovered from creation_unknown",
       failureMessageFallback: "Payout recovery failed",
       failedUserMessage: "振込リクエストの復旧に失敗しました。",
@@ -642,11 +702,29 @@ export class PayoutRequestService {
     userId: string;
     amount: number;
     idempotencyKey: string;
+    systemFeeAmount: number;
+    systemFeeIdempotencyKey: string | null;
+    shouldCollectSystemFee: boolean;
     successLogMessage: string;
     failureMessageFallback: string;
     failedUserMessage: string;
   }): Promise<AppResult<RequestPayoutPayload>> {
     try {
+      if (params.shouldCollectSystemFee) {
+        const systemFeeResult = await this.collectSystemFee({
+          payoutRequestId: params.payoutRequestId,
+          payoutProfile: params.payoutProfile,
+          communityId: params.communityId,
+          userId: params.userId,
+          amount: params.systemFeeAmount,
+          idempotencyKey:
+            params.systemFeeIdempotencyKey ?? generateIdempotencyKey("payout_fee"),
+        });
+        if (!systemFeeResult.success) {
+          return systemFeeResult;
+        }
+      }
+
       const payout = await getStripe().payouts.create(
         {
           amount: params.amount,
@@ -694,6 +772,9 @@ export class PayoutRequestService {
         stripePayoutId: payout.id,
         stripeAccountId: params.payoutProfile.stripe_account_id,
         amount: params.amount,
+        grossAmount: params.amount + params.systemFeeAmount,
+        systemFeeAmount: params.systemFeeAmount,
+        systemFeeState: "succeeded",
         currency: "jpy",
         status: payoutStatus,
       });
@@ -701,21 +782,180 @@ export class PayoutRequestService {
       return this.markPayoutCreationFailure({
         payoutRequestId: params.payoutRequestId,
         stripeError,
+        systemFeeCollected: params.shouldCollectSystemFee || params.systemFeeAmount > 0,
         failureMessageFallback: params.failureMessageFallback,
         failedUserMessage: params.failedUserMessage,
       });
     }
   }
 
-  private async markPayoutCreationFailure(params: {
+  private async collectSystemFee(params: {
+    payoutRequestId: string;
+    payoutProfile: PayoutProfileForPayout;
+    communityId: string;
+    userId: string;
+    amount: number;
+    idempotencyKey: string;
+  }): Promise<AppResult<void>> {
+    if (params.amount <= 0) {
+      return okResult(undefined);
+    }
+
+    try {
+      const charge = await getStripe().charges.create(
+        {
+          amount: params.amount,
+          currency: "jpy",
+          expand: ["source_transfer"],
+          source: params.payoutProfile.stripe_account_id,
+          metadata: {
+            payout_request_id: params.payoutRequestId,
+            payout_profile_id: params.payoutProfile.id,
+            community_id: params.communityId,
+            requested_by: params.userId,
+            purpose: "payout_request_system_fee",
+          },
+        },
+        { idempotencyKey: params.idempotencyKey }
+      );
+      const sourceTransferId = getExpandableId(charge.source_transfer);
+
+      if (sourceTransferId === null) {
+        const { error } = await this.supabase
+          .from("payout_requests")
+          .update({
+            status: "manual_review_required",
+            system_fee_state: "manual_review_required",
+            stripe_account_debit_payment_id: charge.id,
+            system_fee_failure_code: ACCOUNT_DEBIT_TRANSFER_ID_MISSING,
+            system_fee_failure_message: ACCOUNT_DEBIT_TRANSFER_ID_MISSING_MESSAGE,
+            failure_code: ACCOUNT_DEBIT_TRANSFER_ID_MISSING,
+            failure_message: ACCOUNT_DEBIT_TRANSFER_ID_MISSING_MESSAGE,
+          })
+          .eq("id", params.payoutRequestId);
+
+        if (error) {
+          return errFrom(error, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
+        }
+
+        this.logger.error("Payout system fee collected without source transfer id", {
+          payout_request_id: params.payoutRequestId,
+          stripe_account_debit_payment_id: charge.id,
+          stripe_account_id: params.payoutProfile.stripe_account_id,
+          outcome: "failure",
+        });
+
+        return errResult(
+          new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
+            userMessage:
+              "システム手数料の回収状況を確認できませんでした。確認完了まで新しい振込は実行できません。",
+            retryable: false,
+            details: {
+              payoutRequestId: params.payoutRequestId,
+              stripeAccountDebitPaymentId: charge.id,
+              status: "manual_review_required",
+            },
+          })
+        );
+      }
+
+      const { error } = await this.supabase
+        .from("payout_requests")
+        .update({
+          system_fee_state: "succeeded",
+          stripe_account_debit_payment_id: charge.id,
+          stripe_account_debit_transfer_id: sourceTransferId,
+          system_fee_failure_code: null,
+          system_fee_failure_message: null,
+        })
+        .eq("id", params.payoutRequestId);
+
+      if (error) {
+        return errFrom(error, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
+      }
+
+      this.logger.info("Payout system fee collected", {
+        payout_request_id: params.payoutRequestId,
+        stripe_account_debit_payment_id: charge.id,
+        stripe_account_debit_transfer_id: sourceTransferId,
+        amount: params.amount,
+        stripe_account_id: params.payoutProfile.stripe_account_id,
+        outcome: "success",
+      });
+
+      return okResult(undefined);
+    } catch (stripeError) {
+      return this.markSystemFeeCollectionFailure({
+        payoutRequestId: params.payoutRequestId,
+        stripeError,
+      });
+    }
+  }
+
+  private async markSystemFeeCollectionFailure(params: {
     payoutRequestId: string;
     stripeError: unknown;
-    failureMessageFallback: string;
-    failedUserMessage: string;
-  }): Promise<AppResult<RequestPayoutPayload>> {
+  }): Promise<AppResult<void>> {
     const status: PayoutRequestStatus = isUnknownCreationError(params.stripeError)
       ? "creation_unknown"
       : "failed";
+    const systemFeeState: PayoutSystemFeeState =
+      status === "creation_unknown" ? "creation_unknown" : "failed";
+    const retryable = status === "creation_unknown" || isRateLimitError(params.stripeError);
+
+    const { error } = await this.supabase
+      .from("payout_requests")
+      .update({
+        status,
+        system_fee_state: systemFeeState,
+        system_fee_failure_code:
+          params.stripeError instanceof Stripe.errors.StripeError ? params.stripeError.code : null,
+        system_fee_failure_message:
+          params.stripeError instanceof Error
+            ? params.stripeError.message
+            : "System fee collection failed",
+        failure_code:
+          params.stripeError instanceof Stripe.errors.StripeError ? params.stripeError.code : null,
+        failure_message:
+          params.stripeError instanceof Error
+            ? params.stripeError.message
+            : "System fee collection failed",
+      })
+      .eq("id", params.payoutRequestId);
+
+    if (error) {
+      return errFrom(error, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
+    }
+
+    return errResult(
+      new AppError(
+        isRateLimitError(params.stripeError) ? "RATE_LIMITED" : "STRIPE_CONNECT_SERVICE_ERROR",
+        {
+          userMessage:
+            status === "creation_unknown"
+              ? SYSTEM_FEE_CREATION_UNKNOWN_MESSAGE
+              : "システム手数料の回収に失敗しました。",
+          cause: params.stripeError,
+          retryable,
+          details: { payoutRequestId: params.payoutRequestId, status },
+        }
+      )
+    );
+  }
+
+  private async markPayoutCreationFailure(params: {
+    payoutRequestId: string;
+    stripeError: unknown;
+    systemFeeCollected: boolean;
+    failureMessageFallback: string;
+    failedUserMessage: string;
+  }): Promise<AppResult<RequestPayoutPayload>> {
+    const isCreationUnknown = isUnknownCreationError(params.stripeError);
+    const status: PayoutRequestStatus = isCreationUnknown
+      ? "creation_unknown"
+      : params.systemFeeCollected
+        ? "manual_review_required"
+        : "failed";
     const retryable = status === "creation_unknown" || isRateLimitError(params.stripeError);
 
     const { error: updateError } = await this.supabase
@@ -723,7 +963,11 @@ export class PayoutRequestService {
       .update({
         status,
         failure_code:
-          params.stripeError instanceof Stripe.errors.StripeError ? params.stripeError.code : null,
+          params.systemFeeCollected && !isCreationUnknown
+            ? PAYOUT_CREATION_FAILED_AFTER_FEE_COLLECTED
+            : params.stripeError instanceof Stripe.errors.StripeError
+              ? params.stripeError.code
+              : null,
         failure_message:
           params.stripeError instanceof Error
             ? params.stripeError.message
@@ -742,6 +986,8 @@ export class PayoutRequestService {
           userMessage:
             status === "creation_unknown"
               ? "振込リクエストの処理状況を確認中です。しばらくしてから再度確認してください。"
+              : status === "manual_review_required"
+                ? "システム手数料の回収後に振込リクエストの作成に失敗しました。確認完了まで新しい振込は実行できません。"
               : params.failedUserMessage,
           cause: params.stripeError,
           retryable,
@@ -758,11 +1004,16 @@ export class PayoutRequestService {
     amount: number;
     currency: string;
     idempotency_key: string;
+    system_fee_amount: number;
+    system_fee_idempotency_key: string | null;
+    system_fee_state: PayoutSystemFeeState;
     requested_at: string;
   } | null> {
     const { data, error } = await this.supabase
       .from("payout_requests")
-      .select("id, amount, currency, idempotency_key, requested_at")
+      .select(
+        "id, amount, currency, idempotency_key, system_fee_amount, system_fee_idempotency_key, system_fee_state, requested_at"
+      )
       .eq("payout_profile_id", payoutProfileId)
       .eq("status", "creation_unknown")
       .order("requested_at", { ascending: false })
@@ -772,6 +1023,9 @@ export class PayoutRequestService {
         amount: number;
         currency: string;
         idempotency_key: string;
+        system_fee_amount: number;
+        system_fee_idempotency_key: string | null;
+        system_fee_state: PayoutSystemFeeState;
         requested_at: string;
       }>();
 
@@ -783,15 +1037,21 @@ export class PayoutRequestService {
   }
 
   private async markCreationUnknownManualReviewRequired(
-    payoutRequestId: string
+    payoutRequestId: string,
+    systemFeeState: PayoutSystemFeeState
   ): Promise<AppResult<boolean>> {
+    const updatePayload = {
+      status: "manual_review_required" as const,
+      failure_code: EXPIRED_IDEMPOTENCY_FAILURE_CODE,
+      failure_message: MANUAL_REVIEW_REQUIRED_MESSAGE,
+      ...(systemFeeState === "creation_unknown"
+        ? { system_fee_state: "manual_review_required" as const }
+        : {}),
+    };
+
     const { data, error } = await this.supabase
       .from("payout_requests")
-      .update({
-        status: "manual_review_required",
-        failure_code: EXPIRED_IDEMPOTENCY_FAILURE_CODE,
-        failure_message: MANUAL_REVIEW_REQUIRED_MESSAGE,
-      })
+      .update(updatePayload)
       .eq("id", payoutRequestId)
       .eq("status", "creation_unknown")
       .select("id");
@@ -815,7 +1075,7 @@ export class PayoutRequestService {
     const { data, error } = await this.supabase
       .from("payout_requests")
       .select(
-        "id, amount, currency, status, requested_at, arrival_date, failure_code, failure_message"
+        "id, amount, gross_amount, currency, status, system_fee_amount, system_fee_state, requested_at, arrival_date, failure_code, failure_message"
       )
       .eq("payout_profile_id", payoutProfileId)
       .order("requested_at", { ascending: false })
@@ -835,7 +1095,7 @@ export class PayoutRequestService {
     const { data, error } = await this.supabase
       .from("payout_requests")
       .select(
-        "id, amount, currency, status, requested_at, arrival_date, failure_code, failure_message"
+        "id, amount, gross_amount, currency, status, system_fee_amount, system_fee_state, requested_at, arrival_date, failure_code, failure_message"
       )
       .eq("payout_profile_id", payoutProfileId)
       .in("status", IN_PROGRESS_STATUSES)

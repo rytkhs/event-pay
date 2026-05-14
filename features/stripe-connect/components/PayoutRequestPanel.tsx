@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { useRouter } from "next/navigation";
 
@@ -11,6 +11,13 @@ import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { formatCurrency } from "@core/utils/fee-calculator";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import type {
   PayoutPanelState,
@@ -40,6 +47,7 @@ const DISABLED_LABELS: Record<NonNullable<PayoutPanelState["disabledReason"]>, s
   external_account_missing: "振込先口座を確認してください",
   external_account_unavailable: "振込先口座を確認してください",
   no_available_balance: "振込可能残高がありません",
+  below_payout_fee: "振込可能残高が不足しています",
   request_in_progress: "処理中の振込があります",
 };
 
@@ -63,7 +71,7 @@ const ACCOUNT_FAILURE_CODES = new Set([
 
 function getPayoutFailureLabel(failureCode: string | null): string {
   if (failureCode === "insufficient_funds") {
-    return "振込可能額が不足しています。";
+    return "振込可能残高が不足しています。";
   }
   if (failureCode === "declined" || failureCode === "could_not_process") {
     return "振込処理が銀行側で完了できませんでした。";
@@ -76,6 +84,7 @@ function getPayoutFailureLabel(failureCode: string | null): string {
 
 export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutRequestPanelProps) {
   const router = useRouter();
+  const [isConfirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const latestRequest = payoutPanel.latestRequest;
   const latestFailureLabel =
@@ -85,7 +94,7 @@ export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutR
         `${formatCurrency(latestRequest.amount)}円`,
         new Date(latestRequest.requestedAt).toLocaleDateString("ja-JP"),
         latestRequest.arrivalDate
-          ? `予定: ${new Date(latestRequest.arrivalDate).toLocaleDateString("ja-JP")}`
+          ? `着金予定: ${new Date(latestRequest.arrivalDate).toLocaleDateString("ja-JP")}`
           : null,
         latestFailureLabel,
       ].filter((detail): detail is string => detail !== null)
@@ -125,11 +134,23 @@ export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutR
             description: `${formatCurrency(result.data.amount)}円の振込処理を開始しました。`,
           }
         );
+        setConfirmDialogOpen(false);
         router.refresh();
       } catch {
         toast.error("通信に失敗しました");
       }
     });
+  };
+
+  const handleButtonClick = () => {
+    if (buttonDisabled) {
+      return;
+    }
+    if (canRecoverCreationUnknown) {
+      handleRequestPayout();
+      return;
+    }
+    setConfirmDialogOpen(true);
   };
 
   return (
@@ -150,7 +171,7 @@ export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutR
             </div>
             <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
               <div>
-                <p className="text-xs text-muted-foreground">振込可能</p>
+                <p className="text-xs text-muted-foreground">振込可能残高</p>
                 <p className="mt-1 font-semibold">
                   {formatCurrency(payoutPanel.availableAmount)}円
                 </p>
@@ -172,12 +193,59 @@ export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutR
           type="button"
           className="h-11 w-full text-sm font-semibold"
           disabled={buttonDisabled}
-          onClick={handleRequestPayout}
+          onClick={handleButtonClick}
         >
           {isPending && <Loader2 className="size-4 animate-spin" />}
           {buttonLabel}
         </Button>
       </div>
+
+      <Dialog
+        open={isConfirmDialogOpen}
+        onOpenChange={(open) => {
+          if (!isPending) {
+            setConfirmDialogOpen(open);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>振込を申請しますか？</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 rounded-md border border-border/60 p-4 text-sm">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">振込可能残高</span>
+              <span className="font-semibold">{formatCurrency(payoutPanel.availableAmount)}円</span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">振込手数料</span>
+              <span className="font-semibold">
+                {formatCurrency(payoutPanel.payoutRequestFeeAmount)}円
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-3">
+              <span className="text-muted-foreground">振込額</span>
+              <span className="text-base font-semibold">
+                {formatCurrency(payoutPanel.payoutAmount)}円
+              </span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending}
+              onClick={() => setConfirmDialogOpen(false)}
+            >
+              キャンセル
+            </Button>
+            <Button type="button" disabled={isPending} onClick={handleRequestPayout}>
+              {isPending && <Loader2 className="size-4 animate-spin" />}
+              振込を申請
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
