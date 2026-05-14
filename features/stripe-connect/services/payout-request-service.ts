@@ -57,9 +57,9 @@ const EXPIRED_IDEMPOTENCY_FAILURE_CODE = "idempotency_key_expired";
 const PAYOUT_CREATION_FAILED_AFTER_FEE_COLLECTED = "payout_creation_failed_after_fee_collected";
 const ACCOUNT_DEBIT_TRANSFER_ID_MISSING = "account_debit_transfer_id_missing";
 const SYSTEM_FEE_CREATION_UNKNOWN_MESSAGE =
-  "システム手数料回収の処理状況を確認中です。確認完了まで新しい振込は実行できません。";
+  "振込手数料回収の処理状況を確認中です。確認完了まで新しい振込は実行できません。";
 const ACCOUNT_DEBIT_TRANSFER_ID_MISSING_MESSAGE =
-  "システム手数料回収のTransfer IDを確認できませんでした。";
+  "振込手数料回収のTransfer IDを確認できませんでした。";
 const MANUAL_REVIEW_REQUIRED_MESSAGE =
   "Stripe idempotency key の保証期間を超過したため、振込状況の手動確認が必要です。";
 const BLOCKED_EXTERNAL_ACCOUNT_STATUSES = new Set([
@@ -165,7 +165,7 @@ function getDisabledReasonError(disabledReason: PayoutPanelDisabledReason): AppE
       });
     case "below_payout_fee":
       return new AppError("INSUFFICIENT_BALANCE", {
-        userMessage: "振込可能額がシステム手数料と最小振込額を下回っています。",
+        userMessage: "振込可能額が最小振込額を下回っています。",
         retryable: false,
       });
     case "request_in_progress":
@@ -853,7 +853,7 @@ export class PayoutRequestService {
         return errResult(
           new AppError("STRIPE_CONNECT_SERVICE_ERROR", {
             userMessage:
-              "システム手数料の回収状況を確認できませんでした。確認完了まで新しい振込は実行できません。",
+              "振込手数料の回収状況を確認できませんでした。確認完了まで新しい振込は実行できません。",
             retryable: false,
             details: {
               payoutRequestId: params.payoutRequestId,
@@ -961,7 +961,7 @@ export class PayoutRequestService {
           userMessage:
             status === "creation_unknown"
               ? SYSTEM_FEE_CREATION_UNKNOWN_MESSAGE
-              : "システム手数料の回収に失敗しました。",
+              : "振込手数料の回収に失敗しました。",
           cause: params.stripeError,
           retryable,
           details: { payoutRequestId: params.payoutRequestId, status },
@@ -1014,7 +1014,7 @@ export class PayoutRequestService {
             status === "creation_unknown"
               ? "振込リクエストの処理状況を確認中です。しばらくしてから再度確認してください。"
               : status === "manual_review_required"
-                ? "システム手数料の回収後に振込リクエストの作成に失敗しました。確認完了まで新しい振込は実行できません。"
+                ? "振込手数料の回収後に振込リクエストの作成に失敗しました。確認完了まで新しい振込は実行できません。"
               : params.failedUserMessage,
           cause: params.stripeError,
           retryable,

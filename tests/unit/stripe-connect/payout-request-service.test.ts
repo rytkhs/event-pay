@@ -161,7 +161,7 @@ describe("PayoutRequestService", () => {
     });
 
     // 正常系の最小成功条件を固定する
-    it("入金可能なpayout_profileとavailable残高が存在する時、システム手数料を差し引いたpayout_requestを作成してStripe Payoutを作成すること", async () => {
+    it("入金可能なpayout_profileとavailable残高が存在する時、振込手数料を差し引いたpayout_requestを作成してStripe Payoutを作成すること", async () => {
       const result = await service.requestPayout({
         userId: ctx.user.id,
         communityId: ctx.communityId,
@@ -514,7 +514,7 @@ describe("PayoutRequestService", () => {
     });
 
     // Stripeの業務エラー時の状態を固定する
-    it("システム手数料回収後にStripe Payout作成がinsufficient_fundsで失敗した時、payout_requestをmanual_review_requiredに更新して失敗Resultを返すこと", async () => {
+    it("振込手数料回収後にStripe Payout作成がinsufficient_fundsで失敗した時、payout_requestをmanual_review_requiredに更新して失敗Resultを返すこと", async () => {
       stripeDouble.setPayoutError(
         new Stripe.errors.StripeInvalidRequestError({
           message: "insufficient funds",
@@ -599,7 +599,7 @@ describe("PayoutRequestService", () => {
       ]);
     });
 
-    it("システム手数料回収後にStripe Payout作成がRate Limitで失敗した時、payout_requestをmanual_review_requiredに更新してretryableな失敗Resultを返すこと", async () => {
+    it("振込手数料回収後にStripe Payout作成がRate Limitで失敗した時、payout_requestをmanual_review_requiredに更新してretryableな失敗Resultを返すこと", async () => {
       stripeDouble.setPayoutError(
         new Stripe.errors.StripeRateLimitError({ message: "rate limited" } as any)
       );
