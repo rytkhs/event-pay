@@ -21,9 +21,17 @@ type PayoutRequestSnapshot = Pick<
   | "stripe_account_id"
   | "stripe_payout_id"
   | "amount"
+  | "gross_amount"
   | "currency"
   | "status"
   | "idempotency_key"
+  | "system_fee_amount"
+  | "system_fee_state"
+  | "system_fee_idempotency_key"
+  | "stripe_account_debit_transfer_id"
+  | "stripe_account_debit_payment_id"
+  | "system_fee_failure_code"
+  | "system_fee_failure_message"
   | "failure_code"
   | "failure_message"
 >[];
@@ -49,7 +57,7 @@ type PayoutRLSFixture = {
 
 const PASSWORD = "TestPassword123!";
 const PAYOUT_REQUEST_SELECT =
-  "id, payout_profile_id, community_id, requested_by, stripe_account_id, stripe_payout_id, amount, currency, status, idempotency_key, failure_code, failure_message, requested_at, updated_at, arrival_date, stripe_created_at";
+  "id, payout_profile_id, community_id, requested_by, stripe_account_id, stripe_payout_id, amount, gross_amount, currency, status, idempotency_key, system_fee_amount, system_fee_state, system_fee_idempotency_key, stripe_account_debit_transfer_id, stripe_account_debit_payment_id, system_fee_failure_code, system_fee_failure_message, failure_code, failure_message, requested_at, updated_at, arrival_date, stripe_created_at";
 
 function uniqueSuffix(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -121,9 +129,12 @@ function buildPayoutRequestInsert(
     stripe_account_id: fixture.stripeAccountId,
     stripe_payout_id: `po_rls_${suffix}`,
     amount: 1200,
+    gross_amount: 1200,
     currency: "jpy",
     status: "pending",
     idempotency_key: `payout_rls_${suffix}`,
+    system_fee_amount: 0,
+    system_fee_state: "not_started",
     ...overrides,
   };
 }
@@ -169,7 +180,7 @@ async function listPayoutRequestSnapshots(
   const { data, error } = await adminClient
     .from("payout_requests")
     .select(
-      "id, payout_profile_id, community_id, requested_by, stripe_account_id, stripe_payout_id, amount, currency, status, idempotency_key, failure_code, failure_message"
+      "id, payout_profile_id, community_id, requested_by, stripe_account_id, stripe_payout_id, amount, gross_amount, currency, status, idempotency_key, system_fee_amount, system_fee_state, system_fee_idempotency_key, stripe_account_debit_transfer_id, stripe_account_debit_payment_id, system_fee_failure_code, system_fee_failure_message, failure_code, failure_message"
     )
     .eq("payout_profile_id", payoutProfileId)
     .order("requested_at", { ascending: true });
@@ -484,6 +495,7 @@ describe("payout_requests RLS 統合テスト", () => {
         stripe_payout_id: `po_service_role_${uniqueSuffix()}`,
         idempotency_key: `payout_service_role_${uniqueSuffix()}`,
         amount: 3400,
+        gross_amount: 3400,
       });
       const createResult = await fixture.adminClient
         .from("payout_requests")
