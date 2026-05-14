@@ -801,6 +801,11 @@ export class PayoutRequestService {
       return okResult(undefined);
     }
 
+    const markStartedResult = await this.markSystemFeeCollectionStarted(params.payoutRequestId);
+    if (!markStartedResult.success) {
+      return markStartedResult;
+    }
+
     try {
       const charge = await getStripe().charges.create(
         {
@@ -890,6 +895,28 @@ export class PayoutRequestService {
         stripeError,
       });
     }
+  }
+
+  private async markSystemFeeCollectionStarted(payoutRequestId: string): Promise<AppResult<void>> {
+    const { error } = await this.supabase
+      .from("payout_requests")
+      .update({
+        status: "creation_unknown",
+        system_fee_state: "creation_unknown",
+        system_fee_failure_code: null,
+        system_fee_failure_message: null,
+        failure_code: null,
+        failure_message: null,
+      })
+      .eq("id", payoutRequestId)
+      .eq("status", "requesting")
+      .eq("system_fee_state", "not_started");
+
+    if (error) {
+      return errFrom(error, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
+    }
+
+    return okResult(undefined);
   }
 
   private async markSystemFeeCollectionFailure(params: {
