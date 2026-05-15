@@ -12,7 +12,7 @@ import * as DestinationCharges from "@core/stripe/destination-charges";
 import { validateGuestToken } from "@core/utils/guest-token";
 import { canCreateStripeSession } from "@core/validation/payment-eligibility";
 
-import { ApplicationFeeCalculator } from "@features/payments/services/fee-config/application-fee-calculator";
+import { ApplicationFeeCalculator } from "@core/stripe/fee-config/application-fee-calculator";
 
 import {
   createTestUserWithConnect,
@@ -30,7 +30,7 @@ jest.mock("@core/utils/guest-token");
 jest.mock("@core/validation/payment-eligibility");
 jest.mock("@core/rate-limit");
 jest.mock("@core/stripe/destination-charges");
-jest.mock("@features/payments/services/fee-config/application-fee-calculator");
+jest.mock("@core/stripe/fee-config/application-fee-calculator");
 jest.mock("@core/security/secure-client-factory.impl", () => ({
   createGuestClient: jest.fn(),
 }));

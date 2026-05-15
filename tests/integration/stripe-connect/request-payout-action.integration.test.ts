@@ -268,6 +268,9 @@ describe("requestPayoutAction 統合テスト", () => {
             stripePayoutId: expect.stringMatching(/^po_/),
             stripeAccountId: SHARED_STRIPE_ACCOUNT_ID,
             amount: expect.any(Number),
+            grossAmount: expect.any(Number),
+            systemFeeAmount: expect.any(Number),
+            systemFeeState: "succeeded",
             currency: "jpy",
             status: "pending",
           })
@@ -282,6 +285,9 @@ describe("requestPayoutAction 統合テスト", () => {
             stripe_account_id: SHARED_STRIPE_ACCOUNT_ID,
             stripe_payout_id: data.stripePayoutId,
             amount: data.amount,
+            gross_amount: data.grossAmount,
+            system_fee_amount: data.systemFeeAmount,
+            system_fee_state: data.systemFeeState,
             currency: "jpy",
             status: "pending",
           })

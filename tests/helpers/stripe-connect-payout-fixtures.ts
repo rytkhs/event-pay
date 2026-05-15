@@ -9,22 +9,39 @@ import type { Database } from "@/types/database";
 
 type AdminClient = Awaited<ReturnType<typeof createAuditedAdminClient>>;
 type PayoutRequestStatus = Database["public"]["Enums"]["payout_request_status"];
+type PayoutSystemFeeState = Database["public"]["Enums"]["payout_system_fee_state"];
 type PayoutRequestInsert = Database["public"]["Tables"]["payout_requests"]["Insert"];
 
-export type PayoutRequestFixture = {
-  id: string;
-  payout_profile_id: string;
-  community_id: string;
-  requested_by: string;
-  stripe_account_id: string;
-  stripe_payout_id: string | null;
-  amount: number;
-  currency: string;
-  status: PayoutRequestStatus;
-  idempotency_key: string;
-  failure_code: string | null;
-  failure_message: string | null;
-};
+const PAYOUT_REQUEST_SELECT =
+  "id, payout_profile_id, community_id, requested_by, stripe_account_id, stripe_payout_id, amount, gross_amount, currency, status, idempotency_key, failure_code, failure_message, system_fee_amount, system_fee_state, system_fee_idempotency_key, stripe_account_debit_transfer_id, stripe_account_debit_payment_id, system_fee_failure_code, system_fee_failure_message, requested_at, arrival_date, stripe_created_at, updated_at" as const;
+
+export type PayoutRequestFixture = Pick<
+  Database["public"]["Tables"]["payout_requests"]["Row"],
+  | "id"
+  | "payout_profile_id"
+  | "community_id"
+  | "requested_by"
+  | "stripe_account_id"
+  | "stripe_payout_id"
+  | "amount"
+  | "gross_amount"
+  | "currency"
+  | "status"
+  | "idempotency_key"
+  | "failure_code"
+  | "failure_message"
+  | "system_fee_amount"
+  | "system_fee_state"
+  | "system_fee_idempotency_key"
+  | "stripe_account_debit_transfer_id"
+  | "stripe_account_debit_payment_id"
+  | "system_fee_failure_code"
+  | "system_fee_failure_message"
+  | "requested_at"
+  | "arrival_date"
+  | "stripe_created_at"
+  | "updated_at"
+>;
 
 export type PayoutContextFixture = {
   adminClient: AdminClient;
@@ -128,25 +145,43 @@ export async function createPayoutRequestFixture(
   options: {
     status?: PayoutRequestStatus;
     amount?: number;
+    grossAmount?: number;
     stripePayoutId?: string | null;
     stripeAccountId?: string;
     idempotencyKey?: string;
+    systemFeeAmount?: number;
+    systemFeeState?: PayoutSystemFeeState;
+    systemFeeIdempotencyKey?: string | null;
+    stripeAccountDebitTransferId?: string | null;
+    stripeAccountDebitPaymentId?: string | null;
+    systemFeeFailureCode?: string | null;
+    systemFeeFailureMessage?: string | null;
     failureCode?: string | null;
     failureMessage?: string | null;
     requestedAt?: string;
   } = {}
 ): Promise<PayoutRequestFixture> {
+  const amount = options.amount ?? 1000;
+  const systemFeeAmount = options.systemFeeAmount ?? 0;
   const insertPayload: PayoutRequestInsert = {
     payout_profile_id: ctx.payoutProfileId,
     community_id: ctx.communityId,
     requested_by: ctx.user.id,
     stripe_account_id: options.stripeAccountId ?? ctx.stripeAccountId,
     stripe_payout_id: options.stripePayoutId ?? null,
-    amount: options.amount ?? 1000,
+    amount,
+    gross_amount: options.grossAmount ?? amount + systemFeeAmount,
     currency: "jpy",
     status: options.status ?? "requesting",
     idempotency_key:
       options.idempotencyKey ?? `payout_test_${Math.random().toString(36).slice(2, 16)}`,
+    system_fee_amount: systemFeeAmount,
+    system_fee_state: options.systemFeeState ?? "not_started",
+    system_fee_idempotency_key: options.systemFeeIdempotencyKey ?? null,
+    stripe_account_debit_transfer_id: options.stripeAccountDebitTransferId ?? null,
+    stripe_account_debit_payment_id: options.stripeAccountDebitPaymentId ?? null,
+    system_fee_failure_code: options.systemFeeFailureCode ?? null,
+    system_fee_failure_message: options.systemFeeFailureMessage ?? null,
     failure_code: options.failureCode ?? null,
     failure_message: options.failureMessage ?? null,
     ...(options.requestedAt ? { requested_at: options.requestedAt } : {}),
@@ -155,9 +190,7 @@ export async function createPayoutRequestFixture(
   const { data, error } = await ctx.adminClient
     .from("payout_requests")
     .insert(insertPayload)
-    .select(
-      "id, payout_profile_id, community_id, requested_by, stripe_account_id, stripe_payout_id, amount, currency, status, idempotency_key, failure_code, failure_message"
-    )
+    .select(PAYOUT_REQUEST_SELECT)
     .single();
 
   if (error || !data) {
@@ -173,9 +206,7 @@ export async function getPayoutRequestById(
 ): Promise<PayoutRequestFixture | null> {
   const { data, error } = await ctx.adminClient
     .from("payout_requests")
-    .select(
-      "id, payout_profile_id, community_id, requested_by, stripe_account_id, stripe_payout_id, amount, currency, status, idempotency_key, failure_code, failure_message"
-    )
+    .select(PAYOUT_REQUEST_SELECT)
     .eq("id", id)
     .maybeSingle();
 
@@ -191,9 +222,7 @@ export async function listPayoutRequests(
 ): Promise<PayoutRequestFixture[]> {
   const { data, error } = await ctx.adminClient
     .from("payout_requests")
-    .select(
-      "id, payout_profile_id, community_id, requested_by, stripe_account_id, stripe_payout_id, amount, currency, status, idempotency_key, failure_code, failure_message"
-    )
+    .select(PAYOUT_REQUEST_SELECT)
     .eq("payout_profile_id", ctx.payoutProfileId)
     .order("requested_at", { ascending: true });
 

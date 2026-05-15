@@ -13,17 +13,29 @@ export type StripePayoutRequestStatus = Exclude<
   "requesting" | "creation_unknown" | "manual_review_required"
 >;
 
+export type PayoutSystemFeeState =
+  | "not_started"
+  | "succeeded"
+  | "failed"
+  | "creation_unknown"
+  | "manual_review_required";
+
 export type PayoutBalance = {
   availableAmount: number;
   pendingAmount: number;
   currency: "jpy";
+  payoutRequestFeeAmount: number;
+  payoutAmount: number;
 };
 
 export type LatestPayoutRequest = {
   id: string;
   amount: number;
+  grossAmount: number;
   currency: "jpy";
   status: PayoutRequestStatus;
+  systemFeeAmount: number;
+  systemFeeState: PayoutSystemFeeState;
   requestedAt: string;
   arrivalDate: string | null;
   failureCode: string | null;
@@ -36,6 +48,7 @@ export type PayoutPanelDisabledReason =
   | "external_account_missing"
   | "external_account_unavailable"
   | "no_available_balance"
+  | "below_payout_fee"
   | "request_in_progress";
 
 export type PayoutPanelState = PayoutBalance & {
@@ -54,6 +67,9 @@ export type RequestPayoutPayload = {
   stripePayoutId: string;
   stripeAccountId: string;
   amount: number;
+  grossAmount: number;
+  systemFeeAmount: number;
+  systemFeeState: PayoutSystemFeeState;
   currency: "jpy";
   status: StripePayoutRequestStatus;
 };
