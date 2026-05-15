@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import type { RestrictableField } from "@core/domain/event-edit-restrictions";
+import type { PlatformFeeConfig } from "@core/stripe/fee-config/service";
 import type { Event } from "@core/types/event";
 
 import { useMobileBottomOverlay } from "@/components/layout/mobile-chrome-context";
@@ -111,6 +112,7 @@ type SinglePageEventEditFormProps = {
   hasStripePaid?: boolean;
   canUseOnlinePayments?: boolean;
   updateEventAction: UpdateEventAction;
+  feeEstimateConfig?: PlatformFeeConfig | null;
 };
 
 export function SinglePageEventEditForm({
@@ -120,6 +122,7 @@ export function SinglePageEventEditForm({
   hasStripePaid = false,
   canUseOnlinePayments = false,
   updateEventAction,
+  feeEstimateConfig = null,
 }: SinglePageEventEditFormProps): JSX.Element {
   useMobileBottomOverlay(true);
 
@@ -667,9 +670,12 @@ export function SinglePageEventEditForm({
                           </FormDescription>
                         )}
 
-                        {feeAmount >= 100 && (
+                        {feeAmount >= 100 && canUseOnlinePayments && (
                           <div className="mt-4">
-                            <FeeCalculatorDisplay fee={feeAmount} />
+                            <FeeCalculatorDisplay
+                              fee={feeAmount}
+                              platformFeeConfig={feeEstimateConfig}
+                            />
                           </div>
                         )}
                         <FormMessage />

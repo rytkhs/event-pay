@@ -3,9 +3,12 @@ import { notFound, redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 import { requireNonEmptyCommunityWorkspaceForServerComponent } from "@core/community/app-workspace";
+import { resolvePlatformFeeConfigForApplicationFee } from "@core/stripe/fee-config/application-fee-config-resolver";
+import { FeeConfigService, type PlatformFeeConfig } from "@core/stripe/fee-config/service";
 import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import type { Event, EventRow } from "@core/types/event";
 import type { AttendanceStatus } from "@core/types/statuses";
+import type { AppSupabaseClient } from "@core/types/supabase";
 import { deriveEventStatus } from "@core/utils/derive-event-status";
 import { calculateAttendeeCount } from "@core/utils/event-calculations";
 
@@ -17,6 +20,26 @@ import {
 
 import { updateEventAction } from "./actions";
 import { EventDangerZone } from "./components/EventDangerZone";
+
+async function resolveFeeEstimateConfig(
+  supabase: AppSupabaseClient<"public">,
+  params: {
+    eventId: string;
+    payoutProfileId?: string | null;
+  }
+): Promise<PlatformFeeConfig | null> {
+  try {
+    const { platform } = await new FeeConfigService(supabase).getConfig();
+    const resolution = await resolvePlatformFeeConfigForApplicationFee(supabase, platform, {
+      eventId: params.eventId,
+      payoutProfileId: params.payoutProfileId ?? undefined,
+    });
+
+    return resolution.platform;
+  } catch {
+    return null;
+  }
+}
 
 interface EventEditPageProps {
   params: Promise<{
@@ -150,6 +173,10 @@ export default async function EventEditPage(props: EventEditPageProps) {
     eventPayoutProfileId: event.payout_profile_id,
   });
   const canUseOnlinePayments = payoutResolution.isReady;
+  const feeEstimateConfig = await resolveFeeEstimateConfig(supabase, {
+    eventId,
+    payoutProfileId: payoutResolution.payoutProfileId ?? event.payout_profile_id,
+  });
 
   return (
     <div className="min-h-screen">
@@ -161,6 +188,7 @@ export default async function EventEditPage(props: EventEditPageProps) {
           hasStripePaid={hasStripePaid}
           canUseOnlinePayments={canUseOnlinePayments}
           updateEventAction={updateEventAction}
+          feeEstimateConfig={feeEstimateConfig}
         />
 
         {/* 危険な操作（削除・中止） */}

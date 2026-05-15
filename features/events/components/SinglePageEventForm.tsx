@@ -17,6 +17,7 @@ import {
   ChevronRightIcon,
 } from "lucide-react";
 
+import type { PlatformFeeConfig } from "@core/stripe/fee-config/service";
 import { getCurrentJstTime } from "@core/utils/timezone";
 
 import { useMobileBottomOverlay } from "@/components/layout/mobile-chrome-context";
@@ -94,6 +95,7 @@ type SinglePageEventFormProps = {
   };
   currentCommunityName: string;
   createEventAction: CreateEventAction;
+  feeEstimateConfig?: PlatformFeeConfig | null;
 };
 
 function SinglePageEventForm({
@@ -101,6 +103,7 @@ function SinglePageEventForm({
   connectStatus,
   currentCommunityName,
   createEventAction,
+  feeEstimateConfig = null,
 }: SinglePageEventFormProps): JSX.Element {
   useMobileBottomOverlay(true);
 
@@ -462,7 +465,10 @@ function SinglePageEventForm({
                       </FormDescription>
                       {feeAmount >= 100 && canUseOnlinePayments && (
                         <div className="mt-4">
-                          <FeeCalculatorDisplay fee={feeAmount} />
+                          <FeeCalculatorDisplay
+                            fee={feeAmount}
+                            platformFeeConfig={feeEstimateConfig}
+                          />
                         </div>
                       )}
                       <FormMessage />

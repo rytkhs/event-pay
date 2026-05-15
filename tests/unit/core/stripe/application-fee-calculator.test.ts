@@ -1,4 +1,5 @@
 import { ApplicationFeeCalculator } from "@core/stripe/fee-config/application-fee-calculator";
+import { calculateApplicationFeeEstimate } from "@core/stripe/fee-config/application-fee-estimator";
 import { FeeConfigService } from "@core/stripe/fee-config/service";
 
 type FeeConfigRow = {
@@ -17,6 +18,15 @@ type FeeConfigRow = {
 const EVENT_ID = "event_test";
 const PAYOUT_PROFILE_ID = "payout_profile_test";
 const OWNER_USER_ID = "owner_user_test";
+
+const platformFeeConfig = {
+  rate: 0.08,
+  fixedFee: 30,
+  minimumFee: 0,
+  maximumFee: 0,
+  taxRate: 0,
+  isTaxIncluded: true,
+};
 
 function buildFeeConfigRow(overrides: Partial<FeeConfigRow> = {}): FeeConfigRow {
   return {
@@ -79,6 +89,51 @@ function buildSupabaseClient(params: {
     }),
   };
 }
+
+describe("calculateApplicationFeeEstimate", () => {
+  it("rate と fixedFee から application fee と net amount を計算する", () => {
+    const result = calculateApplicationFeeEstimate(1000, platformFeeConfig);
+
+    expect(result).toEqual({
+      amount: 1000,
+      applicationFeeAmount: 110,
+      netAmount: 890,
+      calculation: {
+        rateFee: 80,
+        fixedFee: 30,
+        beforeClipping: 110,
+        afterMinimum: 110,
+        afterMaximum: 110,
+      },
+    });
+  });
+
+  it("minimumFee と maximumFee と amount 上限を適用する", () => {
+    expect(
+      calculateApplicationFeeEstimate(1000, {
+        ...platformFeeConfig,
+        rate: 0.01,
+        fixedFee: 0,
+        minimumFee: 100,
+      }).applicationFeeAmount
+    ).toBe(100);
+
+    expect(
+      calculateApplicationFeeEstimate(10000, {
+        ...platformFeeConfig,
+        maximumFee: 120,
+      }).applicationFeeAmount
+    ).toBe(120);
+
+    expect(
+      calculateApplicationFeeEstimate(80, {
+        ...platformFeeConfig,
+        rate: 2,
+        fixedFee: 100,
+      }).applicationFeeAmount
+    ).toBe(80);
+  });
+});
 
 describe("ApplicationFeeCalculator legacy application fee grace", () => {
   beforeEach(() => {

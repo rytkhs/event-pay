@@ -1,20 +1,14 @@
 import { logger } from "@core/logging/app-logger";
 import type { AppSupabaseClient } from "@core/types/supabase";
 
+import {
+  type ApplicationFeeConfigResolutionOptions,
+  resolvePlatformFeeConfigForApplicationFee,
+} from "./application-fee-config-resolver";
+import { calculateApplicationFeeEstimate } from "./application-fee-estimator";
 import { FeeConfigService, type PlatformFeeConfig } from "./service";
 
-const LEGACY_APPLICATION_FEE_REGISTERED_BEFORE = "2026-05-17T00:00:00+09:00";
-const LEGACY_APPLICATION_FEE_EVENT_CREATED_BEFORE = "2026-07-01T00:00:00+09:00";
-const LEGACY_PLATFORM_FEE_RATE = 0.049;
-const LEGACY_PLATFORM_FIXED_FEE = 0;
-
-export type ApplicationFeeCalculationOptions =
-  | boolean
-  | {
-      forceRefresh?: boolean;
-      eventId?: string;
-      payoutProfileId?: string;
-    };
+export type ApplicationFeeCalculationOptions = ApplicationFeeConfigResolutionOptions;
 
 /**
  * Application Fee 計算結果
@@ -93,10 +87,15 @@ export class ApplicationFeeCalculator {
 
     // fee_config取得
     const { platform } = await this.feeConfigService.getConfig(forceRefresh);
-    const resolvedPlatformFeeConfig = await this.resolvePlatformFeeConfig(platform, options);
+    const resolvedPlatformFeeConfig = await resolvePlatformFeeConfigForApplicationFee(
+      this.supabase,
+      platform,
+      options
+    );
 
     // 計算実行
-    const calculation = this.performCalculation(amount, resolvedPlatformFeeConfig.platform);
+    const estimate = calculateApplicationFeeEstimate(amount, resolvedPlatformFeeConfig.platform);
+    const calculation = estimate.calculation;
     const taxCalculation = this.calculateTax(
       calculation.afterMaximum,
       resolvedPlatformFeeConfig.platform
@@ -127,102 +126,6 @@ export class ApplicationFeeCalculator {
       calculation,
       taxCalculation,
     };
-  }
-
-  private async resolvePlatformFeeConfig(
-    platform: PlatformFeeConfig,
-    options: ApplicationFeeCalculationOptions
-  ): Promise<{
-    platform: PlatformFeeConfig;
-    legacyApplicationFeeApplied: boolean;
-  }> {
-    if (typeof options === "boolean" || !options.eventId || !options.payoutProfileId) {
-      return {
-        platform,
-        legacyApplicationFeeApplied: false,
-      };
-    }
-
-    const shouldApplyLegacyFee = await this.shouldApplyLegacyApplicationFee({
-      eventId: options.eventId,
-      payoutProfileId: options.payoutProfileId,
-    });
-
-    if (!shouldApplyLegacyFee) {
-      return {
-        platform,
-        legacyApplicationFeeApplied: false,
-      };
-    }
-
-    return {
-      platform: {
-        ...platform,
-        rate: LEGACY_PLATFORM_FEE_RATE,
-        fixedFee: LEGACY_PLATFORM_FIXED_FEE,
-      },
-      legacyApplicationFeeApplied: true,
-    };
-  }
-
-  private async shouldApplyLegacyApplicationFee(params: {
-    eventId: string;
-    payoutProfileId: string;
-  }): Promise<boolean> {
-    const [{ data: event, error: eventError }, { data: payoutProfile, error: payoutProfileError }] =
-      await Promise.all([
-        this.supabase
-          .from("events")
-          .select("created_at")
-          .eq("id", params.eventId)
-          .maybeSingle<{ created_at: string }>(),
-        this.supabase
-          .from("payout_profiles")
-          .select("owner_user_id")
-          .eq("id", params.payoutProfileId)
-          .maybeSingle<{ owner_user_id: string }>(),
-      ]);
-
-    if (eventError) {
-      throw new Error(`[ApplicationFeeCalculator] Failed to fetch event: ${eventError.message}`);
-    }
-    if (payoutProfileError) {
-      throw new Error(
-        `[ApplicationFeeCalculator] Failed to fetch payout profile: ${payoutProfileError.message}`
-      );
-    }
-    if (!event) {
-      throw new Error(`[ApplicationFeeCalculator] Event not found: ${params.eventId}`);
-    }
-    if (!payoutProfile) {
-      throw new Error(
-        `[ApplicationFeeCalculator] Payout profile not found: ${params.payoutProfileId}`
-      );
-    }
-
-    const { data: ownerUser, error: ownerUserError } = await this.supabase
-      .from("users")
-      .select("created_at")
-      .eq("id", payoutProfile.owner_user_id)
-      .maybeSingle<{ created_at: string }>();
-
-    if (ownerUserError) {
-      throw new Error(
-        `[ApplicationFeeCalculator] Failed to fetch payout profile owner: ${ownerUserError.message}`
-      );
-    }
-    if (!ownerUser) {
-      throw new Error(
-        `[ApplicationFeeCalculator] Payout profile owner not found: ${payoutProfile.owner_user_id}`
-      );
-    }
-
-    return (
-      new Date(ownerUser.created_at).getTime() <
-        new Date(LEGACY_APPLICATION_FEE_REGISTERED_BEFORE).getTime() &&
-      new Date(event.created_at).getTime() <
-        new Date(LEGACY_APPLICATION_FEE_EVENT_CREATED_BEFORE).getTime()
-    );
   }
 
   /**
@@ -256,7 +159,7 @@ export class ApplicationFeeCalculator {
 
     // 各金額に対して計算実行
     const results = amounts.map((amount) => {
-      const calculation = this.performCalculation(amount, platform);
+      const calculation = calculateApplicationFeeEstimate(amount, platform).calculation;
       const taxCalculation = this.calculateTax(calculation.afterMaximum, platform);
       return {
         amount,
@@ -279,42 +182,6 @@ export class ApplicationFeeCalculator {
     });
 
     return results;
-  }
-
-  /**
-   * 実際の計算ロジック
-   * @param amount 決済金額（円）
-   * @param config プラットフォーム手数料設定
-   * @returns 計算詳細
-   */
-  private performCalculation(
-    amount: number,
-    config: PlatformFeeConfig
-  ): ApplicationFeeCalculation["calculation"] {
-    // 1. 基本計算: 四捨五入 → 固定手数料追加
-    const rateFee = Math.round(amount * config.rate);
-    const fixedFee = config.fixedFee;
-    const beforeClipping = rateFee + fixedFee;
-
-    // 2. 最小値適用
-    const afterMinimum = Math.max(beforeClipping, config.minimumFee);
-
-    // 3. 最大値適用
-    let afterMaximum = afterMinimum;
-    if (config.maximumFee > 0) {
-      afterMaximum = Math.min(afterMinimum, config.maximumFee);
-    }
-
-    // 4. 決済金額上限適用（application_fee_amountは決済金額を超えられない）
-    afterMaximum = Math.min(afterMaximum, amount);
-
-    return {
-      rateFee,
-      fixedFee,
-      beforeClipping,
-      afterMinimum,
-      afterMaximum,
-    };
   }
 
   /**
