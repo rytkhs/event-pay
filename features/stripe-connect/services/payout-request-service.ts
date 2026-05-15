@@ -499,6 +499,7 @@ export class PayoutRequestService {
         idempotencyKey,
         systemFeeAmount,
         systemFeeIdempotencyKey,
+        systemFeeState: "not_started",
         shouldCollectSystemFee,
         successLogMessage: "Payout request created",
         failureMessageFallback: "Payout creation failed",
@@ -690,6 +691,7 @@ export class PayoutRequestService {
       idempotencyKey: unknownRequest.idempotency_key,
       systemFeeAmount: unknownRequest.system_fee_amount,
       systemFeeIdempotencyKey: unknownRequest.system_fee_idempotency_key,
+      systemFeeState: unknownRequest.system_fee_state,
       shouldCollectSystemFee:
         unknownRequest.system_fee_state !== "succeeded" && unknownRequest.system_fee_amount > 0,
       successLogMessage: "Payout request recovered from creation_unknown",
@@ -707,6 +709,7 @@ export class PayoutRequestService {
     idempotencyKey: string;
     systemFeeAmount: number;
     systemFeeIdempotencyKey: string | null;
+    systemFeeState: PayoutSystemFeeState;
     shouldCollectSystemFee: boolean;
     successLogMessage: string;
     failureMessageFallback: string;
@@ -724,6 +727,7 @@ export class PayoutRequestService {
           amount: params.systemFeeAmount,
           idempotencyKey:
             params.systemFeeIdempotencyKey ?? generateIdempotencyKey("payout_fee"),
+          expectedSystemFeeState: params.systemFeeState,
         });
         if (!systemFeeResult.success) {
           return systemFeeResult;
@@ -802,12 +806,16 @@ export class PayoutRequestService {
     userId: string;
     amount: number;
     idempotencyKey: string;
+    expectedSystemFeeState: PayoutSystemFeeState;
   }): Promise<AppResult<void>> {
     if (params.amount <= 0) {
       return okResult(undefined);
     }
 
-    const markStartedResult = await this.markSystemFeeCollectionStarted(params.payoutRequestId);
+    const markStartedResult = await this.markSystemFeeCollectionStarted({
+      payoutRequestId: params.payoutRequestId,
+      expectedSystemFeeState: params.expectedSystemFeeState,
+    });
     if (!markStartedResult.success) {
       return markStartedResult;
     }
@@ -903,8 +911,29 @@ export class PayoutRequestService {
     }
   }
 
-  private async markSystemFeeCollectionStarted(payoutRequestId: string): Promise<AppResult<void>> {
-    const { error } = await this.supabase
+  private async markSystemFeeCollectionStarted(params: {
+    payoutRequestId: string;
+    expectedSystemFeeState: PayoutSystemFeeState;
+  }): Promise<AppResult<void>> {
+    if (
+      params.expectedSystemFeeState !== "not_started" &&
+      params.expectedSystemFeeState !== "creation_unknown"
+    ) {
+      return errResult(
+        new AppError("RESOURCE_CONFLICT", {
+          userMessage: "前回の振込リクエストの状況が更新されました。画面を更新してください。",
+          retryable: false,
+          details: {
+            payoutRequestId: params.payoutRequestId,
+            systemFeeState: params.expectedSystemFeeState,
+          },
+        })
+      );
+    }
+
+    const expectedStatus =
+      params.expectedSystemFeeState === "not_started" ? "requesting" : "creation_unknown";
+    const { data, error } = await this.supabase
       .from("payout_requests")
       .update({
         status: "creation_unknown",
@@ -914,12 +943,26 @@ export class PayoutRequestService {
         failure_code: null,
         failure_message: null,
       })
-      .eq("id", payoutRequestId)
-      .eq("status", "requesting")
-      .eq("system_fee_state", "not_started");
+      .eq("id", params.payoutRequestId)
+      .eq("status", expectedStatus)
+      .eq("system_fee_state", params.expectedSystemFeeState)
+      .select("id");
 
     if (error) {
       return errFrom(error, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
+    }
+
+    if ((data?.length ?? 0) === 0) {
+      return errResult(
+        new AppError("RESOURCE_CONFLICT", {
+          userMessage: "前回の振込リクエストの状況が更新されました。画面を更新してください。",
+          retryable: false,
+          details: {
+            payoutRequestId: params.payoutRequestId,
+            status: "updated",
+          },
+        })
+      );
     }
 
     return okResult(undefined);

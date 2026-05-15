@@ -445,6 +445,65 @@ describe("PayoutRequestService payout手数料", () => {
       );
     });
 
+    it("Account Debit復旧前にpayout_requestが別状態へ遷移していた時、Account Debitを作成しないこと", async () => {
+      const existing = await createPayoutRequestFixture(ctx, {
+        status: "creation_unknown",
+        amount: 740,
+        grossAmount: 1000,
+        systemFeeAmount: PAYOUT_FEE,
+        systemFeeState: "creation_unknown",
+        idempotencyKey: "stored_payout_key",
+        systemFeeIdempotencyKey: "stored_system_fee_key",
+      });
+      jest
+        .spyOn(service as any, "getCreationUnknownRequest")
+        .mockImplementationOnce(async () => {
+          const { error } = await ctx.adminClient
+            .from("payout_requests")
+            .update({
+              status: "manual_review_required",
+              system_fee_state: "manual_review_required",
+            })
+            .eq("id", existing.id);
+
+          if (error) {
+            throw error;
+          }
+
+          return {
+            id: existing.id,
+            amount: existing.amount,
+            currency: existing.currency,
+            idempotency_key: existing.idempotency_key,
+            system_fee_amount: existing.system_fee_amount,
+            system_fee_idempotency_key: existing.system_fee_idempotency_key,
+            system_fee_state: existing.system_fee_state,
+            requested_at: existing.requested_at,
+          };
+        });
+      confirmedAccountDebit();
+      confirmedPayout({ id: "po_should_not_be_created", amount: 740 });
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      const failure = expectAppFailure(result);
+      expect(failure.error.code).toBe("RESOURCE_CONFLICT");
+      expect(await getPayoutRequestById(ctx, existing.id)).toEqual(
+        expect.objectContaining({
+          status: "manual_review_required",
+          system_fee_state: "manual_review_required",
+          stripe_account_debit_payment_id: null,
+          stripe_account_debit_transfer_id: null,
+          stripe_payout_id: null,
+        })
+      );
+      expect(stripeDouble.chargeCreateCalls).toHaveLength(0);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+    });
+
     // 期限内の復旧でAccount Debit未作成が確定した場合は、payoutを作らず失敗確定にする
     it("Account Debitのcreation_unknownが期限内に再実行され確定失敗した時、Payoutを作成せずsystem_fee_stateをfailedにしてpayout_requestをfailedにすること", async () => {
       const existing = await createPayoutRequestFixture(ctx, {
