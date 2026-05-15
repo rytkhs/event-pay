@@ -159,7 +159,11 @@ describe("PaymentService - Stripe Checkout セッション作成", () => {
 
         // Assert - Calculator が正しい金額で呼び出されること
         expect(mockApplicationFeeCalculator.calculateApplicationFee).toHaveBeenCalledWith(
-          testData.amount
+          testData.amount,
+          {
+            eventId: testData.eventId,
+            payoutProfileId: testData.payoutProfileId,
+          }
         );
 
         // Assert - 計算された手数料が destination-charges に渡されること

@@ -3,6 +3,19 @@ import type { AppSupabaseClient } from "@core/types/supabase";
 
 import { FeeConfigService, type PlatformFeeConfig } from "./service";
 
+const LEGACY_APPLICATION_FEE_REGISTERED_BEFORE = "2026-05-17T00:00:00+09:00";
+const LEGACY_APPLICATION_FEE_EVENT_CREATED_BEFORE = "2026-07-01T00:00:00+09:00";
+const LEGACY_PLATFORM_FEE_RATE = 0.049;
+const LEGACY_PLATFORM_FIXED_FEE = 0;
+
+export type ApplicationFeeCalculationOptions =
+  | boolean
+  | {
+      forceRefresh?: boolean;
+      eventId?: string;
+      payoutProfileId?: string;
+    };
+
 /**
  * Application Fee 計算結果
  */
@@ -54,22 +67,25 @@ export interface ApplicationFeeCalculation {
  * - MVP段階: 税率0%のため税額は常に0円
  */
 export class ApplicationFeeCalculator {
+  private supabase: AppSupabaseClient<"public">;
   private feeConfigService: FeeConfigService;
 
   constructor(supabaseClient: AppSupabaseClient<"public">) {
+    this.supabase = supabaseClient;
     this.feeConfigService = new FeeConfigService(supabaseClient);
   }
 
   /**
    * Application Fee金額を計算
    * @param amount 決済金額（円）
-   * @param forceRefresh fee_configを強制再取得するか
+   * @param options fee_configの再取得指定、または猶予料金判定用コンテキスト
    * @returns 計算結果
    */
   async calculateApplicationFee(
     amount: number,
-    forceRefresh = false
+    options: ApplicationFeeCalculationOptions = false
   ): Promise<ApplicationFeeCalculation> {
+    const forceRefresh = typeof options === "boolean" ? options : options.forceRefresh ?? false;
     // 入力値検証
     if (!Number.isInteger(amount) || amount <= 0) {
       throw new Error(`Invalid amount: ${amount}. Amount must be a positive integer.`);
@@ -77,10 +93,14 @@ export class ApplicationFeeCalculator {
 
     // fee_config取得
     const { platform } = await this.feeConfigService.getConfig(forceRefresh);
+    const resolvedPlatformFeeConfig = await this.resolvePlatformFeeConfig(platform, options);
 
     // 計算実行
-    const calculation = this.performCalculation(amount, platform);
-    const taxCalculation = this.calculateTax(calculation.afterMaximum, platform);
+    const calculation = this.performCalculation(amount, resolvedPlatformFeeConfig.platform);
+    const taxCalculation = this.calculateTax(
+      calculation.afterMaximum,
+      resolvedPlatformFeeConfig.platform
+    );
 
     logger.info("Application fee calculated", {
       category: "payment",
@@ -96,16 +116,113 @@ export class ApplicationFeeCalculator {
       feeExcludingTax: taxCalculation.feeExcludingTax,
       taxAmount: taxCalculation.taxAmount,
       isTaxIncluded: taxCalculation.isTaxIncluded,
+      legacyApplicationFeeApplied: resolvedPlatformFeeConfig.legacyApplicationFeeApplied,
       outcome: "success",
     });
 
     return {
       amount,
       applicationFeeAmount: calculation.afterMaximum,
-      config: platform,
+      config: resolvedPlatformFeeConfig.platform,
       calculation,
       taxCalculation,
     };
+  }
+
+  private async resolvePlatformFeeConfig(
+    platform: PlatformFeeConfig,
+    options: ApplicationFeeCalculationOptions
+  ): Promise<{
+    platform: PlatformFeeConfig;
+    legacyApplicationFeeApplied: boolean;
+  }> {
+    if (typeof options === "boolean" || !options.eventId || !options.payoutProfileId) {
+      return {
+        platform,
+        legacyApplicationFeeApplied: false,
+      };
+    }
+
+    const shouldApplyLegacyFee = await this.shouldApplyLegacyApplicationFee({
+      eventId: options.eventId,
+      payoutProfileId: options.payoutProfileId,
+    });
+
+    if (!shouldApplyLegacyFee) {
+      return {
+        platform,
+        legacyApplicationFeeApplied: false,
+      };
+    }
+
+    return {
+      platform: {
+        ...platform,
+        rate: LEGACY_PLATFORM_FEE_RATE,
+        fixedFee: LEGACY_PLATFORM_FIXED_FEE,
+      },
+      legacyApplicationFeeApplied: true,
+    };
+  }
+
+  private async shouldApplyLegacyApplicationFee(params: {
+    eventId: string;
+    payoutProfileId: string;
+  }): Promise<boolean> {
+    const [{ data: event, error: eventError }, { data: payoutProfile, error: payoutProfileError }] =
+      await Promise.all([
+        this.supabase
+          .from("events")
+          .select("created_at")
+          .eq("id", params.eventId)
+          .maybeSingle<{ created_at: string }>(),
+        this.supabase
+          .from("payout_profiles")
+          .select("owner_user_id")
+          .eq("id", params.payoutProfileId)
+          .maybeSingle<{ owner_user_id: string }>(),
+      ]);
+
+    if (eventError) {
+      throw new Error(`[ApplicationFeeCalculator] Failed to fetch event: ${eventError.message}`);
+    }
+    if (payoutProfileError) {
+      throw new Error(
+        `[ApplicationFeeCalculator] Failed to fetch payout profile: ${payoutProfileError.message}`
+      );
+    }
+    if (!event) {
+      throw new Error(`[ApplicationFeeCalculator] Event not found: ${params.eventId}`);
+    }
+    if (!payoutProfile) {
+      throw new Error(
+        `[ApplicationFeeCalculator] Payout profile not found: ${params.payoutProfileId}`
+      );
+    }
+
+    const { data: ownerUser, error: ownerUserError } = await this.supabase
+      .from("users")
+      .select("created_at")
+      .eq("id", payoutProfile.owner_user_id)
+      .maybeSingle<{ created_at: string }>();
+
+    if (ownerUserError) {
+      throw new Error(
+        `[ApplicationFeeCalculator] Failed to fetch payout profile owner: ${ownerUserError.message}`
+      );
+    }
+    if (!ownerUser) {
+      throw new Error(
+        `[ApplicationFeeCalculator] Payout profile owner not found: ${payoutProfile.owner_user_id}`
+      );
+    }
+
+    return (
+      new Date(ownerUser.created_at).getTime() <
+        new Date(LEGACY_APPLICATION_FEE_REGISTERED_BEFORE).getTime() &&
+      new Date(event.created_at).getTime() <
+        new Date(LEGACY_APPLICATION_FEE_EVENT_CREATED_BEFORE).getTime()
+    );
   }
 
   /**

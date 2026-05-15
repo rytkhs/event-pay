@@ -86,7 +86,10 @@ export async function createStripeSession(
     });
 
     // Application fee計算
-    const feeCalculation = await applicationFeeCalculator.calculateApplicationFee(params.amount);
+    const feeCalculation = await applicationFeeCalculator.calculateApplicationFee(params.amount, {
+      eventId: params.eventId,
+      payoutProfileId: params.payoutProfileId,
+    });
 
     // Customer作成・取得
     let customerId: string | undefined;
