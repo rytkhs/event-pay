@@ -44,6 +44,7 @@ type PayoutEligibility = PayoutBalance & {
 
 type PayoutProfileForPayout = {
   id: string;
+  owner_user_id: string;
   stripe_account_id: string;
 };
 
@@ -56,6 +57,8 @@ const IDEMPOTENCY_KEY_RECOVERY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const EXPIRED_IDEMPOTENCY_FAILURE_CODE = "idempotency_key_expired";
 const PAYOUT_CREATION_FAILED_AFTER_FEE_COLLECTED = "payout_creation_failed_after_fee_collected";
 const ACCOUNT_DEBIT_TRANSFER_ID_MISSING = "account_debit_transfer_id_missing";
+const PAYOUT_FEE_GRACE_REGISTERED_BEFORE = "2026-05-17T00:00:00+09:00";
+const PAYOUT_FEE_GRACE_ENDS_AT = "2026-09-01T00:00:00+09:00";
 const SYSTEM_FEE_CREATION_UNKNOWN_MESSAGE =
   "振込手数料回収の処理状況を確認中です。確認完了まで新しい振込は実行できません。";
 const ACCOUNT_DEBIT_TRANSFER_ID_MISSING_MESSAGE =
@@ -213,24 +216,64 @@ export class PayoutRequestService {
     });
   }
 
+  private async getFreshPayoutBalanceWithFeeAmount(
+    stripeAccountId: string,
+    payoutRequestFeeAmount: number
+  ): Promise<PayoutBalance> {
+    const balance = await getStripe().balance.retrieve({}, { stripeAccount: stripeAccountId });
+    const availableJpy = balance.available.find((entry) => entry.currency === "jpy");
+    const pendingJpy = balance.pending.find((entry) => entry.currency === "jpy");
+    const availableAmount = getCardSourceAmount(availableJpy);
+
+    return {
+      availableAmount,
+      pendingAmount: getCardSourceAmount(pendingJpy),
+      currency: "jpy",
+      payoutRequestFeeAmount,
+      payoutAmount: Math.max(availableAmount - payoutRequestFeeAmount, 0),
+    };
+  }
+
   async getFreshPayoutBalance(stripeAccountId: string): Promise<AppResult<PayoutBalance>> {
     try {
-      const [balance, feeConfig] = await Promise.all([
-        getStripe().balance.retrieve({}, { stripeAccount: stripeAccountId }),
-        new FeeConfigService(this.supabase).getConfig(),
-      ]);
-      const availableJpy = balance.available.find((entry) => entry.currency === "jpy");
-      const pendingJpy = balance.pending.find((entry) => entry.currency === "jpy");
-      const availableAmount = getCardSourceAmount(availableJpy);
-      const payoutRequestFeeAmount = feeConfig.payoutRequestFeeAmount;
+      const feeConfig = await new FeeConfigService(this.supabase).getConfig();
+      return okResult(
+        await this.getFreshPayoutBalanceWithFeeAmount(
+          stripeAccountId,
+          feeConfig.payoutRequestFeeAmount
+        )
+      );
+    } catch (error) {
+      return errFrom(error, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
+    }
+  }
 
-      return okResult({
-        availableAmount,
-        pendingAmount: getCardSourceAmount(pendingJpy),
-        currency: "jpy",
-        payoutRequestFeeAmount,
-        payoutAmount: Math.max(availableAmount - payoutRequestFeeAmount, 0),
-      });
+  private async resolvePayoutRequestFeeAmount(params: {
+    ownerUserId: string;
+    configuredFeeAmount: number;
+    now?: Date;
+  }): Promise<AppResult<number>> {
+    try {
+      const { data, error } = await this.supabase
+        .from("users")
+        .select("created_at")
+        .eq("id", params.ownerUserId)
+        .single<{ created_at: string }>();
+
+      if (error) {
+        return errFrom(error, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
+      }
+
+      const userCreatedAt = new Date(data.created_at).getTime();
+      const registeredBefore = new Date(PAYOUT_FEE_GRACE_REGISTERED_BEFORE).getTime();
+      const graceEndsAt = new Date(PAYOUT_FEE_GRACE_ENDS_AT).getTime();
+      const now = params.now ?? new Date();
+      const isGracePeriodUser =
+        Number.isFinite(userCreatedAt) &&
+        userCreatedAt < registeredBefore &&
+        now.getTime() < graceEndsAt;
+
+      return okResult(isGracePeriodUser ? 0 : params.configuredFeeAmount);
     } catch (error) {
       return errFrom(error, { defaultCode: "STRIPE_CONNECT_SERVICE_ERROR" });
     }
@@ -266,24 +309,35 @@ export class PayoutRequestService {
   }
 
   private async getFreshPayoutEligibility(
-    stripeAccountId: string,
+    payoutProfile: PayoutProfileForPayout,
     params: { hasInProgressRequest: boolean }
   ): Promise<AppResult<PayoutEligibility>> {
     try {
-      const [prerequisiteResult, balanceResult] = await Promise.all([
-        this.getFreshPayoutPrerequisiteDisabledReason(stripeAccountId),
-        this.getFreshPayoutBalance(stripeAccountId),
+      const [prerequisiteResult, feeConfig] = await Promise.all([
+        this.getFreshPayoutPrerequisiteDisabledReason(payoutProfile.stripe_account_id),
+        new FeeConfigService(this.supabase).getConfig(),
       ]);
 
       if (!prerequisiteResult.success) {
         return prerequisiteResult;
       }
-      if (!balanceResult.success) {
-        return balanceResult;
+
+      const feeAmountResult = await this.resolvePayoutRequestFeeAmount({
+        ownerUserId: payoutProfile.owner_user_id,
+        configuredFeeAmount: feeConfig.payoutRequestFeeAmount,
+      });
+      if (!feeAmountResult.success) {
+        return feeAmountResult;
+      }
+      if (feeAmountResult.data === undefined) {
+        return errResult(getMissingEligibilityDataError());
       }
 
-      const balance = balanceResult.data as PayoutBalance;
-      const feeConfig = await new FeeConfigService(this.supabase).getConfig();
+      const balanceResult = await this.getFreshPayoutBalanceWithFeeAmount(
+        payoutProfile.stripe_account_id,
+        feeAmountResult.data
+      );
+      const balance = balanceResult as PayoutBalance;
       const minimumRequiredAmount = balance.payoutRequestFeeAmount + feeConfig.minPayoutAmount;
       const disabledReason =
         prerequisiteResult.data ??
@@ -359,10 +413,9 @@ export class PayoutRequestService {
 
       const hasInProgressRequest =
         activeRequest !== null && IN_PROGRESS_STATUSES.includes(activeRequest.status);
-      const eligibilityResult = await this.getFreshPayoutEligibility(
-        payoutProfile.stripe_account_id,
-        { hasInProgressRequest }
-      );
+      const eligibilityResult = await this.getFreshPayoutEligibility(payoutProfile, {
+        hasInProgressRequest,
+      });
       if (!eligibilityResult.success) {
         return eligibilityResult;
       }
@@ -434,10 +487,9 @@ export class PayoutRequestService {
         );
       }
 
-      const eligibilityResult = await this.getFreshPayoutEligibility(
-        payoutProfile.stripe_account_id,
-        { hasInProgressRequest: false }
-      );
+      const eligibilityResult = await this.getFreshPayoutEligibility(payoutProfile, {
+        hasInProgressRequest: false,
+      });
       if (!eligibilityResult.success) {
         return eligibilityResult;
       }

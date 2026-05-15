@@ -59,6 +59,7 @@ export async function createPayoutContextFixture(
     attachPayoutProfileToCommunity?: boolean;
     stripeAccountId?: string;
     emailPrefix?: string;
+    userCreatedAt?: string;
   } = {}
 ): Promise<PayoutContextFixture> {
   const stripeAccountId =
@@ -74,9 +75,23 @@ export async function createPayoutContextFixture(
     "Creating payout unit fixture",
     {
       operationType: "INSERT",
-      accessedTables: ["public.communities", "public.payout_profiles", "public.payout_requests"],
+      accessedTables: [
+        "public.users",
+        "public.communities",
+        "public.payout_profiles",
+        "public.payout_requests",
+      ],
     }
   );
+
+  const { error: userUpdateError } = await adminClient
+    .from("users")
+    .update({ created_at: options.userCreatedAt ?? "2026-05-17T00:00:00+09:00" })
+    .eq("id", user.id);
+
+  if (userUpdateError) {
+    throw new Error(`Failed to update payout user fixture: ${userUpdateError.message}`);
+  }
 
   const { data: community, error: communityError } = await adminClient
     .from("communities")
