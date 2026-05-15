@@ -12,6 +12,9 @@ ADD COLUMN payout_request_fee_amount integer DEFAULT 260 NOT NULL;
 ALTER TABLE public.fee_config
 ADD CONSTRAINT fee_config_payout_request_fee_amount_non_negative CHECK (payout_request_fee_amount >= 0);
 
+ALTER TABLE public.fee_config
+ADD CONSTRAINT fee_config_min_payout_amount_positive CHECK (min_payout_amount > 0);
+
 COMMENT ON COLUMN public.fee_config.payout_request_fee_amount IS 'payout request 1回ごとにAccount Debitで回収する振込手数料額(円)';
 
 ALTER TABLE public.payout_requests
