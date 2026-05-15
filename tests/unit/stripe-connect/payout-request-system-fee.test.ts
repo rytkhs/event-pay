@@ -568,6 +568,60 @@ describe("PayoutRequestService payout手数料", () => {
       expect(stripeDouble.payoutCreateCalls).toHaveLength(1);
     });
 
+    // 0円手数料ではAccount Debit未実行のため、Payout失敗を手数料回収後の手動確認扱いにしない
+    it("payout_request_fee_amountが0円の時、Payout作成が確定失敗してもmanual_review_requiredにしないこと", async () => {
+      await updateFeeConfig(ctx, { payout_request_fee_amount: 0 });
+      stripeDouble.setPayoutError(
+        new Stripe.errors.StripeInvalidRequestError({
+          message: "payout failed",
+          code: "insufficient_funds",
+        } as any)
+      );
+
+      const result = await service.requestPayout({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      expectAppFailure(result);
+      expect(await listPayoutRequests(ctx)).toEqual([
+        expect.objectContaining({
+          amount: 1000,
+          gross_amount: 1000,
+          status: "failed",
+          system_fee_amount: 0,
+          system_fee_state: "not_started",
+          system_fee_idempotency_key: null,
+          stripe_account_debit_payment_id: null,
+          stripe_account_debit_transfer_id: null,
+          failure_code: "insufficient_funds",
+          stripe_payout_id: null,
+        }),
+      ]);
+      expect(stripeDouble.chargeCreateCalls).toHaveLength(0);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(1);
+
+      const panelResult = await service.getPayoutPanelState({
+        userId: ctx.user.id,
+        communityId: ctx.communityId,
+      });
+
+      const panel = expectAppSuccess(panelResult);
+      expect(panel.data).toEqual(
+        expect.objectContaining({
+          canRequestPayout: true,
+          disabledReason: undefined,
+          latestRequest: expect.objectContaining({
+            status: "failed",
+            systemFeeAmount: 0,
+            systemFeeState: "not_started",
+          }),
+        })
+      );
+      expect(stripeDouble.chargeCreateCalls).toHaveLength(0);
+      expect(stripeDouble.payoutCreateCalls).toHaveLength(1);
+    });
+
     // Payout作成の成否が不明な場合は、fee回収済み状態を維持したままPayout復旧対象にする
     it("Account Debitが成功した後にPayout作成の成否が不明な時、system_fee_stateはsucceededのままpayout_requestをcreation_unknownにすること", async () => {
       confirmedAccountDebit();

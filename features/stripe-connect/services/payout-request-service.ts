@@ -453,9 +453,12 @@ export class PayoutRequestService {
       const grossAmount = eligibility.availableAmount;
       const systemFeeAmount = eligibility.payoutRequestFeeAmount;
       const amount = eligibility.payoutAmount;
+      const shouldCollectSystemFee = systemFeeAmount > 0;
 
       const idempotencyKey = generateIdempotencyKey("payout");
-      const systemFeeIdempotencyKey = generateIdempotencyKey("payout_fee");
+      const systemFeeIdempotencyKey = shouldCollectSystemFee
+        ? generateIdempotencyKey("payout_fee")
+        : null;
       const { data: inserted, error: insertError } = await this.supabase
         .from("payout_requests")
         .insert({
@@ -496,7 +499,7 @@ export class PayoutRequestService {
         idempotencyKey,
         systemFeeAmount,
         systemFeeIdempotencyKey,
-        shouldCollectSystemFee: true,
+        shouldCollectSystemFee,
         successLogMessage: "Payout request created",
         failureMessageFallback: "Payout creation failed",
         failedUserMessage: "振込リクエストの作成に失敗しました。",
@@ -709,6 +712,8 @@ export class PayoutRequestService {
     failureMessageFallback: string;
     failedUserMessage: string;
   }): Promise<AppResult<RequestPayoutPayload>> {
+    let systemFeeCollected = !params.shouldCollectSystemFee && params.systemFeeAmount > 0;
+
     try {
       if (params.shouldCollectSystemFee) {
         const systemFeeResult = await this.collectSystemFee({
@@ -723,6 +728,7 @@ export class PayoutRequestService {
         if (!systemFeeResult.success) {
           return systemFeeResult;
         }
+        systemFeeCollected = true;
       }
 
       const payout = await getStripe().payouts.create(
@@ -774,7 +780,7 @@ export class PayoutRequestService {
         amount: params.amount,
         grossAmount: params.amount + params.systemFeeAmount,
         systemFeeAmount: params.systemFeeAmount,
-        systemFeeState: "succeeded",
+        systemFeeState: systemFeeCollected ? "succeeded" : "not_started",
         currency: "jpy",
         status: payoutStatus,
       });
@@ -782,7 +788,7 @@ export class PayoutRequestService {
       return this.markPayoutCreationFailure({
         payoutRequestId: params.payoutRequestId,
         stripeError,
-        systemFeeCollected: params.shouldCollectSystemFee || params.systemFeeAmount > 0,
+        systemFeeCollected,
         failureMessageFallback: params.failureMessageFallback,
         failedUserMessage: params.failedUserMessage,
       });
