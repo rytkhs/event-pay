@@ -322,7 +322,7 @@ export function OnboardingForm({
                   id="onboarding-community-description"
                   value={communityDescription}
                   onChange={(event) => handleCommunityDescriptionChange(event.target.value)}
-                  placeholder="例: 月に1〜2回集まり、テーマに沿った本や最近読んだ一冊について語り合う読書コミュニティです。小説、ビジネス書、エッセイなどジャンルは幅広く、本を通じて新しい考え方や出会いを楽しむ場を目指しています。"
+                  placeholder="例: 月に1〜2回集まり、テーマに沿った本や最近読んだ一冊について語り合う読書コミュニティです。"
                   className="min-h-36 resize-none border-border/60 bg-muted/20 p-3.5 text-sm leading-relaxed transition-colors placeholder:text-muted-foreground/40 focus:bg-background sm:min-h-40 sm:p-4"
                   aria-invalid={communityDescriptionError ? true : undefined}
                 />

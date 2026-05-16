@@ -10,6 +10,7 @@ const createServerComponentSupabaseClient = jest.fn();
 const getDashboardConnectCtaStatus = jest.fn();
 const resolveEventStripePayoutProfile = jest.fn();
 const getFeeConfig = jest.fn();
+const resolvePlatformFeeConfigForNewEventApplicationFee = jest.fn();
 
 const platformFeeConfig = {
   rate: 0.08,
@@ -18,6 +19,12 @@ const platformFeeConfig = {
   maximumFee: 0,
   taxRate: 0,
   isTaxIncluded: true,
+};
+
+const legacyPlatformFeeConfig = {
+  ...platformFeeConfig,
+  rate: 0.049,
+  fixedFee: 0,
 };
 
 jest.mock("@core/community/app-workspace", () => ({
@@ -32,6 +39,10 @@ jest.mock("@core/stripe/fee-config/service", () => ({
   FeeConfigService: jest.fn().mockImplementation(() => ({
     getConfig: getFeeConfig,
   })),
+}));
+
+jest.mock("@core/stripe/fee-config/application-fee-config-resolver", () => ({
+  resolvePlatformFeeConfigForNewEventApplicationFee,
 }));
 
 jest.mock("@features/events", () => ({
@@ -72,6 +83,10 @@ describe("CreateEventPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     getFeeConfig.mockResolvedValue({ platform: platformFeeConfig });
+    resolvePlatformFeeConfigForNewEventApplicationFee.mockResolvedValue({
+      platform: platformFeeConfig,
+      legacyApplicationFeeApplied: false,
+    });
   });
 
   it("community 空状態なら /dashboard redirect を優先し Connect 状態を読まない", async () => {
@@ -120,8 +135,46 @@ describe("CreateEventPage", () => {
       currentCommunityId: "community-1",
       eventPayoutProfileId: null,
     });
+    expect(resolvePlatformFeeConfigForNewEventApplicationFee).toHaveBeenCalledWith(
+      expect.anything(),
+      platformFeeConfig,
+      {
+        ownerUserId: "user-1",
+      }
+    );
     expect(screen.getByText("form:true:none:ボドゲ会:0.08")).toBeInTheDocument();
     expect(getFeeConfig).toHaveBeenCalledTimes(1);
+  });
+
+  it("既存ユーザーの猶予対象ならレガシー config をフォームへ渡す", async () => {
+    createServerComponentSupabaseClient.mockResolvedValue({ from: jest.fn() });
+    requireNonEmptyCommunityWorkspaceForServerComponent.mockResolvedValue({
+      isCommunityEmptyState: false,
+      currentUser: {
+        id: "user-1",
+      },
+      currentCommunity: {
+        id: "community-1",
+        name: "ボドゲ会",
+      },
+    });
+    getDashboardConnectCtaStatus.mockResolvedValue({ statusType: "ready" });
+    resolveEventStripePayoutProfile.mockResolvedValue({
+      isReady: true,
+      payoutProfileId: "profile-1",
+      shouldBackfillEventSnapshot: true,
+    });
+    resolvePlatformFeeConfigForNewEventApplicationFee.mockResolvedValue({
+      platform: legacyPlatformFeeConfig,
+      legacyApplicationFeeApplied: true,
+    });
+
+    const CreateEventPage = (await import("../../../../app/(app)/events/create/page")).default;
+    const ui = await CreateEventPage();
+
+    render(ui);
+
+    expect(screen.getByText("form:true:ready:ボドゲ会:0.049")).toBeInTheDocument();
   });
 
   it("current community の payout profile が未設定ならオンライン決済を fail-close にする", async () => {
