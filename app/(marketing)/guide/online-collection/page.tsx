@@ -6,6 +6,7 @@ import {
   Clock,
   CreditCard,
   FileText,
+  JapaneseYen,
   Landmark,
   ReceiptText,
   Wallet,
@@ -102,6 +103,11 @@ const payoutItems: PayoutItem[] = [
     body: "振込可能額、処理中の残高、振込履歴などの詳細をStripeダッシュボードで確認できます。振込操作はアプリ内から行うことができます。",
     icon: Landmark,
   },
+  {
+    title: "振込手数料",
+    body: "振込1回ごとに260円の振込手数料が発生します。振込手数料は振込額から差し引かれます。",
+    icon: JapaneseYen,
+  },
 ];
 
 function SectionHeading({
@@ -175,11 +181,7 @@ export default function OnlineCollectionGuidePage() {
       </section>
 
       <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <SectionHeading
-          eyebrow="Money flow"
-          title="支払いから振込までの流れ"
-          body=""
-        />
+        <SectionHeading eyebrow="Money flow" title="支払いから振込までの流れ" body="" />
 
         <div className="mt-12 divide-y divide-slate-900/10 border-y border-slate-900/10 bg-white/60">
           {flowSteps.map((step, index) => {
@@ -210,11 +212,7 @@ export default function OnlineCollectionGuidePage() {
 
       <section className="border-y border-slate-900/10 bg-white">
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
-          <SectionHeading
-            eyebrow="Payout"
-            title="振込のタイミングと確認"
-            body=""
-          />
+          <SectionHeading eyebrow="Payout" title="振込のタイミングと確認" body="" />
 
           <div className="grid gap-4">
             {payoutItems.map((item) => {

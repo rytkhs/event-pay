@@ -1,11 +1,6 @@
 import Link from "next/link";
 
-import {
-  ArrowRight,
-  Banknote,
-  CreditCard,
-  JapaneseYen,
-} from "lucide-react";
+import { ArrowRight, Banknote, BanknoteArrowDown, CreditCard, JapaneseYen } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Metadata } from "next";
 
@@ -33,6 +28,8 @@ export const metadata: Metadata = {
 };
 
 const ONLINE_COLLECTION_FEE_RATE = 0.049;
+const ONLINE_COLLECTION_FEE_FIXED = 50;
+const PAYOUT_FEE = 260;
 
 type PricePoint = {
   title: string;
@@ -61,8 +58,8 @@ const pricePoints: PricePoint[] = [
   },
   {
     title: "オンライン集金手数料",
-    value: "4.9%",
-    body: "オンラインで支払われた参加費に対して発生し、主催者の受取額から差し引かれます。参加者への上乗せはありません。",
+    value: "4.9% + 50円",
+    body: "オンラインで支払われた参加費に対して、1決済あたり決済金額の4.9% + 50円が発生します。主催者の受取額から差し引かれ、参加者への上乗せはありません。",
     icon: CreditCard,
   },
 ];
@@ -77,13 +74,13 @@ const feeExamples: FeeExample[] = [
     note: "",
   },
   {
-    amount: 3155,
+    amount: 3210,
     note: "3,000円を受け取りたい場合の目安",
   },
 ];
 
 function calculateOnlineCollectionFee(amount: number): number {
-  return Math.round(amount * ONLINE_COLLECTION_FEE_RATE);
+  return Math.round(amount * ONLINE_COLLECTION_FEE_RATE) + ONLINE_COLLECTION_FEE_FIXED;
 }
 
 function formatCurrency(amount: number): string {
@@ -175,7 +172,7 @@ export default function PricingAndFeesGuidePage() {
         <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8 lg:py-24">
           <SectionHeading
             eyebrow="Fee examples"
-            title="参加費から4.9%を差し引いた額が受取目安です。"
+            title="参加費から4.9% + 50円を差し引いた額が受取目安です。"
             body="受け取りたい金額がある場合は、イベント作成時に参加費を調整できます。"
           />
 
@@ -215,6 +212,27 @@ export default function PricingAndFeesGuidePage() {
         </div>
       </section>
 
+      <section className="border-b border-slate-900/10 bg-[#f7f5f0]">
+        <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:px-8 lg:py-20">
+          <SectionHeading eyebrow="Payout fee" title="振込手数料" body="" />
+
+          <article className="grid gap-4 border border-slate-200 bg-white/70 p-6 sm:grid-cols-[48px_minmax(0,1fr)]">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-950 text-white">
+              <BanknoteArrowDown className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-slate-950">
+                {formatCurrency(PAYOUT_FEE)}円
+                <span className="ml-1 text-base font-bold text-slate-500">/ 回</span>
+              </p>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                オンライン集金で集めた売上を登録口座へ振り込む際、振込1回ごとに発生します。振込操作はアプリ内から行います。
+              </p>
+            </div>
+          </article>
+        </div>
+      </section>
+
       <section className="border-b border-slate-900/10 bg-[#e9f2ef]">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
           <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
@@ -226,9 +244,7 @@ export default function PricingAndFeesGuidePage() {
                 className="group grid gap-3 border border-slate-900/10 bg-white/70 px-5 py-6 transition-colors hover:bg-white sm:grid-cols-[minmax(0,1fr)_32px] sm:items-center sm:px-7"
               >
                 <span>
-                  <span className="block text-lg font-bold text-slate-950">
-                    さっそく始める
-                  </span>
+                  <span className="block text-lg font-bold text-slate-950">さっそく始める</span>
                   <span className="mt-2 block text-sm leading-7 text-slate-600">
                     アカウント作成からイベント公開までの主催者向け手順を確認できます。
                   </span>
