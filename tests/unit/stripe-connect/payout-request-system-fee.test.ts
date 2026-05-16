@@ -83,13 +83,14 @@ async function updateFeeConfig(
 
 async function createServiceContext(
   emailPrefix: string,
-  feeConfig: Partial<FeeConfigSnapshot> = {}
+  feeConfig: Partial<FeeConfigSnapshot> = {},
+  userCreatedAt?: string
 ): Promise<{
   ctx: PayoutContextFixture;
   service: PayoutRequestService;
   originalFeeConfig: FeeConfigSnapshot;
 }> {
-  const ctx = await createPayoutContextFixture({ emailPrefix });
+  const ctx = await createPayoutContextFixture({ emailPrefix, userCreatedAt });
   const originalFeeConfig = await readFeeConfig(ctx);
   await updateFeeConfig(ctx, {
     payout_request_fee_amount: feeConfig.payout_request_fee_amount ?? PAYOUT_FEE,
@@ -198,6 +199,187 @@ describe("PayoutRequestService payout手数料", () => {
         })
       );
       expect(await listPayoutRequests(ctx)).toHaveLength(0);
+    });
+  });
+
+  describe("既存ユーザー向け手数料無料期間", () => {
+    it("5/16以前登録ユーザーかつ8/31までの期間内では、PayoutPanelStateのpayout手数料を0円にすること", async () => {
+      let ctx: PayoutContextFixture | undefined;
+      let originalFeeConfig: FeeConfigSnapshot | undefined;
+
+      try {
+        const fixture = await createServiceContext(
+          "system-fee-grace-panel",
+          {},
+          "2026-05-16T23:59:59+09:00"
+        );
+        ctx = fixture.ctx;
+        originalFeeConfig = fixture.originalFeeConfig;
+        jest.useFakeTimers().setSystemTime(new Date("2026-05-20T00:00:00+09:00"));
+        stripeDouble.setBalance({
+          available: [{ amount: PAYOUT_FEE, currency: "jpy", source_types: { card: PAYOUT_FEE } }],
+        });
+
+        const result = await fixture.service.getPayoutPanelState({
+          userId: ctx.user.id,
+          communityId: ctx.communityId,
+        });
+
+        const success = expectAppSuccess(result);
+        expect(success.data).toEqual(
+          expect.objectContaining({
+            availableAmount: PAYOUT_FEE,
+            payoutRequestFeeAmount: 0,
+            payoutAmount: PAYOUT_FEE,
+            canRequestPayout: true,
+            disabledReason: undefined,
+          })
+        );
+        expect(stripeDouble.chargeCreateCalls).toHaveLength(0);
+        expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+      } finally {
+        jest.useRealTimers();
+        await cleanupContext(ctx, originalFeeConfig);
+      }
+    });
+
+    it("5/16以前登録ユーザーかつ8/31までの期間内では、Account Debitを作成せずgross_amount全額をPayoutすること", async () => {
+      let ctx: PayoutContextFixture | undefined;
+      let originalFeeConfig: FeeConfigSnapshot | undefined;
+
+      try {
+        const fixture = await createServiceContext(
+          "system-fee-grace-create",
+          {},
+          "2026-05-16T23:59:59+09:00"
+        );
+        ctx = fixture.ctx;
+        originalFeeConfig = fixture.originalFeeConfig;
+        jest.useFakeTimers().setSystemTime(new Date("2026-05-20T00:00:00+09:00"));
+        stripeDouble.setBalance({
+          available: [{ amount: 1000, currency: "jpy", source_types: { card: 1000 } }],
+        });
+        confirmedPayout({ amount: 1000 });
+
+        const result = await fixture.service.requestPayout({
+          userId: ctx.user.id,
+          communityId: ctx.communityId,
+        });
+
+        const success = expectAppSuccess(result);
+        const row = await getPayoutRequestById(ctx, success.data.payoutRequestId);
+        expect(success.data).toEqual(
+          expect.objectContaining({
+            amount: 1000,
+            grossAmount: 1000,
+            systemFeeAmount: 0,
+            systemFeeState: "not_started",
+          })
+        );
+        expect(row).toEqual(
+          expect.objectContaining({
+            amount: 1000,
+            gross_amount: 1000,
+            system_fee_amount: 0,
+            system_fee_state: "not_started",
+            system_fee_idempotency_key: null,
+            stripe_account_debit_payment_id: null,
+            stripe_account_debit_transfer_id: null,
+          })
+        );
+        expect(stripeDouble.chargeCreateCalls).toHaveLength(0);
+        expect(stripeDouble.payoutCreateCalls).toHaveLength(1);
+        expect(stripeDouble.payoutCreateCalls[0]).toEqual(
+          expect.objectContaining({
+            params: expect.objectContaining({ amount: 1000 }),
+          })
+        );
+      } finally {
+        jest.useRealTimers();
+        await cleanupContext(ctx, originalFeeConfig);
+      }
+    });
+
+    it("5/17以降登録ユーザーは、無料期間内でもfee_configのpayout手数料を使うこと", async () => {
+      let ctx: PayoutContextFixture | undefined;
+      let originalFeeConfig: FeeConfigSnapshot | undefined;
+
+      try {
+        const fixture = await createServiceContext(
+          "system-fee-grace-new-user",
+          {},
+          "2026-05-17T00:00:00+09:00"
+        );
+        ctx = fixture.ctx;
+        originalFeeConfig = fixture.originalFeeConfig;
+        jest.useFakeTimers().setSystemTime(new Date("2026-05-20T00:00:00+09:00"));
+        stripeDouble.setBalance({
+          available: [{ amount: 1000, currency: "jpy", source_types: { card: 1000 } }],
+        });
+        confirmedAccountDebit();
+        confirmedPayout({ amount: 740 });
+
+        const result = await fixture.service.requestPayout({
+          userId: ctx.user.id,
+          communityId: ctx.communityId,
+        });
+
+        const success = expectAppSuccess(result);
+        const row = await getPayoutRequestById(ctx, success.data.payoutRequestId);
+        expect(row).toEqual(
+          expect.objectContaining({
+            amount: 740,
+            gross_amount: 1000,
+            system_fee_amount: PAYOUT_FEE,
+            system_fee_state: "succeeded",
+          })
+        );
+        expect(stripeDouble.chargeCreateCalls).toHaveLength(1);
+        expect(stripeDouble.payoutCreateCalls).toHaveLength(1);
+      } finally {
+        jest.useRealTimers();
+        await cleanupContext(ctx, originalFeeConfig);
+      }
+    });
+
+    it("9/1以降は、5/16以前登録ユーザーでもfee_configのpayout手数料を使うこと", async () => {
+      let ctx: PayoutContextFixture | undefined;
+      let originalFeeConfig: FeeConfigSnapshot | undefined;
+
+      try {
+        const fixture = await createServiceContext(
+          "system-fee-grace-expired",
+          {},
+          "2026-05-16T23:59:59+09:00"
+        );
+        ctx = fixture.ctx;
+        originalFeeConfig = fixture.originalFeeConfig;
+        jest.useFakeTimers().setSystemTime(new Date("2026-09-01T00:00:00+09:00"));
+        stripeDouble.setBalance({
+          available: [{ amount: 1000, currency: "jpy", source_types: { card: 1000 } }],
+        });
+
+        const result = await fixture.service.getPayoutPanelState({
+          userId: ctx.user.id,
+          communityId: ctx.communityId,
+        });
+
+        const success = expectAppSuccess(result);
+        expect(success.data).toEqual(
+          expect.objectContaining({
+            availableAmount: 1000,
+            payoutRequestFeeAmount: PAYOUT_FEE,
+            payoutAmount: 740,
+            canRequestPayout: true,
+            disabledReason: undefined,
+          })
+        );
+        expect(stripeDouble.chargeCreateCalls).toHaveLength(0);
+        expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
+      } finally {
+        jest.useRealTimers();
+        await cleanupContext(ctx, originalFeeConfig);
+      }
     });
   });
 

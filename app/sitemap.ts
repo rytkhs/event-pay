@@ -23,7 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: `${appUrl}/terms`,
-      lastModified: "2026-04-21",
+      lastModified: "2026-05-16",
       changeFrequency: "yearly",
       priority: 0.2,
     },
@@ -35,7 +35,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: `${appUrl}/tokushoho/platform`,
-      lastModified: "2026-04-21",
+      lastModified: "2026-05-16",
       changeFrequency: "yearly",
       priority: 0.2,
     },
