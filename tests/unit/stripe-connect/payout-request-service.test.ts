@@ -57,7 +57,11 @@ describe("PayoutRequestService", () => {
       expectAppSuccess(result);
       expect(result).toEqual(
         expect.objectContaining({
-          data: { availableAmount: 1200, pendingAmount: 800, currency: "jpy" },
+          data: expect.objectContaining({
+            availableAmount: 1200,
+            pendingAmount: 800,
+            currency: "jpy",
+          }),
         })
       );
       expect(stripeDouble.balanceRetrieveCalls[0]?.options).toEqual(
@@ -76,7 +80,11 @@ describe("PayoutRequestService", () => {
       expectAppSuccess(result);
       expect(result).toEqual(
         expect.objectContaining({
-          data: { availableAmount: 0, pendingAmount: 900, currency: "jpy" },
+          data: expect.objectContaining({
+            availableAmount: 0,
+            pendingAmount: 900,
+            currency: "jpy",
+          }),
         })
       );
       expect(stripeDouble.payoutCreateCalls).toHaveLength(0);
@@ -94,7 +102,11 @@ describe("PayoutRequestService", () => {
       expectAppSuccess(result);
       expect(result).toEqual(
         expect.objectContaining({
-          data: { availableAmount: 0, pendingAmount: 0, currency: "jpy" },
+          data: expect.objectContaining({
+            availableAmount: 0,
+            pendingAmount: 0,
+            currency: "jpy",
+          }),
         })
       );
     });
@@ -113,7 +125,11 @@ describe("PayoutRequestService", () => {
       expectAppSuccess(result);
       expect(result).toEqual(
         expect.objectContaining({
-          data: { availableAmount: 1200, pendingAmount: 700, currency: "jpy" },
+          data: expect.objectContaining({
+            availableAmount: 1200,
+            pendingAmount: 700,
+            currency: "jpy",
+          }),
         })
       );
     });
@@ -139,13 +155,13 @@ describe("PayoutRequestService", () => {
       });
       stripeDouble.setPayoutResponse({
         id: "po_test_created",
-        amount: 1500,
+        amount: 1240,
         status: "pending",
       });
     });
 
     // 正常系の最小成功条件を固定する
-    it("入金可能なpayout_profileとavailable残高が存在する時、available全額のpayout_requestを作成してStripe Payoutを作成すること", async () => {
+    it("入金可能なpayout_profileとavailable残高が存在する時、振込手数料を差し引いたpayout_requestを作成してStripe Payoutを作成すること", async () => {
       const result = await service.requestPayout({
         userId: ctx.user.id,
         communityId: ctx.communityId,
@@ -154,10 +170,32 @@ describe("PayoutRequestService", () => {
       const success = expectAppSuccess(result);
       const row = await getPayoutRequestById(ctx, success.data.payoutRequestId);
       expect(success.data).toEqual(
-        expect.objectContaining({ amount: 1500, currency: "jpy", status: "pending" })
+        expect.objectContaining({
+          amount: 1240,
+          grossAmount: 1500,
+          systemFeeAmount: 260,
+          systemFeeState: "succeeded",
+          currency: "jpy",
+          status: "pending",
+        })
       );
-      expect(row).toEqual(expect.objectContaining({ amount: 1500, status: "pending" }));
+      expect(row).toEqual(
+        expect.objectContaining({
+          amount: 1240,
+          gross_amount: 1500,
+          system_fee_amount: 260,
+          system_fee_state: "succeeded",
+          status: "pending",
+        })
+      );
+      expect(stripeDouble.chargeCreateCalls).toHaveLength(1);
+      expect(stripeDouble.chargeCreateCalls[0]?.params).toEqual(
+        expect.objectContaining({ amount: 260, currency: "jpy", source: ctx.stripeAccountId })
+      );
       expect(stripeDouble.payoutCreateCalls).toHaveLength(1);
+      expect(stripeDouble.payoutCreateCalls[0]?.params).toEqual(
+        expect.objectContaining({ amount: 1240, currency: "jpy" })
+      );
     });
 
     // 入金実行可否はDBキャッシュではなくStripe Accountの最新payouts_enabledで判定する
@@ -319,7 +357,7 @@ describe("PayoutRequestService", () => {
     it("同じpayout_profileにcreation_unknownのpayout_requestが存在する時、保存済みidempotency_keyで復旧すること", async () => {
       await createPayoutRequestFixture(ctx, {
         status: "creation_unknown",
-        amount: 1500,
+        amount: 1240,
         idempotencyKey: "stored_existing_key",
       });
 
@@ -419,6 +457,10 @@ describe("PayoutRequestService", () => {
       const row = await getPayoutRequestById(ctx, success.data.payoutRequestId);
 
       expect(row?.idempotency_key).toBe("payout_fixed_idempotency_key");
+      expect(row?.system_fee_idempotency_key).toBe("payout_fee_fixed_idempotency_key");
+      expect(stripeDouble.chargeCreateCalls[0]?.options).toEqual(
+        expect.objectContaining({ idempotencyKey: row?.system_fee_idempotency_key })
+      );
       expect(stripeDouble.payoutCreateCalls[0]?.options).toEqual(
         expect.objectContaining({ idempotencyKey: row?.idempotency_key })
       );
@@ -426,7 +468,11 @@ describe("PayoutRequestService", () => {
 
     // DB作成後にStripe作成成功した場合の状態遷移を固定する
     it("Stripe Payout作成に成功した時、payout_requestをpendingに更新しstripe_payout_idを保存すること", async () => {
-      stripeDouble.setPayoutResponse({ id: "po_created_contract", status: "pending" });
+      stripeDouble.setPayoutResponse({
+        id: "po_created_contract",
+        amount: 1240,
+        status: "pending",
+      });
 
       const result = await service.requestPayout({
         userId: ctx.user.id,
@@ -468,7 +514,7 @@ describe("PayoutRequestService", () => {
     });
 
     // Stripeの業務エラー時の状態を固定する
-    it("Stripe Payout作成がinsufficient_fundsで失敗した時、payout_requestをfailedに更新して失敗Resultを返すこと", async () => {
+    it("振込手数料回収後にStripe Payout作成がinsufficient_fundsで失敗した時、payout_requestをmanual_review_requiredに更新して失敗Resultを返すこと", async () => {
       stripeDouble.setPayoutError(
         new Stripe.errors.StripeInvalidRequestError({
           message: "insufficient funds",
@@ -483,7 +529,11 @@ describe("PayoutRequestService", () => {
 
       expectAppFailure(result);
       expect(await listPayoutRequests(ctx)).toEqual([
-        expect.objectContaining({ status: "failed", failure_code: "insufficient_funds" }),
+        expect.objectContaining({
+          status: "manual_review_required",
+          system_fee_state: "succeeded",
+          failure_code: "payout_creation_failed_after_fee_collected",
+        }),
       ]);
 
       const panelResult = await service.getPayoutPanelState({
@@ -493,8 +543,8 @@ describe("PayoutRequestService", () => {
       const panelSuccess = expectAppSuccess(panelResult);
       expect(panelSuccess.data.latestRequest).toEqual(
         expect.objectContaining({
-          status: "failed",
-          failureCode: "insufficient_funds",
+          status: "manual_review_required",
+          failureCode: "payout_creation_failed_after_fee_collected",
         })
       );
     });
@@ -512,6 +562,7 @@ describe("PayoutRequestService", () => {
           message: "insufficient funds",
           code: "insufficient_funds",
         } as any),
+        systemFeeCollected: false,
         failureMessageFallback: "Payout creation failed",
         failedUserMessage: "振込リクエストの作成に失敗しました。",
       });
@@ -540,11 +591,15 @@ describe("PayoutRequestService", () => {
 
       expectAppFailure(result);
       expect(await listPayoutRequests(ctx)).toEqual([
-        expect.objectContaining({ status: "creation_unknown", failure_message: "network failed" }),
+        expect.objectContaining({
+          status: "creation_unknown",
+          system_fee_state: "succeeded",
+          failure_message: "network failed",
+        }),
       ]);
     });
 
-    it("Stripe Payout作成がRate Limitで失敗した時、payout_requestをfailedに更新してretryableな失敗Resultを返すこと", async () => {
+    it("振込手数料回収後にStripe Payout作成がRate Limitで失敗した時、payout_requestをmanual_review_requiredに更新してretryableな失敗Resultを返すこと", async () => {
       stripeDouble.setPayoutError(
         new Stripe.errors.StripeRateLimitError({ message: "rate limited" } as any)
       );
@@ -558,7 +613,12 @@ describe("PayoutRequestService", () => {
       expect(failure.error.code).toBe("RATE_LIMITED");
       expect(failure.error.retryable).toBe(true);
       expect(await listPayoutRequests(ctx)).toEqual([
-        expect.objectContaining({ status: "failed", failure_message: "rate limited" }),
+        expect.objectContaining({
+          status: "manual_review_required",
+          system_fee_state: "succeeded",
+          failure_code: "payout_creation_failed_after_fee_collected",
+          failure_message: "rate limited",
+        }),
       ]);
     });
 
@@ -566,7 +626,9 @@ describe("PayoutRequestService", () => {
     it("creation_unknownのpayout_requestを復旧する時、available残高が0でも保存済みidempotency_keyでStripe Payout作成を再試行すること", async () => {
       await createPayoutRequestFixture(ctx, {
         status: "creation_unknown",
-        amount: 1500,
+        amount: 1240,
+        systemFeeAmount: 260,
+        systemFeeState: "succeeded",
         idempotencyKey: "stored_recovery_key",
       });
       stripeDouble.setBalance({
@@ -588,7 +650,9 @@ describe("PayoutRequestService", () => {
     it("creation_unknownのpayout_request復旧時に外部銀行口座が利用不可ならStripe Payoutを再試行しないこと", async () => {
       await createPayoutRequestFixture(ctx, {
         status: "creation_unknown",
-        amount: 1500,
+        amount: 1240,
+        systemFeeAmount: 260,
+        systemFeeState: "succeeded",
         idempotencyKey: "stored_recovery_key",
       });
       stripeDouble.setExternalAccounts([{ status: "errored" }]);
@@ -608,7 +672,14 @@ describe("PayoutRequestService", () => {
       await createPayoutRequestFixture(ctx, {
         status: "creation_unknown",
         amount: 1200,
+        systemFeeAmount: 260,
+        systemFeeState: "succeeded",
         idempotencyKey: "stored_recovery_key",
+      });
+      stripeDouble.setPayoutResponse({
+        id: "po_recovered_stored_amount",
+        amount: 1200,
+        status: "pending",
       });
       stripeDouble.setBalance({
         available: [{ amount: 1500, currency: "jpy", source_types: { card: 1500 } }],
@@ -632,7 +703,9 @@ describe("PayoutRequestService", () => {
     it("24時間超のcreation_unknownはmanual_review_requiredに更新し、Stripe Payoutを再試行しないこと", async () => {
       const request = await createPayoutRequestFixture(ctx, {
         status: "creation_unknown",
-        amount: 1500,
+        amount: 1240,
+        systemFeeAmount: 260,
+        systemFeeState: "succeeded",
         idempotencyKey: "stored_expired_key",
         requestedAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
       });
@@ -666,7 +739,12 @@ describe("PayoutRequestService", () => {
 
       expectAppFailure(result);
       expect(await listPayoutRequests(ctx)).toEqual([
-        expect.objectContaining({ status: "failed", failure_message: "unexpected" }),
+        expect.objectContaining({
+          status: "manual_review_required",
+          system_fee_state: "succeeded",
+          failure_code: "payout_creation_failed_after_fee_collected",
+          failure_message: "unexpected",
+        }),
       ]);
     });
   });

@@ -210,7 +210,10 @@ describe("仕様書通りの正常系フロー", () => {
     });
 
     // 5. Application Fee計算が正しく行われること
-    expect(context.mockApplicationFeeCalculator.calculateApplicationFee).toHaveBeenCalledWith(1000);
+    expect(context.mockApplicationFeeCalculator.calculateApplicationFee).toHaveBeenCalledWith(1000, {
+      eventId: context.testEvent.id,
+      payoutProfileId: expect.any(String),
+    });
 
     // 6. Stripe Customer作成が正しいパラメータで行われること
     expect(context.mockCreateOrRetrieveCustomer).toHaveBeenCalledWith({

@@ -47,6 +47,7 @@ export class FeeConfigService {
     stripe: StripeFeeConfig;
     platform: PlatformFeeConfig;
     minPayoutAmount: number;
+    payoutRequestFeeAmount: number;
   }> {
     // キャッシュチェック
     if (!forceRefresh) {
@@ -62,6 +63,7 @@ export class FeeConfigService {
           stripe: cached.stripe,
           platform: cached.platform,
           minPayoutAmount: cached.minPayoutAmount,
+          payoutRequestFeeAmount: cached.payoutRequestFeeAmount,
         };
       }
       logger.debug("Fee config cache miss", {
@@ -102,6 +104,7 @@ export class FeeConfigService {
           stripe: failsafeCache.stripe,
           platform: failsafeCache.platform,
           minPayoutAmount: failsafeCache.minPayoutAmount,
+          payoutRequestFeeAmount: failsafeCache.payoutRequestFeeAmount,
         };
       }
 
@@ -117,11 +120,12 @@ export class FeeConfigService {
     stripe: StripeFeeConfig;
     platform: PlatformFeeConfig;
     minPayoutAmount: number;
+    payoutRequestFeeAmount: number;
   }> {
     const { data, error } = await this.supabase
       .from("fee_config")
       .select(
-        "stripe_base_rate, stripe_fixed_fee, platform_fee_rate, platform_fixed_fee, min_platform_fee, max_platform_fee, min_payout_amount, platform_tax_rate, is_tax_included"
+        "stripe_base_rate, stripe_fixed_fee, platform_fee_rate, platform_fixed_fee, min_platform_fee, max_platform_fee, min_payout_amount, payout_request_fee_amount, platform_tax_rate, is_tax_included"
       )
       .limit(1)
       .maybeSingle();
@@ -142,10 +146,11 @@ export class FeeConfigService {
     if (
       data.stripe_base_rate === null ||
       data.stripe_fixed_fee === null ||
-      data.min_payout_amount === null
+      data.min_payout_amount === null ||
+      data.payout_request_fee_amount === null
     ) {
       throw new Error(
-        "[FeeConfigService] Critical fee_config fields are null. stripe_base_rate, stripe_fixed_fee, min_payout_amount are required."
+        "[FeeConfigService] Critical fee_config fields are null. stripe_base_rate, stripe_fixed_fee, min_payout_amount, payout_request_fee_amount are required."
       );
     }
 
@@ -163,7 +168,12 @@ export class FeeConfigService {
       isTaxIncluded: data.is_tax_included ?? true,
     };
 
-    return { stripe, platform, minPayoutAmount: Number(data.min_payout_amount) };
+    return {
+      stripe,
+      platform,
+      minPayoutAmount: Number(data.min_payout_amount),
+      payoutRequestFeeAmount: Number(data.payout_request_fee_amount),
+    };
   }
 
   /**

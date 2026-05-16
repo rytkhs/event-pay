@@ -85,15 +85,17 @@ export const PricingSection: React.FC = () => {
                   </p>
                 </div>
                 <div className="flex items-baseline justify-center md:justify-start gap-1">
-                  <span className="text-5xl font-bold text-primary">4.9</span>
+                  <span className="text-4xl font-bold text-primary">4.9</span>
                   <span className="text-2xl font-bold text-slate-700">%</span>
+                  <span className="text-4xl font-bold text-slate-500">+ 50</span>
+                  <span className="text-2xl font-bold text-slate-700">円</span>
                 </div>
 
                 <div className="mt-4 bg-slate-50 border border-slate-200 p-4 rounded-xl text-left">
                   <p className="text-sm text-slate-600 leading-relaxed">
                     主催者が受け取りたい金額に合わせて、手数料を考慮した参加費を設定できます。
                     <span className="text-xs text-slate-400 mt-1 block">
-                      例: 3,000円を受け取りたい場合 → 参加費を約3,155円に設定
+                      例: 3,000円を受け取りたい場合 → 参加費を約3,210円に設定
                       <br />
                       （自動計算ツール内蔵）
                     </span>

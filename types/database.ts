@@ -341,6 +341,7 @@ export type Database = {
           max_platform_fee: number;
           min_payout_amount: number;
           min_platform_fee: number;
+          payout_request_fee_amount: number;
           platform_fee_rate: number;
           platform_fixed_fee: number;
           platform_tax_rate: number;
@@ -354,6 +355,7 @@ export type Database = {
           max_platform_fee?: number;
           min_payout_amount?: number;
           min_platform_fee?: number;
+          payout_request_fee_amount?: number;
           platform_fee_rate?: number;
           platform_fixed_fee?: number;
           platform_tax_rate?: number;
@@ -367,6 +369,7 @@ export type Database = {
           max_platform_fee?: number;
           min_payout_amount?: number;
           min_platform_fee?: number;
+          payout_request_fee_amount?: number;
           platform_fee_rate?: number;
           platform_fixed_fee?: number;
           platform_tax_rate?: number;
@@ -717,15 +720,23 @@ export type Database = {
           currency: string;
           failure_code: string | null;
           failure_message: string | null;
+          gross_amount: number;
           id: string;
           idempotency_key: string;
           payout_profile_id: string;
           requested_at: string;
           requested_by: string;
           status: Database["public"]["Enums"]["payout_request_status"];
+          stripe_account_debit_payment_id: string | null;
+          stripe_account_debit_transfer_id: string | null;
           stripe_account_id: string;
           stripe_created_at: string | null;
           stripe_payout_id: string | null;
+          system_fee_amount: number;
+          system_fee_failure_code: string | null;
+          system_fee_failure_message: string | null;
+          system_fee_idempotency_key: string | null;
+          system_fee_state: Database["public"]["Enums"]["payout_system_fee_state"];
           updated_at: string;
         };
         Insert: {
@@ -735,15 +746,23 @@ export type Database = {
           currency?: string;
           failure_code?: string | null;
           failure_message?: string | null;
+          gross_amount: number;
           id?: string;
           idempotency_key: string;
           payout_profile_id: string;
           requested_at?: string;
           requested_by: string;
           status?: Database["public"]["Enums"]["payout_request_status"];
+          stripe_account_debit_payment_id?: string | null;
+          stripe_account_debit_transfer_id?: string | null;
           stripe_account_id: string;
           stripe_created_at?: string | null;
           stripe_payout_id?: string | null;
+          system_fee_amount: number;
+          system_fee_failure_code?: string | null;
+          system_fee_failure_message?: string | null;
+          system_fee_idempotency_key?: string | null;
+          system_fee_state?: Database["public"]["Enums"]["payout_system_fee_state"];
           updated_at?: string;
         };
         Update: {
@@ -753,15 +772,23 @@ export type Database = {
           currency?: string;
           failure_code?: string | null;
           failure_message?: string | null;
+          gross_amount?: number;
           id?: string;
           idempotency_key?: string;
           payout_profile_id?: string;
           requested_at?: string;
           requested_by?: string;
           status?: Database["public"]["Enums"]["payout_request_status"];
+          stripe_account_debit_payment_id?: string | null;
+          stripe_account_debit_transfer_id?: string | null;
           stripe_account_id?: string;
           stripe_created_at?: string | null;
           stripe_payout_id?: string | null;
+          system_fee_amount?: number;
+          system_fee_failure_code?: string | null;
+          system_fee_failure_message?: string | null;
+          system_fee_idempotency_key?: string | null;
+          system_fee_state?: Database["public"]["Enums"]["payout_system_fee_state"];
           updated_at?: string;
         };
         Relationships: [
@@ -1299,6 +1326,12 @@ export type Database = {
         | "canceled"
         | "creation_unknown"
         | "manual_review_required";
+      payout_system_fee_state:
+        | "not_started"
+        | "succeeded"
+        | "failed"
+        | "creation_unknown"
+        | "manual_review_required";
       stripe_account_status_enum: "unverified" | "onboarding" | "verified" | "restricted";
     };
     CompositeTypes: {
@@ -1462,6 +1495,13 @@ export const Constants = {
         "paid",
         "failed",
         "canceled",
+        "creation_unknown",
+        "manual_review_required",
+      ],
+      payout_system_fee_state: [
+        "not_started",
+        "succeeded",
+        "failed",
         "creation_unknown",
         "manual_review_required",
       ],

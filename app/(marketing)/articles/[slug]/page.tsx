@@ -153,7 +153,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         </header>
 
         {/* 本文エリア */}
-        <div className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+        <div className="mx-auto w-full max-w-3xl px-4 pb-14 sm:px-6 lg:px-8 lg:pb-20">
           {/* Markdown 本文 */}
           <div
             className={[

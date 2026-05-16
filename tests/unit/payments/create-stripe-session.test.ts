@@ -8,7 +8,7 @@
 
 import * as DestinationCharges from "../../../core/stripe/destination-charges";
 import { PaymentErrorType } from "../../../core/types/payment-errors";
-import { ApplicationFeeCalculator } from "../../../features/payments/services/fee-config/application-fee-calculator";
+import { ApplicationFeeCalculator } from "@core/stripe/fee-config/application-fee-calculator";
 import { PaymentService, PaymentErrorHandler } from "../../../features/payments/server";
 import {
   createMockStripeClient,
@@ -27,7 +27,7 @@ jest.mock("../../../core/stripe/destination-charges", () => {
 });
 
 // Application fee calculator をモック
-jest.mock("../../../features/payments/services/fee-config/application-fee-calculator");
+jest.mock("@core/stripe/fee-config/application-fee-calculator");
 
 describe("PaymentService - Stripe Checkout セッション作成", () => {
   let paymentService: PaymentService;
@@ -159,7 +159,11 @@ describe("PaymentService - Stripe Checkout セッション作成", () => {
 
         // Assert - Calculator が正しい金額で呼び出されること
         expect(mockApplicationFeeCalculator.calculateApplicationFee).toHaveBeenCalledWith(
-          testData.amount
+          testData.amount,
+          {
+            eventId: testData.eventId,
+            payoutProfileId: testData.payoutProfileId,
+          }
         );
 
         // Assert - 計算された手数料が destination-charges に渡されること

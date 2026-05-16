@@ -1,7 +1,14 @@
 import { logger } from "@core/logging/app-logger";
 import type { AppSupabaseClient } from "@core/types/supabase";
 
+import {
+  type ApplicationFeeConfigResolutionOptions,
+  resolvePlatformFeeConfigForApplicationFee,
+} from "./application-fee-config-resolver";
+import { calculateApplicationFeeEstimate } from "./application-fee-estimator";
 import { FeeConfigService, type PlatformFeeConfig } from "./service";
+
+export type ApplicationFeeCalculationOptions = ApplicationFeeConfigResolutionOptions;
 
 /**
  * Application Fee 計算結果
@@ -54,22 +61,25 @@ export interface ApplicationFeeCalculation {
  * - MVP段階: 税率0%のため税額は常に0円
  */
 export class ApplicationFeeCalculator {
+  private supabase: AppSupabaseClient<"public">;
   private feeConfigService: FeeConfigService;
 
   constructor(supabaseClient: AppSupabaseClient<"public">) {
+    this.supabase = supabaseClient;
     this.feeConfigService = new FeeConfigService(supabaseClient);
   }
 
   /**
    * Application Fee金額を計算
    * @param amount 決済金額（円）
-   * @param forceRefresh fee_configを強制再取得するか
+   * @param options fee_configの再取得指定、または猶予料金判定用コンテキスト
    * @returns 計算結果
    */
   async calculateApplicationFee(
     amount: number,
-    forceRefresh = false
+    options: ApplicationFeeCalculationOptions = false
   ): Promise<ApplicationFeeCalculation> {
+    const forceRefresh = typeof options === "boolean" ? options : options.forceRefresh ?? false;
     // 入力値検証
     if (!Number.isInteger(amount) || amount <= 0) {
       throw new Error(`Invalid amount: ${amount}. Amount must be a positive integer.`);
@@ -77,10 +87,19 @@ export class ApplicationFeeCalculator {
 
     // fee_config取得
     const { platform } = await this.feeConfigService.getConfig(forceRefresh);
+    const resolvedPlatformFeeConfig = await resolvePlatformFeeConfigForApplicationFee(
+      this.supabase,
+      platform,
+      options
+    );
 
     // 計算実行
-    const calculation = this.performCalculation(amount, platform);
-    const taxCalculation = this.calculateTax(calculation.afterMaximum, platform);
+    const estimate = calculateApplicationFeeEstimate(amount, resolvedPlatformFeeConfig.platform);
+    const calculation = estimate.calculation;
+    const taxCalculation = this.calculateTax(
+      calculation.afterMaximum,
+      resolvedPlatformFeeConfig.platform
+    );
 
     logger.info("Application fee calculated", {
       category: "payment",
@@ -96,13 +115,14 @@ export class ApplicationFeeCalculator {
       feeExcludingTax: taxCalculation.feeExcludingTax,
       taxAmount: taxCalculation.taxAmount,
       isTaxIncluded: taxCalculation.isTaxIncluded,
+      legacyApplicationFeeApplied: resolvedPlatformFeeConfig.legacyApplicationFeeApplied,
       outcome: "success",
     });
 
     return {
       amount,
       applicationFeeAmount: calculation.afterMaximum,
-      config: platform,
+      config: resolvedPlatformFeeConfig.platform,
       calculation,
       taxCalculation,
     };
@@ -139,7 +159,7 @@ export class ApplicationFeeCalculator {
 
     // 各金額に対して計算実行
     const results = amounts.map((amount) => {
-      const calculation = this.performCalculation(amount, platform);
+      const calculation = calculateApplicationFeeEstimate(amount, platform).calculation;
       const taxCalculation = this.calculateTax(calculation.afterMaximum, platform);
       return {
         amount,
@@ -162,42 +182,6 @@ export class ApplicationFeeCalculator {
     });
 
     return results;
-  }
-
-  /**
-   * 実際の計算ロジック
-   * @param amount 決済金額（円）
-   * @param config プラットフォーム手数料設定
-   * @returns 計算詳細
-   */
-  private performCalculation(
-    amount: number,
-    config: PlatformFeeConfig
-  ): ApplicationFeeCalculation["calculation"] {
-    // 1. 基本計算: 四捨五入 → 固定手数料追加
-    const rateFee = Math.round(amount * config.rate);
-    const fixedFee = config.fixedFee;
-    const beforeClipping = rateFee + fixedFee;
-
-    // 2. 最小値適用
-    const afterMinimum = Math.max(beforeClipping, config.minimumFee);
-
-    // 3. 最大値適用
-    let afterMaximum = afterMinimum;
-    if (config.maximumFee > 0) {
-      afterMaximum = Math.min(afterMinimum, config.maximumFee);
-    }
-
-    // 4. 決済金額上限適用（application_fee_amountは決済金額を超えられない）
-    afterMaximum = Math.min(afterMaximum, amount);
-
-    return {
-      rateFee,
-      fixedFee,
-      beforeClipping,
-      afterMinimum,
-      afterMaximum,
-    };
   }
 
   /**

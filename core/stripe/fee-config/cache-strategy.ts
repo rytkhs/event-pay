@@ -7,6 +7,7 @@ interface FeeConfigCacheEntry {
   stripe: StripeFeeConfig;
   platform: PlatformFeeConfig;
   minPayoutAmount: number;
+  payoutRequestFeeAmount: number;
   fetchedAt: number;
   environment: string;
 }

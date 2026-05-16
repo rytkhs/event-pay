@@ -5,9 +5,10 @@ import {
   BanknoteArrowDown,
   Clock,
   CreditCard,
+  FileText,
+  JapaneseYen,
   Landmark,
   ReceiptText,
-  ShieldCheck,
   Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -15,15 +16,13 @@ import type { Metadata } from "next";
 
 import { buildOpenGraphMetadata, getPublicUrl } from "@core/seo/metadata";
 
-import { Button } from "@/components/ui/button";
-
 import { GuideBottomCTA } from "../_components/GuideBottomCTA";
 
 export const dynamic = "force-static";
 
 const title = "オンライン集金・振込のしくみ";
 const description =
-  "みんなの集金でオンライン決済を受け付けたときのお金の流れ、アプリ内での振込操作、振込タイミングの目安を主催者向けにまとめました。";
+  "みんなの集金でオンライン決済を受け付けたときのお金の流れ、振込操作、振込タイミングの目安を主催者向けにまとめました。";
 
 export const metadata: Metadata = {
   title,
@@ -41,89 +40,73 @@ export const metadata: Metadata = {
 type FlowStep = {
   title: string;
   body: string;
-  detail: string;
   icon: LucideIcon;
 };
 
-type PayoutDetail = {
+type PayoutItem = {
   title: string;
   body: string;
   icon: LucideIcon;
 };
 
-type GuideLink = {
-  title: string;
+type PrepareItem = {
+  label: string;
   body: string;
-  href: string;
 };
+
+const prepareItems: PrepareItem[] = [
+  {
+    label: "本人確認書類",
+    body: "運転免許証やマイナンバーカードなど、Stripeが受け付ける本人確認書類。",
+  },
+  {
+    label: "振込先銀行口座",
+    body: "集金した参加費を受け取る銀行口座。",
+  },
+  {
+    label: "コミュニティの説明",
+    body: "コミュニティの簡単な説明文。",
+  },
+];
 
 const flowSteps: FlowStep[] = [
   {
-    title: "オンライン集金を有効にする",
-    body: "主催者がStripe連携を完了すると、イベントでオンライン決済を選べるようになります。",
-    detail:
-      "コミュニティの説明を入力後、本人確認情報、振込先銀行口座、コミュニティ情報をStripeの安全な画面で登録します。",
-    icon: ShieldCheck,
-  },
-  {
     title: "参加者がオンラインで支払う",
-    body: "参加者はゲストページからStripeの決済画面へ進み、カードやウォレットで支払います。",
-    detail: "決済画面と決済処理はStripeが提供します。カード情報は当サービスでは保持しません。",
+    body: "参加者はゲストページからStripeの決済画面へ進み、カードやウォレットで支払います。カード情報は当サービスでは保持しません。",
     icon: CreditCard,
   },
   {
-    title: "支払い状況が反映される",
-    body: "決済が完了すると、参加者一覧やゲストページの支払い状況が更新されます。",
-    detail: "オンラインでの集金は集金状況が自動で更新されます。",
+    title: "支払い状況が自動で反映される",
+    body: "決済が完了すると、参加者リストやゲストページの支払い状況が自動で更新されます。",
     icon: ReceiptText,
   },
   {
-    title: "振込可能額に反映される",
-    body: "オンライン集金分は、主催者用のStripeアカウント残高に反映されます。",
-    detail: "決済直後は処理中の残高として扱われ、Stripe側の処理後に振込できる残高へ移ります。",
+    title: "Stripe残高に反映される",
+    body: "集金分は主催者のStripeアカウント残高に反映されます。決済直後は処理中の残高として扱われ、Stripe側の処理後に振込可能残高へ移ります。",
     icon: Wallet,
   },
   {
-    title: "口座に振り込む",
-    body: "利用可能残高になったら振込。",
-    detail: "振込操作画面から、好きなタイミングで登録済みの口座への振込操作を行います。",
+    title: "集金を引き出す",
+    body: "振込可能残高になったら、振込操作画面から登録済みの銀行口座へ振り込みます。",
     icon: BanknoteArrowDown,
   },
 ];
 
-const payoutDetails: PayoutDetail[] = [
+const payoutItems: PayoutItem[] = [
   {
-    title: "処理中の残高があります",
-    body: "支払い完了後すぐに銀行口座へ入るわけではありません。Stripe側の処理が終わると、利用可能残高として振込できる状態になります。",
+    title: "振込タイミング",
+    body: "通常、決済完了から数営業日で振込可能残高になります。振込申請から口座着金までは数営業日程度です。初回振込は7〜14日程度が目安です。銀行営業日やStripeの状況によって前後します。",
     icon: Clock,
   },
   {
-    title: "振込タイミング",
-    body: "通常、決済完了から数営業日で残高が利用可能になります。ただし、初回振込に関しては7〜14日程度が目安です。銀行営業日やStripeの状況によって前後する場合があります。",
-    icon: BanknoteArrowDown,
-  },
-  {
-    title: "詳細はStripeダッシュボードで確認",
-    body: "残高、振込可能額、振込予定、振込履歴、振込先口座はStripeダッシュボードで確認します。振込はアプリから行うことができます。",
+    title: "残高と振込の確認",
+    body: "振込可能額、処理中の残高、振込履歴などの詳細をStripeダッシュボードで確認できます。振込操作はアプリ内から行うことができます。",
     icon: Landmark,
   },
-];
-
-const guideLinks: GuideLink[] = [
   {
-    title: "主催者のはじめ方",
-    body: "イベント作成、招待リンク共有、参加者一覧での確認までの主催者向け手順を確認できます。",
-    href: "/guide/getting-started",
-  },
-  {
-    title: "参加者の登録と支払いの流れ",
-    body: "参加者に見える画面、入力項目、オンライン支払いまでの流れを確認できます。",
-    href: "/guide/participant-flow",
-  },
-  {
-    title: "料金と手数料",
-    body: "オンライン集金手数料や、受取額の見方を確認できます。",
-    href: "/guide/pricing-and-fees",
+    title: "振込手数料",
+    body: "振込1回ごとに260円の振込手数料が発生します。振込手数料は振込額から差し引かれます。",
+    icon: JapaneseYen,
   },
 ];
 
@@ -142,7 +125,7 @@ function SectionHeading({
       <h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-4xl">
         {title}
       </h2>
-      <p className="mt-4 text-base leading-8 text-slate-600">{body}</p>
+      {body && <p className="mt-4 text-base leading-8 text-slate-600">{body}</p>}
     </div>
   );
 }
@@ -151,7 +134,7 @@ export default function OnlineCollectionGuidePage() {
   return (
     <div className="min-h-screen bg-[#f7f5f0] text-slate-950">
       <section className="border-b border-slate-900/10 bg-[#f7f5f0]">
-        <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 pb-16 pt-24 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,0.7fr)] lg:px-8 lg:pb-24 lg:pt-32">
+        <div className="mx-auto w-full max-w-7xl px-4 pb-16 pt-24 sm:px-6 lg:px-8 lg:pb-24 lg:pt-32">
           <div className="max-w-3xl">
             <p className="text-sm font-bold text-primary">Online collection</p>
             <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
@@ -159,35 +142,46 @@ export default function OnlineCollectionGuidePage() {
               <span className="text-primary">振込のしくみ</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-9 text-slate-700">
-              参加者がオンラインで支払った参加費は、Stripeを通じて主催者の残高に反映されます。
-              銀行口座への振込は、主催者が振込画面から手動で行います。
+              参加者がオンラインで支払った参加費が、主催者の銀行口座に届くまでの流れをまとめました。
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button asChild size="lg" className="h-12 rounded-full px-6">
-                <Link href="/register">
-                  オンライン集金を始める
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="h-12 rounded-full border-slate-300 bg-white/60 px-6"
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b border-slate-900/10 bg-white">
+        <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
+          <div>
+            <SectionHeading
+              eyebrow="Setup"
+              title="オンライン集金設定の準備"
+              body="オンライン集金設定を行うと、イベントでオンラインで参加費を受け付けられるようになります。この設定で、集金を受け取るのためのStripeアカウントを作成します。以下を用意してください。"
+            />
+          </div>
+
+          <div className="grid gap-3">
+            {prepareItems.map((item) => (
+              <div
+                key={item.label}
+                className="flex items-start gap-4 border-b border-slate-900/10 py-5"
               >
-                <Link href="/guide/getting-started">主催者ガイドを見る</Link>
-              </Button>
-            </div>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <FileText className="h-4 w-4" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-950">{item.label}</p>
+                  <p className="mt-1 text-sm text-slate-500">{item.body}</p>
+                </div>
+              </div>
+            ))}
+            <p className="text-sm leading-7 text-slate-500">
+              Stripeの安全な画面で入力します。設定はイベント作成前でも、あとからでも可能です。
+            </p>
           </div>
         </div>
       </section>
 
       <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <SectionHeading
-          eyebrow="Money flow"
-          title="参加者の支払いから、主催者の振込操作まで。"
-          body="オンライン集金では、参加者の支払い、みんなの集金上の支払い状況、Stripe上の残高、銀行口座への振込を分けて考えると流れを理解しやすくなります。"
-        />
+        <SectionHeading eyebrow="Money flow" title="支払いから振込までの流れ" body="" />
 
         <div className="mt-12 divide-y divide-slate-900/10 border-y border-slate-900/10 bg-white/60">
           {flowSteps.map((step, index) => {
@@ -196,7 +190,7 @@ export default function OnlineCollectionGuidePage() {
             return (
               <article
                 key={step.title}
-                className="grid gap-5 px-5 py-7 sm:grid-cols-[72px_minmax(0,1fr)] sm:px-7 lg:grid-cols-[88px_minmax(0,280px)_minmax(0,1fr)] lg:items-start lg:px-8"
+                className="grid gap-5 px-5 py-7 sm:grid-cols-[72px_minmax(0,1fr)] sm:px-7 lg:items-start lg:px-8"
               >
                 <div className="flex items-center gap-3 sm:block">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-950 text-white">
@@ -210,7 +204,6 @@ export default function OnlineCollectionGuidePage() {
                   <h3 className="text-xl font-bold leading-snug text-slate-950">{step.title}</h3>
                   <p className="mt-3 text-base leading-8 text-slate-700">{step.body}</p>
                 </div>
-                <p className="text-sm leading-7 text-slate-500 lg:pt-1">{step.detail}</p>
               </article>
             );
           })}
@@ -219,14 +212,10 @@ export default function OnlineCollectionGuidePage() {
 
       <section className="border-y border-slate-900/10 bg-white">
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
-          <SectionHeading
-            eyebrow="Payout"
-            title="アプリ内で残高を確認し、口座へ振り込みます。"
-            body="決済直後は処理中の残高として扱われ、利用可能残高になってから主催者が銀行口座へ振り込みます。"
-          />
+          <SectionHeading eyebrow="Payout" title="振込のタイミングと確認" body="" />
 
           <div className="grid gap-4">
-            {payoutDetails.map((item) => {
+            {payoutItems.map((item) => {
               const Icon = item.icon;
 
               return (
@@ -248,27 +237,44 @@ export default function OnlineCollectionGuidePage() {
         </div>
       </section>
 
-      <section className="bg-[#e9f2ef]">
-        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24 grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
-          <SectionHeading eyebrow="Next guides" title="関連ガイド" body="" />
+      <section className="border-b border-slate-900/10 bg-[#e9f2ef]">
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+          <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
+            <SectionHeading eyebrow="Next" title="次に読む" body="" />
 
-          <div className="divide-y divide-slate-900/10 border-y border-slate-900/10 bg-white/70">
-            {guideLinks.map((guide) => (
+            <div>
               <Link
-                key={guide.href}
-                href={guide.href}
-                className="group grid gap-3 px-5 py-6 transition-colors hover:bg-white sm:grid-cols-[minmax(0,1fr)_32px] sm:items-center sm:px-7"
+                href="/guide/pricing-and-fees"
+                className="group grid gap-3 border border-slate-900/10 bg-white/70 px-5 py-6 transition-colors hover:bg-white sm:grid-cols-[minmax(0,1fr)_32px] sm:items-center sm:px-7"
               >
                 <span>
-                  <span className="block text-lg font-bold text-slate-950">{guide.title}</span>
-                  <span className="mt-2 block text-sm leading-7 text-slate-600">{guide.body}</span>
+                  <span className="block text-lg font-bold text-slate-950">
+                    料金と手数料を確認する
+                  </span>
+                  <span className="mt-2 block text-sm leading-7 text-slate-600">
+                    オンライン集金手数料の計算例と受取目安を確認できます。
+                  </span>
                 </span>
                 <ArrowRight
                   className="h-5 w-5 text-primary transition-transform group-hover:translate-x-1"
                   aria-hidden="true"
                 />
               </Link>
-            ))}
+              <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+                <Link
+                  href="/guide/getting-started"
+                  className="font-medium text-slate-600 underline decoration-slate-300 underline-offset-4 hover:text-primary"
+                >
+                  主催者のはじめ方
+                </Link>
+                <Link
+                  href="/guide/participant-flow"
+                  className="font-medium text-slate-600 underline decoration-slate-300 underline-offset-4 hover:text-primary"
+                >
+                  参加者の登録と支払いの流れ
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -276,9 +282,9 @@ export default function OnlineCollectionGuidePage() {
       <GuideBottomCTA
         eyebrow="Start online collection"
         title="オンライン集金は、必要なイベントから始められます。"
-        body="現金集金と併用しながら、参加費の事前回収と振込管理をまとめて確認できます。"
-        secondaryHref="/guide/participant-flow"
-        secondaryLabel="参加者の流れを見る"
+        body="オンライン集金を設定すれば、参加費の事前回収と出欠管理をまとめて行えます。"
+        secondaryHref="/guide/pricing-and-fees"
+        secondaryLabel="料金と手数料を見る"
       />
     </div>
   );

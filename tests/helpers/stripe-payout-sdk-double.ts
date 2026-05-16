@@ -12,6 +12,11 @@ type PayoutCreateCall = {
   options?: Stripe.RequestOptions;
 };
 
+type ChargeCreateCall = {
+  params: Stripe.ChargeCreateParams;
+  options?: Stripe.RequestOptions;
+};
+
 type BalanceSettingsUpdateCall = {
   params: Stripe.BalanceSettingsUpdateParams;
   options?: Stripe.RequestOptions;
@@ -58,6 +63,66 @@ const defaultPayout = (overrides: Partial<Stripe.Payout> = {}): Stripe.Payout =>
     ...overrides,
   }) as Stripe.Payout;
 
+const defaultCharge = (overrides: Partial<Stripe.Charge> = {}): Stripe.Charge =>
+  ({
+    id: `py_test_${Math.random().toString(36).slice(2, 12)}`,
+    object: "charge",
+    amount: 260,
+    amount_captured: 260,
+    amount_refunded: 0,
+    application: null,
+    application_fee: null,
+    application_fee_amount: null,
+    balance_transaction: null,
+    billing_details: {
+      address: null,
+      email: null,
+      name: null,
+      phone: null,
+      tax_id: null,
+    },
+    calculated_statement_descriptor: null,
+    captured: true,
+    created: Math.floor(Date.now() / 1000),
+    currency: "jpy",
+    customer: null,
+    description: null,
+    disputed: false,
+    failure_balance_transaction: null,
+    failure_code: null,
+    failure_message: null,
+    fraud_details: {},
+    livemode: false,
+    metadata: {},
+    on_behalf_of: null,
+    order: null,
+    outcome: null,
+    paid: true,
+    payment_intent: null,
+    payment_method: null,
+    payment_method_details: null,
+    receipt_email: null,
+    receipt_number: null,
+    receipt_url: null,
+    refunded: false,
+    refunds: {
+      object: "list",
+      data: [],
+      has_more: false,
+      url: "/v1/charges/py_test/refunds",
+    },
+    review: null,
+    shipping: null,
+    source: null,
+    source_transfer: "tr_test_system_fee",
+    statement_descriptor: null,
+    statement_descriptor_suffix: null,
+    status: "succeeded",
+    transfer_data: null,
+    transfer_group: null,
+    ...overrides,
+  }) as Stripe.Charge;
+
 const defaultAccount = (overrides: Partial<Stripe.Account> = {}): Stripe.Account =>
   ({
     id: "acct_test_default",
@@ -102,12 +167,15 @@ export function installStripePayoutSdkDouble() {
     balanceError: undefined as unknown,
     payoutError: undefined as unknown,
     payoutResponse: undefined as Stripe.Payout | undefined,
+    chargeError: undefined as unknown,
+    chargeResponse: undefined as Stripe.Charge | undefined,
     account: defaultAccount(),
     accountError: undefined as unknown,
     externalAccounts: [defaultBankAccount()] as Stripe.ExternalAccount[],
     externalAccountsError: undefined as unknown,
     balanceSettingsError: undefined as unknown,
     payoutCreateCalls: [] as PayoutCreateCall[],
+    chargeCreateCalls: [] as ChargeCreateCall[],
     balanceRetrieveCalls: [] as Array<{ params: unknown; options?: Stripe.RequestOptions }>,
     accountRetrieveCalls: [] as AccountRetrieveCall[],
     externalAccountsListCalls: [] as ExternalAccountsListCall[],
@@ -144,6 +212,24 @@ export function installStripePayoutSdkDouble() {
               currency: params.currency,
               metadata: params.metadata ?? {},
               status: "paid",
+            })
+          );
+        }
+      ),
+    },
+    charges: {
+      create: jest.fn(
+        async (params: Stripe.ChargeCreateParams, options?: Stripe.RequestOptions) => {
+          state.chargeCreateCalls.push({ params, options });
+          if (state.chargeError) {
+            throw state.chargeError;
+          }
+          return (
+            state.chargeResponse ??
+            defaultCharge({
+              amount: params.amount,
+              currency: params.currency,
+              metadata: params.metadata ?? {},
             })
           );
         }
@@ -219,6 +305,12 @@ export function installStripePayoutSdkDouble() {
     setPayoutError(error: unknown) {
       state.payoutError = error;
     },
+    setChargeResponse(charge: Partial<Stripe.Charge>) {
+      state.chargeResponse = defaultCharge(charge);
+    },
+    setChargeError(error: unknown) {
+      state.chargeError = error;
+    },
     setAccount(account: Partial<Stripe.Account>) {
       state.account = defaultAccount(account);
     },
@@ -239,12 +331,15 @@ export function installStripePayoutSdkDouble() {
       state.balanceError = undefined;
       state.payoutError = undefined;
       state.payoutResponse = undefined;
+      state.chargeError = undefined;
+      state.chargeResponse = undefined;
       state.account = defaultAccount();
       state.accountError = undefined;
       state.externalAccounts = [defaultBankAccount()];
       state.externalAccountsError = undefined;
       state.balanceSettingsError = undefined;
       state.payoutCreateCalls = [];
+      state.chargeCreateCalls = [];
       state.balanceRetrieveCalls = [];
       state.accountRetrieveCalls = [];
       state.externalAccountsListCalls = [];
@@ -253,6 +348,9 @@ export function installStripePayoutSdkDouble() {
     },
     get payoutCreateCalls() {
       return state.payoutCreateCalls;
+    },
+    get chargeCreateCalls() {
+      return state.chargeCreateCalls;
     },
     get balanceRetrieveCalls() {
       return state.balanceRetrieveCalls;
