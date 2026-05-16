@@ -8,9 +8,7 @@ import {
   CalendarClock,
   CreditCard,
   Link2,
-  MailCheck,
-  ReceiptText,
-  UserCheck,
+  Mail,
   UserCog,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -18,15 +16,13 @@ import type { Metadata } from "next";
 
 import { buildOpenGraphMetadata, getPublicUrl } from "@core/seo/metadata";
 
-import { Button } from "@/components/ui/button";
-
 import { GuideBottomCTA } from "../_components/GuideBottomCTA";
 
 export const dynamic = "force-static";
 
 const title = "参加者の登録と支払いの流れ";
 const description =
-  "みんなの集金で参加者が招待リンクから出欠を回答し、オンライン決済または現金払いを選び、ゲストページで支払い状況を確認するまでの流れをまとめました。";
+  "みんなの集金で参加者が招待リンクから出欠を回答し、ゲストページで決済・確認するまでの流れをまとめました。";
 
 export const metadata: Metadata = {
   title,
@@ -41,87 +37,69 @@ export const metadata: Metadata = {
   }),
 };
 
-type FlowStep = {
+type Phase = {
+  eyebrow: string;
   title: string;
-  body: string;
-  detail: string;
+  summary: string;
   icon: LucideIcon;
+  points: { label: string; body: string }[];
 };
 
-type GuideLink = {
-  title: string;
+type AutoEmail = {
+  label: string;
   body: string;
-  href: string;
 };
 
-const flowSteps: FlowStep[] = [
+const phases: Phase[] = [
   {
-    title: "招待リンクを開く",
-    body: "主催者から届いたリンクを開くと、イベントの参加登録ページが表示されます。",
-    detail:
-      "LINE、メール、チャットなど、共有されたリンクからそのままアクセスできます。ログインや会員登録は不要です。",
+    eyebrow: "招待ページ",
+    title: "リンクを開いて、出欠と支払い方法を回答する。",
+    summary:
+      "主催者から届いたリンクを開くと、イベントの参加登録ページが表示されます。ログインや会員登録は不要です。",
     icon: Link2,
+    points: [
+      {
+        label: "イベント内容の確認",
+        body: "日時、場所、参加費、出欠回答期限、定員を確認します。",
+      },
+      {
+        label: "出欠の回答",
+        body: "名前（ニックネーム）、メールアドレス、参加ステータス（参加・未定・不参加）を回答します。",
+      },
+      {
+        label: "支払い方法の選択",
+        body: "有料イベントに参加する場合、オンラインまたは現金を選びます。無料イベントや不参加の場合は不要です。",
+      },
+    ],
   },
   {
-    title: "イベント詳細を確認する",
-    body: "日時、場所、参加費、出欠回答期限、定員、説明文を確認します。",
-    detail:
-      "オンライン決済を受け付けるイベントでは、オンライン支払い期限も表示されます。現金払いだけのイベントでは、現金での支払い案内に従います。",
-    icon: CalendarClock,
-  },
-  {
-    title: "出欠を回答する",
-    body: "名前(ニックネーム)、メールアドレス、参加ステータスを入力します。",
-    detail:
-      "参加ステータスは「参加」「未定」「不参加」から選べます。「未定」は定員に含まれず、支払いも発生しません。",
-    icon: UserCheck,
-  },
-  {
-    title: "支払い方法を選ぶ",
-    body: "有料イベントで参加する場合だけ、オンラインまたは現金を選びます。",
-    detail:
-      "表示される支払い方法はイベントごとに異なります。無料イベント、未定、不参加の場合は支払い方法の選択は不要です。",
-    icon: ReceiptText,
-  },
-  {
-    title: "登録完了メールを受け取る",
-    body: "登録が完了すると、確認メールと個人用のゲストページURLが発行されます。",
-    detail:
-      "ゲストページURLは参加状況や支払い状況を確認するための個人用リンクです。第三者には共有しないでください。",
-    icon: MailCheck,
-  },
-  {
-    title: "ゲストページで決済・確認する",
-    body: "オンライン決済を選んだ場合は、ゲストページのボタンからStripe Checkoutへ進みます。",
-    detail:
-      "支払い完了後は、ゲストページや支払い完了メールで状態を確認できます。現金払いの場合は、主催者へ直接支払います。",
-    icon: CreditCard,
-  },
-  {
-    title: "必要ならあとから変更する",
-    body: "締切までは、ゲストページから出欠や支払い方法を変更できます。",
-    detail:
-      "出欠回答期限後、イベント中止後、支払い完了後などは変更できない場合があります。画面に表示される案内に従ってください。",
+    eyebrow: "ゲストページ",
+    title: "決済と変更は、ゲストページから。",
+    summary:
+      "登録完了後に届くメールに含まれる個人用URLからアクセスします。第三者には共有しないでください。",
     icon: UserCog,
+    points: [
+      {
+        label: "オンライン決済",
+        body: "オンライン支払いを選んだ場合は、ボタンからStripeの決済ページへ進みます。支払い完了後は状態が自動で更新されます。",
+      },
+      {
+        label: "状況の確認",
+        body: "支払い状況や参加ステータスをいつでも確認できます。",
+      },
+      {
+        label: "出欠・支払い方法の変更",
+        body: "回答期限までは出欠や支払い方法を変更できます。変更できない場合は画面に案内が表示されます。",
+      },
+    ],
   },
 ];
 
-const guideLinks: GuideLink[] = [
-  {
-    title: "主催者のはじめ方",
-    body: "イベント作成、招待リンク共有、参加者一覧での確認までの主催者向け手順を確認できます。",
-    href: "/guide/getting-started",
-  },
-  {
-    title: "オンライン集金・振込のしくみ",
-    body: "カード決済、Stripe、振込の考え方を詳しく確認できます。",
-    href: "/guide/online-collection",
-  },
-  {
-    title: "料金と手数料",
-    body: "オンライン集金手数料や、参加者・主催者に関係する料金を確認できます。",
-    href: "/guide/pricing-and-fees",
-  },
+const autoEmails: AutoEmail[] = [
+  { label: "登録完了", body: "ゲストページURLを含む確認メール" },
+  { label: "出欠回答期限リマインド", body: "回答期限が近い未回答者へ" },
+  { label: "支払い期限リマインド", body: "支払い期限が近い未払い者へ" },
+  { label: "イベント前日リマインド", body: "参加予定者へ" },
 ];
 
 function SectionHeading({
@@ -139,7 +117,7 @@ function SectionHeading({
       <h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-4xl">
         {title}
       </h2>
-      <p className="mt-4 text-base leading-8 text-slate-600">{body}</p>
+      {body && <p className="mt-4 text-base leading-8 text-slate-600">{body}</p>}
     </div>
   );
 }
@@ -246,7 +224,7 @@ function GuestPhoneMock() {
           <div className="bg-amber-500 px-5 py-5 text-center text-white">
             <CreditCard className="mx-auto mb-2 h-7 w-7" aria-hidden="true" />
             <p className="text-sm font-bold">参加予定・決済待ち</p>
-            <p className="mt-1 text-[9px] opacity-90">決済を完了してください。</p>
+            {/* <p className="mt-1 text-[9px] opacity-90">決済を完了してください。</p> */}
             <div className="mx-auto mt-3 min-w-[138px] rounded-lg bg-white/20 px-4 py-2">
               <p className="text-[9px] opacity-80">参加費</p>
               <p className="font-mono text-xl font-bold">3,500円</p>
@@ -259,8 +237,8 @@ function GuestPhoneMock() {
                 <p className="truncate font-semibold text-slate-800">たなか</p>
               </div>
               <div>
-                <p className="text-[8px] font-bold uppercase text-slate-400">Status</p>
-                <p className="font-semibold text-slate-800">未払い</p>
+                <p className="text-[8px] font-bold uppercase text-slate-400">Mail</p>
+                <p className="font-semibold text-slate-800">ta***.com</p>
               </div>
             </div>
           </div>
@@ -322,87 +300,105 @@ export default function ParticipantFlowGuidePage() {
               <span className="text-primary">支払いの流れ</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-9 text-slate-700">
-              招待リンクを開いて、イベント内容を確認し、出欠を回答するまで。
-              オンライン決済、現金払い、登録後の確認・変更までを参加者目線でまとめました。
+              参加者が操作する画面は、招待ページとゲストページの2つです。
+              それぞれの画面で何ができるかをまとめました。
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button asChild size="lg" className="h-12 rounded-full px-6">
-                <Link href="/register">
-                  主催者としてはじめる
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="h-12 rounded-full border-slate-300 bg-white/60 px-6"
-              >
-                <Link href="/guide/getting-started">主催者ガイドを見る</Link>
-              </Button>
-            </div>
           </div>
 
           <ParticipantFlowMockup />
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <SectionHeading
-          eyebrow="Registration flow"
-          title="招待リンクから、ゲストページまで。"
-          body="参加者が操作する画面は、招待ページとゲストページの2つです。まず招待ページで回答し、登録後に発行されるゲストページで支払い状況の確認やオンライン決済を行います。"
-        />
+      {phases.map((phase) => {
 
-        <div className="mt-12 divide-y divide-slate-900/10 border-y border-slate-900/10 bg-white/60">
-          {flowSteps.map((step, index) => {
-            const Icon = step.icon;
+        return (
+          <section key={phase.eyebrow} className="border-b border-slate-900/10">
+            <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
+              <div>
+                <SectionHeading eyebrow={phase.eyebrow} title={phase.title} body={phase.summary} />
+              </div>
 
-            return (
-              <article
-                key={step.title}
-                className="grid gap-5 px-5 py-7 sm:grid-cols-[72px_minmax(0,1fr)] sm:px-7 lg:grid-cols-[88px_minmax(0,280px)_minmax(0,1fr)] lg:items-start lg:px-8"
+              <div className="grid gap-4">
+                {phase.points.map((point) => (
+                  <article
+                    key={point.label}
+                    className="border border-slate-200 bg-white/70 p-5"
+                  >
+                    <h3 className="text-base font-bold text-slate-950">{point.label}</h3>
+                    <p className="mt-2 text-sm leading-7 text-slate-600">{point.body}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+        );
+      })}
+
+      <section className="border-b border-slate-900/10 bg-white">
+        <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
+          <SectionHeading
+            eyebrow="Auto emails"
+            title="自動で届くメール"
+            body="参加者には、以下のタイミングでゲストページURLを含むメールが届きます。"
+          />
+
+          <div className="grid gap-3">
+            {autoEmails.map((email) => (
+              <div
+                key={email.label}
+                className="flex items-center gap-4 border-b border-slate-900/10 py-4"
               >
-                <div className="flex items-center gap-3 sm:block">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-950 text-white">
-                    <Icon className="h-5 w-5" aria-hidden="true" />
-                  </div>
-                  <p className="font-mono text-sm font-bold text-primary sm:mt-3">
-                    {String(index + 1).padStart(2, "0")}
-                  </p>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Mail className="h-4 w-4" aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold leading-snug text-slate-950">{step.title}</h3>
-                  <p className="mt-3 text-base leading-8 text-slate-700">{step.body}</p>
+                  <p className="text-sm font-bold text-slate-950">{email.label}</p>
+                  <p className="text-sm text-slate-500">{email.body}</p>
                 </div>
-                <p className="text-sm leading-7 text-slate-500 lg:pt-1">{step.detail}</p>
-              </article>
-            );
-          })}
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="bg-[#e9f2ef]">
-        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24 grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
-          <SectionHeading eyebrow="Next guides" title="関連ガイド" body="" />
+      <section className="border-b border-slate-900/10 bg-[#e9f2ef]">
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+          <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
+            <SectionHeading eyebrow="Next" title="次に読む" body="" />
 
-          <div className="divide-y divide-slate-900/10 border-y border-slate-900/10 bg-white/70">
-            {guideLinks.map((guide) => (
+            <div>
               <Link
-                key={guide.href}
-                href={guide.href}
-                className="group grid gap-3 px-5 py-6 transition-colors hover:bg-white sm:grid-cols-[minmax(0,1fr)_32px] sm:items-center sm:px-7"
+                href="/guide/getting-started"
+                className="group grid gap-3 border border-slate-900/10 bg-white/70 px-5 py-6 transition-colors hover:bg-white sm:grid-cols-[minmax(0,1fr)_32px] sm:items-center sm:px-7"
               >
                 <span>
-                  <span className="block text-lg font-bold text-slate-950">{guide.title}</span>
-                  <span className="mt-2 block text-sm leading-7 text-slate-600">{guide.body}</span>
+                  <span className="block text-lg font-bold text-slate-950">
+                    主催者として始める
+                  </span>
+                  <span className="mt-2 block text-sm leading-7 text-slate-600">
+                    アカウント作成からイベント公開までの主催者向け手順を確認できます。
+                  </span>
                 </span>
                 <ArrowRight
                   className="h-5 w-5 text-primary transition-transform group-hover:translate-x-1"
                   aria-hidden="true"
                 />
               </Link>
-            ))}
+              <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+                <Link
+                  href="/guide/online-collection"
+                  className="font-medium text-slate-600 underline decoration-slate-300 underline-offset-4 hover:text-primary"
+                >
+                  オンライン集金のしくみ
+                </Link>
+                <Link
+                  href="/guide/pricing-and-fees"
+                  className="font-medium text-slate-600 underline decoration-slate-300 underline-offset-4 hover:text-primary"
+                >
+                  料金と手数料
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -410,7 +406,7 @@ export default function ParticipantFlowGuidePage() {
       <GuideBottomCTA
         eyebrow="Share the link"
         title="参加者には、招待リンクを送るだけ。"
-        body="回答、支払い方法の選択、ゲストページでの確認まで、参加者自身で進められます。主催者は参加者一覧で出欠と支払い状況をまとめて確認できます。"
+        body="回答から決済まで、参加者自身で進められます。主催者は管理画面で状況をまとめて確認できます。"
         secondaryHref="/guide/getting-started"
         secondaryLabel="主催者ガイドを見る"
       />
