@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { notFound } from "next/navigation";
 
 import { requireNonEmptyCommunityWorkspaceForServerComponent } from "@core/community/app-workspace";
+import { resolvePlatformFeeConfigForNewEventApplicationFee } from "@core/stripe/fee-config/application-fee-config-resolver";
 import { FeeConfigService, type PlatformFeeConfig } from "@core/stripe/fee-config/service";
 import { createServerComponentSupabaseClient } from "@core/supabase/factory";
 import type { AppSupabaseClient } from "@core/types/supabase";
@@ -14,11 +15,16 @@ import { getDashboardConnectCtaStatus } from "@features/stripe-connect/server";
 import { createEventAction } from "./actions";
 
 async function resolveFeeEstimateConfig(
-  supabase: AppSupabaseClient<"public">
+  supabase: AppSupabaseClient<"public">,
+  ownerUserId: string
 ): Promise<PlatformFeeConfig | null> {
   try {
     const { platform } = await new FeeConfigService(supabase).getConfig();
-    return platform;
+    const resolution = await resolvePlatformFeeConfigForNewEventApplicationFee(supabase, platform, {
+      ownerUserId,
+    });
+
+    return resolution.platform;
   } catch {
     return null;
   }
@@ -40,7 +46,7 @@ export default async function CreateEventPage() {
       currentCommunityId: currentCommunity.id,
       eventPayoutProfileId: null,
     }),
-    resolveFeeEstimateConfig(supabase),
+    resolveFeeEstimateConfig(supabase, workspace.currentUser.id),
   ]);
   const canUseOnlinePayments = payoutResolution.isReady;
 

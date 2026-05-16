@@ -1,4 +1,5 @@
 import { ApplicationFeeCalculator } from "@core/stripe/fee-config/application-fee-calculator";
+import { resolvePlatformFeeConfigForNewEventApplicationFee } from "@core/stripe/fee-config/application-fee-config-resolver";
 import { calculateApplicationFeeEstimate } from "@core/stripe/fee-config/application-fee-estimator";
 import { FeeConfigService } from "@core/stripe/fee-config/service";
 
@@ -132,6 +133,76 @@ describe("calculateApplicationFeeEstimate", () => {
         fixedFee: 100,
       }).applicationFeeAmount
     ).toBe(80);
+  });
+});
+
+describe("resolvePlatformFeeConfigForNewEventApplicationFee", () => {
+  beforeEach(() => {
+    new FeeConfigService({} as any).invalidateCache();
+  });
+
+  it("5/16以前登録ユーザーが6/30以前に作成するイベントでは旧rate/fixedを返す", async () => {
+    const supabase = buildSupabaseClient({
+      ownerCreatedAt: "2026-05-16T23:59:59+09:00",
+      eventCreatedAt: "2026-06-30T23:59:59+09:00",
+    });
+
+    const result = await resolvePlatformFeeConfigForNewEventApplicationFee(
+      supabase as any,
+      platformFeeConfig,
+      {
+        ownerUserId: OWNER_USER_ID,
+        eventCreatedAt: new Date("2026-06-30T23:59:59+09:00"),
+      }
+    );
+
+    expect(result).toEqual({
+      platform: {
+        ...platformFeeConfig,
+        rate: 0.049,
+        fixedFee: 0,
+      },
+      legacyApplicationFeeApplied: true,
+    });
+  });
+
+  it("5/17以降登録ユーザーまたは7/1以降作成イベントではfee_configを返す", async () => {
+    const newUserSupabase = buildSupabaseClient({
+      ownerCreatedAt: "2026-05-17T00:00:00+09:00",
+      eventCreatedAt: "2026-06-30T23:59:59+09:00",
+    });
+    const newEventSupabase = buildSupabaseClient({
+      ownerCreatedAt: "2026-05-16T23:59:59+09:00",
+      eventCreatedAt: "2026-07-01T00:00:00+09:00",
+    });
+
+    await expect(
+      resolvePlatformFeeConfigForNewEventApplicationFee(
+        newUserSupabase as any,
+        platformFeeConfig,
+        {
+          ownerUserId: OWNER_USER_ID,
+          eventCreatedAt: new Date("2026-06-30T23:59:59+09:00"),
+        }
+      )
+    ).resolves.toEqual({
+      platform: platformFeeConfig,
+      legacyApplicationFeeApplied: false,
+    });
+
+    await expect(
+      resolvePlatformFeeConfigForNewEventApplicationFee(
+        newEventSupabase as any,
+        platformFeeConfig,
+        {
+          ownerUserId: OWNER_USER_ID,
+          eventCreatedAt: new Date("2026-07-01T00:00:00+09:00"),
+        }
+      )
+    ).resolves.toEqual({
+      platform: platformFeeConfig,
+      legacyApplicationFeeApplied: false,
+    });
   });
 });
 

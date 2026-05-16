@@ -24,10 +24,7 @@ export async function resolvePlatformFeeConfigForApplicationFee(
   legacyApplicationFeeApplied: boolean;
 }> {
   if (typeof options === "boolean" || !options.eventId || !options.payoutProfileId) {
-    return {
-      platform,
-      legacyApplicationFeeApplied: false,
-    };
+    return buildPlatformFeeConfigResolution(platform, false);
   }
 
   const shouldApplyLegacyFee = await shouldApplyLegacyApplicationFee(supabase, {
@@ -36,20 +33,66 @@ export async function resolvePlatformFeeConfigForApplicationFee(
   });
 
   if (!shouldApplyLegacyFee) {
-    return {
-      platform,
-      legacyApplicationFeeApplied: false,
-    };
+    return buildPlatformFeeConfigResolution(platform, false);
   }
 
+  return buildPlatformFeeConfigResolution(platform, true);
+}
+
+export async function resolvePlatformFeeConfigForNewEventApplicationFee(
+  supabase: AppSupabaseClient<"public">,
+  platform: PlatformFeeConfig,
+  params: {
+    ownerUserId: string;
+    eventCreatedAt?: Date;
+  }
+): Promise<{
+  platform: PlatformFeeConfig;
+  legacyApplicationFeeApplied: boolean;
+}> {
+  const shouldApplyLegacyFee = await shouldApplyLegacyApplicationFeeForNewEvent(supabase, {
+    ownerUserId: params.ownerUserId,
+    eventCreatedAt: params.eventCreatedAt ?? new Date(),
+  });
+
+  if (!shouldApplyLegacyFee) {
+    return buildPlatformFeeConfigResolution(platform, false);
+  }
+
+  return buildPlatformFeeConfigResolution(platform, true);
+}
+
+function buildPlatformFeeConfigResolution(
+  platform: PlatformFeeConfig,
+  legacyApplicationFeeApplied: boolean
+): {
+  platform: PlatformFeeConfig;
+  legacyApplicationFeeApplied: boolean;
+} {
   return {
-    platform: {
-      ...platform,
-      rate: LEGACY_PLATFORM_FEE_RATE,
-      fixedFee: LEGACY_PLATFORM_FIXED_FEE,
-    },
-    legacyApplicationFeeApplied: true,
+    platform: legacyApplicationFeeApplied ? applyLegacyApplicationFeeConfig(platform) : platform,
+    legacyApplicationFeeApplied,
   };
+}
+
+function applyLegacyApplicationFeeConfig(platform: PlatformFeeConfig): PlatformFeeConfig {
+  return {
+    ...platform,
+    rate: LEGACY_PLATFORM_FEE_RATE,
+    fixedFee: LEGACY_PLATFORM_FIXED_FEE,
+  };
+}
+
+function shouldApplyLegacyApplicationFeeByDates(params: {
+  ownerCreatedAt: string | Date;
+  eventCreatedAt: string | Date;
+}): boolean {
+  return (
+    new Date(params.ownerCreatedAt).getTime() <
+      new Date(LEGACY_APPLICATION_FEE_REGISTERED_BEFORE).getTime() &&
+    new Date(params.eventCreatedAt).getTime() <
+      new Date(LEGACY_APPLICATION_FEE_EVENT_CREATED_BEFORE).getTime()
+  );
 }
 
 async function shouldApplyLegacyApplicationFee(
@@ -107,10 +150,38 @@ async function shouldApplyLegacyApplicationFee(
     );
   }
 
-  return (
-    new Date(ownerUser.created_at).getTime() <
-      new Date(LEGACY_APPLICATION_FEE_REGISTERED_BEFORE).getTime() &&
-    new Date(event.created_at).getTime() <
-      new Date(LEGACY_APPLICATION_FEE_EVENT_CREATED_BEFORE).getTime()
-  );
+  return shouldApplyLegacyApplicationFeeByDates({
+    ownerCreatedAt: ownerUser.created_at,
+    eventCreatedAt: event.created_at,
+  });
+}
+
+async function shouldApplyLegacyApplicationFeeForNewEvent(
+  supabase: AppSupabaseClient<"public">,
+  params: {
+    ownerUserId: string;
+    eventCreatedAt: Date;
+  }
+): Promise<boolean> {
+  const { data: ownerUser, error: ownerUserError } = await supabase
+    .from("users")
+    .select("created_at")
+    .eq("id", params.ownerUserId)
+    .maybeSingle<{ created_at: string }>();
+
+  if (ownerUserError) {
+    throw new Error(
+      `[ApplicationFeeCalculator] Failed to fetch payout profile owner: ${ownerUserError.message}`
+    );
+  }
+  if (!ownerUser) {
+    throw new Error(
+      `[ApplicationFeeCalculator] Payout profile owner not found: ${params.ownerUserId}`
+    );
+  }
+
+  return shouldApplyLegacyApplicationFeeByDates({
+    ownerCreatedAt: ownerUser.created_at,
+    eventCreatedAt: params.eventCreatedAt,
+  });
 }
