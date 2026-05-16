@@ -1,6 +1,4 @@
 import "server-only";
-import fs from "node:fs/promises";
-import path from "node:path";
 
 import matter from "@11ty/gray-matter";
 import rehypeSanitize from "rehype-sanitize";
@@ -21,13 +19,7 @@ export type RenderedMarkdown = {
   frontmatter: MarkdownFrontmatter;
 };
 
-export async function renderMarkdownFromFile(relativePath: string) {
-  const absolutePath = path.resolve(process.cwd(), relativePath);
-  const content = await fs.readFile(absolutePath, "utf8");
-  return renderMarkdownFromString(content);
-}
-
-async function renderMarkdownFromString(content: string) {
+export async function renderMarkdownFromString(content: string) {
   const parsed = matter(content);
 
   const processor = unified()
