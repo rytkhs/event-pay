@@ -13,7 +13,7 @@ interface FeeCalculatorDisplayProps {
 }
 
 /**
- * 参加費の手取り額を表示するコンポーネント
+ * 参加費の受取予定額を表示するコンポーネント
  * オンライン集金手数料を差し引いた実際の受取額を視覚的に表示
  */
 export function FeeCalculatorDisplay({
@@ -43,7 +43,7 @@ export function FeeCalculatorDisplay({
           </div>
           <div className="pt-2 border-t border-gray-200">
             <div className="flex justify-between items-center">
-              <span className="font-semibold text-gray-900">手取り額</span>
+              <span className="font-semibold text-gray-900">受取予定額</span>
               <span className="text-lg font-bold text-green-600">
                 {formatCurrency(estimate.netAmount)}円
               </span>
