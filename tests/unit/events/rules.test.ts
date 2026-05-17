@@ -101,7 +101,7 @@ describe("ATTENDEE_PAYMENT_METHODS_RESTRICTION", () => {
       originalEvent: { fee: 1000, capacity: null, payment_methods: ["stripe"] },
     });
     // 追加のみ（OK）
-    const addOnly = createTestFormData({ payment_methods: ["stripe", "cash"] });
+    const addOnly = createTestFormData({ fee: 1000, payment_methods: ["stripe", "cash"] });
     const addOnlyResult = await Promise.resolve(
       ATTENDEE_PAYMENT_METHODS_RESTRICTION.evaluate(context, addOnly)
     );
@@ -111,12 +111,60 @@ describe("ATTENDEE_PAYMENT_METHODS_RESTRICTION", () => {
     );
 
     // 解除を含む（NG）
-    const removal = createTestFormData({ payment_methods: ["cash"] });
+    const removal = createTestFormData({ fee: 1000, payment_methods: ["cash"] });
     const removalResult = await Promise.resolve(
       ATTENDEE_PAYMENT_METHODS_RESTRICTION.evaluate(context, removal)
     );
     expect(removalResult.isRestricted).toBe(true);
     expect(removalResult.message).toBe("参加者がいるため、既存の決済方法は解除できません");
+  });
+
+  it("参加者がいてもStripe集金済みがなく無料化する場合は決済方法の自動クリアを許可する", async () => {
+    const context = createTestContext({
+      hasAttendees: true,
+      hasStripePaid: false,
+      originalEvent: { fee: 1000, capacity: null, payment_methods: ["stripe", "cash"] },
+    });
+    const formData = createTestFormData({ fee: 0, payment_methods: [] });
+
+    const result = await Promise.resolve(
+      ATTENDEE_PAYMENT_METHODS_RESTRICTION.evaluate(context, formData)
+    );
+
+    expect(result.isRestricted).toBe(false);
+    expect(result.message).toBe("制限なし");
+  });
+
+  it("参加者がいて有料のまま既存の決済方法を解除する場合は制限あり", async () => {
+    const context = createTestContext({
+      hasAttendees: true,
+      hasStripePaid: false,
+      originalEvent: { fee: 1000, capacity: null, payment_methods: ["stripe", "cash"] },
+    });
+    const formData = createTestFormData({ fee: 1000, payment_methods: [] });
+
+    const result = await Promise.resolve(
+      ATTENDEE_PAYMENT_METHODS_RESTRICTION.evaluate(context, formData)
+    );
+
+    expect(result.isRestricted).toBe(true);
+    expect(result.message).toBe("参加者がいるため、既存の決済方法は解除できません");
+  });
+
+  it("Stripe集金済みがある場合は無料化でも決済方法の解除を制限する", async () => {
+    const context = createTestContext({
+      hasAttendees: true,
+      hasStripePaid: true,
+      originalEvent: { fee: 1000, capacity: null, payment_methods: ["stripe"] },
+    });
+    const formData = createTestFormData({ fee: 0, payment_methods: [] });
+
+    const result = await Promise.resolve(
+      ATTENDEE_PAYMENT_METHODS_RESTRICTION.evaluate(context, formData)
+    );
+
+    expect(result.isRestricted).toBe(true);
+    expect(result.message).toBe("参加者がいるため、既存の決済方法は解除できません");
   });
 });
 
