@@ -370,7 +370,10 @@ export async function updateEventAction(
 
     // 更新データが空の場合は既存データを返す（変更なし）
     if (Object.keys(updateData).length === 0) {
-      return ok(existingEvent, { message: "変更はありませんでした" });
+      return ok(existingEvent, {
+        message: "変更はありませんでした",
+        redirectUrl: `/events/${validatedEventId}`,
+      });
     }
 
     // データベース更新
@@ -411,7 +414,10 @@ export async function updateEventAction(
     revalidatePath("/dashboard");
     revalidatePath(`/events/${validatedEventId}`);
 
-    return ok(updatedEvent, { message: "イベントが正常に更新されました" });
+    return ok(updatedEvent, {
+      message: "イベントが正常に更新されました",
+      redirectUrl: `/events/${validatedEventId}`,
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return zodFail(error);

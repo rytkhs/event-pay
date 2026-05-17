@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, type JSX } from "react";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { format } from "date-fns";
 import {
@@ -124,6 +125,8 @@ export function SinglePageEventEditForm({
   updateEventAction,
   feeEstimateConfig = null,
 }: SinglePageEventEditFormProps): JSX.Element {
+  const router = useRouter();
+
   useMobileBottomOverlay(true);
 
   const { form, isPending, hasAttendees, changes, actions, restrictions, isFreeEvent } =
@@ -265,7 +268,10 @@ export function SinglePageEventEditForm({
   const handleConfirmChanges = async () => {
     setShowConfirmDialog(false);
     const formData = form.getValues();
-    await actions.submitFormWithChanges(formData, pendingChanges);
+    const result = await actions.submitFormWithChanges(formData, pendingChanges);
+    if (result.success && result.meta?.redirectUrl) {
+      router.push(result.meta.redirectUrl);
+    }
   };
 
   // 変更検知ヘルパー

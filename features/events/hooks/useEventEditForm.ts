@@ -19,7 +19,11 @@ import { useErrorHandler } from "@/core/hooks/useErrorHandler";
 import { createEventEditFormSchema, type EventEditFormDataRHF } from "../validation";
 
 import { useEventChanges } from "./useEventChanges";
-import { useEventSubmission, type UpdateEventAction } from "./useEventSubmission";
+import {
+  useEventSubmission,
+  type SubmissionActionMeta,
+  type UpdateEventAction,
+} from "./useEventSubmission";
 import {
   useUnifiedRestrictions,
   useRestrictionContext,
@@ -257,7 +261,7 @@ export function useEventEditForm({
   // フォーム送信処理
   const handleSubmit = useCallback(
     async (data: EventEditFormDataRHF) => {
-      return new Promise<AppResult<void>>((resolve) => {
+      return new Promise<AppResult<Event, SubmissionActionMeta>>((resolve) => {
         startTransition(async () => {
           try {
             const formData = toEventFormData(data);
@@ -296,11 +300,11 @@ export function useEventEditForm({
             });
 
             if (result.success) {
-              resolve(okResult());
+              resolve(okResult(result.data, result.meta));
               return;
             }
 
-            resolve(errResult(result.error));
+            resolve(errResult(result.error, result.meta));
           } catch (error) {
             const appError = handleError(error, {
               category: "event_management",
@@ -322,52 +326,54 @@ export function useEventEditForm({
   // 変更リストを指定して送信する関数
   const submitFormWithChanges = useCallback(
     async (data: EventEditFormDataRHF, changeList: ChangeItem[]) => {
-      const submissionResultPromise = new Promise<AppResult<void>>((resolve) => {
-        startTransition(async () => {
-          try {
-            const fullFormData = toEventFormData(data);
+      const submissionResultPromise = new Promise<AppResult<Event, SubmissionActionMeta>>(
+        (resolve) => {
+          startTransition(async () => {
+            try {
+              const fullFormData = toEventFormData(data);
 
-            // 確認された変更のみを含むフォームデータを作成
-            const selectedFormData = submission.prepareSubmissionData(fullFormData, changeList);
+              // 確認された変更のみを含むフォームデータを作成
+              const selectedFormData = submission.prepareSubmissionData(fullFormData, changeList);
 
-            // 実際の送信処理（選択された変更のみ）
-            const submissionResult = await submission.submitForm(selectedFormData, (errors) => {
-              // エラーをreact-hook-formに設定
-              Object.entries(errors).forEach(([field, message]) => {
-                if (field === "general") {
-                  form.setError("root", {
-                    type: "manual",
-                    message: message,
-                  });
-                } else {
-                  form.setError(field as keyof EventEditFormDataRHF, {
-                    type: "manual",
-                    message: message,
-                  });
-                }
+              // 実際の送信処理（選択された変更のみ）
+              const submissionResult = await submission.submitForm(selectedFormData, (errors) => {
+                // エラーをreact-hook-formに設定
+                Object.entries(errors).forEach(([field, message]) => {
+                  if (field === "general") {
+                    form.setError("root", {
+                      type: "manual",
+                      message: message,
+                    });
+                  } else {
+                    form.setError(field as keyof EventEditFormDataRHF, {
+                      type: "manual",
+                      message: message,
+                    });
+                  }
+                });
               });
-            });
 
-            if (submissionResult.success) {
-              resolve(okResult());
-              return;
+              if (submissionResult.success) {
+                resolve(okResult(submissionResult.data, submissionResult.meta));
+                return;
+              }
+
+              resolve(errResult(submissionResult.error, submissionResult.meta));
+            } catch (error) {
+              const appError = handleError(error, {
+                category: "event_management",
+                action: "event_update_error",
+                eventId: event.id,
+              });
+              form.setError("root", {
+                type: "manual",
+                message: appError.userMessage || "更新に失敗しました。もう一度お試しください。",
+              });
+              resolve(errResult(appError));
             }
-
-            resolve(errResult(submissionResult.error));
-          } catch (error) {
-            const appError = handleError(error, {
-              category: "event_management",
-              action: "event_update_error",
-              eventId: event.id,
-            });
-            form.setError("root", {
-              type: "manual",
-              message: appError.userMessage || "更新に失敗しました。もう一度お試しください。",
-            });
-            resolve(errResult(appError));
-          }
-        });
-      });
+          });
+        }
+      );
 
       return submissionResultPromise;
     },
