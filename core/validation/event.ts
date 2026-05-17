@@ -448,22 +448,9 @@ export const updateEventSchema = z
       message: "有料イベントでは決済方法の選択が必要です",
       path: ["payment_methods"],
     }
-  )
-  .refine(
-    (data) => {
-      // 同一リクエストでStripe有効化する場合はオンライン支払い期限も同時に必須
-      if (Array.isArray(data.payment_methods) && data.payment_methods.includes("stripe")) {
-        return typeof data.payment_deadline === "string" && data.payment_deadline.trim() !== "";
-      }
-      return true;
-    },
-    {
-      message: "オンライン集金を選択した場合、オンライン支払い期限は必須です",
-      path: ["payment_deadline"],
-    }
   );
 // 更新時は部分更新を考慮し、payment_deadline必須チェックはアクション本体で統合実施
-// Zodスキーマでは基本的なバリデーションのみ行う（上記は補助的な早期チェック）
+// Zodスキーマでは基本的なバリデーションのみ行う
 
 // Eventsフォーム入力契約のSoT
 export interface EventFormData {
