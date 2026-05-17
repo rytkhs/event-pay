@@ -57,7 +57,7 @@ test.describe("イベント編集（E2E）", () => {
     await expect(page).toHaveURL(`/events/${event.id}`);
 
     // 変更が反映されていることを確認
-    await expect(page.getByText("新しい会場A").first()).toBeVisible(); // 開催場所
+    await expect(page.getByText("新しい会場A").first()).toBeVisible(); // 場所
     await expect(page.getByText("更新済みの説明テキストA")).toBeVisible(); // 詳細説明
   });
 });

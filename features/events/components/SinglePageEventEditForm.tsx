@@ -405,7 +405,7 @@ export function SinglePageEventEditForm({
                     render={({ field }) => (
                       <FormItem>
                         <div className="flex items-center gap-2">
-                          <FormLabel className="text-sm font-medium">開催場所（任意）</FormLabel>
+                          <FormLabel className="text-sm font-medium">場所（任意）</FormLabel>
                           {isChanged("location") && (
                             <Badge variant="outline" className={changedBadgeClass}>
                               変更あり
