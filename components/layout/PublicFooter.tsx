@@ -17,12 +17,6 @@ export function PublicFooter(): JSX.Element {
           <Link href="/privacy" className="hover:text-foreground transition-all duration-200">
             プライバシーポリシー
           </Link>
-          <Link
-            href="/tokushoho/platform"
-            className="hover:text-foreground transition-all duration-200"
-          >
-            特定商取引法に基づく表記
-          </Link>
           <Link href="/contact" className="hover:text-foreground transition-all duration-200">
             お問い合わせ
           </Link>
@@ -32,7 +26,9 @@ export function PublicFooter(): JSX.Element {
         <div className="flex flex-col items-center gap-2">
           <div className="flex items-center gap-2 text-[10px] sm:text-xs">
             <span className="text-muted-foreground font-semibold tracking-widest">Powered by</span>
-            <span className="text-primary font-bold">みんなの集金</span>
+            <Link href="/" className="text-primary font-bold hover:opacity-80 transition-opacity">
+              みんなの集金
+            </Link>
           </div>
         </div>
       </div>
