@@ -164,6 +164,10 @@ export function SinglePageEventEditForm({
   // 決済方法の選択状態
   const paymentMethods = form.watch("payment_methods");
   const isOnlineSelected = Array.isArray(paymentMethods) && paymentMethods.includes("stripe");
+  const originalPaymentMethods = event.payment_methods || [];
+  const hasOriginalCash = originalPaymentMethods.includes("cash");
+  const hasOriginalStripe = originalPaymentMethods.includes("stripe");
+  const hasLockedPaymentMethod = hasAttendees && originalPaymentMethods.length > 0;
 
   // 参加費を監視（手取り表示用）
   const watchedFee = form.watch("fee");
@@ -441,8 +445,8 @@ export function SinglePageEventEditForm({
                               {...field}
                               type="number"
                               placeholder="例：50"
-                              disabled={isPending || !restrictions.isFieldEditable("capacity")}
-                              min={hasAttendees ? attendeeCount : 1}
+                              disabled={isPending}
+                              min={1}
                               max="10000"
                               className={cn(
                                 "h-11 bg-background pl-10 pr-10",
@@ -454,7 +458,7 @@ export function SinglePageEventEditForm({
                             </span>
                           </div>
                         </FormControl>
-                        {!restrictions.isFieldEditable("capacity") && (
+                        {hasAttendees && (
                           <FormDescription className="text-xs text-amber-600">
                             現在の参加者数より少なく設定することはできません
                           </FormDescription>
@@ -694,167 +698,184 @@ export function SinglePageEventEditForm({
                     <FormField
                       control={form.control}
                       name="payment_methods"
-                      render={({ field }) => (
-                        <FormItem>
-                          <div className="flex items-center gap-2">
-                            <FormLabel className="text-sm font-medium">
-                              集金方法を選択 <span className="text-red-500">*</span>
-                            </FormLabel>
-                            {isChanged("payment_methods") && (
-                              <Badge variant="outline" className={changedBadgeClass}>
-                                変更あり
-                              </Badge>
-                            )}
-                          </div>
+                      render={({ field }) => {
+                        const selectedMethods = Array.isArray(field.value) ? field.value : [];
+                        const isCashSelected = selectedMethods.includes("cash");
+                        const isStripeSelected = selectedMethods.includes("stripe");
+                        const isCashRemovalLocked =
+                          hasAttendees && hasOriginalCash && isCashSelected;
+                        const isStripeRemovalLocked =
+                          hasAttendees && hasOriginalStripe && isStripeSelected;
+                        const isStripeAddDisabled =
+                          !canUseOnlinePayments && !hasOriginalStripe && !isStripeSelected;
+                        const isCashDisabled = isPending || isCashRemovalLocked;
+                        const isStripeDisabled =
+                          isPending || isStripeAddDisabled || isStripeRemovalLocked;
 
-                          <div
-                            className="mt-3 flex flex-col gap-3 sm:grid sm:grid-cols-2"
-                            data-testid="payment-methods"
-                          >
-                            {/* 現金払い */}
-                            <label
-                              className={cn(
-                                "relative flex min-h-[5.25rem] items-center rounded-lg border p-4 transition-colors sm:min-h-24",
-                                isPending ? "opacity-70 cursor-not-allowed" : "cursor-pointer",
-                                Array.isArray(field.value) && field.value.includes("cash")
-                                  ? "border-primary/50 bg-primary/5"
-                                  : "border-border bg-background hover:border-primary/30"
+                        return (
+                          <FormItem>
+                            <div className="flex items-center gap-2">
+                              <FormLabel className="text-sm font-medium">
+                                集金方法を選択 <span className="text-red-500">*</span>
+                              </FormLabel>
+                              {isChanged("payment_methods") && (
+                                <Badge variant="outline" className={changedBadgeClass}>
+                                  変更あり
+                                </Badge>
                               )}
+                            </div>
+
+                            <div
+                              className="mt-3 flex flex-col gap-3 sm:grid sm:grid-cols-2"
+                              data-testid="payment-methods"
                             >
-                              <input
-                                type="checkbox"
-                                className="absolute opacity-0 w-0 h-0"
-                                checked={Array.isArray(field.value) && field.value.includes("cash")}
-                                onChange={(e) => {
-                                  const current = Array.isArray(field.value) ? field.value : [];
-                                  if (e.target.checked) {
-                                    const next = Array.from(new Set([...current, "cash"]));
-                                    field.onChange(next);
-                                  } else {
-                                    // 参加者がいる場合、既存の決済方法は解除できない
-                                    if (hasAttendees && event.payment_methods?.includes("cash")) {
-                                      return;
-                                    }
-                                    const next = current.filter((m) => m !== "cash");
-                                    field.onChange(next);
-                                  }
-                                }}
-                                disabled={
-                                  isPending || !restrictions.isFieldEditable("payment_methods")
-                                }
-                              />
-                              <div className="flex items-center gap-3 pr-8">
-                                <div
-                                  className={cn(
-                                    "flex size-10 items-center justify-center rounded-md border",
-                                    Array.isArray(field.value) && field.value.includes("cash")
-                                      ? "border-primary/20 bg-primary/10 text-primary"
-                                      : "border-border bg-muted/40 text-muted-foreground"
-                                  )}
-                                >
-                                  <WalletIcon className="w-5 h-5" />
-                                </div>
-                                <div>
-                                  <span className="block text-sm font-semibold text-foreground">
-                                    現金
-                                  </span>
-                                  <span className="mt-0.5 block text-xs text-muted-foreground">
-                                    当日現地などで集金
-                                  </span>
-                                </div>
-                              </div>
-                              {Array.isArray(field.value) && field.value.includes("cash") && (
-                                <div className="absolute right-3 top-3 flex size-5 animate-in items-center justify-center rounded-full bg-primary text-primary-foreground duration-200 zoom-in-50">
-                                  <CheckIcon className="w-3.5 h-3.5 stroke-[3]" />
-                                </div>
-                              )}
-                            </label>
-
-                            {/* オンライン決済 */}
-                            <label
-                              className={cn(
-                                "relative flex min-h-[5.25rem] items-center rounded-lg border p-4 transition-colors sm:min-h-24",
-                                !canUseOnlinePayments || isPending
-                                  ? "opacity-60 cursor-not-allowed"
-                                  : "cursor-pointer",
-                                Array.isArray(field.value) && field.value.includes("stripe")
-                                  ? "border-primary/50 bg-primary/5"
-                                  : "border-border bg-background hover:border-primary/30"
-                              )}
-                            >
-                              <input
-                                type="checkbox"
-                                className="absolute opacity-0 w-0 h-0"
-                                checked={
-                                  Array.isArray(field.value) && field.value.includes("stripe")
-                                }
-                                onChange={(e) => {
-                                  const current = Array.isArray(field.value) ? field.value : [];
-                                  if (e.target.checked) {
-                                    const next = Array.from(new Set([...current, "stripe"]));
-                                    field.onChange(next);
-                                  } else {
-                                    // 参加者がいる場合、既存の決済方法は解除できない
-                                    if (hasAttendees && event.payment_methods?.includes("stripe")) {
-                                      return;
-                                    }
-                                    const next = current.filter((m) => m !== "stripe");
-                                    field.onChange(next);
-                                  }
-                                }}
-                                disabled={
-                                  isPending ||
-                                  (!canUseOnlinePayments && !field.value?.includes("stripe")) ||
-                                  !restrictions.isFieldEditable("payment_methods")
-                                }
-                              />
-                              <div className="flex items-center gap-3 pr-8">
-                                <div
-                                  className={cn(
-                                    "flex size-10 items-center justify-center rounded-md border",
-                                    Array.isArray(field.value) && field.value.includes("stripe")
-                                      ? "border-primary/20 bg-primary/10 text-primary"
-                                      : "border-border bg-muted/40 text-muted-foreground"
-                                  )}
-                                >
-                                  <CreditCardIcon className="w-5 h-5" />
-                                </div>
-                                <div>
-                                  <span className="block text-sm font-semibold text-foreground">
-                                    オンライン
-                                  </span>
-                                  <span className="mt-0.5 block text-xs text-muted-foreground">
-                                    クレジットカード、Apple Pay、Google Payなど
-                                  </span>
-                                </div>
-                              </div>
-                              {Array.isArray(field.value) && field.value.includes("stripe") && (
-                                <div className="absolute right-3 top-3 flex size-5 animate-in items-center justify-center rounded-full bg-primary text-primary-foreground duration-200 zoom-in-50">
-                                  <CheckIcon className="w-3.5 h-3.5 stroke-[3]" />
-                                </div>
-                              )}
-                            </label>
-                          </div>
-
-                          {!canUseOnlinePayments && (
-                            <p className="mt-2 text-xs text-muted-foreground">
-                              「オンライン」を選択するにはオンライン集金設定が必要です。
-                              <Link
-                                href="/settings/payments"
-                                className="ml-1 font-medium underline underline-offset-4"
+                              {/* 現金払い */}
+                              <label
+                                className={cn(
+                                  "relative flex min-h-[5.25rem] items-center rounded-lg border p-4 transition-colors sm:min-h-24",
+                                  isCashDisabled
+                                    ? "opacity-70 cursor-not-allowed"
+                                    : "cursor-pointer",
+                                  isCashSelected
+                                    ? "border-primary/50 bg-primary/5"
+                                    : cn(
+                                        "border-border bg-background",
+                                        !isCashDisabled && "hover:border-primary/30"
+                                      )
+                                )}
                               >
-                                設定に進む
-                              </Link>
-                            </p>
-                          )}
-                          {!restrictions.isFieldEditable("payment_methods") && (
-                            <p className="mt-2 text-xs text-amber-600">
-                              参加者がいるため、集金方法の解除はできません
-                            </p>
-                          )}
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                                <input
+                                  type="checkbox"
+                                  className="absolute opacity-0 w-0 h-0"
+                                  checked={isCashSelected}
+                                  onChange={(e) => {
+                                    const current = Array.isArray(field.value) ? field.value : [];
+                                    if (e.target.checked) {
+                                      const next = Array.from(new Set([...current, "cash"]));
+                                      field.onChange(next);
+                                    } else {
+                                      if (isCashRemovalLocked) {
+                                        return;
+                                      }
+                                      const next = current.filter((m) => m !== "cash");
+                                      field.onChange(next);
+                                    }
+                                  }}
+                                  disabled={isCashDisabled}
+                                />
+                                <div className="flex items-center gap-3 pr-8">
+                                  <div
+                                    className={cn(
+                                      "flex size-10 items-center justify-center rounded-md border",
+                                      isCashSelected
+                                        ? "border-primary/20 bg-primary/10 text-primary"
+                                        : "border-border bg-muted/40 text-muted-foreground"
+                                    )}
+                                  >
+                                    <WalletIcon className="w-5 h-5" />
+                                  </div>
+                                  <div>
+                                    <span className="block text-sm font-semibold text-foreground">
+                                      現金
+                                    </span>
+                                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                                      {isCashRemovalLocked
+                                        ? "参加者がいるため解除不可"
+                                        : "当日現地などで集金"}
+                                    </span>
+                                  </div>
+                                </div>
+                                {isCashSelected && (
+                                  <div className="absolute right-3 top-3 flex size-5 animate-in items-center justify-center rounded-full bg-primary text-primary-foreground duration-200 zoom-in-50">
+                                    <CheckIcon className="w-3.5 h-3.5 stroke-[3]" />
+                                  </div>
+                                )}
+                              </label>
+
+                              {/* オンライン決済 */}
+                              <label
+                                className={cn(
+                                  "relative flex min-h-[5.25rem] items-center rounded-lg border p-4 transition-colors sm:min-h-24",
+                                  isStripeDisabled
+                                    ? "opacity-60 cursor-not-allowed"
+                                    : "cursor-pointer",
+                                  isStripeSelected
+                                    ? "border-primary/50 bg-primary/5"
+                                    : cn(
+                                        "border-border bg-background",
+                                        !isStripeDisabled && "hover:border-primary/30"
+                                      )
+                                )}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="absolute opacity-0 w-0 h-0"
+                                  checked={isStripeSelected}
+                                  onChange={(e) => {
+                                    const current = Array.isArray(field.value) ? field.value : [];
+                                    if (e.target.checked) {
+                                      const next = Array.from(new Set([...current, "stripe"]));
+                                      field.onChange(next);
+                                    } else {
+                                      if (isStripeRemovalLocked) {
+                                        return;
+                                      }
+                                      const next = current.filter((m) => m !== "stripe");
+                                      field.onChange(next);
+                                    }
+                                  }}
+                                  disabled={isStripeDisabled}
+                                />
+                                <div className="flex items-center gap-3 pr-8">
+                                  <div
+                                    className={cn(
+                                      "flex size-10 items-center justify-center rounded-md border",
+                                      isStripeSelected
+                                        ? "border-primary/20 bg-primary/10 text-primary"
+                                        : "border-border bg-muted/40 text-muted-foreground"
+                                    )}
+                                  >
+                                    <CreditCardIcon className="w-5 h-5" />
+                                  </div>
+                                  <div>
+                                    <span className="block text-sm font-semibold text-foreground">
+                                      オンライン
+                                    </span>
+                                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                                      {isStripeRemovalLocked
+                                        ? "参加者がいるため解除不可"
+                                        : "クレジットカード、Apple Pay、Google Payなど"}
+                                    </span>
+                                  </div>
+                                </div>
+                                {isStripeSelected && (
+                                  <div className="absolute right-3 top-3 flex size-5 animate-in items-center justify-center rounded-full bg-primary text-primary-foreground duration-200 zoom-in-50">
+                                    <CheckIcon className="w-3.5 h-3.5 stroke-[3]" />
+                                  </div>
+                                )}
+                              </label>
+                            </div>
+
+                            {!canUseOnlinePayments && !hasOriginalStripe && (
+                              <p className="mt-2 text-xs text-muted-foreground">
+                                「オンライン」を選択するにはオンライン集金設定が必要です。
+                                <Link
+                                  href="/settings/payments"
+                                  className="ml-1 font-medium underline underline-offset-4"
+                                >
+                                  設定に進む
+                                </Link>
+                              </p>
+                            )}
+                            {hasLockedPaymentMethod && (
+                              <p className="mt-2 text-xs text-amber-600">
+                                参加者がいるため、既存の集金方法は解除できません。追加は可能です。
+                              </p>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
                     />
                   )}
 
