@@ -257,7 +257,11 @@ export function SinglePageEventEditForm({
           return;
         }
 
-        if (restriction.evaluation.status === "warning" && !restriction.evaluation.isRestricted) {
+        if (
+          restriction.rule.level === "advisory" &&
+          restriction.evaluation.status === "warning" &&
+          !restriction.evaluation.isRestricted
+        ) {
           if (!advisoryWarnings.includes(message)) {
             advisoryWarnings.push(message);
           }
