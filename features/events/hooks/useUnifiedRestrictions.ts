@@ -16,6 +16,7 @@ import {
   RestrictionEngine,
   createRestrictionEngine,
   FieldRestrictionMap,
+  ActiveRestriction,
 } from "@core/domain/event-edit-restrictions";
 import { logger } from "@core/logging/app-logger";
 import { handleClientError } from "@core/utils/error-handler.client";
@@ -50,6 +51,8 @@ export interface UseUnifiedRestrictionsResult {
   isFieldEditable: (field: RestrictableField) => boolean;
   /** フィールドの制限メッセージを取得 */
   getFieldMessage: (field: RestrictableField) => string | null;
+  /** フィールドで有効な制限をすべて取得 */
+  getFieldActiveRestrictions: (field: RestrictableField) => ActiveRestriction[];
   /** フィールドの制限レベルを取得 */
   getFieldRestrictionLevel: (
     field: RestrictableField
@@ -311,6 +314,14 @@ export function useUnifiedRestrictions(
     [state.fieldRestrictions]
   );
 
+  const getFieldActiveRestrictions = useCallback(
+    (field: RestrictableField): ActiveRestriction[] => {
+      const summary = state.fieldRestrictions.get(field);
+      return summary?.activeRestrictions ?? [];
+    },
+    [state.fieldRestrictions]
+  );
+
   // ---------------------------------------------------------------------------
   // Control Functions
   // ---------------------------------------------------------------------------
@@ -341,6 +352,7 @@ export function useUnifiedRestrictions(
     isFieldRestricted,
     isFieldEditable,
     getFieldMessage,
+    getFieldActiveRestrictions,
     getFieldRestrictionLevel,
 
     // 状態管理

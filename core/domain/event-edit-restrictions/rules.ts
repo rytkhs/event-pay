@@ -131,6 +131,14 @@ export const ATTENDEE_PAYMENT_METHODS_RESTRICTION: RestrictionRule = {
     // 1. まず実際の違反チェック（削除しようとしたか？）
     const original = new Set((context.originalEvent.payment_methods || []) as string[]);
     const next = new Set((formData.payment_methods || []) as string[]);
+    const originalFee = context.originalEvent.fee ?? 0;
+    const nextFee = safeParseNumber(formData.fee);
+    const isChangingToFree = originalFee > 0 && nextFee === 0;
+    const hasRemovedPaymentMethod = Array.from(original).some((method) => !next.has(method));
+
+    if (hasRemovedPaymentMethod && isChangingToFree && !context.hasStripePaid) {
+      return createEvaluation(false, "制限なし");
+    }
 
     // 追加は許可、既存の解除のみ制限
     for (const method of original) {

@@ -31,7 +31,7 @@ export function FeeCalculatorDisplay({
   return (
     <Card className={`p-4 bg-gradient-to-br from-blue-50/50 to-purple-50/50 ${className}`}>
       <div className="space-y-2">
-        <h4 className="text-sm font-semibold text-gray-700">オンライン集金時の予想手取り</h4>
+        <h4 className="text-sm font-semibold text-gray-700">オンライン集金時の受取予定額</h4>
         <div className="space-y-1 text-sm">
           <div className="flex justify-between items-center">
             <span className="text-gray-600">参加費</span>

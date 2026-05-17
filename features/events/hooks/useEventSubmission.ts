@@ -2,8 +2,6 @@
 
 import { useCallback } from "react";
 
-import { useRouter } from "next/navigation";
-
 import { AppError } from "@core/errors";
 import {
   toAppResultFromActionResult,
@@ -17,7 +15,7 @@ import type { EventFormData } from "@core/validation/event";
 
 import { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 
-type SubmissionActionMeta = {
+export type SubmissionActionMeta = {
   message?: string;
   redirectUrl?: string;
   needsVerification?: boolean;
@@ -56,8 +54,6 @@ export function useEventSubmission({
   onSubmit,
   updateEventAction,
 }: UseEventSubmissionProps) {
-  const router = useRouter();
-
   const extractFormErrorsFromAppError = useCallback((error: AppError): FormErrors => {
     const errors: FormErrors = {};
     const details = error.details as Record<string, unknown> | undefined;
@@ -101,7 +97,10 @@ export function useEventSubmission({
   }, []);
 
   const processSubmissionResult = useCallback(
-    (result: SubmissionActionResult, setErrors: (errors: FormErrors) => void): AppResult<Event> => {
+    (
+      result: SubmissionActionResult,
+      setErrors: (errors: FormErrors) => void
+    ): AppResult<Event, SubmissionActionMeta> => {
       if (result.success) {
         if (!result.data) {
           const appError = new AppError("INTERNAL_ERROR", {
@@ -118,10 +117,8 @@ export function useEventSubmission({
         };
         if (onSubmit) {
           onSubmit(dataWithStatus);
-        } else {
-          router.push(`/events/${eventId}`);
         }
-        return okResult(dataWithStatus);
+        return okResult(dataWithStatus, result.meta);
       }
 
       const errorMessage = result.error.userMessage || "エラーが発生しました";
@@ -132,9 +129,9 @@ export function useEventSubmission({
       }
 
       setErrors(errors);
-      return errResult(result.error);
+      return errResult(result.error, result.meta);
     },
-    [eventId, extractFormErrorsFromAppError, onSubmit, router]
+    [extractFormErrorsFromAppError, onSubmit]
   );
 
   const createFormDataFromSubmission = useCallback(
@@ -180,7 +177,7 @@ export function useEventSubmission({
     async (
       formData: EventFormData | Partial<EventFormData>,
       setErrors: (errors: FormErrors) => void
-    ): Promise<AppResult<Event>> => {
+    ): Promise<AppResult<Event, SubmissionActionMeta>> => {
       try {
         const formDataObj = createFormDataFromSubmission(formData);
 
@@ -282,14 +279,19 @@ export function useEventSubmission({
 
   // レスポンス処理
   const handleSubmissionResponse = useCallback(
-    (result: SubmissionActionResult, setErrors: (errors: FormErrors) => void): AppResult<Event> =>
-      processSubmissionResult(result, setErrors),
+    (
+      result: SubmissionActionResult,
+      setErrors: (errors: FormErrors) => void
+    ): AppResult<Event, SubmissionActionMeta> => processSubmissionResult(result, setErrors),
     [processSubmissionResult]
   );
 
   // エラーハンドリング
   const handleSubmissionError = useCallback(
-    (error: unknown, setErrors: (errors: FormErrors) => void): AppResult<Event> => {
+    (
+      error: unknown,
+      setErrors: (errors: FormErrors) => void
+    ): AppResult<Event, SubmissionActionMeta> => {
       const appError = handleClientError(error, {
         category: "event_management",
         action: "event_submission_failed",
@@ -304,7 +306,7 @@ export function useEventSubmission({
   );
 
   // 送信状況の監視
-  const getSubmissionStatus = useCallback((result: AppResult<Event>) => {
+  const getSubmissionStatus = useCallback((result: AppResult<Event, SubmissionActionMeta>) => {
     return {
       isLoading: false, // 実際の実装では状態管理が必要
       isSuccess: result.success,

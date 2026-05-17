@@ -209,8 +209,8 @@ function CombinedRestrictionsValidation({
   const totalCount = sections.reduce((acc, sec) => acc + sec.restrictions.length, 0);
 
   // 初期状態: 常に閉じた状態
-  const hasBlockingIssues = sections.some(
-    (s) => s.level === "structural" || s.level === "conditional"
+  const hasBlockingIssues = sections.some((section) =>
+    section.restrictions.some((restriction) => restriction.evaluation.isRestricted)
   );
   const [isOpen, setIsOpen] = useState(false);
 

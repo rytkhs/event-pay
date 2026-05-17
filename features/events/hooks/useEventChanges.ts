@@ -2,26 +2,113 @@
 
 import { useCallback, useMemo } from "react";
 
+import { PAYMENT_METHOD_LABELS } from "@core/constants/status-labels";
 import type { Event } from "@core/types/event";
+import type { PaymentMethod } from "@core/types/statuses";
 import { formatUtcToDatetimeLocal } from "@core/utils/timezone";
 import type { EventFormData } from "@core/validation/event";
 
-import { ChangeItem } from "@/components/ui/change-confirmation-dialog";
+import type { ChangeItem } from "@/components/ui/change-confirmation-dialog";
 
 interface UseEventChangesProps {
   event: Event;
   formData: EventFormData;
-  hasValidationErrors?: boolean;
-  // フィールドが編集可能かを判定する関数（未指定時は全て編集可能とみなす）
-  isFieldEditable?: (field: string) => boolean;
 }
 
-export function useEventChanges({
-  event,
-  formData,
-  hasValidationErrors = false,
-  isFieldEditable,
-}: UseEventChangesProps) {
+const EVENT_CHANGE_FIELD_LABELS: Record<string, string> = {
+  title: "イベント名",
+  description: "説明・備考",
+  location: "場所",
+  date: "開催日時",
+  fee: "参加費",
+  capacity: "定員",
+  show_participant_count: "参加人数の表示",
+  show_capacity: "定員の表示",
+  payment_methods: "決済方法",
+  registration_deadline: "出欠回答期限",
+  payment_deadline: "オンライン支払い期限",
+  allow_payment_after_deadline: "締切後もオンライン決済を許可",
+  grace_period_days: "猶予期間",
+};
+
+function getEventChangeFieldLabel(field: string): string {
+  return EVENT_CHANGE_FIELD_LABELS[field] ?? field;
+}
+
+function isPaymentMethod(value: string): value is PaymentMethod {
+  return Object.prototype.hasOwnProperty.call(PAYMENT_METHOD_LABELS, value);
+}
+
+function formatPaymentMethods(value: unknown): string {
+  const methods = Array.isArray(value) ? value : [];
+  if (methods.length === 0) return "選択なし";
+
+  return methods
+    .map((method) => {
+      const methodString = String(method);
+      return isPaymentMethod(methodString) ? PAYMENT_METHOD_LABELS[methodString] : methodString;
+    })
+    .join(" / ");
+}
+
+function formatNumber(value: unknown): number {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return Number(value || 0);
+  if (value == null) return 0;
+  return Number(value);
+}
+
+function formatDatetimeLocalForDisplay(value: unknown): string {
+  const dateTime = typeof value === "string" ? value : "";
+  if (!dateTime) return "未設定";
+
+  const match = dateTime.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!match) return dateTime;
+
+  const [, year, month, day, hour, minute] = match;
+  return `${year}年${month}月${day}日 ${hour}:${minute}`;
+}
+
+function formatEventChangeValue(field: string, value: unknown): string {
+  switch (field) {
+    case "payment_methods":
+      return formatPaymentMethods(value);
+
+    case "date":
+    case "registration_deadline":
+    case "payment_deadline":
+      return formatDatetimeLocalForDisplay(value);
+
+    case "fee": {
+      const amount = formatNumber(value);
+      return amount === 0 ? "無料" : `${amount.toLocaleString("ja-JP")}円`;
+    }
+
+    case "capacity": {
+      if (value === "" || value == null) return "未設定";
+      return `${formatNumber(value).toLocaleString("ja-JP")}人`;
+    }
+
+    case "grace_period_days": {
+      const days = formatNumber(value);
+      return days === 0 ? "なし" : `${days.toLocaleString("ja-JP")}日`;
+    }
+
+    case "allow_payment_after_deadline":
+      return Boolean(value) ? "許可する" : "許可しない";
+
+    case "show_capacity":
+    case "show_participant_count":
+      return Boolean(value) ? "表示する" : "表示しない";
+
+    default: {
+      const text = (value ?? "").toString();
+      return text || "未設定";
+    }
+  }
+}
+
+export function useEventChanges({ event, formData }: UseEventChangesProps) {
   // 副次的クリアの検出機能
   const detectSecondaryChanges = useCallback((): ChangeItem[] => {
     const secondaryChanges: ChangeItem[] = [];
@@ -39,8 +126,8 @@ export function useEventChanges({
       if (originalPaymentMethods.length > 0 && currentPaymentMethods.length === 0) {
         secondaryChanges.push({
           field: "payment_methods",
-          fieldName: "決済方法",
-          oldValue: originalPaymentMethods.join(", "),
+          fieldName: getEventChangeFieldLabel("payment_methods"),
+          oldValue: formatEventChangeValue("payment_methods", originalPaymentMethods),
           newValue: "（無料化により自動クリア）",
         });
       }
@@ -55,8 +142,11 @@ export function useEventChanges({
       ) {
         secondaryChanges.push({
           field: "payment_deadline",
-          fieldName: "オンライン支払い期限",
-          oldValue: formatUtcToDatetimeLocal(originalPaymentDeadline),
+          fieldName: getEventChangeFieldLabel("payment_deadline"),
+          oldValue: formatEventChangeValue(
+            "payment_deadline",
+            formatUtcToDatetimeLocal(originalPaymentDeadline)
+          ),
           newValue: "（無料化により自動クリア）",
         });
       }
@@ -68,8 +158,8 @@ export function useEventChanges({
       if (originalAllowAfter && !currentAllowAfter) {
         secondaryChanges.push({
           field: "allow_payment_after_deadline",
-          fieldName: "締切後決済許可",
-          oldValue: "許可",
+          fieldName: getEventChangeFieldLabel("allow_payment_after_deadline"),
+          oldValue: formatEventChangeValue("allow_payment_after_deadline", originalAllowAfter),
           newValue: "（無料化により自動クリア）",
         });
       }
@@ -84,8 +174,8 @@ export function useEventChanges({
       if (originalGrace > 0 && currentGrace === 0) {
         secondaryChanges.push({
           field: "grace_period_days",
-          fieldName: "猶予期間",
-          oldValue: originalGrace.toString(),
+          fieldName: getEventChangeFieldLabel("grace_period_days"),
+          oldValue: formatEventChangeValue("grace_period_days", originalGrace),
           newValue: "（無料化により自動クリア）",
         });
       }
@@ -108,8 +198,11 @@ export function useEventChanges({
       ) {
         secondaryChanges.push({
           field: "payment_deadline",
-          fieldName: "オンライン支払い期限",
-          oldValue: formatUtcToDatetimeLocal(originalPaymentDeadline),
+          fieldName: getEventChangeFieldLabel("payment_deadline"),
+          oldValue: formatEventChangeValue(
+            "payment_deadline",
+            formatUtcToDatetimeLocal(originalPaymentDeadline)
+          ),
           newValue: "（オンライン決済選択解除により自動クリア）",
         });
       }
@@ -121,8 +214,8 @@ export function useEventChanges({
       if (originalAllowAfter && !currentAllowAfter) {
         secondaryChanges.push({
           field: "allow_payment_after_deadline",
-          fieldName: "締切後決済許可",
-          oldValue: "許可",
+          fieldName: getEventChangeFieldLabel("allow_payment_after_deadline"),
+          oldValue: formatEventChangeValue("allow_payment_after_deadline", originalAllowAfter),
           newValue: "（オンライン決済選択解除により自動クリア）",
         });
       }
@@ -137,8 +230,8 @@ export function useEventChanges({
       if (originalGrace > 0 && currentGrace === 0) {
         secondaryChanges.push({
           field: "grace_period_days",
-          fieldName: "猶予期間",
-          oldValue: originalGrace.toString(),
+          fieldName: getEventChangeFieldLabel("grace_period_days"),
+          oldValue: formatEventChangeValue("grace_period_days", originalGrace),
           newValue: "（オンライン決済選択解除により自動クリア）",
         });
       }
@@ -204,128 +297,89 @@ export function useEventChanges({
         field: "title",
         oldValue: event.title || "",
         newValue: formData.title,
-        fieldName: "イベント名",
+        fieldName: getEventChangeFieldLabel("title"),
       },
       {
         field: "description",
         oldValue: event.description || "",
         newValue: formData.description,
-        fieldName: "説明",
+        fieldName: getEventChangeFieldLabel("description"),
       },
       {
         field: "location",
         oldValue: event.location || "",
         newValue: formData.location,
-        fieldName: "場所",
+        fieldName: getEventChangeFieldLabel("location"),
       },
       {
         field: "date",
         oldValue: formatUtcToDatetimeLocal(event.date),
         newValue: formData.date,
-        fieldName: "開催日時",
+        fieldName: getEventChangeFieldLabel("date"),
       },
       {
         field: "fee",
         oldValue: event.fee ?? 0,
         newValue: formData.fee || "0",
-        fieldName: "参加費",
+        fieldName: getEventChangeFieldLabel("fee"),
       },
       {
         field: "capacity",
         oldValue: event.capacity,
         newValue: formData.capacity || "",
-        fieldName: "定員",
+        fieldName: getEventChangeFieldLabel("capacity"),
       },
       {
         field: "show_participant_count",
         oldValue: event.show_participant_count ?? true,
         newValue: formData.show_participant_count ?? true,
-        fieldName: "参加人数の表示",
+        fieldName: getEventChangeFieldLabel("show_participant_count"),
       },
       {
         field: "show_capacity",
         oldValue: event.show_capacity,
         newValue: formData.show_capacity,
-        fieldName: "定員の表示",
+        fieldName: getEventChangeFieldLabel("show_capacity"),
       },
       {
         field: "payment_methods",
         oldValue: event.payment_methods || [],
         newValue: formData.payment_methods || [],
-        fieldName: "決済方法",
+        fieldName: getEventChangeFieldLabel("payment_methods"),
       },
       {
         field: "registration_deadline",
         oldValue: formatUtcToDatetimeLocal(event.registration_deadline || ""),
         newValue: formData.registration_deadline || "",
-        fieldName: "出欠回答期限",
+        fieldName: getEventChangeFieldLabel("registration_deadline"),
       },
       {
         field: "payment_deadline",
         oldValue: formatUtcToDatetimeLocal(event.payment_deadline || ""),
         newValue: formData.payment_deadline || "",
-        fieldName: "オンライン支払い期限",
+        fieldName: getEventChangeFieldLabel("payment_deadline"),
       },
       {
         field: "allow_payment_after_deadline",
         oldValue: event.allow_payment_after_deadline ?? false,
         newValue: formData.allow_payment_after_deadline ?? false,
-        fieldName: "締切後もオンライン決済を許可",
+        fieldName: getEventChangeFieldLabel("allow_payment_after_deadline"),
       },
       {
         field: "grace_period_days",
         oldValue: event.grace_period_days ?? 0,
         newValue: formData.grace_period_days ?? "0",
-        fieldName: "猶予（日）",
+        fieldName: getEventChangeFieldLabel("grace_period_days"),
       },
     ];
 
     fieldChecks.forEach(({ field, oldValue, newValue, fieldName }) => {
-      // 編集不可フィールドは検出対象から除外
-      if (typeof isFieldEditable === "function" && !isFieldEditable(field)) {
-        return;
-      }
       if (isFieldChanged(field, oldValue, newValue)) {
-        // 表示用の値を生成（統一された形式）
-        let displayOldValue: string;
-        let displayNewValue: string;
-
-        if (field === "payment_methods") {
-          displayOldValue = Array.isArray(oldValue) ? oldValue.join(", ") : "";
-          displayNewValue = Array.isArray(newValue) ? newValue.join(", ") : "";
-        } else if (field === "fee") {
-          displayOldValue = (
-            typeof oldValue === "number" ? oldValue : Number(oldValue || 0)
-          ).toString();
-          displayNewValue = (
-            typeof newValue === "string" ? Number(newValue || 0) : newValue || 0
-          ).toString();
-        } else if (field === "capacity") {
-          displayOldValue = oldValue === null ? "" : oldValue.toString();
-          displayNewValue = newValue === "" || newValue == null ? "" : newValue.toString();
-        } else if (field === "allow_payment_after_deadline") {
-          displayOldValue = Boolean(oldValue) ? "許可" : "禁止";
-          displayNewValue = Boolean(newValue) ? "許可" : "禁止";
-        } else if (field === "show_capacity" || field === "show_participant_count") {
-          displayOldValue = Boolean(oldValue) ? "表示" : "非表示";
-          displayNewValue = Boolean(newValue) ? "表示" : "非表示";
-        } else if (field === "grace_period_days") {
-          displayOldValue = (
-            typeof oldValue === "number" ? oldValue : Number(oldValue || 0)
-          ).toString();
-          displayNewValue = (
-            typeof newValue === "string" ? Number(newValue || 0) : newValue || 0
-          ).toString();
-        } else {
-          displayOldValue = (oldValue ?? "").toString();
-          displayNewValue = (newValue ?? "").toString();
-        }
-
         changes.push({
           field,
           fieldName,
-          oldValue: displayOldValue,
-          newValue: displayNewValue,
+          oldValue: formatEventChangeValue(field, oldValue),
+          newValue: formatEventChangeValue(field, newValue),
         });
       }
     });
@@ -347,13 +401,12 @@ export function useEventChanges({
     }
 
     return Array.from(mergedChangesByField.values());
-  }, [event, formData, isFieldEditable, detectSecondaryChanges]);
+  }, [event, formData, detectSecondaryChanges]);
 
-  // 変更があるかどうかをメモ化（バリデーションエラーがある場合は変更なし扱い）
+  // 変更があるかどうかをメモ化
   const hasChanges = useMemo(() => {
-    if (hasValidationErrors) return false;
     return detectChanges().length > 0;
-  }, [detectChanges, hasValidationErrors]);
+  }, [detectChanges]);
 
   // 特定フィールドに変更があるかチェック
   const hasFieldChanged = useCallback(

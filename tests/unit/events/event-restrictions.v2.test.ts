@@ -140,6 +140,47 @@ describe("event edit restrictions v2 (domain)", () => {
     expect(addViolations).toHaveLength(0);
   });
 
+  test("hasAttendees=true でもStripe集金済みなしの無料化では payment_methods の自動クリアを許可する", async () => {
+    const event = createEvent(
+      { fee: 1000, payment_methods: ["stripe", "cash"] as any },
+      [{ id: "a1" } as any]
+    );
+    const context = buildRestrictionContext(
+      {
+        fee: event.fee,
+        capacity: event.capacity,
+        payment_methods: event.payment_methods ?? [],
+        title: event.title,
+      },
+      { hasAttendees: true, attendeeCount: 1, hasStripePaid: false },
+      "upcoming"
+    );
+
+    const freeFormData = createFormDataSnapshot({
+      ...event,
+      fee: 0,
+      payment_methods: [],
+    } as any);
+    const freeViolations = await evaluateEventEditViolations({
+      context,
+      formData: freeFormData,
+      patch: { fee: 0, payment_methods: [] },
+    });
+    expect(freeViolations).toHaveLength(0);
+
+    const paidFormData = createFormDataSnapshot({
+      ...event,
+      fee: 1000,
+      payment_methods: [],
+    } as any);
+    const paidViolations = await evaluateEventEditViolations({
+      context,
+      formData: paidFormData,
+      patch: { payment_methods: [] },
+    });
+    expect(paidViolations.find((v: FieldViolation) => v.field === "payment_methods")).toBeTruthy();
+  });
+
   test("capacity は参加者数未満にできない（null は許可）", async () => {
     const event = createEvent(
       { capacity: 20 },

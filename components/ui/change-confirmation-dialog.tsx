@@ -147,18 +147,18 @@ export function ChangeConfirmationDialog({
                   >
                     <div className="font-medium text-sm text-foreground">{change.fieldName}</div>
                     <div className="mt-1 text-sm grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">
-                      <span className="text-muted-foreground text-xs uppercase tracking-wider self-center">
-                        Before
+                      <span className="text-muted-foreground text-xs self-center">
+                        変更前
                       </span>
-                      <span className="font-mono text-muted-foreground line-through decoration-destructive/30 decoration-2">
-                        {change.oldValue || "(未設定)"}
+                      <span className="text-muted-foreground line-through decoration-destructive/30 decoration-2">
+                        {change.oldValue}
                       </span>
 
-                      <span className="text-primary text-xs uppercase tracking-wider self-center font-bold">
-                        After
+                      <span className="text-primary text-xs self-center font-bold">
+                        変更後
                       </span>
-                      <span className="font-mono font-medium text-foreground">
-                        {change.newValue || "(未設定)"}
+                      <span className="font-medium text-foreground">
+                        {change.newValue}
                       </span>
                     </div>
                   </div>
