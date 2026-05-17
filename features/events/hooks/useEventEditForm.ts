@@ -218,9 +218,6 @@ export function useEventEditForm({
   const changes = useEventChanges({
     event,
     formData: currentFormData,
-    hasValidationErrors: !form.formState.isValid,
-    isFieldEditable: (field: string) =>
-      isRestrictableField(field) ? unifiedRestrictions.isFieldEditable(field) : true,
   });
   const submission = useEventSubmission({ eventId: event.id, onSubmit, updateEventAction });
 

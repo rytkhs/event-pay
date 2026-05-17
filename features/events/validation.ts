@@ -272,7 +272,7 @@ export const eventEditFormSchemaBase = z
     show_capacity: z.boolean(),
     show_participant_count: z.boolean(),
     payment_methods: z.array(z.string()),
-    registration_deadline: z.string().optional(),
+    registration_deadline: z.string().min(1, "出欠回答期限を設定してください"),
     payment_deadline: z.string().optional(),
     allow_payment_after_deadline: z.boolean().optional(),
     grace_period_days: z.string().optional(),

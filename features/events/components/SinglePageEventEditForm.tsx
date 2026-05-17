@@ -242,20 +242,27 @@ export function SinglePageEventEditForm({
 
       // 2. 統一制限システムによるバリデーション
       const field = change.field as RestrictableField;
-      const restrictionMessage = r.getFieldMessage(field);
-      const restrictionLevel = r.getFieldRestrictionLevel(field);
+      const activeRestrictions = r.getFieldActiveRestrictions(field);
 
-      if (
-        r.isFieldRestricted(field) &&
-        restrictionMessage &&
-        (restrictionLevel === "structural" || restrictionLevel === "conditional")
-      ) {
-        blockingErrors.push(`${change.fieldName}: ${restrictionMessage}`);
-      } else if (restrictionMessage && restrictionLevel === "advisory") {
-        if (!advisoryWarnings.includes(restrictionMessage)) {
-          advisoryWarnings.push(restrictionMessage);
+      activeRestrictions.forEach((restriction) => {
+        const message = restriction.evaluation.message;
+        if (
+          restriction.evaluation.isRestricted &&
+          (restriction.rule.level === "structural" || restriction.rule.level === "conditional")
+        ) {
+          const blockingMessage = `${change.fieldName}: ${message}`;
+          if (!blockingErrors.includes(blockingMessage)) {
+            blockingErrors.push(blockingMessage);
+          }
+          return;
         }
-      }
+
+        if (restriction.evaluation.status === "warning" && !restriction.evaluation.isRestricted) {
+          if (!advisoryWarnings.includes(message)) {
+            advisoryWarnings.push(message);
+          }
+        }
+      });
 
       normalChanges.push(change);
     });
