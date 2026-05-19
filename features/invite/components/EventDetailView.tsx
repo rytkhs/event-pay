@@ -42,7 +42,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ event }) => {
   const statusLabel = getStatusLabel(event.status);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden mb-6">
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden mb-6">
       <div className="px-6 py-7 border-b border-slate-100">
         <div className="flex items-center gap-2 mb-4">
           <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary uppercase tracking-wider">

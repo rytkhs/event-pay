@@ -99,7 +99,7 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
       onSubmit={handleSubmit(async (data) => {
         await onFormSubmit(data as ParticipationFormData);
       })}
-      className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8"
+      className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8"
     >
       <h2 className="text-xl font-bold text-slate-900 mb-6">出欠を回答する</h2>
 
