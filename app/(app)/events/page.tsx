@@ -1,5 +1,7 @@
 import React from "react";
 
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
 
 import { requireNonEmptyCommunityWorkspaceForServerComponent } from "@core/community/app-workspace";
@@ -16,6 +18,11 @@ import { EventListWithFilters } from "@features/events";
 import { listEventsForCommunity } from "@features/events/server";
 
 import { InlineErrorCard } from "@/components/errors/ui/ErrorCard";
+
+export const metadata: Metadata = {
+  title: "イベント一覧",
+  description: "作成したイベントの一覧を確認します",
+};
 
 interface EventsContentProps {
   searchParams: { [key: string]: string | string[] | undefined };

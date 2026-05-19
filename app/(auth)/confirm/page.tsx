@@ -1,6 +1,13 @@
 import Link from "next/link";
 
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "メール確認",
+  description: "メールアドレスの確認状態を表示します",
+};
 
 interface ConfirmPageProps {
   searchParams: Promise<{

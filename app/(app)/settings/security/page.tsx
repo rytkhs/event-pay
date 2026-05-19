@@ -1,8 +1,15 @@
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
 
 import { PasswordChangeForm } from "@features/settings";
 
 import { changePasswordAction } from "./actions";
+
+export const metadata: Metadata = {
+  title: "パスワード設定",
+  description: "ログインパスワードを変更します",
+};
 
 export default async function SecuritySettingsPage() {
   return (

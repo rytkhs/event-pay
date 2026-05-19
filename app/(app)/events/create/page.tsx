@@ -2,6 +2,8 @@ export const dynamic = "force-dynamic";
 
 import { notFound } from "next/navigation";
 
+import type { Metadata } from "next";
+
 import { requireNonEmptyCommunityWorkspaceForServerComponent } from "@core/community/app-workspace";
 import { resolvePlatformFeeConfigForNewEventApplicationFee } from "@core/stripe/fee-config/application-fee-config-resolver";
 import { FeeConfigService, type PlatformFeeConfig } from "@core/stripe/fee-config/service";
@@ -13,6 +15,11 @@ import { resolveEventStripePayoutProfile } from "@features/events/server";
 import { getDashboardConnectCtaStatus } from "@features/stripe-connect/server";
 
 import { createEventAction } from "./actions";
+
+export const metadata: Metadata = {
+  title: "イベント作成",
+  description: "出欠確認と集金を行うイベントを作成します",
+};
 
 async function resolveFeeEstimateConfig(
   supabase: AppSupabaseClient<"public">,
