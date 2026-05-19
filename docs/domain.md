@@ -174,9 +174,9 @@
 ### 6.1 Attendance Status
 ```mermaid
 stateDiagram-v2
-  [*] --> attending: 参加登録
-  [*] --> not_attending: 不参加登録
-  [*] --> maybe: 未定登録
+  [*] --> attending: 参加
+  [*] --> not_attending: 不参加
+  [*] --> maybe: 未定
 
   attending --> not_attending: 出欠変更
   attending --> maybe: 出欠変更
@@ -268,7 +268,7 @@ stateDiagram-v2
 
 ## 10. 例外・エッジケース（抜粋）
 
-- 定員ギリギリの同時参加登録
+- 定員ギリギリの同時回答
 - 決済ボタン連打による Checkout Session 重複
 - Webhook 重複配信
 - Webhook 到着と現金受領の競合

@@ -234,7 +234,7 @@ export class NotificationService implements INotificationService {
   }
 
   /**
-   * 参加登録完了通知を送信
+   * 回答完了通知を送信
    */
   async sendParticipationRegisteredNotification(
     data: ParticipationRegisteredNotification

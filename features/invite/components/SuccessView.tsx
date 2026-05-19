@@ -47,7 +47,7 @@ export const SuccessView: React.FC<SuccessViewProps> = ({ data, onRegisterAnothe
           </div>
         </div>
 
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">登録完了</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">回答完了</h2>
         <p className="text-slate-600">
           {data.participantNickname}さん、ご回答ありがとうございます。
           <br />
@@ -92,7 +92,7 @@ export const SuccessView: React.FC<SuccessViewProps> = ({ data, onRegisterAnothe
               disabled={isResetting}
               className="mt-4 w-full border-slate-300 text-slate-700 hover:bg-slate-50"
             >
-              登録フォームに戻る
+              回答フォームに戻る
             </Button>
           </div>
         </div>

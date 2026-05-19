@@ -196,7 +196,7 @@ function getEventScenarios(
       fee: 6000,
       capacity: 150,
       description:
-        "チームパーカーの購入申し込みです。在庫管理と集金の手間を省くため、オンライン決済のみ受け付けます。",
+        "チームパーカーの購入申し込みです。在庫管理と集金の手間を省くため、オンライン支払いのみ受け付けます。",
       registration_deadline: day(6),
       payment_deadline: day(7),
       payment_methods: ["stripe"],
@@ -345,7 +345,7 @@ function getBookClubEventScenarios(
       location: "オンライン（手渡し・配送）",
       fee: 2500,
       capacity: 150,
-      description: "今月の課題本です。オンライン決済のみ受け付けます。",
+      description: "今月の課題本です。オンライン支払いのみ受け付けます。",
       registration_deadline: day(6),
       payment_deadline: day(7),
       payment_methods: ["stripe"],

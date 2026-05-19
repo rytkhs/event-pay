@@ -31,7 +31,7 @@ export function ReadyView({ status, statusConfig }: ReadyViewProps) {
           <div className="min-w-0">
             <p className="text-sm font-semibold">オンライン集金を利用できます</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              参加者からのオンライン決済を受け付けられます。
+              参加者からのオンライン支払いを受け付けられます。
             </p>
           </div>
         </div>

@@ -1,5 +1,5 @@
 /**
- * 基本参加登録フロー統合テスト共通セットアップ
+ * 基本回答フロー統合テスト共通セットアップ
  */
 
 import * as securityLogger from "@core/security/security-logger";
@@ -27,7 +27,7 @@ export interface BasicParticipationFlowTestSetup {
 }
 
 /**
- * 基本参加登録フローテストのセットアップ
+ * 基本回答フローテストのセットアップ
  *
  * @param options セットアップオプション
  * @param options.fee イベントの参加費（デフォルト: 0）

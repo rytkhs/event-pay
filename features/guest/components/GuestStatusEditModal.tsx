@@ -57,7 +57,7 @@ function getModificationRestrictionMessage(attendance: GuestAttendanceData): str
   if (reason === "canceled") {
     return "このイベントは中止されているため、参加状況を変更できません。";
   } else if (reason === "deadline_passed") {
-    return "参加登録の締切を過ぎているため、参加状況を変更できません。";
+    return "回答期限を過ぎているため、参加状況を変更できません。";
   }
 
   return "参加状況の変更期限を過ぎているため、現在変更できません。";
@@ -69,13 +69,13 @@ function getModificationRestrictionMessage(attendance: GuestAttendanceData): str
 function getConnectAccountErrorMessage(errorCode?: string): string {
   switch (errorCode) {
     case "CONNECT_ACCOUNT_NOT_FOUND":
-      return "オンライン決済の準備ができていません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
+      return "オンライン支払いの準備ができていません。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。";
     case "CONNECT_ACCOUNT_RESTRICTED":
-      return "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
+      return "現在オンライン支払いがご利用いただけません。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。";
     case "STRIPE_CONFIG_ERROR":
-      return "決済システムに一時的な問題が発生しています。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
+      return "決済システムに一時的な問題が発生しています。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。";
     default:
-      return "オンライン決済に問題が発生しました。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
+      return "オンライン支払いに問題が発生しました。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。";
   }
 }
 
@@ -131,7 +131,7 @@ export const GuestStatusEditModal: React.FC<GuestStatusEditModalProps> = ({
       // 参加かつ有料の場合のみ決済方法を送信
       if (attendanceStatus === "attending" && (attendance.event.fee ?? 0) > 0) {
         if (!paymentMethod) {
-          setError("決済方法を選択してください。");
+          setError("支払い方法を選択してください。");
           setIsSubmitting(false);
           return;
         }
@@ -289,14 +289,14 @@ export const GuestStatusEditModal: React.FC<GuestStatusEditModalProps> = ({
                 <Alert className="border-blue-200 bg-blue-50">
                   <Check className="h-4 w-4 text-blue-600" />
                   <AlertDescription className="text-blue-800">
-                    決済が完了しているため、支払い方法は変更できません。
+                    支払いが完了しているため、支払い方法は変更できません。
                   </AlertDescription>
                 </Alert>
               ) : availableMethods.length === 0 ? (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    利用可能な決済方法がありません。しばらく経ってから再度お試しください。
+                    利用可能な支払い方法がありません。しばらく経ってから再度お試しください。
                   </AlertDescription>
                 </Alert>
               ) : (

@@ -13,7 +13,7 @@ import { PricingSection } from "./_components/PricingSection";
 export const dynamic = "force-static";
 
 const metaDescription =
-  "参加費・会費の集金を、リンク1本でまとめて管理。招待リンクを送るだけで出欠確認から集金まで完了。参加者はアカウント登録不要。オンライン決済・現金払い対応。";
+  "参加費・会費の集金を、リンク1本でまとめて管理。招待リンクを送るだけで出欠確認から集金まで完了。参加者はアカウント登録不要。オンライン支払い・現金払い対応。";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {

@@ -1,6 +1,13 @@
 import Link from "next/link";
 
+import type { Metadata } from "next";
+
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "認証エラー",
+  description: "認証処理のエラー内容を表示します",
+};
 
 interface ErrorPageProps {
   searchParams: Promise<{

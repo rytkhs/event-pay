@@ -137,11 +137,11 @@ export function buildAccountVerifiedTemplate(params: { userName: string }): Emai
       <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${userName} 様</p>
       <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">アカウント設定が完了しました</h1>
       <div style="background:#f0fdf4;border-left:4px solid #22c55e;padding:14px 16px;border-radius:4px;margin-bottom:20px;color:#166534;line-height:1.7;">
-        Stripeアカウントの設定が正常に完了しました。オンライン決済を有効化できます。
+        Stripeアカウントの設定が正常に完了しました。オンライン支払いを有効化できます。
       </div>
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;">
         ${renderKeyValueRows([
-          { label: "オンライン決済", value: "オンライン決済が選択可能になりました。" },
+          { label: "オンライン支払い", value: "オンライン支払いが選択可能になりました。" },
           {
             label: "送金状況の確認",
             value: "ダッシュボードから送金履歴やステータスを確認できます。",
@@ -157,7 +157,7 @@ export function buildAccountVerifiedTemplate(params: { userName: string }): Emai
     "Stripeアカウントの設定が正常に完了しました。",
     "",
     "ご利用いただける機能:",
-    "- オンライン決済が選択可能になりました。",
+    "- オンライン支払いが選択可能になりました。",
     "- ダッシュボードから送金履歴やステータスを確認できます。",
   ].join("\n");
 
@@ -274,13 +274,13 @@ export function buildParticipationRegisteredTemplate(
 ): EmailTemplate {
   const statusText = STATUS_TEXT[params.attendanceStatus];
   const formattedDate = formatJstDate(params.eventDate);
-  const subject = `【${APP_NAME}】${params.eventTitle} - 参加登録完了`;
+  const subject = `【${APP_NAME}】${params.eventTitle} - 回答完了`;
 
   const html = renderLayout({
-    preheader: `${params.eventTitle}の参加登録が完了しました（${statusText}）`,
+    preheader: `${params.eventTitle}の回答が完了しました（${statusText}）`,
     contentHtml: `
       <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${escapeHtml(params.nickname)} 様</p>
-      <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">参加登録が完了しました</h1>
+      <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">回答が完了しました</h1>
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;margin-bottom:20px;">
         ${renderKeyValueRows([
           { label: "イベント名", value: escapeHtml(params.eventTitle) },
@@ -296,7 +296,7 @@ export function buildParticipationRegisteredTemplate(
   const text = [
     `${params.nickname} 様`,
     "",
-    "参加登録が完了しました",
+    "回答が完了しました",
     `イベント名: ${params.eventTitle}`,
     `開催日時: ${formattedDate}`,
     `参加状況: ${statusText}`,
@@ -439,7 +439,7 @@ export function buildPaymentDeadlineReminderTemplate(params: {
           { label: "オンライン支払い期限", value: `<strong>${escapeHtml(deadline)}</strong>` },
         ])}
       </table>
-      <p style="margin:0 0 8px;"><a href="${escapeAttr(params.paymentUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">決済を完了する</a></p>
+      <p style="margin:0 0 8px;"><a href="${escapeAttr(params.paymentUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">支払いを完了する</a></p>
       <p style="margin:6px 0 0;color:#64748b;font-size:13px;line-height:1.6;word-break:break-all;">URL: ${escapeHtml(params.paymentUrl)}</p>
     `,
   });

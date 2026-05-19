@@ -45,7 +45,7 @@ export const attendanceStatusSchema = z
 export const paymentMethodSchema = z
   .string()
   .refine((val) => val === "" || ["stripe", "cash"].includes(val), {
-    message: "有効な決済方法を選択してください",
+    message: "有効な支払い方法を選択してください",
   })
   .transform((val) => (val === "" ? undefined : (val as "stripe" | "cash")))
   .optional();
@@ -79,7 +79,7 @@ export const createParticipationFormSchema = (
         return true;
       },
       {
-        message: "参加を選択した場合は決済方法を選択してください",
+        message: "参加を選択した場合は支払い方法を選択してください",
         path: ["paymentMethod"],
       }
     );

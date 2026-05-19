@@ -218,7 +218,7 @@ describe("EventEditPage", () => {
     );
   });
 
-  it("event の snapshot が null でも current community が ready ならオンライン決済を有効化する", async () => {
+  it("event の snapshot が null でも current community が ready ならオンライン支払いを有効化する", async () => {
     requireNonEmptyCommunityWorkspaceForServerComponent.mockResolvedValue({
       currentCommunity: { id: "community-1", name: "A" },
     });

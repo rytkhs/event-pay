@@ -46,7 +46,7 @@ const paymentServiceImpl: Pick<
   },
 
   async createCashPayment(params: CoreCreateCashPaymentParams) {
-    // 現金決済レコード作成は管理者（service_role）クライアントで実行
+    // 現金払いレコード作成は管理者（service_role）クライアントで実行
     const adminClient = await createAuditedAdminClient(
       AdminReason.PAYMENT_PROCESSING,
       "features/payments/adapters/payment-port.adapter createCashPayment"

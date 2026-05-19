@@ -275,7 +275,7 @@ export function KpiCardsGrid({
               <span className="text-xs font-medium text-gray-600">参加費</span>
             </div>
             <div className="text-2xl font-bold text-gray-700">無料</div>
-            <div className="text-xs text-muted-foreground mt-1 text-slate-500">決済処理なし</div>
+            <div className="text-xs text-muted-foreground mt-1 text-slate-500">参加費なし</div>
           </CardContent>
         </Card>
       )}

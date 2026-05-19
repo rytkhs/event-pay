@@ -104,26 +104,26 @@ describe("buildParticipantsColumns", () => {
     });
   });
 
-  describe("決済方法列", () => {
-    it("現金決済バッジが表示される", () => {
+  describe("集金方法列", () => {
+    it("現金払いバッジが表示される", () => {
       render(<TestTableRow participant={mockParticipant} eventFee={1000} />);
       expect(screen.getByText("現金")).toBeInTheDocument();
     });
 
-    it("オンライン決済バッジが表示される", () => {
+    it("オンライン支払いバッジが表示される", () => {
       const stripeParticipant = { ...mockParticipant, payment_method: "stripe" as const };
       render(<TestTableRow participant={stripeParticipant} eventFee={1000} />);
       expect(screen.getByText("オンライン")).toBeInTheDocument();
     });
 
-    it("決済方法がない場合", () => {
+    it("集金方法がない場合", () => {
       const noPaymentParticipant = { ...mockParticipant, payment_method: null };
       render(<TestTableRow participant={noPaymentParticipant} eventFee={1000} />);
       expect(screen.getByText("-")).toBeInTheDocument();
     });
   });
 
-  describe("決済状況列", () => {
+  describe("集金状況列", () => {
     it("未集金バッジが表示される", () => {
       render(<TestTableRow participant={mockParticipant} eventFee={1000} />);
       expect(screen.getByText("未集金")).toBeInTheDocument();
@@ -135,14 +135,14 @@ describe("buildParticipantsColumns", () => {
       expect(screen.getByText("集金済")).toBeInTheDocument();
     });
 
-    it("無料イベントでは決済状況が表示されない", () => {
+    it("無料イベントでは集金状況が表示されない", () => {
       render(<TestTableRow participant={mockParticipant} eventFee={0} />);
       expect(screen.queryByText("-")).not.toBeInTheDocument();
     });
   });
 
   describe("アクション列", () => {
-    it("現金決済で未集金の場合、受領ボタンが表示される", () => {
+    it("現金払いで未集金の場合、受領ボタンが表示される", () => {
       render(<TestTableRow participant={mockParticipant} eventFee={1000} />);
 
       expect(screen.getByTitle("受領済みにする")).toBeInTheDocument();
@@ -158,7 +158,7 @@ describe("buildParticipantsColumns", () => {
       expect(screen.getByText("受領を取り消し")).toBeInTheDocument();
     });
 
-    it("オンライン決済の場合、アクションボタンが表示されない", () => {
+    it("オンライン支払いの場合、アクションボタンが表示されない", () => {
       const stripeParticipant = { ...mockParticipant, payment_method: "stripe" as const };
       render(<TestTableRow participant={stripeParticipant} eventFee={1000} />);
 

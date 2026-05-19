@@ -74,7 +74,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
     console.log("✓ ゲストページに遷移");
 
     // === 4. 決済ボタンが非表示であることを確認 ===
-    const paymentButton = page.getByRole("button", { name: /決済を完了する/ });
+    const paymentButton = page.getByRole("button", { name: /オンライン支払いへ進む/ });
 
     // ボタンが存在しないまたは非表示であることを確認
     await expect(paymentButton).not.toBeVisible({ timeout: 3000 });
@@ -142,7 +142,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
     console.log("✓ ゲストページに遷移");
 
     // === 4. 決済ボタンが表示されることを確認 ===
-    const paymentButton = page.getByRole("button", { name: /決済を完了する/ });
+    const paymentButton = page.getByRole("button", { name: /オンライン支払いへ進む/ });
     await expect(paymentButton).toBeVisible({ timeout: 5000 });
 
     console.log("✓ 決済ボタンが表示されている");
@@ -180,7 +180,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
      * カバー率寄与: 6%
      *
      * 前提条件:
-     * - payment.status = 'received'（現金決済完了）
+     * - payment.status = 'received'（現金払い完了）
      *
      * 期待結果:
      * - ゲスト管理ページで決済ボタンが非表示
@@ -197,7 +197,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
 
     console.log("✓ ユーザー・Connect・イベント作成完了");
 
-    // === 2. 現金決済受領済み状態の参加者を作成 ===
+    // === 2. 現金払い受領済み状態の参加者を作成 ===
     const attendanceData = await TestDataManager.createAttendance({
       status: "attending",
       existingPayment: {
@@ -206,7 +206,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
       },
     });
 
-    console.log("✓ 参加者作成完了（現金決済受領済み状態）");
+    console.log("✓ 参加者作成完了（現金払い受領済み状態）");
 
     // === 3. ゲストページにアクセス ===
     const guestPageUrl = `http://localhost:3000/guest/${attendanceData.guest_token}`;
@@ -217,7 +217,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
     console.log("✓ ゲストページに遷移");
 
     // === 4. 決済ボタンが非表示であることを確認 ===
-    const paymentButton = page.getByRole("button", { name: /決済を完了する/ });
+    const paymentButton = page.getByRole("button", { name: /オンライン支払いへ進む/ });
 
     // ボタンが存在しないまたは非表示であることを確認
     await expect(paymentButton).not.toBeVisible({ timeout: 3000 });
@@ -237,7 +237,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
 
     console.log("✓ 決済金額が正しく表示されている");
 
-    console.log("🎉 ケース2-2-3: テスト成功（現金決済受領済み時の再決済ボタン非表示）");
+    console.log("🎉 ケース2-2-3: テスト成功（現金払い受領済み時の再決済ボタン非表示）");
   });
 
   test("ケース2-2-4: 免除済み（waived）時の再決済ボタン非表示", async ({ page }) => {
@@ -284,7 +284,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
     console.log("✓ ゲストページに遷移");
 
     // === 4. 決済ボタンが非表示であることを確認 ===
-    const paymentButton = page.getByRole("button", { name: /決済を完了する/ });
+    const paymentButton = page.getByRole("button", { name: /オンライン支払いへ進む/ });
 
     // ボタンが存在しないまたは非表示であることを確認
     await expect(paymentButton).not.toBeVisible({ timeout: 3000 });

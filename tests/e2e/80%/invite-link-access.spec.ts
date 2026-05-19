@@ -65,9 +65,9 @@ test.describe("招待リンクアクセス（E2E）", () => {
     await expect(page.getByText("東京テスト会場")).toBeVisible();
     await expect(page.getByText("これはテスト用のイベントです。")).toBeVisible();
 
-    // 参加申し込みボタンが表示されることを確認
-    await expect(page.getByRole("button", { name: "登録する" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "登録する" })).toBeEnabled();
+    // 回答ボタンが表示されることを確認
+    await expect(page.getByRole("button", { name: "回答する" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "回答する" })).toBeEnabled();
 
     // エラーメッセージが表示されないことを確認
     await expect(page.getByText("無効な招待リンク")).not.toBeVisible();
@@ -93,8 +93,8 @@ test.describe("招待リンクアクセス（E2E）", () => {
     // 「無料」という文字が参加費セクションに表示されることを確認（より具体的なセレクタ）
     await expect(page.getByText("無料").first()).toBeVisible();
 
-    // 参加申し込みボタンが表示されることを確認
-    await expect(page.getByRole("button", { name: "登録する" })).toBeVisible();
+    // 回答ボタンが表示されることを確認
+    await expect(page.getByRole("button", { name: "回答する" })).toBeVisible();
   });
 
   test("異常系：無効なトークン形式でエラーページが表示される", async ({ page }) => {
@@ -108,8 +108,8 @@ test.describe("招待リンクアクセス（E2E）", () => {
       page.getByText("正しい招待リンクをご確認いただくか、主催者にお問い合わせください")
     ).toBeVisible();
 
-    // 参加申し込みボタンが表示されないことを確認
-    await expect(page.getByRole("button", { name: "登録する" })).not.toBeVisible();
+    // 回答ボタンが表示されないことを確認
+    await expect(page.getByRole("button", { name: "回答する" })).not.toBeVisible();
   });
 
   test("異常系：存在しないトークンでエラーページが表示される", async ({ page }) => {
@@ -120,8 +120,8 @@ test.describe("招待リンクアクセス（E2E）", () => {
     // エラーページが表示されることを確認
     await expect(page.getByText("無効な招待リンク").first()).toBeVisible();
 
-    // 参加申し込みボタンが表示されないことを確認
-    await expect(page.getByRole("button", { name: "登録する" })).not.toBeVisible();
+    // 回答ボタンが表示されないことを確認
+    await expect(page.getByRole("button", { name: "回答する" })).not.toBeVisible();
   });
 
   test.skip("異常系：中止済みイベントのトークンでエラーページが表示される", async ({ page }) => {
@@ -173,8 +173,8 @@ test.describe("招待リンクアクセス（E2E）", () => {
     await expect(page.getByText("出欠回答期限終了")).toBeVisible();
     await expect(page.getByText("出欠回答期限が過ぎています")).toBeVisible();
 
-    // 参加申し込みボタンが表示されないことを確認
-    await expect(page.getByRole("button", { name: "登録する" })).not.toBeVisible();
+    // 回答ボタンが表示されないことを確認
+    await expect(page.getByRole("button", { name: "回答する" })).not.toBeVisible();
   });
 
   test("異常系：空のトークンで適切なページが表示される", async ({ page }) => {
@@ -186,8 +186,8 @@ test.describe("招待リンクアクセス（E2E）", () => {
     // 具体的な表示内容は実装に依存するため、ページが読み込まれることのみ確認
     await page.waitForLoadState("networkidle");
 
-    // 参加申し込みボタンが表示されないことを確認
-    await expect(page.getByRole("button", { name: "登録する" })).not.toBeVisible();
+    // 回答ボタンが表示されないことを確認
+    await expect(page.getByRole("button", { name: "回答する" })).not.toBeVisible();
   });
 
   test("正常系：定員ありイベントで定員情報が表示される", async ({ page }) => {
@@ -209,7 +209,7 @@ test.describe("招待リンクアクセス（E2E）", () => {
     // 参加状況セクションが表示されることを確認
     await expect(page.getByText("参加状況", { exact: true })).toBeVisible();
 
-    // 参加申し込みボタンが表示されることを確認
-    await expect(page.getByRole("button", { name: "登録する" })).toBeVisible();
+    // 回答ボタンが表示されることを確認
+    await expect(page.getByRole("button", { name: "回答する" })).toBeVisible();
   });
 });

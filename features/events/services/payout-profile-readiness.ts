@@ -19,7 +19,7 @@ export async function getEventPayoutProfileReadiness(
     return {
       isReady: false,
       userMessage:
-        "受取先プロファイルが設定されていないため、オンライン決済を有効化できません。Stripe設定を確認してから再試行してください。",
+        "受取先プロファイルが設定されていないため、オンライン支払いを有効化できません。Stripe設定を確認してから再試行してください。",
     };
   }
 
@@ -32,14 +32,14 @@ export async function getEventPayoutProfileReadiness(
   if (error || !data) {
     return {
       isReady: false,
-      userMessage: "受取先プロファイルの状態を確認できないため、オンライン決済を有効化できません。",
+      userMessage: "受取先プロファイルの状態を確認できないため、オンライン支払いを有効化できません。",
     };
   }
 
   if (data.collection_ready !== true) {
     return {
       isReady: false,
-      userMessage: "オンライン決済を追加するには受取先プロファイルの設定完了が必要です。",
+      userMessage: "オンライン支払いを追加するには受取先プロファイルの設定完了が必要です。",
     };
   }
 

@@ -105,7 +105,7 @@ export function ParticipantsActionBarV2({
     }
 
     if (isPayingEvent && !paymentMethod) {
-      setAddError("決済方法を選択してください");
+      setAddError("集金方法を選択してください");
       return;
     }
 
@@ -131,8 +131,8 @@ export function ParticipantsActionBarV2({
       const successDescription = isPayingEvent
         ? "参加者を追加しました。現金（未集金）として記録されました。"
         : data.canOnlinePay
-          ? "参加者を追加しました（現在オンライン決済が可能です）"
-          : "参加者を追加しました（オンライン決済は現在できません）";
+          ? "参加者を追加しました（現在オンライン支払いが可能です）"
+          : "参加者を追加しました（オンライン支払いは現在できません）";
 
       toast("参加者を追加しました", {
         description: successDescription,
@@ -427,7 +427,7 @@ export function ParticipantsActionBarV2({
             {isPayingEvent && (
               <div className="space-y-2">
                 <Label htmlFor="payment-method" className="text-sm font-medium">
-                  決済方法 <span className="text-red-500">*</span>
+                  集金方法 <span className="text-red-500">*</span>
                 </Label>
                 <RadioGroup
                   value={paymentMethod}
@@ -443,7 +443,7 @@ export function ParticipantsActionBarV2({
                 </RadioGroup>
                 <p className="text-xs text-muted-foreground">
                   手動追加は現金のみ対応しています。
-                  オンライン決済を利用したい場合は招待リンクから登録するよう案内してください。
+                  オンラインで支払う場合は招待リンクから回答するよう案内してください。
                 </p>
               </div>
             )}

@@ -22,7 +22,7 @@ export const dynamic = "force-static";
 
 const title = "オンライン集金・振込のしくみ";
 const description =
-  "みんなの集金でオンライン決済を受け付けたときのお金の流れ、振込操作、振込タイミングの目安を主催者向けにまとめました。";
+  "みんなの集金でオンライン支払いを受け付けたときのお金の流れ、振込操作、振込タイミングの目安を主催者向けにまとめました。";
 
 export const metadata: Metadata = {
   title,
@@ -77,7 +77,7 @@ const flowSteps: FlowStep[] = [
   },
   {
     title: "支払い状況が自動で反映される",
-    body: "決済が完了すると、参加者リストやゲストページの支払い状況が自動で更新されます。",
+    body: "支払いが完了すると、参加者リストやゲストページの支払い状況が自動で更新されます。",
     icon: ReceiptText,
   },
   {
@@ -271,7 +271,7 @@ export default function OnlineCollectionGuidePage() {
                   href="/guide/participant-flow"
                   className="font-medium text-slate-600 underline decoration-slate-300 underline-offset-4 hover:text-primary"
                 >
-                  参加者の登録と支払いの流れ
+                  参加者の回答と支払いの流れ
                 </Link>
               </div>
             </div>

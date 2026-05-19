@@ -132,7 +132,7 @@ export async function adminUpdateAttendanceStatusAction(
 
       if (hasPostgrestCode(error, "P0012")) {
         return fail("RESOURCE_CONFLICT", {
-          userMessage: "オンライン決済を利用するには受取先プロファイルの設定完了が必要です。",
+          userMessage: "オンライン支払いを利用するには受取先プロファイルの設定完了が必要です。",
         });
       }
 

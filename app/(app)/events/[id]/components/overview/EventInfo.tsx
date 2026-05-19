@@ -83,8 +83,8 @@ export function EventInfo({ event }: EventInfoProps) {
             </span>
           </InfoItem>
 
-          {/* 5. 決済方法 */}
-          <InfoItem icon={CreditCard} label="決済方法">
+          {/* 5. 集金方法 */}
+          <InfoItem icon={CreditCard} label="集金方法">
             <div className="flex flex-wrap gap-2">
               {event.payment_methods && event.payment_methods.length > 0 ? (
                 event.payment_methods.map((method) => (

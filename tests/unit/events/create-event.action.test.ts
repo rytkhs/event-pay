@@ -182,7 +182,7 @@ describe("createEventAction", () => {
     mockGetEventPayoutProfileReadiness.mockResolvedValue({
       isReady: false,
       userMessage:
-        "受取先プロファイルが設定されていないため、オンライン決済を有効化できません。Stripe設定を確認してから再試行してください。",
+        "受取先プロファイルが設定されていないため、オンライン支払いを有効化できません。Stripe設定を確認してから再試行してください。",
     });
 
     const { createEventAction } = await import("@/features/events/actions/create-event");
@@ -195,7 +195,7 @@ describe("createEventAction", () => {
       expect(result.error.code).toBe("VALIDATION_ERROR");
       expect(result.error.fieldErrors).toEqual({
         payment_methods: [
-          "受取先プロファイルが設定されていないため、オンライン決済を有効化できません。Stripe設定を確認してから再試行してください。",
+          "受取先プロファイルが設定されていないため、オンライン支払いを有効化できません。Stripe設定を確認してから再試行してください。",
         ],
       });
     }

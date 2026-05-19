@@ -95,7 +95,7 @@ describe("ATTENDEE_PAYMENT_METHODS_RESTRICTION", () => {
     expect(result.message).toBe("制限なし");
   });
 
-  it("参加者がいて既存の決済方法を解除しようとする場合は制限あり（追加のみは可）", async () => {
+  it("参加者がいて既存の集金方法を解除しようとする場合は制限あり（追加のみは可）", async () => {
     const context = createTestContext({
       hasAttendees: true,
       originalEvent: { fee: 1000, capacity: null, payment_methods: ["stripe"] },
@@ -107,7 +107,7 @@ describe("ATTENDEE_PAYMENT_METHODS_RESTRICTION", () => {
     );
     expect(addOnlyResult.isRestricted).toBe(false);
     expect(addOnlyResult.message).toBe(
-      "参加者がいるため、既存の決済方法は解除できません（追加は可能）"
+      "参加者がいるため、既存の集金方法は解除できません（追加は可能）"
     );
 
     // 解除を含む（NG）
@@ -116,10 +116,10 @@ describe("ATTENDEE_PAYMENT_METHODS_RESTRICTION", () => {
       ATTENDEE_PAYMENT_METHODS_RESTRICTION.evaluate(context, removal)
     );
     expect(removalResult.isRestricted).toBe(true);
-    expect(removalResult.message).toBe("参加者がいるため、既存の決済方法は解除できません");
+    expect(removalResult.message).toBe("参加者がいるため、既存の集金方法は解除できません");
   });
 
-  it("参加者がいてもStripe集金済みがなく無料化する場合は決済方法の自動クリアを許可する", async () => {
+  it("参加者がいてもStripe集金済みがなく無料化する場合は集金方法の自動クリアを許可する", async () => {
     const context = createTestContext({
       hasAttendees: true,
       hasStripePaid: false,
@@ -135,7 +135,7 @@ describe("ATTENDEE_PAYMENT_METHODS_RESTRICTION", () => {
     expect(result.message).toBe("制限なし");
   });
 
-  it("参加者がいて有料のまま既存の決済方法を解除する場合は制限あり", async () => {
+  it("参加者がいて有料のまま既存の集金方法を解除する場合は制限あり", async () => {
     const context = createTestContext({
       hasAttendees: true,
       hasStripePaid: false,
@@ -148,10 +148,10 @@ describe("ATTENDEE_PAYMENT_METHODS_RESTRICTION", () => {
     );
 
     expect(result.isRestricted).toBe(true);
-    expect(result.message).toBe("参加者がいるため、既存の決済方法は解除できません");
+    expect(result.message).toBe("参加者がいるため、既存の集金方法は解除できません");
   });
 
-  it("Stripe集金済みがある場合は無料化でも決済方法の解除を制限する", async () => {
+  it("Stripe集金済みがある場合は無料化でも集金方法の解除を制限する", async () => {
     const context = createTestContext({
       hasAttendees: true,
       hasStripePaid: true,
@@ -164,7 +164,7 @@ describe("ATTENDEE_PAYMENT_METHODS_RESTRICTION", () => {
     );
 
     expect(result.isRestricted).toBe(true);
-    expect(result.message).toBe("参加者がいるため、既存の決済方法は解除できません");
+    expect(result.message).toBe("参加者がいるため、既存の集金方法は解除できません");
   });
 });
 
@@ -229,7 +229,7 @@ describe("ATTENDEE_COUNT_CAPACITY_RESTRICTION", () => {
 // =============================================================================
 
 describe("FREE_EVENT_PAYMENT_ADVISORY", () => {
-  it("無料イベントで決済方法が設定されている場合はワーニング", async () => {
+  it("無料イベントで集金方法が設定されている場合はワーニング", async () => {
     const context = createTestContext();
     const formData = createTestFormData({
       fee: 0,
@@ -240,7 +240,7 @@ describe("FREE_EVENT_PAYMENT_ADVISORY", () => {
 
     expect(result.isRestricted).toBe(false);
     expect(result.status).toBe("warning");
-    expect(result.message).toBe("参加費が0円のため、決済方法の設定は不要です");
+    expect(result.message).toBe("参加費が0円のため、集金方法の設定は不要です");
   });
 
   it("有料イベントの場合はワーニングなし", async () => {
@@ -259,7 +259,7 @@ describe("FREE_EVENT_PAYMENT_ADVISORY", () => {
 });
 
 describe("PAID_EVENT_PAYMENT_REQUIRED_ADVISORY", () => {
-  it("有料イベントで決済方法が設定されていない場合はワーニング", async () => {
+  it("有料イベントで集金方法が設定されていない場合はワーニング", async () => {
     const context = createTestContext();
     const formData = createTestFormData({
       fee: 1000,
@@ -272,10 +272,10 @@ describe("PAID_EVENT_PAYMENT_REQUIRED_ADVISORY", () => {
 
     expect(result.isRestricted).toBe(false);
     expect(result.status).toBe("warning");
-    expect(result.message).toBe("有料イベントでは決済方法の選択が必要です");
+    expect(result.message).toBe("有料イベントでは集金方法の選択が必要です");
   });
 
-  it("有料イベントで決済方法が設定されている場合はワーニングなし", async () => {
+  it("有料イベントで集金方法が設定されている場合はワーニングなし", async () => {
     const context = createTestContext();
     const formData = createTestFormData({
       fee: 1000,

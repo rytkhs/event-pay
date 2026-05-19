@@ -98,7 +98,7 @@
       <g transform="translate(0, 210)">
         <text x="0" y="0" font-size="14" fill="#1A2035" class="text-base font-bold">お支払い方法</text>
 
-        <!-- オンライン決済（選択中） -->
+        <!-- オンライン支払い（選択中） -->
         <g transform="translate(0, 20)">
           <rect width="300" height="50" rx="8" fill="#FFFFFF" stroke="#2EB0B0" stroke-width="2"/>
           <circle cx="25" cy="25" r="8" fill="#FFFFFF" stroke="#2EB0B0" stroke-width="2"/>

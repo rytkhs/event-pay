@@ -121,16 +121,16 @@ export async function bulkUpdateCashStatusAction(
       // レート制限でのストア初期化失敗時はスキップ（安全側）
     }
 
-    // 現金決済以外のフィルタリング
+    // 現金払い以外のフィルタリング
     const nonCashPayments = paymentsWithEvent.filter((payment) => payment.method !== "cash");
 
-    // 部分成功を許容するため、非現金決済は failures に積むだけで処理続行
+    // 部分成功を許容するため、非現金払いは failures に積むだけで処理続行
     const initialFailures: BulkUpdateResult["failures"] = nonCashPayments.map((payment) => ({
       paymentId: payment.paymentId,
-      error: "現金決済以外は手動更新できません。",
+      error: "現金払い以外は手動更新できません。",
     }));
 
-    // 現金決済のみを抽出
+    // 現金払いのみを抽出
     const cashPayments = paymentsWithEvent.filter((payment) => payment.method === "cash");
 
     if (cashPayments.length === 0) {
@@ -169,13 +169,13 @@ export async function bulkUpdateCashStatusAction(
 
     if (rpcError) {
       return fail("DATABASE_ERROR", {
-        userMessage: `一括決済ステータス更新に失敗しました: ${rpcError.message}`,
+        userMessage: `一括集金状況更新に失敗しました: ${rpcError.message}`,
       });
     }
 
     if (!isBulkUpdatePaymentStatusRpcResult(rpcResult)) {
       return fail("DATABASE_ERROR", {
-        userMessage: "一括決済ステータス更新の結果形式が不正です。",
+        userMessage: "一括集金状況更新の結果形式が不正です。",
       });
     }
 

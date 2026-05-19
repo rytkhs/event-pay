@@ -88,9 +88,9 @@ export async function updateCashStatusAction(
     // 基本的な権限チェック（RPC関数内でも再チェックされる）
     await new PaymentValidator(supabase).validateAttendanceAccess(attendanceId);
 
-    // 現金決済のみ
+    // 現金払いのみ
     if (method !== "cash") {
-      return fail("RESOURCE_CONFLICT", { userMessage: "現金決済以外は手動更新できません。" });
+      return fail("RESOURCE_CONFLICT", { userMessage: "現金払い以外は手動更新できません。" });
     }
 
     // ステータス遷移などのビジネスルール検証
@@ -134,7 +134,7 @@ export async function updateCashStatusAction(
       }
 
       return fail("DATABASE_ERROR", {
-        userMessage: `決済ステータスの更新に失敗しました: ${rpcError.message}`,
+        userMessage: `集金状況の更新に失敗しました: ${rpcError.message}`,
       });
     }
 

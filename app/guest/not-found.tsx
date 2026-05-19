@@ -15,8 +15,8 @@ export default function GuestNotFoundPage() {
       category="security"
       severity="medium"
       title="アクセスできません"
-      message="無効なアクセスです。正しい管理URLをご確認ください"
-      description="管理URLは参加登録完了時に送信されたメールに記載されています。"
+      message="無効なアクセスです。正しいゲストページURLをご確認ください"
+      description="URLは回答完了時に送信されたメールに記載されています。"
       showRetry={false}
       showHome={true}
       enableLogging={false}

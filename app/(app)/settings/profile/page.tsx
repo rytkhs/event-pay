@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+
 import { requireCurrentAppUserForServerComponent } from "@core/auth/auth-utils";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +9,11 @@ import { AccountDeleteDangerZone, EmailChangeForm, ProfileForm } from "@features
 import { Separator } from "@/components/ui/separator";
 
 import { requestAccountDeletionAction, updateEmailAction, updateProfileAction } from "./actions";
+
+export const metadata: Metadata = {
+  title: "アカウント設定",
+  description: "ユーザーネームとメールアドレスを管理します",
+};
 
 export default async function ProfileSettingsPage() {
   const user = await requireCurrentAppUserForServerComponent();

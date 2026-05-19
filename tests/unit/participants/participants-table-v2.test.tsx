@@ -336,7 +336,7 @@ describe("ParticipantsTableV2", () => {
   });
 
   describe("アクション機能", () => {
-    it("現金決済の受領ボタンが動作する", async () => {
+    it("現金払いの受領ボタンが動作する", async () => {
       const user = userEvent.setup();
       mockUpdateCashStatus.mockResolvedValue({ success: true });
 
@@ -351,7 +351,7 @@ describe("ParticipantsTableV2", () => {
       });
 
       await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith("決済状況を更新しました", {
+        expect(mockToast).toHaveBeenCalledWith("集金状況を更新しました", {
           description: "ステータスを「受領」に変更しました。",
         });
       });
@@ -556,8 +556,8 @@ describe("ParticipantsTableV2", () => {
     it("無料イベントでは決済関連の列が表示されない", () => {
       render(<ParticipantsTableV2 {...defaultProps} eventFee={0} />);
 
-      expect(screen.queryByText("決済方法")).not.toBeInTheDocument();
-      expect(screen.queryByText("決済状況")).not.toBeInTheDocument();
+      expect(screen.queryByText("集金方法")).not.toBeInTheDocument();
+      expect(screen.queryByText("集金状況")).not.toBeInTheDocument();
     });
   });
 });

@@ -69,7 +69,7 @@ const InviteScreenMock: React.FC = () => (
 
     {/* フォーム */}
     <div className="bg-white px-4 py-3 flex-1">
-      <p className="font-bold text-slate-800 text-xs mb-2.5">参加登録</p>
+      <p className="font-bold text-slate-800 text-xs mb-2.5">回答</p>
 
       {/* 名前・ニックネーム */}
       <div className="mb-2">
@@ -117,7 +117,7 @@ const InviteScreenMock: React.FC = () => (
 
       {/* 送信ボタン */}
       <div className="bg-primary text-white text-center py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1">
-        登録する
+        回答する
         <ArrowRight className="w-3.5 h-3.5" />
       </div>
     </div>
@@ -132,8 +132,8 @@ const GuestScreenMock: React.FC = () => (
       {/* 上部ステータス */}
       <div className="bg-amber-500 text-white p-5 flex flex-col items-center text-center">
         <AlertTriangle className="w-8 h-8 mb-1.5" />
-        <p className="font-bold text-sm">参加予定・決済待ち</p>
-        <p className="text-[9px] opacity-90 mt-1">決済を完了してください。</p>
+        <p className="font-bold text-sm">参加予定・支払い待ち</p>
+        <p className="text-[9px] opacity-90 mt-1">支払いを完了してください。</p>
         <div className="bg-white/20 backdrop-blur-sm rounded-md px-4 py-2 mt-2.5 min-w-[140px]">
           <p className="text-[9px] opacity-80 mb-0.5">参加費</p>
           <p className="text-xl font-bold font-mono">¥3,500</p>
@@ -160,17 +160,17 @@ const GuestScreenMock: React.FC = () => (
       </div>
     </div>
 
-    {/* アクションエリア — 決済待ちの表示例 */}
+    {/* アクションエリア — 支払い待ちの表示例 */}
     <div className="mx-3 mt-3 bg-white rounded-xl p-3 shadow-sm border border-amber-100">
       <div className="flex items-center gap-1.5 mb-2">
         <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[8px] font-bold">
           ACTION
         </span>
-        <span className="text-[10px] font-bold text-slate-700">決済が完了していません</span>
+        <span className="text-[10px] font-bold text-slate-700">支払いが完了していません</span>
       </div>
       <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white text-center py-2.5 rounded-lg font-bold text-[10px] flex items-center justify-center gap-1">
         <CreditCard className="w-3.5 h-3.5" />
-        オンライン決済へ進む
+        オンライン支払いへ進む
       </div>
       <p className="text-[8px] text-slate-400 text-center mt-1.5">
         Stripeの安全な決済ページへ移動します
@@ -182,7 +182,7 @@ const GuestScreenMock: React.FC = () => (
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <CalendarCheck className="w-3.5 h-3.5 text-slate-500" />
-          <span className="text-[10px] font-medium text-slate-600">登録情報の変更</span>
+          <span className="text-[10px] font-medium text-slate-600">回答内容の変更</span>
         </div>
         <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
       </div>
@@ -203,7 +203,7 @@ export const ParticipantFlowSection: React.FC = () => {
           <p className="text-slate-500 text-lg max-w-2xl mx-auto">
             参加者にアプリのインストールや会員登録をお願いする必要はありません。
             <br className="hidden md:block" />
-            招待リンクを開いて参加登録した後は、ゲストページからいつでも確認・変更できます。
+            招待リンクを開いて回答した後は、ゲストページからいつでも確認・変更できます。
           </p>
         </FadeIn>
 
@@ -222,11 +222,11 @@ export const ParticipantFlowSection: React.FC = () => {
             <h3 className="text-2xl md:text-3xl font-bold text-slate-800 mb-4 leading-snug">
               リンクを開いて、
               <br />
-              30秒で参加登録。
+              30秒で回答。
             </h3>
             <p className="text-slate-500 text-base leading-relaxed mb-6">
               主催者から共有された招待リンクを開くだけで、イベントの詳細を確認できます。
-              名前・メール・出欠・支払い方法をフォームに入力したら、参加登録は完了です。
+              名前・メール・出欠・支払い方法をフォームに入力したら、回答は完了です。
             </p>
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2.5 text-slate-600">
@@ -263,7 +263,7 @@ export const ParticipantFlowSection: React.FC = () => {
           <div className="flex flex-col items-center gap-2 text-slate-300">
             <div className="w-px h-8 bg-gradient-to-b from-transparent via-slate-300 to-slate-300" />
             <div className="bg-white border-2 border-slate-200 rounded-full px-5 py-2 text-xs font-bold text-slate-500 shadow-sm">
-              登録完了 → ゲストページURLを発行
+              回答完了 → ゲストページURLを発行
             </div>
             <div className="w-px h-8 bg-gradient-to-b from-slate-300 via-slate-300 to-transparent" />
           </div>
@@ -289,13 +289,13 @@ export const ParticipantFlowSection: React.FC = () => {
               </span>
             </div>
             <h3 className="text-2xl md:text-3xl font-bold text-slate-800 mb-4 leading-snug">
-              登録後もいつでも、
+              回答後もいつでも、
               <br />
               確認・変更・決済。
             </h3>
             <p className="text-slate-500 text-base leading-relaxed mb-6">
-              参加登録後に発行されるゲストページから、自分の参加状況をいつでも確認できます。
-              出欠の変更やオンライン決済もここから行えます。
+              回答後に発行されるゲストページから、自分の参加状況をいつでも確認できます。
+              出欠の変更やオンライン支払いもここから行えます。
             </p>
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2.5 text-slate-600">
@@ -308,7 +308,7 @@ export const ParticipantFlowSection: React.FC = () => {
                 <div className="bg-emerald-500/10 p-1 rounded-full text-emerald-600 mt-0.5 shrink-0">
                   <Wallet size={12} strokeWidth={3} />
                 </div>
-                ボタンひとつでオンライン決済
+                ボタンひとつでオンライン支払い
               </li>
               <li className="flex items-start gap-2.5 text-slate-600">
                 <div className="bg-emerald-500/10 p-1 rounded-full text-emerald-600 mt-0.5 shrink-0">
@@ -327,7 +327,7 @@ export const ParticipantFlowSection: React.FC = () => {
               href="/guide/participant-flow"
               className="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
             >
-              参加者の登録と支払いの流れを詳しく見る →
+              参加者の回答と支払いの流れを詳しく見る →
             </Link>
           </div>
         </FadeIn>

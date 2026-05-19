@@ -142,7 +142,7 @@ export const AdminAddAttendanceInputSchema = z
       return true;
     },
     {
-      message: "手動追加では現金決済のみ選択可能です",
+      message: "手動追加では現金払いのみ選択可能です",
       path: ["paymentMethod"],
     }
   );

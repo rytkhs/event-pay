@@ -7,7 +7,7 @@ import type { AppSupabaseClient } from "@core/types/supabase";
 import type { PaymentStatus, ServiceUpdatePaymentStatusParams } from "../types";
 
 /**
- * 楽観的ロック付きの決済ステータス更新（現金決済用）
+ * 楽観的ロック付きの決済ステータス更新（現金払い用）
  */
 export async function updatePaymentStatusSafe(
   params: ServiceUpdatePaymentStatusParams,
@@ -53,10 +53,10 @@ export async function updatePaymentStatusSafe(
           "指定された決済レコードが見つかりません。"
         );
       } else if (error.code === "P0003") {
-        // 現金決済でない
+        // 現金払いでない
         throw new PaymentError(
           PaymentErrorType.INVALID_PAYMENT_METHOD,
-          "現金決済以外は手動更新できません。"
+          "現金払い以外は手動更新できません。"
         );
       } else {
         throw new PaymentError(

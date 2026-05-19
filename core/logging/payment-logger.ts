@@ -103,19 +103,19 @@ function generateRecoverySuggestions(
     case "config_error":
       return [
         "主催者にStripeアカウント設定の確認を依頼",
-        "現金決済への変更を案内",
+        "現金払いへの変更を案内",
         "設定完了後の再試行を案内",
       ];
 
     case "user_error":
-      return ["入力内容の確認を案内", "別のカード利用を提案", "現金決済への変更を案内"];
+      return ["入力内容の確認を案内", "別のカード利用を提案", "現金払いへの変更を案内"];
 
     case "stripe_error":
-      return ["しばらく待ってから再試行", "現金決済への変更を案内", "Stripeステータス確認"];
+      return ["しばらく待ってから再試行", "現金払いへの変更を案内", "Stripeステータス確認"];
 
     case "system_error":
     default:
-      return ["システム管理者への連絡", "現金決済への変更を案内", "再試行の案内"];
+      return ["システム管理者への連絡", "現金払いへの変更を案内", "再試行の案内"];
   }
 }
 

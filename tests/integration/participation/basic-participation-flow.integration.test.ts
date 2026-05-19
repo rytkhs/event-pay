@@ -1,5 +1,5 @@
 /**
- * P0-1: 基本参加登録フロー統合テスト
+ * P0-1: 基本回答フロー統合テスト
  *
  * 仕様書: docs/spec/test/attendance/P0-1_basic-participation-flow.integration.spec.md
  *
@@ -30,7 +30,7 @@ import {
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status_enum"];
 type PaymentMethod = Database["public"]["Enums"]["payment_method_enum"];
 
-describe("P0-1: 基本参加登録フロー統合テスト", () => {
+describe("P0-1: 基本回答フロー統合テスト", () => {
   let setup: BasicParticipationFlowTestSetup;
 
   beforeEach(async () => {
@@ -44,8 +44,8 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
     await setup.cleanup();
   });
 
-  describe("TC-P0-1-1: 無料イベント参加登録フロー", () => {
-    it("無料イベントへの参加登録が仕様書通りに完了する", async () => {
+  describe("TC-P0-1-1: 無料イベント回答フロー", () => {
+    it("無料イベントへの回答が仕様書通りに完了する", async () => {
       // テストデータ準備
       const participationFormData = new FormData();
       participationFormData.append("inviteToken", setup.testData.inviteToken);
@@ -101,7 +101,7 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
     });
   });
 
-  describe("TC-P0-1-2: 有料イベント参加登録フロー（Stripe決済）", () => {
+  describe("TC-P0-1-2: 有料イベント回答フロー（Stripe決済）", () => {
     let paidEventData: TestPaymentEvent;
 
     beforeEach(async () => {
@@ -122,7 +122,7 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
       }
     });
 
-    it("有料イベントへの参加登録が仕様書通りに完了する", async () => {
+    it("有料イベントへの回答が仕様書通りに完了する", async () => {
       // テストデータ準備
       const participationFormData = new FormData();
       participationFormData.append("inviteToken", paidEventData.invite_token);
@@ -178,7 +178,7 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
     });
   });
 
-  describe("TC-P0-1-3: 「未定」ステータス登録フロー", () => {
+  describe("TC-P0-1-3: 「未定」ステータス回答フロー", () => {
     let maybeEventData: TestPaymentEvent;
 
     beforeEach(async () => {
@@ -198,7 +198,7 @@ describe("P0-1: 基本参加登録フロー統合テスト", () => {
       }
     });
 
-    it("「未定」ステータスの参加登録が仕様書通りに完了する", async () => {
+    it("「未定」ステータスの回答が仕様書通りに完了する", async () => {
       // テストデータ準備
       const participationFormData = new FormData();
       participationFormData.append("inviteToken", maybeEventData.invite_token);
@@ -368,7 +368,7 @@ class SecurityLogAssertions {
     attendanceStatus: string
   ): void {
     // セキュリティログは実装では多様なイベントタイプで記録される
-    // 参加登録成功に関連するログを検索
+    // 回答成功に関連するログを検索
     const relevantLogs = logs.filter(
       (log) =>
         log.message?.includes("registration") ||

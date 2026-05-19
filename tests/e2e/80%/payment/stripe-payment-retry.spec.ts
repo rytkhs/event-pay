@@ -111,7 +111,7 @@ test.describe("Stripe決済 ケース1-3: 再決済フロー", () => {
     console.log("✓ ゲストページに遷移");
 
     // 決済ボタンをクリック
-    const paymentButton = page.getByRole("button", { name: "決済を完了する" });
+    const paymentButton = page.getByRole("button", { name: "オンライン支払いへ進む" });
     await expect(paymentButton).toBeVisible({ timeout: 5000 });
     await paymentButton.click();
 
@@ -198,7 +198,7 @@ test.describe("Stripe決済 ケース1-3: 再決済フロー", () => {
     console.log("✓ ゲストページをリロード");
 
     // 決済ボタンが表示されることを確認（失敗後も決済可能）
-    const retryPaymentButton = page.getByRole("button", { name: "決済を完了する" });
+    const retryPaymentButton = page.getByRole("button", { name: "オンライン支払いへ進む" });
     await expect(retryPaymentButton).toBeVisible({ timeout: 5000 });
 
     console.log("✓ 再決済ボタンが表示されている");
@@ -328,7 +328,7 @@ test.describe("Stripe決済 ケース1-3: 再決済フロー", () => {
      *
      * 期待結果:
      * - cancel_urlにリダイレクトされる
-     * - 「決済がキャンセルされました」メッセージが表示される
+     * - 「支払いがキャンセルされました」メッセージが表示される
      * - status = 'pending'のまま
      * - 再度決済ボタンが表示される
      * - 再決済を実行できる
@@ -389,7 +389,7 @@ test.describe("Stripe決済 ケース1-3: 再決済フロー", () => {
     console.log("✓ ゲストページに遷移");
 
     // 決済ボタンをクリック
-    const paymentButton = page.getByRole("button", { name: "決済を完了する" });
+    const paymentButton = page.getByRole("button", { name: "オンライン支払いへ進む" });
     await expect(paymentButton).toBeVisible({ timeout: 5000 });
     await paymentButton.click();
 
@@ -466,7 +466,7 @@ test.describe("Stripe決済 ケース1-3: 再決済フロー", () => {
     console.log("✓ 決済ステータスは'pending'のまま");
 
     // === 7. 再決済ボタンが表示されることを確認 ===
-    const retryPaymentButton = page.getByRole("button", { name: "決済を完了する" });
+    const retryPaymentButton = page.getByRole("button", { name: "オンライン支払いへ進む" });
     await expect(retryPaymentButton).toBeVisible({ timeout: 5000 });
 
     console.log("✓ 再決済ボタンが表示されている");

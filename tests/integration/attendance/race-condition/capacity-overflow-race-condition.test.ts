@@ -49,7 +49,7 @@ describe("TC-RC-001: 定員超過レースコンディション対応テスト",
     await setup.cleanup();
   });
 
-  it("定員1名のイベントに2名が同時参加登録 → 1名のみ成功すること", async () => {
+  it("定員1名のイベントに2名が同時回答 → 1名のみ成功すること", async () => {
     // テスト対象データ準備
     const participantA: ParticipationFormData = {
       inviteToken: testData.testEvent.invite_token,
@@ -148,7 +148,7 @@ describe("TC-RC-001: 定員超過レースコンディション対応テスト",
     expect(capacityLog).toBeDefined();
   });
 
-  it("定員1名のイベントに3名が同時参加登録 → 1名のみ成功すること", async () => {
+  it("定員1名のイベントに3名が同時回答 → 1名のみ成功すること", async () => {
     // より多くの同時リクエストでのテスト
     const participants: ParticipationFormData[] = [
       {

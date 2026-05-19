@@ -234,7 +234,7 @@ export function SinglePageEventEditForm({
       // 1. 副次的変更の検出
       if (
         change.newValue.includes("（無料化により自動クリア）") ||
-        change.newValue.includes("（オンライン決済選択解除により自動クリア）")
+        change.newValue.includes("（オンライン支払い選択解除により自動クリア）")
       ) {
         secondaryChanges.push(change);
         return;
@@ -803,7 +803,7 @@ export function SinglePageEventEditForm({
                                 )}
                               </label>
 
-                              {/* オンライン決済 */}
+                              {/* オンライン支払い */}
                               <label
                                 className={cn(
                                   "relative flex min-h-[5.25rem] items-center rounded-lg border p-4 transition-colors sm:min-h-24",
@@ -890,7 +890,7 @@ export function SinglePageEventEditForm({
                     />
                   )}
 
-                  {/* オンライン決済設定（Stripe選択時のみ表示） */}
+                  {/* オンライン支払い設定（Stripe選択時のみ表示） */}
                   {!isFreeEvent && isOnlineSelected && (
                     <div
                       className={cn(

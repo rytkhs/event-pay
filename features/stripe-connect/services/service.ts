@@ -278,7 +278,6 @@ export class StripeConnectService implements IStripeConnectService {
         },
         metadata: {
           actor_id: userId,
-          created_by: "EventPay",
         },
       };
 

@@ -40,7 +40,7 @@ export function InviteEventDetail({
     initialRegistrationData ?? null
   );
 
-  // 申し込み完了時に上部へスクロール
+  // 回答完了時に上部へスクロール
   useEffect(() => {
     if (registrationData && !initialRegistrationData) {
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -69,12 +69,12 @@ export function InviteEventDetail({
       formData.append("paymentMethod", data.paymentMethod);
     }
 
-    // 参加登録サーバーアクションを実行
+    // 回答サーバーアクションを実行
     const result = await registerParticipationAction(formData);
 
     if (result.success) {
       if (!result.data) {
-        throw { code: "UNKNOWN_ERROR", message: "参加登録に失敗しました。" };
+        throw { code: "UNKNOWN_ERROR", message: "回答に失敗しました。" };
       }
       setRegistrationData(result.data);
       return;
@@ -107,11 +107,11 @@ export function InviteEventDetail({
           <div className="flex justify-center">
             <AlertCircle className="w-12 h-12 text-slate-300" />
           </div>
-          <h2 className="text-xl font-bold text-slate-700">参加申し込み受付終了</h2>
+          <h2 className="text-xl font-bold text-slate-700">回答受付終了</h2>
 
           <Alert variant="destructive" className="max-w-md mx-auto text-left">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>申し込みできません</AlertTitle>
+            <AlertTitle>回答できません</AlertTitle>
             <AlertDescription className="space-y-2 mt-2">
               {isCapacityReached && (
                 <div className="flex items-center gap-2">
@@ -128,14 +128,14 @@ export function InviteEventDetail({
               {event.status !== "upcoming" && (
                 <div className="flex items-center gap-2">
                   <XCircle className="h-4 w-4" />
-                  <span>このイベントは申し込みを受け付けていません</span>
+                  <span>このイベントは回答を受け付けていません</span>
                 </div>
               )}
             </AlertDescription>
           </Alert>
 
           <p className="text-slate-500 text-sm">
-            現在、このイベントへの新規参加申し込みは受け付けておりません。
+            現在、このイベントへの新規回答は受け付けておりません。
             <br />
             主催者にお問い合わせください。
           </p>

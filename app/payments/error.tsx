@@ -44,7 +44,7 @@ export default function PaymentErrorPage({ error, reset }: PaymentErrorPageProps
       <PaymentErrorLayout
         title="決済処理エラー"
         message="カード決済処理中にエラーが発生しました"
-        description="カード情報をご確認いただくか、別の決済方法をお試しください。"
+        description="カード情報をご確認いただくか、別の支払い方法をお試しください。"
         error={error}
         onRetry={reset}
       />

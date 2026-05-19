@@ -363,7 +363,7 @@ export function ParticipantsTableV2({
   // =======================================================
   // 一括操作関連
   // =======================================================
-  // 現金決済で一括操作可能な参加者のみフィルタ（フィルタ済みデータから）
+  // 現金払いで一括操作可能な参加者のみフィルタ（フィルタ済みデータから）
   const bulkOperableParticipants = useMemo(() => {
     return sortedParticipants.filter(
       (p) =>
@@ -374,7 +374,7 @@ export function ParticipantsTableV2({
     );
   }, [sortedParticipants]);
 
-  // 現在選択されている現金決済のpayment_id配列
+  // 現在選択されている現金払いのpayment_id配列
   const validSelectedPaymentIds = useMemo(() => {
     const validIds = new Set(bulkOperableParticipants.map((p) => p.payment_id).filter(Boolean));
     return selectedPaymentIds.filter((id) => validIds.has(id));
@@ -425,7 +425,7 @@ export function ParticipantsTableV2({
       try {
         const result = await updateCashStatusAction({ paymentId, status: "received" });
         if (result.success) {
-          toast("決済状況を更新しました", {
+          toast("集金状況を更新しました", {
             description: "ステータスを「受領」に変更しました。",
           });
           startTransition(() => router.refresh());
@@ -449,7 +449,7 @@ export function ParticipantsTableV2({
   const handleBulkReceive = useCallback(async () => {
     if (validSelectedPaymentIds.length === 0) {
       toast.error("選択エラー", {
-        description: "受領対象の決済を選択してください。",
+        description: "集金済みにする対象を選択してください。",
       });
       return;
     }

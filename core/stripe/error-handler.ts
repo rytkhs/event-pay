@@ -238,33 +238,33 @@ function generateResolutionHints(
   switch (classification) {
     case "config_error":
       if (paymentErrorType === PaymentErrorType.CONNECT_ACCOUNT_NOT_FOUND) {
-        return ["Stripeアカウント設定を確認", "アカウントの存在確認", "現金決済への切り替えを案内"];
+        return ["Stripeアカウント設定を確認", "アカウントの存在確認", "現金払いへの切り替えを案内"];
       }
       if (paymentErrorType === PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED) {
         return [
           "アカウントの制限理由を確認",
           "Stripeダッシュボードでの制限解除作業",
-          "現金決済への切り替えを案内",
+          "現金払いへの切り替えを案内",
         ];
       }
       return ["Stripe設定の確認", "API key・webhook設定の検証", "システム管理者への連絡"];
 
     case "user_error":
       if (paymentErrorType === PaymentErrorType.CARD_DECLINED) {
-        return ["別のカードでの再試行", "カード会社への確認", "現金決済への切り替え"];
+        return ["別のカードでの再試行", "カード会社への確認", "現金払いへの切り替え"];
       }
-      return ["入力内容の確認", "正しい情報での再入力", "別の決済方法の利用"];
+      return ["入力内容の確認", "正しい情報での再入力", "別の支払い方法の利用"];
 
     case "stripe_error":
       return [
         "しばらく時間をおいて再試行",
         "Stripeステータスページの確認",
-        "現金決済への一時切り替え",
+        "現金払いへの一時切り替え",
       ];
 
     case "system_error":
     default:
-      return ["システム管理者への報告", "エラーログの詳細確認", "現金決済での代替対応"];
+      return ["システム管理者への報告", "エラーログの詳細確認", "現金払いでの代替対応"];
   }
 }
 
@@ -277,19 +277,19 @@ function generateUserMessage(
 ): string {
   switch (paymentErrorType) {
     case PaymentErrorType.CONNECT_ACCOUNT_NOT_FOUND:
-      return "オンライン決済の準備ができていません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
+      return "オンライン支払いの準備ができていません。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。";
 
     case PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED:
-      return "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
+      return "現在オンライン支払いがご利用いただけません。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。";
 
     case PaymentErrorType.STRIPE_CONFIG_ERROR:
-      return "決済システムの設定に問題があります。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
+      return "決済システムの設定に問題があります。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。";
 
     case PaymentErrorType.CARD_DECLINED:
-      return "カードが拒否されました。別のカードをお試しいただくか、現金決済をご利用ください。";
+      return "カードが拒否されました。別のカードをお試しいただくか、現金払いをご利用ください。";
 
     case PaymentErrorType.INSUFFICIENT_FUNDS:
-      return "残高不足のため決済できませんでした。別のカードをお試しいただくか、現金決済をご利用ください。";
+      return "残高不足のため決済できませんでした。別のカードをお試しいただくか、現金払いをご利用ください。";
 
     case PaymentErrorType.VALIDATION_ERROR:
       return "入力内容に誤りがあります。カード情報をご確認の上、もう一度お試しください。";
@@ -300,12 +300,12 @@ function generateUserMessage(
 
     case PaymentErrorType.STRIPE_API_ERROR:
       if (classification === "stripe_error") {
-        return "決済サービスに一時的な問題が発生しています。しばらく時間をおいて再度お試しいただくか、現金決済をご利用ください。";
+        return "決済サービスに一時的な問題が発生しています。しばらく時間をおいて再度お試しいただくか、現金払いをご利用ください。";
       }
-      return "決済処理中にエラーが発生しました。もう一度お試しいただくか、現金決済をご利用ください。";
+      return "決済処理中にエラーが発生しました。もう一度お試しいただくか、現金払いをご利用ください。";
 
     default:
-      return "決済処理中にエラーが発生しました。しばらく時間をおいて再度お試しいただくか、現金決済をご利用ください。";
+      return "決済処理中にエラーが発生しました。しばらく時間をおいて再度お試しいただくか、現金払いをご利用ください。";
   }
 }
 

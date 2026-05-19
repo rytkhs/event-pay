@@ -31,7 +31,7 @@ import { getOwnedEventActionContextForServerAction } from "../services/get-owned
  * - RLSポリシーベースのセキュリティアクセス制御
  * - 専用RPC関数による排他ロック付き定員チェック
  * - レースコンディション対策済み
- * - 追加完了後、ゲストURLとオンライン決済可否を返す
+ * - 追加完了後、ゲストURLとオンライン支払い可否を返す
  */
 export async function adminAddAttendanceAction(
   input: unknown
@@ -117,11 +117,11 @@ export async function adminAddAttendanceAction(
       // 決済方法が指定されていない場合はエラー
       if (!paymentMethod) {
         return fail("VALIDATION_ERROR", {
-          userMessage: "有料イベントの参加には決済方法の選択が必要です",
+          userMessage: "有料イベントの参加には集金方法の選択が必要です",
         });
       }
 
-      // PaymentServiceを使用して現金決済レコードを作成
+      // PaymentServiceを使用して現金払いレコードを作成
       try {
         const paymentPort = getPaymentPort();
         const result = await paymentPort.createCashPayment({

@@ -1,7 +1,7 @@
 /**
- * 現金決済フロー E2Eテスト
+ * 現金払いフロー E2Eテスト
  *
- * flow.md の「4-2. 現金決済」に対応
+ * flow.md の「4-2. 現金払い」に対応
  * 仕様書: docs/spec/test/e2e/cash.md
  *
  * テストケース:
@@ -15,11 +15,11 @@
  * - 認証済みセットアップが完了していること（auth.setup.ts）
  *
  * 注意:
- * - Stripe CLIは不要（現金決済のテストのため）
+ * - Stripe CLIは不要（現金払いのテストのため）
  * - DB操作はSupabase Service Role Keyを使用
  *
  * 参考:
- * - flow.md: 4-2. 現金決済
+ * - flow.md: 4-2. 現金払い
  * - docs/spec/test/e2e/cash.md: P0（必須）基本フロー
  */
 
@@ -28,7 +28,7 @@ import { test, expect } from "@playwright/test";
 import { getPaymentFromDB } from "../../helpers/payment-helpers";
 import { TestDataManager, TEST_IDS } from "../../helpers/test-data-setup";
 
-test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
+test.describe("現金払いフロー (CASH-PAYMENT-E2E-001)", () => {
   // 各テスト後のクリーンアップ
   test.afterEach(async () => {
     await TestDataManager.cleanup();
@@ -45,7 +45,7 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
      * - 決済方法に「現金」が含まれている
      *
      * 期待結果:
-     * - ゲストが参加登録時に現金決済を選択できる
+     * - ゲストが回答時に現金払いを選択できる
      * - 決済レコードが status='pending', method='cash' で作成される
      * - 参加者の status='attending' が設定される
      * - ゲスト管理ページで決済ステータスが「支払い待ち」と表示される
@@ -58,7 +58,7 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
 
     await TestDataManager.createUserWithConnect();
 
-    // 現金決済を含む有料イベントを作成
+    // 現金払いを含む有料イベントを作成
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -98,7 +98,7 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
 
     console.log("✓ テストデータ作成完了");
 
-    // === 2. 招待リンクから参加登録 ===
+    // === 2. 招待リンクから回答 ===
     const inviteUrl = `http://localhost:3000/invite/${eventData.invite_token}`;
     await page.goto(inviteUrl);
     await page.waitForLoadState("networkidle");
@@ -128,7 +128,7 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
     // 支払い方法の選択肢が表示されることを確認
     await expect(page.getByText(/支払い方法|決済方法/)).toBeVisible();
 
-    // 現金決済オプションを直接ラジオボタンで選択
+    // 現金払いオプションを直接ラジオボタンで選択
     const cashRadio = page.locator('input[type="radio"][value="cash"]');
     await expect(cashRadio).toBeVisible();
     await cashRadio.check({ force: true });
@@ -136,19 +136,19 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
 
     console.log("✓ 決済方法「現金」を選択");
 
-    // === 5. 参加登録を送信 ===
-    const submitButton = page.getByRole("button", { name: "登録する" });
+    // === 5. 回答を送信 ===
+    const submitButton = page.getByRole("button", { name: "回答する" });
     await expect(submitButton).toBeEnabled({ timeout: 5000 });
     await submitButton.click();
 
-    console.log("✓ 参加登録を送信");
+    console.log("✓ 回答を送信");
 
-    // === 6. 登録完了画面の確認 ===
+    // === 6. 回答完了画面の確認 ===
     // 完了メッセージが表示されるのを待機（タイムアウトを長めに）
-    await expect(page.getByText("登録完了")).toBeVisible({ timeout: 20 * 1000 });
+    await expect(page.getByText("回答完了")).toBeVisible({ timeout: 20 * 1000 });
     await expect(page.getByText(/ご回答ありがとうございます/)).toBeVisible();
 
-    console.log("✓ 登録完了画面が表示された");
+    console.log("✓ 回答完了画面が表示された");
 
     // === 7. DBで決済レコードの確認 ===
     // 参加者IDを取得
@@ -193,7 +193,7 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
 
     // 決済ステータスが表示されることを確認
     await expect(page.getByText(/参加予定/i)).toBeVisible();
-    await expect(page.getByText(/現金決済|支払い待ち/i)).toBeVisible();
+    await expect(page.getByText(/現金払い|支払い待ち/i)).toBeVisible();
 
     console.log("✓ ゲスト管理ページで決済ステータスが表示された");
 
@@ -207,7 +207,7 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
      * カバー率寄与: 33%
      *
      * 前提条件:
-     * - 現金決済pending状態の参加者が存在する
+     * - 現金払いpending状態の参加者が存在する
      * - 主催者として認証済み
      *
      * 期待結果:
@@ -235,7 +235,7 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
       .eq("id", TEST_IDS.EVENT_ID);
     await TestDataManager.createAttendance({ status: "attending" });
 
-    // 現金決済レコードをpendingで作成
+    // 現金払いレコードをpendingで作成
     await supabase.from("payments").insert({
       id: crypto.randomUUID(),
       attendance_id: TEST_IDS.ATTENDANCE_ID,
@@ -302,7 +302,7 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
      * カバー率寄与: 33%
      *
      * 前提条件:
-     * - 現金決済pending状態の参加者が存在する
+     * - 現金払いpending状態の参加者が存在する
      * - 主催者として認証済み
      *
      * 期待結果:

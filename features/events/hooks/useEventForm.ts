@@ -114,8 +114,8 @@ export const useEventForm = ({
   }, [form, watchedCapacity]);
 
   // 決済方法が変更されたときの処理
-  // オンライン決済が追加された場合：オンライン支払い期限をプリセット
-  // オンライン決済が削除された場合：オンライン支払い期限をクリア
+  // オンライン支払いが追加された場合：オンライン支払い期限をプリセット
+  // オンライン支払いが削除された場合：オンライン支払い期限をクリア
   useEffect(() => {
     const paymentMethods = form.getValues("payment_methods") || [];
     const hasOnlinePayment = paymentMethods.includes("stripe");
@@ -123,7 +123,7 @@ export const useEventForm = ({
     const currentPay = form.getValues("payment_deadline");
 
     if (hasOnlinePayment) {
-      // オンライン決済が選択され、オンライン支払い期限が空の場合、開催日時でプリセット
+      // オンライン支払いが選択され、オンライン支払い期限が空の場合、開催日時でプリセット
       if (dateValue && (!currentPay || currentPay.trim() === "")) {
         const eventLocal = new Date(dateValue);
         if (!Number.isNaN(eventLocal.getTime())) {
@@ -143,7 +143,7 @@ export const useEventForm = ({
         }
       }
     } else {
-      // オンライン決済が選択されていない場合、オンライン支払い期限をクリア
+      // オンライン支払いが選択されていない場合、オンライン支払い期限をクリア
       if (currentPay && currentPay.trim() !== "") {
         form.setValue("payment_deadline", "", {
           shouldValidate: true,
@@ -154,7 +154,7 @@ export const useEventForm = ({
   }, [watchedPaymentMethods, form]);
 
   // 開催日時入力時に、締切サジェスト（申込: -3日 / 決済: -1日）を自動セット（未編集時のみ）
-  // オンライン支払い期限は、オンライン決済（stripe）が選択されている場合のみプリセット
+  // オンライン支払い期限は、オンライン支払い（stripe）が選択されている場合のみプリセット
   useEffect(() => {
     const dateValue = watchedDate;
     if (!dateValue || dateValue.trim() === "") return;
@@ -192,7 +192,7 @@ export const useEventForm = ({
       });
     }
 
-    // オンライン支払い期限は、オンライン決済が選択されている場合のみプリセット
+    // オンライン支払い期限は、オンライン支払いが選択されている場合のみプリセット
     if (
       hasOnlinePayment &&
       (!currentPay || currentPay.trim() === "" || !dirtyFields.payment_deadline)

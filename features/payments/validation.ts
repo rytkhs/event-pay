@@ -35,7 +35,7 @@ const createStripeSessionParamsSchema = z.object({
   gaClientId: z.string().optional(),
 });
 
-// 現金決済用スキーマ（内部使用専用）
+// 現金払い用スキーマ（内部使用専用）
 const createCashPaymentParamsSchema = z.object({
   attendanceId: z.string().uuid("参加記録IDは有効なUUIDである必要があります"),
   amount: z
@@ -342,7 +342,7 @@ export class PaymentValidator implements IPaymentValidator {
       if (method === "cash" && newStatus === "paid") {
         throw new PaymentError(
           PaymentErrorType.INVALID_STATUS_TRANSITION,
-          "現金決済では「paid」ステータスは使用できません"
+          "現金払いでは「paid」ステータスは使用できません"
         );
       }
     } catch (error) {

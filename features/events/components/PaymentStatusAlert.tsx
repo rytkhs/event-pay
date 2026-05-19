@@ -283,8 +283,8 @@ export function PaymentStatusAlert({
         icon: <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />,
         bgColor: "bg-blue-50 border-blue-200",
         textColor: "text-blue-800",
-        title: "決済状況を確認中",
-        description: "決済ステータスを検証しています...",
+        title: "支払い状況を確認中",
+        description: "支払いステータスを検証しています...",
       };
     }
 
@@ -310,8 +310,8 @@ export function PaymentStatusAlert({
             icon: <CheckCircle className="h-5 w-5 text-green-600" />,
             bgColor: "bg-green-50 border-green-200",
             textColor: "text-green-800",
-            title: verifiedStatus ? "参加登録が完了しました（検証済み）" : "参加登録が完了しました",
-            description: `${sanitizeForEventPay(eventTitle)}の参加登録が確定しました。お支払いは不要です。`,
+            title: verifiedStatus ? "回答が完了しました（検証済み）" : "回答が完了しました",
+            description: `${sanitizeForEventPay(eventTitle)}の回答が確定しました。お支払いは不要です。`,
           };
         }
         // 有料の決済完了
@@ -320,8 +320,8 @@ export function PaymentStatusAlert({
           icon: <CheckCircle className="h-5 w-5 text-green-600" />,
           bgColor: "bg-green-50 border-green-200",
           textColor: "text-green-800",
-          title: verifiedStatus ? "決済が完了しました（検証済み）" : "決済が完了しました",
-          description: `${sanitizeForEventPay(eventTitle)}の参加費の決済が正常に完了しました。`,
+          title: verifiedStatus ? "支払いが完了しました（検証済み）" : "支払いが完了しました",
+          description: `${sanitizeForEventPay(eventTitle)}の参加費の支払いが正常に完了しました。`,
         };
       case "canceled":
         return {
@@ -329,9 +329,9 @@ export function PaymentStatusAlert({
           icon: <XCircle className="h-5 w-5 text-orange-600" />,
           bgColor: "bg-orange-50 border-orange-200",
           textColor: "text-orange-800",
-          title: "決済がキャンセルされました",
+          title: "支払いがキャンセルされました",
           description:
-            "決済処理がキャンセルされました。参加費の決済を完了するには、決済を完了するボタンからやり直してください。",
+            "支払い処理がキャンセルされました。参加費の支払いを完了するには、支払いを完了するボタンからやり直してください。",
         };
       case "failed":
         return {
@@ -339,9 +339,9 @@ export function PaymentStatusAlert({
           icon: <AlertCircle className="h-5 w-5 text-red-600" />,
           bgColor: "bg-red-50 border-red-200",
           textColor: "text-red-800",
-          title: "決済に失敗しました",
+          title: "支払いに失敗しました",
           description:
-            "決済処理に失敗しました。カード情報を確認の上、決済を完了するボタンからやり直してください。",
+            "支払い処理に失敗しました。カード情報を確認の上、支払いを完了するボタンからやり直してください。",
         };
       default:
         // ポーリング上限に達した場合のガイダンスを追加
@@ -355,9 +355,9 @@ export function PaymentStatusAlert({
             icon: <AlertCircle className="h-5 w-5 text-blue-600" />,
             bgColor: "bg-blue-50 border-blue-200",
             textColor: "text-blue-800",
-            title: "決済状況を再確認できません",
+            title: "支払い状況を再確認できません",
             description:
-              "決済確認に時間がかかっています。もう一度確認を行うか、ページを再読み込みしてください。",
+              "支払い確認に時間がかかっています。もう一度確認を行うか、ページを再読み込みしてください。",
             // 再確認 / リロード用のアクション要素を返す
             actions: (
               <div className="mt-3 flex gap-2">
@@ -377,8 +377,8 @@ export function PaymentStatusAlert({
           icon: <AlertCircle className="h-5 w-5 text-blue-600" />,
           bgColor: "bg-blue-50 border-blue-200",
           textColor: "text-blue-800",
-          title: "決済処理中",
-          description: "決済処理の状況を確認中です。しばらくお待ちください。",
+          title: "支払い処理中",
+          description: "支払い処理の状況を確認中です。しばらくお待ちください。",
         };
     }
   };

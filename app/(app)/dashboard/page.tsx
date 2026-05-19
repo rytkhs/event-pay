@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 
+import type { Metadata } from "next";
+
 import { resolveAppWorkspaceForServerComponent } from "@core/community/app-workspace";
 
 import { createDashboardDataResource } from "./_lib/dashboard-data";
@@ -13,6 +15,11 @@ import {
   ConnectAccountCtaSkeleton,
 } from "./components/Skeletons";
 import { StripeAccountCard } from "./components/StripeAccountCard";
+
+export const metadata: Metadata = {
+  title: "ホーム",
+  description: "イベントと集金状況の概要を確認します",
+};
 
 export default async function DashboardPage() {
   const workspace = await resolveAppWorkspaceForServerComponent();

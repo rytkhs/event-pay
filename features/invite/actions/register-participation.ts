@@ -111,7 +111,7 @@ async function validateInviteAndEvent(
     );
 
     throw fail("RESOURCE_CONFLICT", {
-      userMessage: inviteValidation.errorMessage ?? "このイベントには参加登録できません",
+      userMessage: inviteValidation.errorMessage ?? "このイベントには回答できません",
     });
   }
 
@@ -207,7 +207,7 @@ async function validateEmailDuplication(
     );
 
     throw fail("DUPLICATE_REGISTRATION", {
-      userMessage: "このメールアドレスは既にこのイベントに登録されています",
+      userMessage: "このメールアドレスは既に回答済みです。",
     });
   }
 }
@@ -393,7 +393,7 @@ async function executeRegistration(
         (errorMessage.includes("email") ||
           (errorDetails ?? "").includes("attendances_event_email_unique"))) ||
       (errorDetails ?? "").includes("attendances_event_email_unique") ||
-      errorMessage.includes("このメールアドレスは既にこのイベントに登録されています")
+      errorMessage.includes("このメールアドレスは既に回答済みです。")
     ) {
       // 真のメール重複またはレースコンディション後の再チェック結果
       const isRaceConditionResolved = errorMessage.includes("Race condition detected and resolved");
@@ -418,7 +418,7 @@ async function executeRegistration(
         throw fail("RESOURCE_CONFLICT", { userMessage: "このイベントは定員に達しています" });
       } else {
         throw fail("DUPLICATE_REGISTRATION", {
-          userMessage: "このメールアドレスは既にこのイベントに登録されています",
+          userMessage: "このメールアドレスは既に回答済みです。",
         });
       }
     }
@@ -438,7 +438,7 @@ async function executeRegistration(
       { ...securityContext, eventId: event.id }
     );
 
-    throw fail("DATABASE_ERROR", { userMessage: "参加登録の処理中にエラーが発生しました" });
+    throw fail("DATABASE_ERROR", { userMessage: "回答の処理中にエラーが発生しました" });
   }
 
   // ゲストトークンが正しく保存されたかを検証
@@ -451,7 +451,7 @@ async function executeRegistration(
  * ゲストトークン保存の検証
  *
  * 設計方針:
- * - メイン処理（参加登録）は既に成功しているため、検証失敗時もユーザーエラーは返さない
+ * - メイン処理（回答）は既に成功しているため、検証失敗時もユーザーエラーは返さない
  * - セキュリティ問題として適切にログ記録し、管理者の監視・対処を可能にする
  * - 将来的にはメトリクス監視によって問題の頻度を追跡し、根本対策を検討する
  */
@@ -553,7 +553,7 @@ async function verifyGuestTokenStorage(
 }
 
 /**
- * 参加登録を処理するサーバーアクション
+ * 回答を処理するサーバーアクション
  * 容量チェック、重複チェック、ゲストトークン生成、セキュリティログ記録を含む
  */
 export async function registerParticipationAction(
@@ -619,7 +619,7 @@ export async function registerParticipationAction(
       // クッキー設定失敗はUX低下に留めるため、ユーザー向けエラーにはしない
     }
 
-    // 11. 参加登録完了通知を送信（失敗してもログのみ記録）
+    // 11. 回答完了通知を送信（失敗してもログのみ記録）
     try {
       const supabase = await createServerActionSupabaseClient();
       const notificationService = new NotificationService(supabase);
@@ -644,7 +644,7 @@ export async function registerParticipationAction(
       });
     }
 
-    return ok(responseData, { message: "参加登録が完了しました" });
+    return ok(responseData, { message: "回答が完了しました" });
   } catch (error) {
     // エラーが既にActionResultの場合はそのまま返す
     if (error && typeof error === "object" && "success" in error) {
@@ -661,12 +661,12 @@ export async function registerParticipationAction(
       securityContext
     );
 
-    return fail("INTERNAL_ERROR", { userMessage: "参加登録の処理中にエラーが発生しました" });
+    return fail("INTERNAL_ERROR", { userMessage: "回答の処理中にエラーが発生しました" });
   }
 }
 
 /**
- * 参加登録データの直接処理版（FormDataではなく型安全なオブジェクトを受け取る）
+ * 回答データの直接処理版（FormDataではなく型安全なオブジェクトを受け取る）
  * テストやAPIエンドポイントから使用される
  */
 export async function registerParticipationDirectAction(
@@ -695,6 +695,6 @@ export async function registerParticipationDirectAction(
       { userAgent: "direct-action", ip: "internal" }
     );
 
-    return fail("INTERNAL_ERROR", { userMessage: "参加登録の処理中にエラーが発生しました" });
+    return fail("INTERNAL_ERROR", { userMessage: "回答の処理中にエラーが発生しました" });
   }
 }

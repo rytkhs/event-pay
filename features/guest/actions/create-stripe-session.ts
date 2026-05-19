@@ -172,7 +172,7 @@ export async function createGuestStripeSessionAction(
   if (connectError || !connectAccount?.payout_profile_id) {
     return fail("CONNECT_ACCOUNT_NOT_FOUND", {
       userMessage:
-        "オンライン決済の準備ができていません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。",
+        "オンライン支払いの準備ができていません。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。",
       details: {
         connectAccountIssue: true,
         alternativePaymentSuggested: true,
@@ -183,7 +183,7 @@ export async function createGuestStripeSessionAction(
   if (connectAccount.collection_ready !== true) {
     return fail("CONNECT_ACCOUNT_RESTRICTED", {
       userMessage:
-        "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。",
+        "現在オンライン支払いがご利用いただけません。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。",
       details: {
         connectAccountIssue: true,
         alternativePaymentSuggested: true,

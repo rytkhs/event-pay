@@ -299,13 +299,13 @@ describe("リマインダー送信 統合テスト", () => {
       expect(paymentDeadlineSummary.successCount).toBe(1);
     });
 
-    test("現金決済者にはリマインダーが送信されない", async () => {
+    test("現金払い者にはリマインダーが送信されない", async () => {
       const tomorrowDeadline = getTomorrowJstDateTime();
       const eventDate = getFutureDateTime(7);
       const registrationDeadline = addDays(tomorrowDeadline, -1);
 
       const event = await createTestEvent(setup.testUser.id, {
-        title: "現金決済イベント",
+        title: "現金払いイベント",
         date: eventDate.toISOString(),
         fee: 3000,
         registration_deadline: registrationDeadline.toISOString(),
@@ -315,7 +315,7 @@ describe("リマインダー送信 統合テスト", () => {
       cleanupHelper.trackEvent(event.id);
 
       const attendance = await createTestAttendance(event.id, {
-        nickname: "現金決済参加者",
+        nickname: "現金払い参加者",
         status: "attending",
       });
       cleanupHelper.trackAttendance(attendance.id);

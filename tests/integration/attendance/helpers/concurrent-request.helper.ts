@@ -195,9 +195,9 @@ export class ConcurrentRequestHelper {
   }
 
   /**
-   * 参加登録アクションを並行実行するヘルパー
+   * 回答アクションを並行実行するヘルパー
    *
-   * @param participationDataArray 参加登録データの配列
+   * @param participationDataArray 回答データの配列
    * @param options 実行オプション
    * @returns 実行結果
    */

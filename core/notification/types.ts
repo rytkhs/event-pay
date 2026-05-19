@@ -73,7 +73,7 @@ export interface AccountRestrictedNotification extends StripeConnectNotification
 }
 
 /**
- * 参加登録完了通知データ
+ * 回答完了通知データ
  */
 export interface ParticipationRegisteredNotification {
   email: string;
@@ -122,7 +122,7 @@ export interface INotificationService {
   ): Promise<NotificationResult>;
 
   /**
-   * 参加登録完了通知を送信
+   * 回答完了通知を送信
    */
   sendParticipationRegisteredNotification(
     data: ParticipationRegisteredNotification

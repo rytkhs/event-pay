@@ -56,7 +56,7 @@ export function ParticipantsActiveFilters({
 
   if (!query.smart && query.sort && query.order) {
     const sortLabels: Record<NonNullable<EventManagementQuery["sort"]>, string> = {
-      created_at: "登録日時",
+      created_at: "回答日時",
       nickname: "名前・ニックネーム",
       status: "参加状況",
       updated_at: "更新日時",

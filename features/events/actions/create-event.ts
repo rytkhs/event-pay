@@ -171,7 +171,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
 
     const payoutProfileId = currentCommunitySnapshot.current_payout_profile_id ?? null;
 
-    // オンライン決済の準備状態を current community の payout snapshot 候補から判定する
+    // オンライン支払いの準備状態を current community の payout snapshot 候補から判定する
     {
       const fee = Number(rawData.fee);
       const wantsStripe = rawData.payment_methods.includes("stripe");
@@ -195,7 +195,7 @@ export async function createEventAction(formData: FormData): Promise<CreateEvent
           return fail("VALIDATION_ERROR", {
             userMessage:
               payoutReadiness.userMessage ||
-              "オンライン決済を利用するには受取先プロファイルの設定完了が必要です",
+              "オンライン支払いを利用するには受取先プロファイルの設定完了が必要です",
             fieldErrors: {
               payment_methods: [
                 payoutReadiness.userMessage ||
