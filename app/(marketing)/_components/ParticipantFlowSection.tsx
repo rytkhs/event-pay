@@ -132,8 +132,8 @@ const GuestScreenMock: React.FC = () => (
       {/* 上部ステータス */}
       <div className="bg-amber-500 text-white p-5 flex flex-col items-center text-center">
         <AlertTriangle className="w-8 h-8 mb-1.5" />
-        <p className="font-bold text-sm">参加予定・決済待ち</p>
-        <p className="text-[9px] opacity-90 mt-1">決済を完了してください。</p>
+        <p className="font-bold text-sm">参加予定・支払い待ち</p>
+        <p className="text-[9px] opacity-90 mt-1">支払いを完了してください。</p>
         <div className="bg-white/20 backdrop-blur-sm rounded-md px-4 py-2 mt-2.5 min-w-[140px]">
           <p className="text-[9px] opacity-80 mb-0.5">参加費</p>
           <p className="text-xl font-bold font-mono">¥3,500</p>
@@ -160,13 +160,13 @@ const GuestScreenMock: React.FC = () => (
       </div>
     </div>
 
-    {/* アクションエリア — 決済待ちの表示例 */}
+    {/* アクションエリア — 支払い待ちの表示例 */}
     <div className="mx-3 mt-3 bg-white rounded-xl p-3 shadow-sm border border-amber-100">
       <div className="flex items-center gap-1.5 mb-2">
         <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[8px] font-bold">
           ACTION
         </span>
-        <span className="text-[10px] font-bold text-slate-700">決済が完了していません</span>
+        <span className="text-[10px] font-bold text-slate-700">支払いが完了していません</span>
       </div>
       <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white text-center py-2.5 rounded-lg font-bold text-[10px] flex items-center justify-center gap-1">
         <CreditCard className="w-3.5 h-3.5" />

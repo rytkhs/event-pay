@@ -127,7 +127,7 @@ test.describe("Stripe決済 ケース1-4: 期限後決済フロー (PAYMENT-E2E-
     console.log("✓ ゲストページに遷移");
 
     // === 4. 決済ボタンが表示されることを確認 ===
-    const paymentButton = page.getByRole("button", { name: "決済を完了する" });
+    const paymentButton = page.getByRole("button", { name: "オンライン支払いへ進む" });
     await expect(paymentButton).toBeVisible({ timeout: 5000 });
 
     console.log("✓ 決済ボタンが表示されている（猶予期間内）");
@@ -295,7 +295,7 @@ test.describe("Stripe決済 ケース1-4: 期限後決済フロー (PAYMENT-E2E-
     console.log("✓ ゲストページに遷移");
 
     // === 4. 決済ボタンがdisabled状態になることを確認 ===
-    const paymentButton = page.getByRole("button", { name: "決済を完了する" });
+    const paymentButton = page.getByRole("button", { name: "オンライン支払いへ進む" });
 
     // ボタンは表示されているが、disabled状態であることを確認
     await expect(paymentButton).toBeVisible({ timeout: 5000 });
@@ -403,7 +403,7 @@ test.describe("Stripe決済 ケース1-4: 期限後決済フロー (PAYMENT-E2E-
     console.log("✓ ゲストページに遷移");
 
     // === 4. 決済ボタンがdisabled状態になることを確認 ===
-    const paymentButton = page.getByRole("button", { name: "決済を完了する" });
+    const paymentButton = page.getByRole("button", { name: "オンライン支払いへ進む" });
 
     // ボタンは表示されているが、disabled状態であることを確認
     await expect(paymentButton).toBeVisible({ timeout: 5000 });

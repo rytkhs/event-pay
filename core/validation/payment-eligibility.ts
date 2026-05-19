@@ -162,9 +162,9 @@ export function canGuestRepay(
   let reason: string | undefined = baseResult.reason;
 
   if (!reason && !isValidMethod) {
-    reason = `決済方法が${requiredPaymentMethod}である必要があります。`;
+    reason = `支払い方法が${requiredPaymentMethod}である必要があります。`;
   } else if (!reason && !isValidStatus) {
-    reason = `決済ステータスが${allowedPaymentStatuses.join("または")}である必要があります。`;
+    reason = `支払い状況が${allowedPaymentStatuses.join("または")}である必要があります。`;
   }
 
   return {
@@ -221,7 +221,7 @@ export function canCreateStripeSession(
   } else if (!reason && !isNotFinalized) {
     reason = "すでに決済は完了（または返金済み）しています。";
   } else if (!reason && !isValidStatus) {
-    reason = "決済ステータスが無効です。";
+    reason = "支払い状況が無効です。";
   }
 
   return {

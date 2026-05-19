@@ -251,7 +251,7 @@ export const createEventSchema = z
       return true;
     },
     {
-      message: "有料イベントでは決済方法の選択が必要です",
+      message: "有料イベントでは集金方法の選択が必要です",
       path: ["payment_methods"],
     }
   );
@@ -445,7 +445,7 @@ export const updateEventSchema = z
       return true;
     },
     {
-      message: "有料イベントでは決済方法の選択が必要です",
+      message: "有料イベントでは集金方法の選択が必要です",
       path: ["payment_methods"],
     }
   );

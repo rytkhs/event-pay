@@ -124,7 +124,7 @@ test.describe("回答（招待リンク）（E2E）", () => {
     await page.locator('[role="radio"][value="attending"]').check();
 
     // 決済方法の選択肢が表示されることを確認
-    await expect(page.getByText("決済方法", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("支払い方法", { exact: true }).first()).toBeVisible();
     await expect(
       page.getByRole("radio", {
         name: /オンライン支払い.*クレジットカード.*Apple Pay.*Google Pay/,

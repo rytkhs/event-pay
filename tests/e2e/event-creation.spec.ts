@@ -203,7 +203,7 @@ test.describe("イベント作成（E2E）", () => {
     await expect(page.getByText("1,000円")).toBeVisible();
   });
 
-  test("正常系：無料イベントを作成し、決済方法の選択が不要であることを確認", async ({ page }) => {
+  test("正常系：無料イベントを作成し、集金方法の選択が不要であることを確認", async ({ page }) => {
     // 将来の日時を生成（確実に未来の日時）
     const futureDateString = "2026-12-26T10:00";
     const registrationDeadline = "2026-12-25T23:45"; // 出欠回答期限
@@ -222,7 +222,7 @@ test.describe("イベント作成（E2E）", () => {
     await page.getByPlaceholder("0（無料）または100以上").fill("0");
 
     // 無料イベント用の説明が表示されることを確認
-    await expect(page.getByText("参加費が0円のため、決済方法の設定は不要です")).toBeVisible();
+    await expect(page.getByText("参加費が0円のため、集金方法の設定は不要です")).toBeVisible();
 
     // 決済方法の選択肢が表示されないことを確認
     await expect(page.getByTestId("payment-methods")).not.toBeVisible();

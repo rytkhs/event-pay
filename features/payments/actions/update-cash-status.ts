@@ -134,7 +134,7 @@ export async function updateCashStatusAction(
       }
 
       return fail("DATABASE_ERROR", {
-        userMessage: `決済ステータスの更新に失敗しました: ${rpcError.message}`,
+        userMessage: `集金状況の更新に失敗しました: ${rpcError.message}`,
       });
     }
 

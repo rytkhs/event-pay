@@ -223,8 +223,8 @@ function GuestPhoneMock() {
         <div className="overflow-hidden rounded-2xl shadow-md">
           <div className="bg-amber-500 px-5 py-5 text-center text-white">
             <CreditCard className="mx-auto mb-2 h-7 w-7" aria-hidden="true" />
-            <p className="text-sm font-bold">参加予定・決済待ち</p>
-            {/* <p className="mt-1 text-[9px] opacity-90">決済を完了してください。</p> */}
+            <p className="text-sm font-bold">参加予定・支払い待ち</p>
+            {/* <p className="mt-1 text-[9px] opacity-90">支払いを完了してください。</p> */}
             <div className="mx-auto mt-3 min-w-[138px] rounded-lg bg-white/20 px-4 py-2">
               <p className="text-[9px] opacity-80">参加費</p>
               <p className="font-mono text-xl font-bold">3,500円</p>
@@ -249,7 +249,7 @@ function GuestPhoneMock() {
             <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[8px] font-bold text-amber-700">
               ACTION
             </span>
-            <span className="text-[10px] font-bold text-slate-700">決済が完了していません</span>
+            <span className="text-[10px] font-bold text-slate-700">支払いが完了していません</span>
           </div>
           <div className="flex items-center justify-center gap-1 rounded-lg bg-slate-900 py-2.5 text-[10px] font-bold text-white">
             <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />

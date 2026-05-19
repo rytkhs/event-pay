@@ -118,7 +118,7 @@ export function buildParticipantsColumns(opts: {
     columns.push(
       {
         accessorKey: "payment_method",
-        header: "決済方法",
+        header: "集金方法",
         cell: ({ row }) => {
           const p = row.original;
           const showMethod = p.payment_status !== "canceled";
@@ -150,7 +150,7 @@ export function buildParticipantsColumns(opts: {
       },
       {
         accessorKey: "payment_status",
-        header: "決済状況",
+        header: "集金状況",
         cell: ({ row }) => {
           const p = row.original;
           const status = p.payment_status;

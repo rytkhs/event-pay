@@ -181,9 +181,9 @@ export async function updateEventAction(
     // 有料イベント時の決済方法必須チェック（effective値での検証）
     if (effectiveFee > 0 && effectivePaymentMethods.length === 0) {
       return fail("VALIDATION_ERROR", {
-        userMessage: "有料イベントでは決済方法の選択が必要です",
+        userMessage: "有料イベントでは集金方法の選択が必要です",
         fieldErrors: {
-          payment_methods: ["有料イベントでは決済方法の選択が必要です"],
+          payment_methods: ["有料イベントでは集金方法の選択が必要です"],
         },
       });
     }

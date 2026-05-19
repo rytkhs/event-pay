@@ -439,7 +439,7 @@ export function buildPaymentDeadlineReminderTemplate(params: {
           { label: "オンライン支払い期限", value: `<strong>${escapeHtml(deadline)}</strong>` },
         ])}
       </table>
-      <p style="margin:0 0 8px;"><a href="${escapeAttr(params.paymentUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">決済を完了する</a></p>
+      <p style="margin:0 0 8px;"><a href="${escapeAttr(params.paymentUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">支払いを完了する</a></p>
       <p style="margin:6px 0 0;color:#64748b;font-size:13px;line-height:1.6;word-break:break-all;">URL: ${escapeHtml(params.paymentUrl)}</p>
     `,
   });

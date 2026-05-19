@@ -425,7 +425,7 @@ export function ParticipantsTableV2({
       try {
         const result = await updateCashStatusAction({ paymentId, status: "received" });
         if (result.success) {
-          toast("決済状況を更新しました", {
+          toast("集金状況を更新しました", {
             description: "ステータスを「受領」に変更しました。",
           });
           startTransition(() => router.refresh());
@@ -449,7 +449,7 @@ export function ParticipantsTableV2({
   const handleBulkReceive = useCallback(async () => {
     if (validSelectedPaymentIds.length === 0) {
       toast.error("選択エラー", {
-        description: "受領対象の決済を選択してください。",
+        description: "集金済みにする対象を選択してください。",
       });
       return;
     }

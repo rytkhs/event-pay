@@ -104,7 +104,7 @@ describe("buildParticipantsColumns", () => {
     });
   });
 
-  describe("決済方法列", () => {
+  describe("集金方法列", () => {
     it("現金払いバッジが表示される", () => {
       render(<TestTableRow participant={mockParticipant} eventFee={1000} />);
       expect(screen.getByText("現金")).toBeInTheDocument();
@@ -116,14 +116,14 @@ describe("buildParticipantsColumns", () => {
       expect(screen.getByText("オンライン")).toBeInTheDocument();
     });
 
-    it("決済方法がない場合", () => {
+    it("集金方法がない場合", () => {
       const noPaymentParticipant = { ...mockParticipant, payment_method: null };
       render(<TestTableRow participant={noPaymentParticipant} eventFee={1000} />);
       expect(screen.getByText("-")).toBeInTheDocument();
     });
   });
 
-  describe("決済状況列", () => {
+  describe("集金状況列", () => {
     it("未集金バッジが表示される", () => {
       render(<TestTableRow participant={mockParticipant} eventFee={1000} />);
       expect(screen.getByText("未集金")).toBeInTheDocument();
@@ -135,7 +135,7 @@ describe("buildParticipantsColumns", () => {
       expect(screen.getByText("集金済")).toBeInTheDocument();
     });
 
-    it("無料イベントでは決済状況が表示されない", () => {
+    it("無料イベントでは集金状況が表示されない", () => {
       render(<TestTableRow participant={mockParticipant} eventFee={0} />);
       expect(screen.queryByText("-")).not.toBeInTheDocument();
     });

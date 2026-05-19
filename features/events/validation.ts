@@ -148,7 +148,7 @@ export const createEventFormSchema = z
     if (fee > 0 && data.payment_methods.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "有料イベントでは決済方法の選択が必要です",
+        message: "有料イベントでは集金方法の選択が必要です",
         path: ["payment_methods"],
       });
     }
@@ -286,7 +286,7 @@ export const eventEditFormSchemaBase = z
       return data.payment_methods.length > 0;
     },
     {
-      message: "有料イベントでは決済方法の選択が必要です",
+      message: "有料イベントでは集金方法の選択が必要です",
       path: ["payment_methods"],
     }
   )

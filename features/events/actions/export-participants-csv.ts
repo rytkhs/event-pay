@@ -259,10 +259,10 @@ function generateCsvContent(participants: CsvParticipant[], columns: string[]): 
   const headerMap: Record<string, string> = {
     nickname: "名前・ニックネーム",
     status: "参加ステータス",
-    payment_method: "決済方法",
-    payment_status: "決済ステータス",
+    payment_method: "集金方法",
+    payment_status: "集金状況",
     amount: "金額",
-    paid_at: "決済日時",
+    paid_at: "集金日時",
     created_at: "回答日時",
     updated_at: "更新日時",
   };

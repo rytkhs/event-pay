@@ -74,7 +74,7 @@ test.describe("Stripe決済 ケース3-2: セッション検証API", () => {
     await page.goto(`/guest/${guestToken}`);
 
     // 決済ボタンをクリック
-    const paymentButton = page.locator('button:has-text("決済を完了する")');
+    const paymentButton = page.locator('button:has-text("オンライン支払いへ進む")');
     await paymentButton.waitFor({ state: "visible", timeout: 10000 });
     await paymentButton.click();
 

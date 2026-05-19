@@ -105,7 +105,7 @@ export function ParticipantsActionBarV2({
     }
 
     if (isPayingEvent && !paymentMethod) {
-      setAddError("決済方法を選択してください");
+      setAddError("集金方法を選択してください");
       return;
     }
 
@@ -427,7 +427,7 @@ export function ParticipantsActionBarV2({
             {isPayingEvent && (
               <div className="space-y-2">
                 <Label htmlFor="payment-method" className="text-sm font-medium">
-                  決済方法 <span className="text-red-500">*</span>
+                  集金方法 <span className="text-red-500">*</span>
                 </Label>
                 <RadioGroup
                   value={paymentMethod}

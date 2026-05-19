@@ -98,13 +98,13 @@ export async function updateGuestAttendanceAction(
     if (validatedStatus.data === "attending" && attendance.event.fee > 0) {
       if (!paymentMethod) {
         return fail("VALIDATION_ERROR", {
-          userMessage: "参加費が必要なため、決済方法を選択してください",
+          userMessage: "参加費が必要なため、支払い方法を選択してください",
         });
       }
 
       const paymentValidation = paymentMethodSchema.safeParse(paymentMethod);
       if (!paymentValidation.success) {
-        return fail("VALIDATION_ERROR", { userMessage: "無効な決済方法です" });
+        return fail("VALIDATION_ERROR", { userMessage: "無効な支払い方法です" });
       }
 
       validatedPaymentMethod = paymentValidation.data as PaymentMethod;
@@ -113,7 +113,7 @@ export async function updateGuestAttendanceAction(
       const allowedPaymentMethods = attendance.event.payment_methods || [];
       if (!allowedPaymentMethods.includes(validatedPaymentMethod)) {
         return fail("VALIDATION_ERROR", {
-          userMessage: "このイベントでは選択された決済方法は利用できません",
+          userMessage: "このイベントでは選択された支払い方法は利用できません",
         });
       }
     }
@@ -150,7 +150,7 @@ export async function updateGuestAttendanceAction(
         );
 
         return fail("RESOURCE_CONFLICT", {
-          userMessage: "支払が確定しているため、決済方法を変更できません",
+          userMessage: "支払いが確定しているため、支払い方法を変更できません",
         });
       }
     }

@@ -116,12 +116,12 @@ export const STRIPE_PAID_FEE_RESTRICTION: RestrictionRule = {
   },
 };
 
-/** 参加者がいる場合の決済方法制限 */
+/** 参加者がいる場合の集金方法制限 */
 export const ATTENDEE_PAYMENT_METHODS_RESTRICTION: RestrictionRule = {
   id: "attendee_payment_methods_restriction",
   field: "payment_methods",
   level: "structural",
-  name: "参加者による決済方法制限",
+  name: "参加者による集金方法制限",
   evaluate: (context: RestrictionContext, formData: FormDataSnapshot) => {
     // 参加者がいなければ制限なし
     if (!context.hasAttendees) {
@@ -145,8 +145,8 @@ export const ATTENDEE_PAYMENT_METHODS_RESTRICTION: RestrictionRule = {
       if (!next.has(method)) {
         return createEvaluation(
           true,
-          "参加者がいるため、既存の決済方法は解除できません",
-          "決済方法を追加することは可能です。"
+          "参加者がいるため、既存の集金方法は解除できません",
+          "集金方法を追加することは可能です。"
         );
       }
     }
@@ -154,8 +154,8 @@ export const ATTENDEE_PAYMENT_METHODS_RESTRICTION: RestrictionRule = {
     // 2. 違反はしていないが、制限自体は存在することをユーザーに伝える（Warning）
     if (original.size > 0) {
       return createWarning(
-        "参加者がいるため、既存の決済方法は解除できません（追加は可能）",
-        "現在設定されている決済方法は、既に参加者がいるためオフにできません。"
+        "参加者がいるため、既存の集金方法は解除できません（追加は可能）",
+        "現在設定されている集金方法は、既に参加者がいるためオフにできません。"
       );
     }
 
@@ -240,21 +240,21 @@ const ATTENDEE_IMPACT_ADVISORY: RestrictionRule = {
   },
 };
 
-/** 無料イベントの決済方法に関する注意 */
+/** 無料イベントの集金方法に関する注意 */
 export const FREE_EVENT_PAYMENT_ADVISORY: RestrictionRule = {
   id: "free_event_payment_advisory",
   field: "payment_methods",
   level: "advisory",
-  name: "無料イベント決済方法注意",
+  name: "無料イベント集金方法注意",
   evaluate: (_context: RestrictionContext, formData: FormDataSnapshot) => {
     const fee = safeParseNumber(formData.fee) ?? 0;
     const paymentMethods = formData.payment_methods || [];
 
     if (fee === 0 && paymentMethods.length > 0) {
       return createWarning(
-        "参加費が0円のため、決済方法の設定は不要です",
-        "無料イベントでは決済手続きが発生しないため、決済方法を設定する必要はありません。",
-        "決済方法の設定を削除することをお勧めします。"
+        "参加費が0円のため、集金方法の設定は不要です",
+        "無料イベントでは集金手続きが発生しないため、集金方法を設定する必要はありません。",
+        "集金方法の設定を削除することをお勧めします。"
       );
     }
 
@@ -262,21 +262,21 @@ export const FREE_EVENT_PAYMENT_ADVISORY: RestrictionRule = {
   },
 };
 
-/** 有料イベントの決済方法必須チェック */
+/** 有料イベントの集金方法必須チェック */
 export const PAID_EVENT_PAYMENT_REQUIRED_ADVISORY: RestrictionRule = {
   id: "paid_event_payment_required_advisory",
   field: "payment_methods",
   level: "advisory",
-  name: "有料イベント決済方法必須",
+  name: "有料イベント集金方法必須",
   evaluate: (_context: RestrictionContext, formData: FormDataSnapshot) => {
     const fee = safeParseNumber(formData.fee) ?? 0;
     const paymentMethods = formData.payment_methods || [];
 
     if (fee > 0 && paymentMethods.length === 0) {
       return createWarning(
-        "有料イベントでは決済方法の選択が必要です",
-        `参加費${fee}円が設定されていますが、決済方法が選択されていません。`,
-        "クレジットカードまたは現金での決済方法を選択してください。"
+        "有料イベントでは集金方法の選択が必要です",
+        `参加費${fee}円が設定されていますが、集金方法が選択されていません。`,
+        "オンラインまたは現金での集金方法を選択してください。"
       );
     }
 

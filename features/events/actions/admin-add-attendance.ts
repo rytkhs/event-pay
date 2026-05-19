@@ -117,7 +117,7 @@ export async function adminAddAttendanceAction(
       // 決済方法が指定されていない場合はエラー
       if (!paymentMethod) {
         return fail("VALIDATION_ERROR", {
-          userMessage: "有料イベントの参加には決済方法の選択が必要です",
+          userMessage: "有料イベントの参加には集金方法の選択が必要です",
         });
       }
 

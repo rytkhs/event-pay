@@ -592,7 +592,7 @@ export const ERROR_REGISTRY: Record<ErrorCode, ErrorDefinition> = {
     code: "PAYMENT_FAILED",
     httpStatus: 402,
     message: "Payment failed",
-    userMessage: "決済に失敗しました。別のカードをお試しください。",
+    userMessage: "支払いに失敗しました。別のカードをお試しください。",
     typeUri: `${BASE_URI}/payment-failed`,
     severity: "medium",
     retryable: false,

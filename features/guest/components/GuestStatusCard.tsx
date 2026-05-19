@@ -48,7 +48,7 @@ export const GuestStatusCard: React.FC<GuestStatusCardProps> = ({
             subColor: "bg-red-600",
             icon: <AlertTriangle className="w-12 h-12 mb-2" />,
             title: "回答内容の確認が必要です",
-            message: "選択された決済方法が現在利用できません。",
+            message: "選択された支払い方法が現在利用できません。",
             priceLabel: "参加費",
           };
         }
@@ -57,8 +57,8 @@ export const GuestStatusCard: React.FC<GuestStatusCardProps> = ({
           textColor: "text-white",
           subColor: "bg-amber-600",
           icon: <AlertTriangle className="w-12 h-12 mb-2" />,
-          title: "参加予定・決済待ち",
-          message: "決済を完了してください。",
+          title: "参加予定・支払い待ち",
+          message: "支払いを完了してください。",
           priceLabel: "参加費",
         };
       case GuestScenario.MAYBE:

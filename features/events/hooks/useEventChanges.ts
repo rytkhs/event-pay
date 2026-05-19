@@ -24,7 +24,7 @@ const EVENT_CHANGE_FIELD_LABELS: Record<string, string> = {
   capacity: "定員",
   show_participant_count: "参加人数の表示",
   show_capacity: "定員の表示",
-  payment_methods: "決済方法",
+  payment_methods: "集金方法",
   registration_deadline: "出欠回答期限",
   payment_deadline: "オンライン支払い期限",
   allow_payment_after_deadline: "締切後もオンライン支払いを許可",

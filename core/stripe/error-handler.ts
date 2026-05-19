@@ -253,7 +253,7 @@ function generateResolutionHints(
       if (paymentErrorType === PaymentErrorType.CARD_DECLINED) {
         return ["別のカードでの再試行", "カード会社への確認", "現金払いへの切り替え"];
       }
-      return ["入力内容の確認", "正しい情報での再入力", "別の決済方法の利用"];
+      return ["入力内容の確認", "正しい情報での再入力", "別の支払い方法の利用"];
 
     case "stripe_error":
       return [

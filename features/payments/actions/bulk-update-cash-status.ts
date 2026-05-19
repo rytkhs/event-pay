@@ -169,13 +169,13 @@ export async function bulkUpdateCashStatusAction(
 
     if (rpcError) {
       return fail("DATABASE_ERROR", {
-        userMessage: `一括決済ステータス更新に失敗しました: ${rpcError.message}`,
+        userMessage: `一括集金状況更新に失敗しました: ${rpcError.message}`,
       });
     }
 
     if (!isBulkUpdatePaymentStatusRpcResult(rpcResult)) {
       return fail("DATABASE_ERROR", {
-        userMessage: "一括決済ステータス更新の結果形式が不正です。",
+        userMessage: "一括集金状況更新の結果形式が不正です。",
       });
     }
 

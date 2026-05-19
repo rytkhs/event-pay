@@ -74,7 +74,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
     console.log("✓ ゲストページに遷移");
 
     // === 4. 決済ボタンが非表示であることを確認 ===
-    const paymentButton = page.getByRole("button", { name: /決済を完了する/ });
+    const paymentButton = page.getByRole("button", { name: /オンライン支払いへ進む/ });
 
     // ボタンが存在しないまたは非表示であることを確認
     await expect(paymentButton).not.toBeVisible({ timeout: 3000 });
@@ -142,7 +142,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
     console.log("✓ ゲストページに遷移");
 
     // === 4. 決済ボタンが表示されることを確認 ===
-    const paymentButton = page.getByRole("button", { name: /決済を完了する/ });
+    const paymentButton = page.getByRole("button", { name: /オンライン支払いへ進む/ });
     await expect(paymentButton).toBeVisible({ timeout: 5000 });
 
     console.log("✓ 決済ボタンが表示されている");
@@ -217,7 +217,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
     console.log("✓ ゲストページに遷移");
 
     // === 4. 決済ボタンが非表示であることを確認 ===
-    const paymentButton = page.getByRole("button", { name: /決済を完了する/ });
+    const paymentButton = page.getByRole("button", { name: /オンライン支払いへ進む/ });
 
     // ボタンが存在しないまたは非表示であることを確認
     await expect(paymentButton).not.toBeVisible({ timeout: 3000 });
@@ -284,7 +284,7 @@ test.describe("Stripe決済 ケース2-2: 決済ステータスによる制御 (
     console.log("✓ ゲストページに遷移");
 
     // === 4. 決済ボタンが非表示であることを確認 ===
-    const paymentButton = page.getByRole("button", { name: /決済を完了する/ });
+    const paymentButton = page.getByRole("button", { name: /オンライン支払いへ進む/ });
 
     // ボタンが存在しないまたは非表示であることを確認
     await expect(paymentButton).not.toBeVisible({ timeout: 3000 });

@@ -173,10 +173,10 @@ export function ParticipantsFilterSheet({
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
-          {/* 決済方法フィルター（有料イベントのみ） */}
+          {/* 集金方法フィルター（有料イベントのみ） */}
           {!isFreeEvent && (
             <div className="space-y-2">
-              <Label>決済方法</Label>
+              <Label>集金方法</Label>
               <Select
                 value={paymentMethodFilter}
                 onValueChange={(value) =>
@@ -184,7 +184,7 @@ export function ParticipantsFilterSheet({
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="決済方法" />
+                  <SelectValue placeholder="集金方法" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全て</SelectItem>
@@ -195,16 +195,16 @@ export function ParticipantsFilterSheet({
             </div>
           )}
 
-          {/* 決済状況フィルター（有料イベントのみ） */}
+          {/* 集金状況フィルター（有料イベントのみ） */}
           {!isFreeEvent && (
             <div className="space-y-2">
-              <Label>決済状況</Label>
+              <Label>集金状況</Label>
               <Select
                 value={paymentStatusFilter}
                 onValueChange={(v) => setPaymentStatusFilter(v as SimplePaymentStatus | "all")}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="決済状況" />
+                  <SelectValue placeholder="集金状況" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全て</SelectItem>
