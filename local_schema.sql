@@ -186,6 +186,18 @@ CREATE TYPE "public"."payout_request_status" AS ENUM (
 ALTER TYPE "public"."payout_request_status" OWNER TO "postgres";
 
 
+CREATE TYPE "public"."payout_system_fee_state" AS ENUM (
+    'not_started',
+    'succeeded',
+    'failed',
+    'creation_unknown',
+    'manual_review_required'
+);
+
+
+ALTER TYPE "public"."payout_system_fee_state" OWNER TO "postgres";
+
+
 CREATE TYPE "public"."stripe_account_status_enum" AS ENUM (
     'unverified',
     'onboarding',
@@ -1792,7 +1804,7 @@ COMMENT ON FUNCTION "public"."rpc_bulk_update_payment_status_safe"("p_payment_up
 
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") RETURNS TABLE("attendance_id" "uuid", "nickname" character varying, "email" character varying, "status" "public"."attendance_status_enum", "guest_token" character varying, "attendance_created_at" timestamp with time zone, "attendance_updated_at" timestamp with time zone, "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "event_location" character varying, "event_fee" integer, "event_capacity" integer, "event_description" "text", "event_payment_methods" "public"."payment_method_enum"[], "event_allow_payment_after_deadline" boolean, "event_grace_period_days" smallint, "community_name" character varying, "community_slug" character varying, "community_legal_slug" character varying, "community_show_community_link" boolean, "community_show_legal_disclosure_link" boolean, "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "canceled_at" timestamp with time zone, "payment_id" "uuid", "payment_amount" integer, "payment_method" "public"."payment_method_enum", "payment_status" "public"."payment_status_enum", "payment_created_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") RETURNS TABLE("attendance_id" "uuid", "nickname" character varying, "email" character varying, "status" "public"."attendance_status_enum", "guest_token" character varying, "attendance_created_at" timestamp with time zone, "attendance_updated_at" timestamp with time zone, "event_id" "uuid", "event_title" character varying, "event_date" timestamp with time zone, "event_location" character varying, "event_fee" integer, "event_capacity" integer, "event_show_capacity" boolean, "event_show_participant_count" boolean, "event_description" "text", "event_payment_methods" "public"."payment_method_enum"[], "event_allow_payment_after_deadline" boolean, "event_grace_period_days" smallint, "community_name" character varying, "community_slug" character varying, "community_legal_slug" character varying, "community_show_community_link" boolean, "community_show_legal_disclosure_link" boolean, "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "canceled_at" timestamp with time zone, "payment_id" "uuid", "payment_amount" integer, "payment_method" "public"."payment_method_enum", "payment_status" "public"."payment_status_enum", "payment_created_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
@@ -1816,6 +1828,8 @@ BEGIN
     e.location,
     e.fee,
     e.capacity,
+    e.show_capacity,
+    e.show_participant_count,
     e.description,
     e.payment_methods,
     e.allow_payment_after_deadline,
@@ -1855,7 +1869,7 @@ $$;
 ALTER FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") OWNER TO "app_definer";
 
 
-COMMENT ON FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") IS 'ゲストトークンから参加データを取得する公開RPC。community公開導線向け最小情報を含み、削除済みcommunityは返さない';
+COMMENT ON FUNCTION "public"."rpc_guest_get_attendance"("p_guest_token" "text") IS 'ゲストトークンから参加者・イベント・最新決済を取得するRPC。参加人数表示設定を含む';
 
 
 
@@ -2029,7 +2043,7 @@ COMMENT ON FUNCTION "public"."rpc_public_get_connect_account"("p_event_id" "uuid
 
 
 
-CREATE OR REPLACE FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") RETURNS TABLE("id" "uuid", "community_name" character varying, "community_slug" character varying, "community_legal_slug" character varying, "community_show_community_link" boolean, "community_show_legal_disclosure_link" boolean, "title" character varying, "date" timestamp with time zone, "location" character varying, "description" "text", "fee" integer, "capacity" integer, "payment_methods" "public"."payment_method_enum"[], "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "invite_token" character varying, "canceled_at" timestamp with time zone, "attendances_count" integer)
+CREATE OR REPLACE FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") RETURNS TABLE("id" "uuid", "community_name" character varying, "community_slug" character varying, "community_legal_slug" character varying, "community_show_community_link" boolean, "community_show_legal_disclosure_link" boolean, "title" character varying, "date" timestamp with time zone, "location" character varying, "description" "text", "fee" integer, "capacity" integer, "show_capacity" boolean, "show_participant_count" boolean, "payment_methods" "public"."payment_method_enum"[], "registration_deadline" timestamp with time zone, "payment_deadline" timestamp with time zone, "invite_token" character varying, "canceled_at" timestamp with time zone, "attendances_count" integer)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
@@ -2048,6 +2062,8 @@ BEGIN
     e.description,
     e.fee,
     e.capacity,
+    e.show_capacity,
+    e.show_participant_count,
     e.payment_methods,
     e.registration_deadline,
     e.payment_deadline,
@@ -2072,7 +2088,7 @@ $$;
 ALTER FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") OWNER TO "app_definer";
 
 
-COMMENT ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") IS '招待トークンからイベント詳細を取得する公開RPC。community公開導線向け最小情報を含み、削除済みcommunityは返さない';
+COMMENT ON FUNCTION "public"."rpc_public_get_event"("p_invite_token" "text") IS '招待トークンからイベント詳細を取得する公開RPC。参加人数表示設定を含む';
 
 
 
@@ -2692,6 +2708,8 @@ CREATE TABLE IF NOT EXISTS "public"."events" (
     "canceled_by" "uuid",
     "community_id" "uuid" NOT NULL,
     "payout_profile_id" "uuid",
+    "show_participant_count" boolean DEFAULT false NOT NULL,
+    "show_capacity" boolean DEFAULT false NOT NULL,
     CONSTRAINT "events_capacity_check" CHECK ((("capacity" IS NULL) OR ("capacity" > 0))),
     CONSTRAINT "events_date_after_creation" CHECK (("date" > "created_at")),
     CONSTRAINT "events_fee_check" CHECK ((("fee" = 0) OR (("fee" >= 100) AND ("fee" <= 1000000)))),
@@ -2725,6 +2743,14 @@ COMMENT ON COLUMN "public"."events"."payout_profile_id" IS 'イベント作成�
 
 
 
+COMMENT ON COLUMN "public"."events"."show_participant_count" IS '招待ページに現在の参加人数を表示するかどうか';
+
+
+
+COMMENT ON COLUMN "public"."events"."show_capacity" IS '参加者向けページに定員を表示するかどうか';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."fee_config" (
     "id" integer DEFAULT 1 NOT NULL,
     "stripe_base_rate" numeric(5,4) DEFAULT 0.0360 NOT NULL,
@@ -2736,7 +2762,10 @@ CREATE TABLE IF NOT EXISTS "public"."fee_config" (
     "min_payout_amount" integer DEFAULT 100 NOT NULL,
     "platform_tax_rate" numeric(5,2) DEFAULT 10.00 NOT NULL,
     "is_tax_included" boolean DEFAULT true NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "payout_request_fee_amount" integer DEFAULT 260 NOT NULL,
+    CONSTRAINT "fee_config_min_payout_amount_positive" CHECK (("min_payout_amount" > 0)),
+    CONSTRAINT "fee_config_payout_request_fee_amount_non_negative" CHECK (("payout_request_fee_amount" >= 0))
 );
 
 ALTER TABLE ONLY "public"."fee_config" FORCE ROW LEVEL SECURITY;
@@ -2766,6 +2795,10 @@ COMMENT ON COLUMN "public"."fee_config"."platform_tax_rate" IS 'Platform consump
 
 
 COMMENT ON COLUMN "public"."fee_config"."is_tax_included" IS 'Whether platform fees are calculated as tax-included (true=内税, false=外税)';
+
+
+
+COMMENT ON COLUMN "public"."fee_config"."payout_request_fee_amount" IS 'payout request 1回ごとにAccount Debitで回収する振込手数料額(円)';
 
 
 
@@ -3037,8 +3070,19 @@ CREATE TABLE IF NOT EXISTS "public"."payout_requests" (
     "failure_message" "text",
     "requested_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "gross_amount" integer NOT NULL,
+    "system_fee_amount" integer NOT NULL,
+    "system_fee_state" "public"."payout_system_fee_state" DEFAULT 'not_started'::"public"."payout_system_fee_state" NOT NULL,
+    "stripe_account_debit_transfer_id" "text",
+    "stripe_account_debit_payment_id" "text",
+    "system_fee_idempotency_key" "text",
+    "system_fee_failure_code" "text",
+    "system_fee_failure_message" "text",
+    CONSTRAINT "payout_requests_amount_matches_system_fee" CHECK (("gross_amount" = ("amount" + "system_fee_amount"))),
     CONSTRAINT "payout_requests_amount_positive" CHECK (("amount" > 0)),
-    CONSTRAINT "payout_requests_currency_jpy" CHECK (("currency" = 'jpy'::"text"))
+    CONSTRAINT "payout_requests_currency_jpy" CHECK (("currency" = 'jpy'::"text")),
+    CONSTRAINT "payout_requests_gross_amount_non_negative" CHECK (("gross_amount" >= 0)),
+    CONSTRAINT "payout_requests_system_fee_amount_non_negative" CHECK (("system_fee_amount" >= 0))
 );
 
 ALTER TABLE ONLY "public"."payout_requests" FORCE ROW LEVEL SECURITY;
@@ -3060,6 +3104,30 @@ COMMENT ON COLUMN "public"."payout_requests"."status" IS 'Stripe payout作成か
 
 
 COMMENT ON COLUMN "public"."payout_requests"."idempotency_key" IS 'Stripe payout作成時のIdempotency-Key';
+
+
+
+COMMENT ON COLUMN "public"."payout_requests"."gross_amount" IS 'payout request時点のconnected account振込可能残高（円）';
+
+
+
+COMMENT ON COLUMN "public"."payout_requests"."system_fee_amount" IS 'payout request時点でスナップショットしたシステム手数料額（円）';
+
+
+
+COMMENT ON COLUMN "public"."payout_requests"."system_fee_state" IS 'payout前に実行するAccount Debit手数料回収のアプリ内状態';
+
+
+
+COMMENT ON COLUMN "public"."payout_requests"."stripe_account_debit_transfer_id" IS 'Account Debitによりconnected account残高からplatformへ資金移動するTransfer ID';
+
+
+
+COMMENT ON COLUMN "public"."payout_requests"."stripe_account_debit_payment_id" IS 'Account Debit作成時にStripe APIが返すplatform側Payment ID';
+
+
+
+COMMENT ON COLUMN "public"."payout_requests"."system_fee_idempotency_key" IS 'Account Debit作成時のStripe Idempotency-Key';
 
 
 
@@ -3787,7 +3855,19 @@ CREATE INDEX "line_accounts_channel_id_line_sub_idx" ON "public"."line_accounts"
 
 
 
+CREATE UNIQUE INDEX "uniq_payout_requests_account_debit_payment_id" ON "public"."payout_requests" USING "btree" ("stripe_account_debit_payment_id") WHERE ("stripe_account_debit_payment_id" IS NOT NULL);
+
+
+
+CREATE UNIQUE INDEX "uniq_payout_requests_account_debit_transfer_id" ON "public"."payout_requests" USING "btree" ("stripe_account_debit_transfer_id") WHERE ("stripe_account_debit_transfer_id" IS NOT NULL);
+
+
+
 CREATE UNIQUE INDEX "uniq_payout_requests_active_per_profile" ON "public"."payout_requests" USING "btree" ("payout_profile_id") WHERE ("status" = ANY (ARRAY['requesting'::"public"."payout_request_status", 'creation_unknown'::"public"."payout_request_status", 'manual_review_required'::"public"."payout_request_status"]));
+
+
+
+CREATE UNIQUE INDEX "uniq_payout_requests_system_fee_idempotency_key" ON "public"."payout_requests" USING "btree" ("system_fee_idempotency_key") WHERE ("system_fee_idempotency_key" IS NOT NULL);
 
 
 
@@ -4817,6 +4897,8 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
+
+
 
 
 
