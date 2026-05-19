@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from "react";
 
+import Link from "next/link";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   CheckCircle2,
@@ -302,6 +304,15 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
             </>
           )}
         </button>
+
+        <div className="text-center">
+          <Link
+            href="/guide/participant-flow"
+            className="text-xs text-slate-500 underline underline-offset-2 hover:text-slate-700 hover:no-underline"
+          >
+            回答と支払いの流れを見る
+          </Link>
+        </div>
       </div>
     </form>
   );
