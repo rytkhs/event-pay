@@ -61,7 +61,7 @@ const features = [
   {
     icon: Link2,
     title: "出欠確認",
-    description: "参加者がリンク1つで出欠登録完了",
+    description: "参加者がリンク1つで出欠回答完了",
   },
 ];
 

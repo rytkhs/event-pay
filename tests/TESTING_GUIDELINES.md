@@ -439,7 +439,7 @@ beforeAll(() => {
 #### 利用可能な共通セットアップ関数
 
 1. **`createCommonTestSetup`**: 基本的なテストセットアップ（テストユーザーとadminClient）
-2. **`createPaymentTestSetup`**: 決済テスト用のセットアップ（Connect設定済みユーザー、有料イベント、参加登録）
+2. **`createPaymentTestSetup`**: 決済テスト用のセットアップ（Connect設定済みユーザー、有料イベント、回答）
 3. **`createWebhookTestSetup`**: Webhookテスト用のセットアップ（QStash環境変数設定を含む）
 4. **`createMultiUserTestSetup`**: 複数ユーザーテスト用のセットアップ
 
@@ -517,7 +517,7 @@ describe("単体テスト", () => {
 
 #### createPaymentTestSetupの詳細な使用例
 
-決済テストに必要なデータ（Connect設定済みユーザー、有料イベント、参加登録）を一括でセットアップします。
+決済テストに必要なデータ（Connect設定済みユーザー、有料イベント、回答）を一括でセットアップします。
 
 ```typescript
 // ✅ 基本的な決済テストセットアップ
@@ -541,7 +541,7 @@ describe("決済処理テスト", () => {
   test("決済を処理できる", async () => {
     // setup.testUser: Connect設定済みユーザー
     // setup.testEvent: 有料イベント
-    // setup.testAttendance: 参加登録
+    // setup.testAttendance: 回答
     const payment = await processPayment({
       eventId: setup.testEvent.id,
       attendanceId: setup.testAttendance.id,
@@ -735,7 +735,7 @@ const setup = await createPaymentTestSetup({
 以下のケースは、共通関数で対応可能です。専用ファイルを作成する必要はありません：
 
 - **基本的なテストユーザーとadminClientが必要な場合**: `createCommonTestSetup`を使用
-- **決済テスト（Connect設定済みユーザー、有料イベント、参加登録）が必要な場合**: `createPaymentTestSetup`を使用
+- **決済テスト（Connect設定済みユーザー、有料イベント、回答）が必要な場合**: `createPaymentTestSetup`を使用
 - **Webhookテスト（QStash環境変数設定を含む）が必要な場合**: `createWebhookTestSetup`を使用
 - **複数ユーザーテストが必要な場合**: `createMultiUserTestSetup`を使用
 
@@ -1020,7 +1020,7 @@ describe("イベント作成テスト", () => {
     expect(event).toBeDefined();
   });
 
-  test("参加登録を作成できる", async () => {
+  test("回答を作成できる", async () => {
     const event = await createEvent(setup.testUser.id, {
       title: "テストイベント",
     });

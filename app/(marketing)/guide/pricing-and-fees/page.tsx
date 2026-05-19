@@ -259,7 +259,7 @@ export default function PricingAndFeesGuidePage() {
                   href="/guide/participant-flow"
                   className="font-medium text-slate-600 underline decoration-slate-300 underline-offset-4 hover:text-primary"
                 >
-                  参加者の登録と支払いの流れ
+                  参加者の回答と支払いの流れ
                 </Link>
                 <Link
                   href="/guide/online-collection"

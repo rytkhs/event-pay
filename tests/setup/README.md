@@ -124,7 +124,7 @@ describe("Webhookテスト", () => {
 interface CommonTestSetupOptions {
   withConnect?: boolean;        // Connect設定済みユーザーを作成するか
   withEvent?: boolean;           // 有料イベントを作成するか
-  withAttendance?: boolean;      // 参加登録を作成するか（withEventがtrueの場合のみ有効）
+  withAttendance?: boolean;      // 回答を作成するか（withEventがtrueの場合のみ有効）
   testName?: string;              // テスト名（メールアドレスやイベントタイトルの生成に使用）
   eventFee?: number;             // イベントの料金（withEventがtrueの場合）
   paymentMethods?: PaymentMethod[]; // 決済方法（withEventがtrueの場合）

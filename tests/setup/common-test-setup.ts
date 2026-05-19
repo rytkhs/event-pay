@@ -82,7 +82,7 @@ export interface CommonTestSetupOptions {
    */
   withEvent?: boolean;
   /**
-   * 参加登録を作成するか（withEventがtrueの場合のみ有効）
+   * 回答を作成するか（withEventがtrueの場合のみ有効）
    */
   withAttendance?: boolean;
   /**
@@ -207,9 +207,9 @@ export interface CommonTestSetupOptions {
  * ```
  *
  * @example
- * イベントと参加登録も含むセットアップ
+ * イベントと回答も含むセットアップ
  * ```typescript
- * describe("参加登録テスト", () => {
+ * describe("回答テスト", () => {
  *   let setup: CommonTestSetup;
  *
  *   beforeAll(async () => {
@@ -372,7 +372,7 @@ async function setupFeeConfigForIntegrationTest(adminClient: any): Promise<void>
 /**
  * 決済テスト用のセットアップを作成
  *
- * Connect設定済みユーザー、有料イベント、参加登録を作成し、
+ * Connect設定済みユーザー、有料イベント、回答を作成し、
  * 決済テストに必要なデータを一括でセットアップします。
  *
  * @param options セットアップオプション
@@ -434,7 +434,7 @@ export async function createPaymentTestSetup(
     paymentMethods,
   });
 
-  // 参加登録を作成
+  // 回答を作成
   const testAttendance = await createTestAttendance(testEvent.id);
 
   // Supabaseクライアント取得

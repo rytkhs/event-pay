@@ -57,7 +57,7 @@ function getModificationRestrictionMessage(attendance: GuestAttendanceData): str
   if (reason === "canceled") {
     return "このイベントは中止されているため、参加状況を変更できません。";
   } else if (reason === "deadline_passed") {
-    return "参加登録の締切を過ぎているため、参加状況を変更できません。";
+    return "回答期限を過ぎているため、参加状況を変更できません。";
   }
 
   return "参加状況の変更期限を過ぎているため、現在変更できません。";

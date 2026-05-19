@@ -28,9 +28,9 @@ export const footerNavigationGroups: FooterLinkGroup[] = [
         ariaLabel: "主催者のはじめ方を確認する",
       },
       {
-        label: "参加者の登録と支払いの流れ",
+        label: "参加者の回答と支払いの流れ",
         href: "/guide/participant-flow",
-        ariaLabel: "参加者の登録と支払いの流れを確認する",
+        ariaLabel: "参加者の回答と支払いの流れを確認する",
       },
       {
         label: "オンライン集金・振込のしくみ",

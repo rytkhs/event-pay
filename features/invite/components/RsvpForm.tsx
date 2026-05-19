@@ -101,7 +101,7 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
       })}
       className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8"
     >
-      <h2 className="text-xl font-bold text-slate-900 mb-6">参加登録</h2>
+      <h2 className="text-xl font-bold text-slate-900 mb-6">回答</h2>
 
       {isError && error && (
         <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-lg text-sm">
@@ -151,7 +151,7 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
             placeholder="例: user@example.com"
           />
           <p className="text-xs text-slate-500 mt-1">
-            ※ 登録完了メールや、ゲストページURLが送信されます。
+            ※ 回答完了メールや、ゲストページURLが送信されます。
           </p>
           {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
         </div>
@@ -215,7 +215,7 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
           </div>
           <p className="text-xs text-slate-500 mt-2 leading-relaxed">
             出欠回答期限までは、出欠を何度でも変更できます。
-            予定がわからない場合は「未定」で登録することをおすすめします。
+            予定がわからない場合は「未定」で回答することをおすすめします。
           </p>
           {watchedStatus === "maybe" && (
             <p className="text-xs text-warning-foreground mt-2 bg-warning/10 p-2 rounded">
@@ -297,7 +297,7 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
             <>
-              登録する
+              回答する
               <ArrowRight className="w-5 h-5" />
             </>
           )}

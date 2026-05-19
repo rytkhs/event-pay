@@ -274,13 +274,13 @@ export function buildParticipationRegisteredTemplate(
 ): EmailTemplate {
   const statusText = STATUS_TEXT[params.attendanceStatus];
   const formattedDate = formatJstDate(params.eventDate);
-  const subject = `【${APP_NAME}】${params.eventTitle} - 参加登録完了`;
+  const subject = `【${APP_NAME}】${params.eventTitle} - 回答完了`;
 
   const html = renderLayout({
-    preheader: `${params.eventTitle}の参加登録が完了しました（${statusText}）`,
+    preheader: `${params.eventTitle}の回答が完了しました（${statusText}）`,
     contentHtml: `
       <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${escapeHtml(params.nickname)} 様</p>
-      <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">参加登録が完了しました</h1>
+      <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">回答が完了しました</h1>
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;margin-bottom:20px;">
         ${renderKeyValueRows([
           { label: "イベント名", value: escapeHtml(params.eventTitle) },
@@ -296,7 +296,7 @@ export function buildParticipationRegisteredTemplate(
   const text = [
     `${params.nickname} 様`,
     "",
-    "参加登録が完了しました",
+    "回答が完了しました",
     `イベント名: ${params.eventTitle}`,
     `開催日時: ${formattedDate}`,
     `参加状況: ${statusText}`,

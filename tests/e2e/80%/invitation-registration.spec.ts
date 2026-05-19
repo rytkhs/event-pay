@@ -10,7 +10,7 @@ import {
 } from "../../helpers/test-event";
 import { createTestUser, deleteTestUser, type TestUser } from "../../helpers/test-user";
 
-test.describe("参加登録（招待リンク）（E2E）", () => {
+test.describe("回答（招待リンク）（E2E）", () => {
   let testUser: TestUser;
   const testEvents: TestEvent[] = [];
 
@@ -41,7 +41,7 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     page.on("console", (msg) => console.log("Browser console:", msg.text()));
   });
 
-  test("正常系：無料イベントに参加登録が成功する", async ({ page }) => {
+  test("正常系：無料イベントに回答が成功する", async ({ page }) => {
     // 無料テストイベントを作成
     const event = await createTestEvent(testUser.id, {
       title: "無料テストイベント",
@@ -58,11 +58,11 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     // 参加費セクション内の「無料」を確認
     await expect(page.locator("text=参加費").locator("..").getByText("無料")).toBeVisible();
 
-    // 参加登録ボタンをクリック
-    await expect(page.getByRole("button", { name: "参加申し込みをする" })).toBeVisible();
-    await page.getByRole("button", { name: "参加申し込みをする" }).click();
+    // 回答ボタンをクリック
+    await expect(page.getByRole("button", { name: "回答する" })).toBeVisible();
+    await page.getByRole("button", { name: "回答する" }).click();
 
-    // 参加登録フォームが表示されることを確認
+    // 回答フォームが表示されることを確認
     await expect(page.getByLabel("名前・ニックネーム")).toBeVisible();
     await expect(page.getByLabel("メールアドレス")).toBeVisible();
 
@@ -80,15 +80,15 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     await page.waitForTimeout(1000);
 
     // フォームボタンが有効化されるのを待つ
-    await expect(page.getByRole("button", { name: "参加申し込みを完了する" })).toBeEnabled({
+    await expect(page.getByRole("button", { name: "回答する" })).toBeEnabled({
       timeout: 5000,
     });
 
-    // 参加登録を送信
-    await page.getByRole("button", { name: "参加申し込みを完了する" }).click();
+    // 回答を送信
+    await page.getByRole("button", { name: "回答する" }).click();
 
-    // 登録成功の確認画面が表示されることを確認
-    await expect(page.getByText("参加申し込みが完了しました")).toBeVisible({ timeout: 10000 });
+    // 回答完了画面が表示されることを確認
+    await expect(page.getByText("回答完了")).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("テスト太郎")).toBeVisible();
 
     // 管理URLセクションを表示
@@ -101,7 +101,7 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     await expect(page.getByText("決済が必要")).not.toBeVisible();
   });
 
-  test("正常系：有料イベントに参加登録すると決済が必要な状態になる", async ({ page }) => {
+  test("正常系：有料イベントに回答すると決済が必要な状態になる", async ({ page }) => {
     // 有料テストイベントを作成
     const event = await createPaidTestEvent(testUser.id, 1500);
     testEvents.push(event);
@@ -113,8 +113,8 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     await expect(page.getByText("有料テストイベント（1500円）")).toBeVisible();
     await expect(page.getByText("1500円")).toBeVisible();
 
-    // 参加登録ボタンをクリック
-    await page.getByRole("button", { name: "参加申し込みをする" }).click();
+    // 回答ボタンをクリック
+    await page.getByRole("button", { name: "回答する" }).click();
 
     // フォームに入力
     await page.getByLabel("名前・ニックネーム").fill("有料太郎");
@@ -136,18 +136,18 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
       .getByRole("radio", { name: /オンライン決済.*クレジットカード、Apple Pay、Google Payなど/ })
       .check();
 
-    // 参加登録を送信
-    await page.getByRole("button", { name: "参加申し込みを完了する" }).click();
+    // 回答を送信
+    await page.getByRole("button", { name: "回答する" }).click();
 
-    // 登録成功の確認画面が表示されることを確認
-    await expect(page.getByText("参加申し込みが完了しました")).toBeVisible({ timeout: 10000 });
+    // 回答完了画面が表示されることを確認
+    await expect(page.getByText("回答完了")).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("有料太郎")).toBeVisible();
 
     // 決済が必要であることが表示される
     await expect(page.getByText("決済について")).toBeVisible();
   });
 
-  test("異常系：定員に達したイベントで参加登録ができない", async ({ page }) => {
+  test("異常系：定員に達したイベントで回答ができない", async ({ page }) => {
     // 定員2名で満員のテストイベントを作成
     const event = await createFullCapacityTestEvent(testUser.id, 2);
     testEvents.push(event);
@@ -161,19 +161,19 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     // 定員表示に「満員」が含まれることを確認
     await expect(page.getByText("満員")).toBeVisible();
 
-    // 参加登録ボタンが「参加申し込み不可」として無効化されていることを確認
-    const registerButton = page.getByRole("button", { name: "参加申し込み不可" });
+    // 回答ボタンが「回答不可」として無効化されていることを確認
+    const registerButton = page.getByRole("button", { name: "回答不可" });
     await expect(registerButton).toBeVisible();
     await expect(registerButton).toBeDisabled();
 
     // 定員に達している旨のメッセージが表示されることを確認
     await expect(page.getByText("定員に達しています")).toBeVisible();
 
-    // 参加登録フォームは表示されないことを確認
+    // 回答フォームは表示されないことを確認
     await expect(page.getByLabel("名前・ニックネーム")).not.toBeVisible();
   });
 
-  test("異常系：重複したメールアドレスで参加登録がエラーになる", async ({ page }) => {
+  test("異常系：重複したメールアドレスで回答がエラーになる", async ({ page }) => {
     // 既に1名参加者がいるテストイベントを作成
     const event = await createTestEventWithParticipants(
       testUser.id,
@@ -195,35 +195,35 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     // 招待リンクページにアクセス
     await page.goto(`/invite/${event.invite_token}`);
 
-    // 参加登録ボタンをクリック
-    await page.getByRole("button", { name: "参加申し込みをする" }).click();
+    // 回答ボタンをクリック
+    await page.getByRole("button", { name: "回答する" }).click();
 
     // フォームが表示されるのを確認
     await expect(page.getByLabel("名前・ニックネーム")).toBeVisible();
     await expect(page.getByLabel("メールアドレス")).toBeVisible();
 
-    // 既存参加者と同じメールアドレスで登録を試行
+    // 既存参加者と同じメールアドレスで回答を試行
     await page.getByLabel("名前・ニックネーム").fill("重複太郎");
     await page.getByLabel("メールアドレス").fill(existingEmail); // 動的に取得したメールアドレスを使用
     await page.locator('[role="radio"][value="attending"]').check();
 
     // フォームボタンが有効化されるのを待つ
-    await expect(page.getByRole("button", { name: "参加申し込みを完了する" })).toBeEnabled({
+    await expect(page.getByRole("button", { name: "回答する" })).toBeEnabled({
       timeout: 5000,
     });
 
-    // 参加登録を送信
-    await page.getByRole("button", { name: "参加申し込みを完了する" }).click();
+    // 回答を送信
+    await page.getByRole("button", { name: "回答する" }).click();
 
     // エラー表示領域が表示されるのを待つ（上部のエラーカード）
-    await expect(page.getByText("申し込みでエラーが発生しました")).toBeVisible({
+    await expect(page.getByText("エラーが発生しました")).toBeVisible({
       timeout: 10000,
     });
 
     // 重複エラーメッセージが表示されることを確認
     // エラーは上部のエラー表示領域に表示される
     await expect(
-      page.locator("#participation-error").getByText("このメールアドレスは既に登録されています。")
+      page.locator("#participation-error").getByText("このメールアドレスは既に回答済みです。")
     ).toBeVisible();
 
     // フォームはリセットされずに残る（ユーザーがメールアドレスを修正できるように）
@@ -231,7 +231,7 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     await expect(page.getByLabel("メールアドレス")).toHaveValue(existingEmail);
   });
 
-  test("正常系：「未定」ステータスで参加登録できる", async ({ page }) => {
+  test("正常系：「未定」ステータスで回答できる", async ({ page }) => {
     // 無料テストイベントを作成
     const event = await createTestEvent(testUser.id, {
       title: "未定テストイベント",
@@ -243,8 +243,8 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     // 招待リンクページにアクセス
     await page.goto(`/invite/${event.invite_token}`);
 
-    // 参加登録ボタンをクリック
-    await page.getByRole("button", { name: "参加申し込みをする" }).click();
+    // 回答ボタンをクリック
+    await page.getByRole("button", { name: "回答する" }).click();
 
     // フォームに入力
     await page.getByLabel("名前・ニックネーム").fill("未定太郎");
@@ -253,11 +253,11 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     // 参加ステータスを「未定」に設定 - 他のテストと一貫性を保つためvalue-basedセレクタを使用
     await page.locator('[role="radio"][value="maybe"]').check();
 
-    // 参加登録を送信
-    await page.getByRole("button", { name: "参加申し込みを完了する" }).click();
+    // 回答を送信
+    await page.getByRole("button", { name: "回答する" }).click();
 
-    // 登録成功の確認画面が表示されることを確認
-    await expect(page.getByText("参加申し込みが完了しました")).toBeVisible({ timeout: 10000 });
+    // 回答完了画面が表示されることを確認
+    await expect(page.getByText("回答完了")).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("未定太郎")).toBeVisible();
 
     // 未定なので決済は不要であることを確認
@@ -271,7 +271,7 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     // エラーページが表示されることを確認（最初の要素のみチェック）
     await expect(page.getByText("無効な招待リンク").first()).toBeVisible();
 
-    // 参加登録フォームが表示されないことを確認
+    // 回答フォームが表示されないことを確認
     await expect(page.getByLabel("名前・ニックネーム")).not.toBeVisible();
   });
 
@@ -289,15 +289,15 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     // 招待リンクページにアクセス
     await page.goto(`/invite/${event.invite_token}`);
 
-    // 参加登録ボタンをクリック
-    await page.getByRole("button", { name: "参加申し込みをする" }).click();
+    // 回答ボタンをクリック
+    await page.getByRole("button", { name: "回答する" }).click();
 
     // フォームが表示されることを確認
     await expect(page.getByLabel("名前・ニックネーム")).toBeVisible();
     await expect(page.getByLabel("メールアドレス")).toBeVisible();
 
     // 何も入力していない状態では送信ボタンが無効化されていることを確認
-    const submitButton = page.getByRole("button", { name: "参加申し込みを完了する" });
+    const submitButton = page.getByRole("button", { name: "回答する" });
     await expect(submitButton).toBeDisabled();
 
     // 名前・ニックネームフィールドに文字を入力してから削除してバリデーションをトリガー
@@ -320,7 +320,7 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     await expect(submitButton).toBeDisabled();
 
     // フォームの送信が阻止され、確認画面に進まないことを確認
-    await expect(page.getByText("参加申し込みが完了しました")).not.toBeVisible();
+    await expect(page.getByText("回答完了")).not.toBeVisible();
   });
 
   test("異常系：不正なメールアドレス形式の場合、バリデーションエラーが表示される", async ({
@@ -337,8 +337,8 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     // 招待リンクページにアクセス
     await page.goto(`/invite/${event.invite_token}`);
 
-    // 参加登録ボタンをクリック
-    await page.getByRole("button", { name: "参加申し込みをする" }).click();
+    // 回答ボタンをクリック
+    await page.getByRole("button", { name: "回答する" }).click();
 
     // 不正なメールアドレス形式で入力
     await page.getByLabel("名前・ニックネーム").fill("不正メール太郎");
@@ -356,6 +356,6 @@ test.describe("参加登録（招待リンク）（E2E）", () => {
     ).toBeVisible();
 
     // 送信ボタンが無効化されていることを確認（バリデーションエラーのため）
-    await expect(page.getByRole("button", { name: "参加申し込みを完了する" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "回答する" })).toBeDisabled();
   });
 });

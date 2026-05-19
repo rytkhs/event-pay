@@ -10,14 +10,14 @@ import { createTestUserWithConnect, type TestPaymentUser } from "../../helpers/t
 import { deleteTestUser } from "../../helpers/test-user";
 
 /**
- * 3-2. ゲスト参加登録フローのe2eテスト
+ * 3-2. ゲスト回答フローのe2eテスト
  *
  * flow.mdで定義された以下の3つのフローをカバー：
  * - 無料イベント参加: ニックネーム・メール入力から完了確認まで
  * - 有料イベント参加: 決済方法選択、決済必要状態への遷移
- * - 未定登録: 定員カウント外、後から参加変更可能
+ * - 未定回答: 定員カウント外、後から参加変更可能
  */
-test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
+test.describe("3-2. ゲスト回答フロー（E2E）", () => {
   let testUser: TestPaymentUser;
   const testEvents: TestEvent[] = [];
 
@@ -79,12 +79,12 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     // await expect(page.locator("text=参加費").locator("..").getByText("無料")).toBeVisible();
     console.log("✓ Event information displayed correctly");
 
-    // Step 3: 参加登録ボタンをクリック
-    await expect(page.getByRole("button", { name: "登録する" })).toBeVisible();
-    await page.getByRole("button", { name: "登録する" }).click();
+    // Step 3: 回答ボタンをクリック
+    await expect(page.getByRole("button", { name: "回答する" })).toBeVisible();
+    await page.getByRole("button", { name: "回答する" }).click();
     console.log("✓ Clicked registration button");
 
-    // Step 4: 参加登録フォームが表示されることを確認
+    // Step 4: 回答フォームが表示されることを確認
     await expect(page.getByLabel("名前・ニックネーム")).toBeVisible();
     await expect(page.getByLabel("メールアドレス")).toBeVisible();
     console.log("✓ Registration form displayed");
@@ -104,17 +104,17 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     await page.waitForTimeout(1000);
 
     // Step 8: フォームボタンが有効化されるのを待つ
-    await expect(page.getByRole("button", { name: "登録する" })).toBeEnabled({
+    await expect(page.getByRole("button", { name: "回答する" })).toBeEnabled({
       timeout: 5000,
     });
     console.log("✓ Submit button enabled");
 
-    // Step 9: 参加登録を送信
-    await page.getByRole("button", { name: "登録する" }).click();
+    // Step 9: 回答を送信
+    await page.getByRole("button", { name: "回答する" }).click();
     console.log("✓ Submitted registration form");
 
     // Step 10: 完了確認画面の表示確認
-    await expect(page.getByText("登録完了")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("回答完了")).toBeVisible({ timeout: 10000 });
     await expect(page.getByText(testNickname)).toBeVisible();
     console.log("✓ Registration completion confirmation displayed");
 
@@ -150,8 +150,8 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     await expect(page.getByText(`${event.fee.toLocaleString()}円`, { exact: true })).toBeVisible();
     console.log("✓ Paid event information displayed correctly");
 
-    // Step 3: 参加登録ボタンをクリック
-    await page.getByRole("button", { name: "登録する" }).click();
+    // Step 3: 回答ボタンをクリック
+    await page.getByRole("button", { name: "回答する" }).click();
     console.log("✓ Clicked registration button");
 
     // Step 4: フォームに入力
@@ -180,23 +180,23 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
       .check();
     console.log("✓ Selected online payment method");
 
-    // Step 8: 参加登録を送信
-    await page.getByRole("button", { name: "登録する" }).click();
+    // Step 8: 回答を送信
+    await page.getByRole("button", { name: "回答する" }).click();
     console.log("✓ Submitted registration form");
 
-    // Step 9: 登録成功の確認画面が表示されることを確認
-    await expect(page.getByText("登録完了")).toBeVisible({ timeout: 10000 });
+    // Step 9: 回答完了画面が表示されることを確認
+    await expect(page.getByText("回答完了")).toBeVisible({ timeout: 10000 });
     await expect(page.getByText(/ご回答ありがとうございます/)).toBeVisible();
 
     console.log("🎉 Paid event participation flow completed successfully");
   });
 
-  test("【未定登録】定員カウント外、後から参加変更可能", async ({ page }) => {
+  test("【未定回答】定員カウント外、後から参加変更可能", async ({ page }) => {
     console.log("🧪 Testing undecided registration flow");
 
     // 定員ありの無料テストイベントを作成（未定は定員カウント外を確認するため）
     const event = await createTestEvent(testUser.id, {
-      title: "未定登録テストイベント",
+      title: "未定回答テストイベント",
       fee: 0,
       capacity: 5, // 定員5名
     });
@@ -213,8 +213,8 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     // 定員表示の具体的な実装に依存しないよう、定員機能があることを確認
     console.log("✓ Event with capacity information displayed");
 
-    // Step 3: 参加登録ボタンをクリック
-    await page.getByRole("button", { name: "登録する" }).click();
+    // Step 3: 回答ボタンをクリック
+    await page.getByRole("button", { name: "回答する" }).click();
     console.log("✓ Clicked registration button");
 
     // Step 4: フォームに入力
@@ -235,16 +235,16 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     // Step 7: フォームの状態更新を待つ
     await page.waitForTimeout(1000);
 
-    // Step 8: 参加登録を送信
-    await page.getByRole("button", { name: "登録する" }).click();
+    // Step 8: 回答を送信
+    await page.getByRole("button", { name: "回答する" }).click();
     console.log("✓ Submitted registration form");
 
-    // Step 9: 登録成功の確認画面が表示されることを確認
-    await expect(page.getByText("登録完了")).toBeVisible({ timeout: 10000 });
+    // Step 9: 回答完了画面が表示されることを確認
+    await expect(page.getByText("回答完了")).toBeVisible({ timeout: 10000 });
     await expect(page.getByText(/ご回答ありがとうございます/)).toBeVisible();
     console.log("✓ Registration completion confirmation displayed");
 
-    // Step 10: 未定登録なので決済は不要であることを確認
+    // Step 10: 未定回答なので決済は不要であることを確認
     await expect(page.getByText("決済が必要")).not.toBeVisible();
     console.log("✓ No payment required confirmed for undecided status");
 
@@ -280,9 +280,9 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
 
     // 無料イベントの基本フロー確認
     await page.goto(`/invite/${freeEvent.invite_token}`);
-    await expect(page.getByRole("button", { name: "登録する" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "回答する" })).toBeVisible();
 
-    await page.getByRole("button", { name: "登録する" }).click();
+    await page.getByRole("button", { name: "回答する" }).click();
     await expect(page.getByLabel("名前・ニックネーム")).toBeVisible();
     await expect(page.getByLabel("メールアドレス")).toBeVisible();
 
@@ -306,10 +306,10 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     testEvents.push(event);
 
     await page.goto(`/invite/${event.invite_token}`);
-    await page.getByRole("button", { name: "登録する" }).click();
+    await page.getByRole("button", { name: "回答する" }).click();
 
     // 何も入力せずに送信を試行（ボタンがdisabledの場合はforce: trueを使用）
-    await page.getByRole("button", { name: "登録する" }).click({ force: true });
+    await page.getByRole("button", { name: "回答する" }).click({ force: true });
 
     // バリデーションエラーが表示されることを確認（実装によってメッセージが異なる可能性を考慮）
     // フォームが送信されず、必須項目のエラーが表示されることを確認
@@ -326,7 +326,7 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     // バリデーションエラーまたはフォームが送信されていないことを確認
     const hasValidationError = await validationError.isVisible().catch(() => false);
     const formNotSubmitted = !(await page
-      .getByText("登録完了")
+      .getByText("回答完了")
       .isVisible()
       .catch(() => false));
 
@@ -334,8 +334,8 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     expect(hasValidationError || formNotSubmitted).toBe(true);
 
     // 送信が阻止され、フォームに留まっている（ボタンが表示され続けている）ことを確認
-    await expect(page.getByRole("button", { name: "登録する" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "登録完了" })).not.toBeVisible();
+    await expect(page.getByRole("button", { name: "回答する" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "回答完了" })).not.toBeVisible();
 
     console.log("✓ Validation errors displayed correctly for empty form");
     console.log("🎉 Error handling test completed successfully");
@@ -352,7 +352,7 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     testEvents.push(event);
 
     await page.goto(`/invite/${event.invite_token}`);
-    await page.getByRole("button", { name: "登録する" }).click();
+    await page.getByRole("button", { name: "回答する" }).click();
 
     // 不正なメールアドレス形式で入力
     await page.getByLabel("名前・ニックネーム").fill("メール形式テスト太郎");
@@ -360,7 +360,7 @@ test.describe("3-2. ゲスト参加登録フロー（E2E）", () => {
     await page.getByRole("button", { name: "参加", exact: true }).click();
 
     // 送信ボタンをクリック（ボタンがdisabledの場合はforce: trueを使用）
-    await page.getByRole("button", { name: "登録する" }).click({ force: true });
+    await page.getByRole("button", { name: "回答する" }).click({ force: true });
 
     // メール形式のバリデーションエラーが表示されることを確認
     await expect(

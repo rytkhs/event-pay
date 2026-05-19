@@ -47,7 +47,7 @@ export const GuestStatusCard: React.FC<GuestStatusCardProps> = ({
             textColor: "text-white",
             subColor: "bg-red-600",
             icon: <AlertTriangle className="w-12 h-12 mb-2" />,
-            title: "登録内容の確認が必要です",
+            title: "回答内容の確認が必要です",
             message: "選択された決済方法が現在利用できません。",
             priceLabel: "参加費",
           };

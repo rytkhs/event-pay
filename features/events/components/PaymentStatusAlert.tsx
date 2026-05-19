@@ -310,8 +310,8 @@ export function PaymentStatusAlert({
             icon: <CheckCircle className="h-5 w-5 text-green-600" />,
             bgColor: "bg-green-50 border-green-200",
             textColor: "text-green-800",
-            title: verifiedStatus ? "参加登録が完了しました（検証済み）" : "参加登録が完了しました",
-            description: `${sanitizeForEventPay(eventTitle)}の参加登録が確定しました。お支払いは不要です。`,
+            title: verifiedStatus ? "回答が完了しました（検証済み）" : "回答が完了しました",
+            description: `${sanitizeForEventPay(eventTitle)}の回答が確定しました。お支払いは不要です。`,
           };
         }
         // 有料の決済完了

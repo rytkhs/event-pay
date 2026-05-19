@@ -99,7 +99,7 @@ export const guideNavigation: NavItem[] = [
     exactMatch: false,
   },
   {
-    label: "参加者の登録と支払いの流れ",
+    label: "参加者の回答と支払いの流れ",
     href: "/guide/participant-flow",
     exactMatch: false,
   },

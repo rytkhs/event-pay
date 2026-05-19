@@ -20,7 +20,7 @@ import { GuideBottomCTA } from "../_components/GuideBottomCTA";
 
 export const dynamic = "force-static";
 
-const title = "参加者の登録と支払いの流れ";
+const title = "参加者の回答と支払いの流れ";
 const description =
   "みんなの集金で参加者が招待リンクから出欠を回答し、ゲストページで決済・確認するまでの流れをまとめました。";
 
@@ -55,7 +55,7 @@ const phases: Phase[] = [
     eyebrow: "招待ページ",
     title: "リンクを開いて、出欠と支払い方法を回答する。",
     summary:
-      "主催者から届いたリンクを開くと、イベントの参加登録ページが表示されます。ログインや会員登録は不要です。",
+      "主催者から届いたリンクを開くと、イベントの回答ページが表示されます。ログインや会員登録は不要です。",
     icon: Link2,
     points: [
       {
@@ -76,7 +76,7 @@ const phases: Phase[] = [
     eyebrow: "ゲストページ",
     title: "決済と変更は、ゲストページから。",
     summary:
-      "登録完了後に届くメールに含まれる個人用URLからアクセスします。第三者には共有しないでください。",
+      "回答完了後に届くメールに含まれるゲストページURLからアクセスします。第三者には共有しないでください。",
     icon: UserCog,
     points: [
       {
@@ -96,7 +96,7 @@ const phases: Phase[] = [
 ];
 
 const autoEmails: AutoEmail[] = [
-  { label: "登録完了", body: "ゲストページURLを含む確認メール" },
+  { label: "回答完了", body: "ゲストページURLを含む確認メール" },
   { label: "出欠回答期限リマインド", body: "回答期限が近い未回答者へ" },
   { label: "支払い期限リマインド", body: "支払い期限が近い未払い者へ" },
   { label: "イベント前日リマインド", body: "参加予定者へ" },
@@ -172,7 +172,7 @@ function InvitePhoneMock() {
         <div className="h-2 bg-slate-100" />
 
         <div className="flex flex-1 flex-col bg-white px-4 py-3">
-          <p className="mb-3 text-xs font-bold text-slate-800">参加登録</p>
+          <p className="mb-3 text-xs font-bold text-slate-800">回答</p>
           <div className="mb-2">
             <span className="mb-1 block text-[9px] font-bold text-slate-500">
               名前・ニックネーム
@@ -207,7 +207,7 @@ function InvitePhoneMock() {
             </div>
           </div>
           <div className="mt-auto flex items-center justify-center gap-1 rounded-xl bg-primary py-2.5 text-xs font-bold text-white">
-            登録する
+            回答する
             <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </div>
         </div>
@@ -296,7 +296,7 @@ export default function ParticipantFlowGuidePage() {
           <div className="max-w-3xl">
             <p className="text-sm font-bold text-primary">Participant guide</p>
             <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
-              参加者の登録と
+              参加者の回答と
               <span className="text-primary">支払いの流れ</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-9 text-slate-700">

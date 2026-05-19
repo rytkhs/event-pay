@@ -120,7 +120,7 @@ export function logSecurityEvent(event: SecurityEvent): void {
 }
 
 /**
- * 参加登録関連のセキュリティイベントを記録します
+ * 回答関連のセキュリティイベントを記録します
  * @param type イベントタイプ
  * @param message メッセージ
  * @param details 詳細情報

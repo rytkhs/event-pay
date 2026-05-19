@@ -7,7 +7,7 @@ import {
 } from "@core/notification/templates";
 
 describe("core/notification/templates", () => {
-  test("参加登録テンプレートはJST固定書式で日時を表示する", () => {
+  test("回答テンプレートはJST固定書式で日時を表示する", () => {
     const template = buildParticipationRegisteredTemplate({
       nickname: "田中",
       eventTitle: "新年会",

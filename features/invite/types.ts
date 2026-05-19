@@ -5,7 +5,7 @@
 
 import type { AttendanceStatus, PaymentMethod } from "@core/types/statuses";
 
-// 参加登録結果データ
+// 回答結果データ
 export interface RegisterParticipationData {
   attendanceId: string;
   guestToken: string;

@@ -17,7 +17,7 @@ export interface CleanupDataIds {
    */
   paymentIds?: string[];
   /**
-   * 参加登録IDの配列
+   * 回答IDの配列
    */
   attendanceIds?: string[];
   /**
@@ -102,7 +102,7 @@ export async function safeCleanupTestData(
     users: 0,
   };
 
-  // 決済データ、参加登録、イベントのクリーンアップ
+  // 決済データ、回答、イベントのクリーンアップ
   const hasPaymentData =
     dataIds.paymentIds?.length ||
     dataIds.attendanceIds?.length ||

@@ -45,7 +45,7 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
      * - 決済方法に「現金」が含まれている
      *
      * 期待結果:
-     * - ゲストが参加登録時に現金決済を選択できる
+     * - ゲストが回答時に現金決済を選択できる
      * - 決済レコードが status='pending', method='cash' で作成される
      * - 参加者の status='attending' が設定される
      * - ゲスト管理ページで決済ステータスが「支払い待ち」と表示される
@@ -98,7 +98,7 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
 
     console.log("✓ テストデータ作成完了");
 
-    // === 2. 招待リンクから参加登録 ===
+    // === 2. 招待リンクから回答 ===
     const inviteUrl = `http://localhost:3000/invite/${eventData.invite_token}`;
     await page.goto(inviteUrl);
     await page.waitForLoadState("networkidle");
@@ -136,19 +136,19 @@ test.describe("現金決済フロー (CASH-PAYMENT-E2E-001)", () => {
 
     console.log("✓ 決済方法「現金」を選択");
 
-    // === 5. 参加登録を送信 ===
-    const submitButton = page.getByRole("button", { name: "登録する" });
+    // === 5. 回答を送信 ===
+    const submitButton = page.getByRole("button", { name: "回答する" });
     await expect(submitButton).toBeEnabled({ timeout: 5000 });
     await submitButton.click();
 
-    console.log("✓ 参加登録を送信");
+    console.log("✓ 回答を送信");
 
-    // === 6. 登録完了画面の確認 ===
+    // === 6. 回答完了画面の確認 ===
     // 完了メッセージが表示されるのを待機（タイムアウトを長めに）
-    await expect(page.getByText("登録完了")).toBeVisible({ timeout: 20 * 1000 });
+    await expect(page.getByText("回答完了")).toBeVisible({ timeout: 20 * 1000 });
     await expect(page.getByText(/ご回答ありがとうございます/)).toBeVisible();
 
-    console.log("✓ 登録完了画面が表示された");
+    console.log("✓ 回答完了画面が表示された");
 
     // === 7. DBで決済レコードの確認 ===
     // 参加者IDを取得

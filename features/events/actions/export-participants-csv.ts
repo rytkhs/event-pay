@@ -263,7 +263,7 @@ function generateCsvContent(participants: CsvParticipant[], columns: string[]): 
     payment_status: "決済ステータス",
     amount: "金額",
     paid_at: "決済日時",
-    created_at: "登録日時",
+    created_at: "回答日時",
     updated_at: "更新日時",
   };
 

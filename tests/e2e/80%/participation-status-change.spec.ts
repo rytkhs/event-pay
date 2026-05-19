@@ -545,7 +545,7 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
 
     // Drawer内に警告が表示されることを確認
     await expect(
-      page.locator('[role="alert"]').filter({ hasText: /参加登録の締切を過ぎているため/ })
+      page.locator('[role="alert"]').filter({ hasText: /回答期限を過ぎているため/ })
     ).toBeVisible();
     console.log("✓ Warning displayed inside the edit drawer");
 

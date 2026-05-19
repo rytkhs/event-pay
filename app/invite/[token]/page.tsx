@@ -60,7 +60,7 @@ export default async function InvitePage(props: InvitePageProps) {
 
     // 登録不可の場合はエラーページを表示
     if (!validationResult.canRegister) {
-      const errorMessage = validationResult.errorMessage || "現在参加申し込みを受け付けていません";
+      const errorMessage = validationResult.errorMessage || "現在回答を受け付けていません";
       const errorCode = validationResult.errorCode || "UNKNOWN_ERROR";
 
       // エラーコードに応じたエラーレイアウト
@@ -70,7 +70,7 @@ export default async function InvitePage(props: InvitePageProps) {
             return {
               title: "イベント終了",
               icon: "business" as const,
-              description: "既に終了したイベントには参加申し込みできません。",
+              description: "既に終了したイベントには回答できません。",
             };
           case "EVENT_CANCELED":
             return {
@@ -88,9 +88,9 @@ export default async function InvitePage(props: InvitePageProps) {
             };
           default:
             return {
-              title: "参加申し込み不可",
+              title: "回答不可",
               icon: "business" as const,
-              description: "現在参加申し込みを受け付けていません。",
+              description: "現在回答を受け付けていません。",
             };
         }
       };
@@ -200,17 +200,17 @@ export async function generateMetadata(props: InvitePageProps): Promise<Metadata
   try {
     if (!params?.token) {
       return {
-        title: "イベント参加申し込み",
+        title: "イベント回答",
         robots: "noindex, nofollow",
         openGraph: {
-          title: "イベント参加申し込み",
-          description: "イベントへの参加申し込み",
+          title: "イベント回答",
+          description: "イベントへの回答",
           type: "website",
         },
         twitter: {
           card: "summary_large_image",
-          title: "イベント参加申し込み",
-          description: "イベントへの参加申し込み",
+          title: "イベント回答",
+          description: "イベントへの回答",
         },
         referrer: "no-referrer",
       };
@@ -242,13 +242,13 @@ export async function generateMetadata(props: InvitePageProps): Promise<Metadata
     const ogImageUrl = "/og/event-default.png";
 
     return {
-      title: `${event.title} - 参加申し込み`,
-      description: sanitizeEventDescription(event.description || `${event.title}への参加申し込み`),
+      title: `${event.title} - 回答`,
+      description: sanitizeEventDescription(event.description || `${event.title}への回答`),
       robots: "noindex, nofollow",
       openGraph: {
-        title: `${event.title} - 参加申し込み`,
+        title: `${event.title} - 回答`,
         description: sanitizeEventDescription(
-          event.description || `${event.title}への参加申し込み`
+          event.description || `${event.title}への回答`
         ),
         type: "website",
         images: [
@@ -256,15 +256,15 @@ export async function generateMetadata(props: InvitePageProps): Promise<Metadata
             url: ogImageUrl,
             width: 1200,
             height: 630,
-            alt: `${event.title} - 参加申し込み`,
+            alt: `${event.title} - 回答`,
           },
         ],
       },
       twitter: {
         card: "summary_large_image",
-        title: `${event.title} - 参加申し込み`,
+        title: `${event.title} - 回答`,
         description: sanitizeEventDescription(
-          event.description || `${event.title}への参加申し込み`
+          event.description || `${event.title}への回答`
         ),
         images: [ogImageUrl],
       },
@@ -272,17 +272,17 @@ export async function generateMetadata(props: InvitePageProps): Promise<Metadata
     };
   } catch {
     return {
-      title: "イベント参加申し込み",
+      title: "イベント回答",
       robots: "noindex, nofollow",
       openGraph: {
-        title: "イベント参加申し込み",
-        description: "イベントへの参加申し込み",
+        title: "イベント回答",
+        description: "イベントへの回答",
         type: "website",
       },
       twitter: {
         card: "summary_large_image",
-        title: "イベント参加申し込み",
-        description: "イベントへの参加申し込み",
+        title: "イベント回答",
+        description: "イベントへの回答",
       },
       referrer: "no-referrer",
     };

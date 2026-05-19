@@ -443,7 +443,7 @@ export function ParticipantsActionBarV2({
                 </RadioGroup>
                 <p className="text-xs text-muted-foreground">
                   手動追加は現金のみ対応しています。
-                  オンライン決済を利用したい場合は招待リンクから登録するよう案内してください。
+                  オンラインで支払う場合は招待リンクから回答するよう案内してください。
                 </p>
               </div>
             )}

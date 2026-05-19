@@ -80,7 +80,7 @@ export async function updateGuestAttendanceAction(
     // 変更可能かどうかの確認
     if (!tokenValidation.canModify) {
       return fail("ATTENDANCE_DEADLINE_PASSED", {
-        userMessage: "参加登録の期限が過ぎているため、変更できません",
+        userMessage: "回答期限が過ぎているため、変更できません",
       });
     }
 
@@ -199,7 +199,7 @@ export async function updateGuestAttendanceAction(
 
       if (isCapacityReached) {
         return fail("ATTENDANCE_CAPACITY_REACHED", {
-          userMessage: "申し訳ございませんが、定員に達したため参加登録できませんでした",
+          userMessage: "申し訳ございませんが、定員に達したため回答できませんでした",
         });
       }
 

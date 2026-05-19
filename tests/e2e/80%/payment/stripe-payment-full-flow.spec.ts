@@ -354,11 +354,11 @@ test.describe("Stripe決済 完全フロー", () => {
     // オンライン決済を選択 (ラジオボタン形式)
     await page.getByLabel("オンライン決済").check();
 
-    // 参加表明を送信 ("登録する" ボタン)
-    await page.getByRole("button", { name: "登録する" }).click();
+    // 参加表明を送信 ("回答する" ボタン)
+    await page.getByRole("button", { name: "回答する" }).click();
 
     // 完了ページへの遷移を待つ (SuccessViewが表示される)
-    await page.waitForSelector('text="登録完了"', { timeout: 10000 });
+    await page.waitForSelector('text="回答完了"', { timeout: 10000 });
 
     console.log("✓ 参加表明完了");
 
