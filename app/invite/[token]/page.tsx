@@ -200,17 +200,17 @@ export async function generateMetadata(props: InvitePageProps): Promise<Metadata
   try {
     if (!params?.token) {
       return {
-        title: "イベント回答",
+        title: "イベント出欠回答",
         robots: "noindex, nofollow",
         openGraph: {
-          title: "イベント回答",
-          description: "イベントへの回答",
+          title: "イベント出欠回答",
+          description: "イベントへの出欠回答",
           type: "website",
         },
         twitter: {
           card: "summary_large_image",
-          title: "イベント回答",
-          description: "イベントへの回答",
+          title: "イベント出欠回答",
+          description: "イベントへの出欠回答",
         },
         referrer: "no-referrer",
       };
@@ -242,13 +242,13 @@ export async function generateMetadata(props: InvitePageProps): Promise<Metadata
     const ogImageUrl = "/og/event-default.png";
 
     return {
-      title: `${event.title} - 回答`,
-      description: sanitizeEventDescription(event.description || `${event.title}への回答`),
+      title: `${event.title} - 出欠回答`,
+      description: sanitizeEventDescription(event.description || `${event.title}への出欠回答`),
       robots: "noindex, nofollow",
       openGraph: {
-        title: `${event.title} - 回答`,
+        title: `${event.title} - 出欠回答`,
         description: sanitizeEventDescription(
-          event.description || `${event.title}への回答`
+          event.description || `${event.title}への出欠回答`
         ),
         type: "website",
         images: [
@@ -256,15 +256,15 @@ export async function generateMetadata(props: InvitePageProps): Promise<Metadata
             url: ogImageUrl,
             width: 1200,
             height: 630,
-            alt: `${event.title} - 回答`,
+            alt: `${event.title} - 出欠回答`,
           },
         ],
       },
       twitter: {
         card: "summary_large_image",
-        title: `${event.title} - 回答`,
+        title: `${event.title} - 出欠回答`,
         description: sanitizeEventDescription(
-          event.description || `${event.title}への回答`
+          event.description || `${event.title}への出欠回答`
         ),
         images: [ogImageUrl],
       },
@@ -272,17 +272,17 @@ export async function generateMetadata(props: InvitePageProps): Promise<Metadata
     };
   } catch {
     return {
-      title: "イベント回答",
+      title: "イベント出欠回答",
       robots: "noindex, nofollow",
       openGraph: {
-        title: "イベント回答",
-        description: "イベントへの回答",
+        title: "イベント出欠回答",
+        description: "イベントへの出欠回答",
         type: "website",
       },
       twitter: {
         card: "summary_large_image",
-        title: "イベント回答",
-        description: "イベントへの回答",
+        title: "イベント出欠回答",
+        description: "イベントへの出欠回答",
       },
       referrer: "no-referrer",
     };
