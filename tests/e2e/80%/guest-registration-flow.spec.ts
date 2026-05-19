@@ -169,14 +169,14 @@ test.describe("3-2. ゲスト回答フロー（E2E）", () => {
     await expect(page.getByText("支払い方法").first()).toBeVisible();
     await expect(
       page.getByRole("radio", {
-        name: /オンライン決済.*クレジットカード.*Apple Pay.*Google Pay/,
+        name: /オンライン支払い.*クレジットカード.*Apple Pay.*Google Pay/,
       })
     ).toBeVisible();
     console.log("✓ Payment method options displayed");
 
     // Step 7: 決済方法を選択
     await page
-      .getByRole("radio", { name: /オンライン決済.*クレジットカード.*Apple Pay.*Google Pay/ })
+      .getByRole("radio", { name: /オンライン支払い.*クレジットカード.*Apple Pay.*Google Pay/ })
       .check();
     console.log("✓ Selected online payment method");
 

@@ -277,7 +277,7 @@ describe("エラーケース", () => {
       success: false,
       code: "RESOURCE_CONFLICT",
       error:
-        "決済の準備ができません。主催者のお支払い受付設定に不備があります。現金決済をご利用いただくか、主催者にお問い合わせください。",
+        "決済の準備ができません。主催者のお支払い受付設定に不備があります。現金払いをご利用いただくか、主催者にお問い合わせください。",
       correlationId: expect.any(String),
       retryable: false,
     });
@@ -365,7 +365,7 @@ describe("エラーケース", () => {
       success: false,
       code: "RESOURCE_CONFLICT",
       error:
-        "主催者のお支払い受付が一時的に制限されています。現金決済をご利用いただくか、主催者にお問い合わせください。",
+        "主催者のお支払い受付が一時的に制限されています。現金払いをご利用いただくか、主催者にお問い合わせください。",
       correlationId: expect.any(String),
       retryable: false,
     });

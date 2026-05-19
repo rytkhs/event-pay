@@ -27,7 +27,7 @@ const EVENT_CHANGE_FIELD_LABELS: Record<string, string> = {
   payment_methods: "決済方法",
   registration_deadline: "出欠回答期限",
   payment_deadline: "オンライン支払い期限",
-  allow_payment_after_deadline: "締切後もオンライン決済を許可",
+  allow_payment_after_deadline: "締切後もオンライン支払いを許可",
   grace_period_days: "猶予期間",
 };
 
@@ -203,7 +203,7 @@ export function useEventChanges({ event, formData }: UseEventChangesProps) {
             "payment_deadline",
             formatUtcToDatetimeLocal(originalPaymentDeadline)
           ),
-          newValue: "（オンライン決済選択解除により自動クリア）",
+          newValue: "（オンライン支払い選択解除により自動クリア）",
         });
       }
 
@@ -216,7 +216,7 @@ export function useEventChanges({ event, formData }: UseEventChangesProps) {
           field: "allow_payment_after_deadline",
           fieldName: getEventChangeFieldLabel("allow_payment_after_deadline"),
           oldValue: formatEventChangeValue("allow_payment_after_deadline", originalAllowAfter),
-          newValue: "（オンライン決済選択解除により自動クリア）",
+          newValue: "（オンライン支払い選択解除により自動クリア）",
         });
       }
 
@@ -232,7 +232,7 @@ export function useEventChanges({ event, formData }: UseEventChangesProps) {
           field: "grace_period_days",
           fieldName: getEventChangeFieldLabel("grace_period_days"),
           oldValue: formatEventChangeValue("grace_period_days", originalGrace),
-          newValue: "（オンライン決済選択解除により自動クリア）",
+          newValue: "（オンライン支払い選択解除により自動クリア）",
         });
       }
     }

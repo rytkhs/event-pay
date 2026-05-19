@@ -20,7 +20,7 @@ export interface PaymentEligibilityEvent {
   fee: number | null;
   date: string; // ISO string
   payment_deadline?: string | null; // ISO string
-  allow_payment_after_deadline?: boolean; // 締切後もオンライン決済許可
+  allow_payment_after_deadline?: boolean; // 締切後もオンライン支払い許可
   grace_period_days?: number | null; // 0-30
 }
 
@@ -217,7 +217,7 @@ export function canCreateStripeSession(
   let reason: string | undefined = baseResult.reason;
 
   if (!reason && !isValidMethod) {
-    reason = "オンライン決済は利用できません。";
+    reason = "オンライン支払いは利用できません。";
   } else if (!reason && !isNotFinalized) {
     reason = "すでに決済は完了（または返金済み）しています。";
   } else if (!reason && !isValidStatus) {

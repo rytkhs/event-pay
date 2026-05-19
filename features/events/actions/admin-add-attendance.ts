@@ -31,7 +31,7 @@ import { getOwnedEventActionContextForServerAction } from "../services/get-owned
  * - RLSポリシーベースのセキュリティアクセス制御
  * - 専用RPC関数による排他ロック付き定員チェック
  * - レースコンディション対策済み
- * - 追加完了後、ゲストURLとオンライン決済可否を返す
+ * - 追加完了後、ゲストURLとオンライン支払い可否を返す
  */
 export async function adminAddAttendanceAction(
   input: unknown
@@ -121,7 +121,7 @@ export async function adminAddAttendanceAction(
         });
       }
 
-      // PaymentServiceを使用して現金決済レコードを作成
+      // PaymentServiceを使用して現金払いレコードを作成
       try {
         const paymentPort = getPaymentPort();
         const result = await paymentPort.createCashPayment({

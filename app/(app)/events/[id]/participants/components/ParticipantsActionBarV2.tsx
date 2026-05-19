@@ -131,8 +131,8 @@ export function ParticipantsActionBarV2({
       const successDescription = isPayingEvent
         ? "参加者を追加しました。現金（未集金）として記録されました。"
         : data.canOnlinePay
-          ? "参加者を追加しました（現在オンライン決済が可能です）"
-          : "参加者を追加しました（オンライン決済は現在できません）";
+          ? "参加者を追加しました（現在オンライン支払いが可能です）"
+          : "参加者を追加しました（オンライン支払いは現在できません）";
 
       toast("参加者を追加しました", {
         description: successDescription,

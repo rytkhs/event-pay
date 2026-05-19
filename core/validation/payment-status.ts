@@ -20,6 +20,6 @@ export const PaymentStatusSchema = z.enum(PAYMENT_STATUS_VALUES);
 export const SimplePaymentStatusSchema = z.enum(SIMPLE_PAYMENT_STATUS_VALUES);
 
 /**
- * 現金決済の更新先ステータス（received/waived のみ）
+ * 現金払いの更新先ステータス（received/waived のみ）
  */
 export const CashUpdateStatusSchema = z.enum(["received", "waived"]);

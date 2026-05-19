@@ -286,7 +286,7 @@ export class TestDataManager {
   }
 
   /**
-   * イベントのオンライン決済設定を更新
+   * イベントのオンライン支払い設定を更新
    * - payment_deadline / allow_payment_after_deadline / grace_period_days を一括で設定
    */
   static async updateEventPaymentSettings(options: {

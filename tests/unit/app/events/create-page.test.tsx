@@ -177,7 +177,7 @@ describe("CreateEventPage", () => {
     expect(screen.getByText("form:true:ready:ボドゲ会:0.049")).toBeInTheDocument();
   });
 
-  it("current community の payout profile が未設定ならオンライン決済を fail-close にする", async () => {
+  it("current community の payout profile が未設定ならオンライン支払いを fail-close にする", async () => {
     createServerComponentSupabaseClient.mockResolvedValue({ from: jest.fn() });
     requireNonEmptyCommunityWorkspaceForServerComponent.mockResolvedValue({
       isCommunityEmptyState: false,
@@ -204,7 +204,7 @@ describe("CreateEventPage", () => {
     expect(screen.getByText("form:false:no_account:ボドゲ会:0.08")).toBeInTheDocument();
   });
 
-  it("payouts disabled の警告CTAがあっても collection_ready ならオンライン決済を許可する", async () => {
+  it("payouts disabled の警告CTAがあっても collection_ready ならオンライン支払いを許可する", async () => {
     createServerComponentSupabaseClient.mockResolvedValue({ from: jest.fn() });
     requireNonEmptyCommunityWorkspaceForServerComponent.mockResolvedValue({
       isCommunityEmptyState: false,

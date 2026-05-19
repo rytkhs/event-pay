@@ -184,11 +184,11 @@ test.describe("Stripe決済 完全フロー", () => {
     // 参加費を設定（1,000円）
     await page.fill('[name="fee"]', "1000");
 
-    // オンライン決済を選択 (data-testid を活用)
-    const onlinePaymentLabel = page.locator("label", { hasText: "オンライン決済" });
+    // オンライン支払いを選択 (data-testid を活用)
+    const onlinePaymentLabel = page.locator("label", { hasText: "オンライン支払い" });
     await onlinePaymentLabel.click();
 
-    // オンライン支払い期限 (オンライン決済選択後に表示される)
+    // オンライン支払い期限 (オンライン支払い選択後に表示される)
     await fillDateTimePicker("オンライン支払い期限を選択", payDeadline, "23");
 
     // 詳細情報
@@ -351,8 +351,8 @@ test.describe("Stripe決済 完全フロー", () => {
     // 「参加」を選択 (ボタン形式)
     await page.getByRole("button", { name: "参加", exact: true }).click();
 
-    // オンライン決済を選択 (ラジオボタン形式)
-    await page.getByLabel("オンライン決済").check();
+    // オンライン支払いを選択 (ラジオボタン形式)
+    await page.getByLabel("オンライン支払い").check();
 
     // 参加表明を送信 ("回答する" ボタン)
     await page.getByRole("button", { name: "回答する" }).click();
@@ -394,8 +394,8 @@ test.describe("Stripe決済 完全フロー", () => {
     // ページが読み込まれるまで待機
     await page.waitForLoadState("networkidle");
 
-    // 「オンライン決済へ進む」ボタンをクリックしてStripe Checkoutへのリダイレクトを待つ
-    await page.getByRole("button", { name: "オンライン決済へ進む" }).click();
+    // 「オンライン支払いへ進む」ボタンをクリックしてStripe Checkoutへのリダイレクトを待つ
+    await page.getByRole("button", { name: "オンライン支払いへ進む" }).click();
 
     // Stripe Checkoutページまたはエラーメッセージのいずれかまで待機
     await Promise.race([

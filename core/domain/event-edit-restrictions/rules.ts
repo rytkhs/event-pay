@@ -108,7 +108,7 @@ export const STRIPE_PAID_FEE_RESTRICTION: RestrictionRule = {
       return createEvaluation(
         true,
         "集金済み参加者がいるため、参加費は変更できません",
-        `現在${context.attendeeCount}名の参加者のうち、既にオンライン決済を完了した参加者がいます。`
+        `現在${context.attendeeCount}名の参加者のうち、既にオンライン支払いを完了した参加者がいます。`
       );
     }
 

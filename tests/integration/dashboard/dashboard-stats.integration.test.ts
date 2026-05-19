@@ -563,15 +563,15 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       }
     });
 
-    test("現金決済でreceived状態は未回収に含まれない", async () => {
+    test("現金払いでreceived状態は未回収に含まれない", async () => {
       const event = await createEventForDashboardStats(setup.adminClient, setup.testUser.id, [], {
-        title: "現金決済イベント",
+        title: "現金払いイベント",
         date: getFutureDateTime(48),
         fee: 2000,
       });
       cleanupHelper.trackEvent(event.id);
 
-      // 参加者A: 現金決済 received（受領済み）
+      // 参加者A: 現金払い received（受領済み）
       const attendanceA = await createAttendanceForDashboardStats(
         setup.adminClient,
         event.id,
@@ -590,7 +590,7 @@ describe("ダッシュボード統計情報 統合テスト", () => {
       );
       cleanupHelper.trackPayment(paymentA.id);
 
-      // 参加者B: 現金決済 pending（未受領）
+      // 参加者B: 現金払い pending（未受領）
       const attendanceB = await createAttendanceForDashboardStats(
         setup.adminClient,
         event.id,

@@ -26,7 +26,7 @@ export function NoAccountView({ refreshUrl }: NoAccountViewProps) {
           <div className="min-w-0">
             <p className="text-sm font-semibold">Stripeで設定を始めましょう</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              オンライン決済を有効化するために、Stripeアカウントの設定が必要です。設定は約3〜5分で完了します。
+              オンライン支払いを有効化するために、Stripeアカウントの設定が必要です。設定は約3〜5分で完了します。
             </p>
           </div>
         </div>

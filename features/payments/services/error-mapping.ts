@@ -85,19 +85,19 @@ export const ERROR_HANDLING_BY_TYPE: Record<PaymentErrorType, PaymentErrorHandli
   },
   [PaymentErrorType.CONNECT_ACCOUNT_NOT_FOUND]: {
     userMessage:
-      "オンライン決済の準備ができていません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。",
+      "オンライン支払いの準備ができていません。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。",
     shouldRetry: false,
     logLevel: "error" as const,
   },
   [PaymentErrorType.CONNECT_ACCOUNT_RESTRICTED]: {
     userMessage:
-      "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。",
+      "現在オンライン支払いがご利用いただけません。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。",
     shouldRetry: false,
     logLevel: "error" as const,
   },
   [PaymentErrorType.STRIPE_CONFIG_ERROR]: {
     userMessage:
-      "決済システムに一時的な問題が発生しています。しばらく時間をおいて再度お試しいただくか、現金決済をご利用ください。",
+      "決済システムに一時的な問題が発生しています。しばらく時間をおいて再度お試しいただくか、現金払いをご利用ください。",
     shouldRetry: true,
     logLevel: "error",
   },

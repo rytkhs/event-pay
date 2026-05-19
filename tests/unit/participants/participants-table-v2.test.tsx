@@ -336,7 +336,7 @@ describe("ParticipantsTableV2", () => {
   });
 
   describe("アクション機能", () => {
-    it("現金決済の受領ボタンが動作する", async () => {
+    it("現金払いの受領ボタンが動作する", async () => {
       const user = userEvent.setup();
       mockUpdateCashStatus.mockResolvedValue({ success: true });
 

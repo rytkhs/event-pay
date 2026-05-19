@@ -363,7 +363,7 @@ export function ParticipantsTableV2({
   // =======================================================
   // 一括操作関連
   // =======================================================
-  // 現金決済で一括操作可能な参加者のみフィルタ（フィルタ済みデータから）
+  // 現金払いで一括操作可能な参加者のみフィルタ（フィルタ済みデータから）
   const bulkOperableParticipants = useMemo(() => {
     return sortedParticipants.filter(
       (p) =>
@@ -374,7 +374,7 @@ export function ParticipantsTableV2({
     );
   }, [sortedParticipants]);
 
-  // 現在選択されている現金決済のpayment_id配列
+  // 現在選択されている現金払いのpayment_id配列
   const validSelectedPaymentIds = useMemo(() => {
     const validIds = new Set(bulkOperableParticipants.map((p) => p.payment_id).filter(Boolean));
     return selectedPaymentIds.filter((id) => validIds.has(id));

@@ -6,7 +6,7 @@ import type { AppSupabaseClient } from "@core/types/supabase";
 import { CreateCashPaymentParams, CreateCashPaymentResult } from "../types";
 
 /**
- * 現金決済レコードを作成する
+ * 現金払いレコードを作成する
  */
 export async function createCashPayment(
   params: CreateCashPaymentParams,
@@ -37,7 +37,7 @@ export async function createCashPayment(
       // その他のDBエラー
       throw new PaymentError(
         PaymentErrorType.DATABASE_ERROR,
-        `現金決済の作成に失敗しました: ${error.message}`,
+        `現金払いの作成に失敗しました: ${error.message}`,
         error
       );
     }

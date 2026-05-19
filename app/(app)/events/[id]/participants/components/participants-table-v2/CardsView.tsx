@@ -79,7 +79,7 @@ export function CardsView({
   const getPaymentMethodIcon = (method: string | null) => {
     if (!method) return null;
     return method === "stripe" ? (
-      <CreditCard className="h-3.5 w-3.5 text-violet-500" aria-label="オンライン決済" />
+      <CreditCard className="h-3.5 w-3.5 text-violet-500" aria-label="オンライン支払い" />
     ) : (
       <Banknote className="h-3.5 w-3.5 text-orange-500" aria-label="現金" />
     );

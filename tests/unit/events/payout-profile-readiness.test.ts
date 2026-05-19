@@ -44,7 +44,7 @@ describe("getEventPayoutProfileReadiness", () => {
 
     expect(result).toEqual({
       isReady: false,
-      userMessage: "オンライン決済を追加するには受取先プロファイルの設定完了が必要です。",
+      userMessage: "オンライン支払いを追加するには受取先プロファイルの設定完了が必要です。",
     });
   });
 });

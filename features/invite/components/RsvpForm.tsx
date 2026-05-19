@@ -101,7 +101,7 @@ export const RsvpForm: React.FC<RsvpFormProps> = ({
       })}
       className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8"
     >
-      <h2 className="text-xl font-bold text-slate-900 mb-6">回答</h2>
+      <h2 className="text-xl font-bold text-slate-900 mb-6">出欠を回答する</h2>
 
       {isError && error && (
         <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-lg text-sm">

@@ -4,8 +4,8 @@
  * このテストファイルは、イベント作成機能の基本的な正常系のテストケースを実装します。
  * - 1.1.1 最小限の必須項目のみでの無料イベント作成
  * - 1.1.2 全項目入力での有料イベント作成
- * - 1.1.3 現金決済のみの有料イベント作成
- * - 1.1.4 オンライン決済のみの有料イベント作成
+ * - 1.1.3 現金払いのみの有料イベント作成
+ * - 1.1.4 オンライン支払いのみの有料イベント作成
  * - 1.1.5 複数決済方法（現金+オンライン）の有料イベント作成
  */
 
@@ -283,7 +283,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
         payment_methods: ["stripe", "cash"],
         location: "東京都渋谷区テストビル3F",
         description:
-          "全項目を入力したテスト用イベントです。参加費は5000円で、現金とオンライン決済の両方を受け付けます。",
+          "全項目を入力したテスト用イベントです。参加費は5000円で、現金とオンライン支払いの両方を受け付けます。",
         capacity: "100",
         registration_deadline: registrationDeadline,
         payment_deadline: paymentDeadline,
@@ -304,7 +304,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
           payment_methods: ["stripe", "cash"],
           location: "東京都渋谷区テストビル3F",
           description:
-            "全項目を入力したテスト用イベントです。参加費は5000円で、現金とオンライン決済の両方を受け付けます。",
+            "全項目を入力したテスト用イベントです。参加費は5000円で、現金とオンライン支払いの両方を受け付けます。",
           capacity: 100,
         });
 
@@ -323,18 +323,18 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
     });
   });
 
-  describe("1.1.3 現金決済のみの有料イベント作成", () => {
-    test("現金決済のみの有料イベントが作成される", async () => {
+  describe("1.1.3 現金払いのみの有料イベント作成", () => {
+    test("現金払いのみの有料イベントが作成される", async () => {
       const eventDate = getFutureDateTime(48);
       const registrationDeadline = getFutureDateTime(24);
 
       const formData = createFormDataFromEvent({
-        title: "現金決済のみイベント",
+        title: "現金払いのみイベント",
         date: eventDate,
         fee: "3000",
         payment_methods: ["cash"],
-        location: "現金決済会場",
-        description: "現金決済のみを受け付けるイベントです",
+        location: "現金払い会場",
+        description: "現金払いのみを受け付けるイベントです",
         registration_deadline: registrationDeadline,
       });
 
@@ -346,32 +346,32 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
         createdEventIds.push(event.id);
 
         validateCreatedEvent(event, {
-          title: "現金決済のみイベント",
+          title: "現金払いのみイベント",
           fee: 3000,
           payment_methods: ["cash"],
-          location: "現金決済会場",
-          description: "現金決済のみを受け付けるイベントです",
+          location: "現金払い会場",
+          description: "現金払いのみを受け付けるイベントです",
         });
 
-        // 現金決済のみの場合、オンライン支払い期限は不要
+        // 現金払いのみの場合、オンライン支払い期限は不要
         expect(event.payment_deadline).toBeNull();
       }
     });
   });
 
-  describe("1.1.4 オンライン決済のみの有料イベント作成", () => {
-    test("オンライン決済のみの有料イベントが作成される", async () => {
+  describe("1.1.4 オンライン支払いのみの有料イベント作成", () => {
+    test("オンライン支払いのみの有料イベントが作成される", async () => {
       const eventDate = getFutureDateTime(72);
       const registrationDeadline = getFutureDateTime(24);
       const paymentDeadline = getFutureDateTime(48);
 
       const formData = createFormDataFromEvent({
-        title: "オンライン決済のみイベント",
+        title: "オンライン支払いのみイベント",
         date: eventDate,
         fee: "8000",
         payment_methods: ["stripe"],
-        location: "オンライン決済会場",
-        description: "Stripeによるオンライン決済のみを受け付けるイベントです",
+        location: "オンライン支払い会場",
+        description: "Stripeによるオンライン支払いのみを受け付けるイベントです",
         capacity: "50",
         registration_deadline: registrationDeadline,
         payment_deadline: paymentDeadline,
@@ -385,15 +385,15 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
         createdEventIds.push(event.id);
 
         validateCreatedEvent(event, {
-          title: "オンライン決済のみイベント",
+          title: "オンライン支払いのみイベント",
           fee: 8000,
           payment_methods: ["stripe"],
-          location: "オンライン決済会場",
-          description: "Stripeによるオンライン決済のみを受け付けるイベントです",
+          location: "オンライン支払い会場",
+          description: "Stripeによるオンライン支払いのみを受け付けるイベントです",
           capacity: 50,
         });
 
-        // オンライン決済の場合、オンライン支払い期限が必要
+        // オンライン支払いの場合、オンライン支払い期限が必要
         expect(event.payment_deadline).not.toBeNull();
         if (event.payment_deadline) {
           expect(new Date(event.payment_deadline)).toBeInstanceOf(Date);
@@ -403,7 +403,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
   });
 
   describe("1.1.5 複数決済方法（現金+オンライン）の有料イベント作成", () => {
-    test("現金とオンライン決済の両方を受け付けるイベントが作成される", async () => {
+    test("現金とオンライン支払いの両方を受け付けるイベントが作成される", async () => {
       const eventDate = getFutureDateTime(96);
       const registrationDeadline = getFutureDateTime(24);
       const paymentDeadline = getFutureDateTime(72);
@@ -415,7 +415,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
         payment_methods: ["cash", "stripe"],
         location: "複数決済対応会場",
         description:
-          "現金決済とオンライン決済の両方に対応したイベントです。便利な決済方法をお選びください。",
+          "現金払いとオンライン支払いの両方に対応したイベントです。便利な決済方法をお選びください。",
         capacity: "200",
         registration_deadline: registrationDeadline,
         payment_deadline: paymentDeadline,
@@ -436,7 +436,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
           payment_methods: ["cash", "stripe"],
           location: "複数決済対応会場",
           description:
-            "現金決済とオンライン決済の両方に対応したイベントです。便利な決済方法をお選びください。",
+            "現金払いとオンライン支払いの両方に対応したイベントです。便利な決済方法をお選びください。",
           capacity: 200,
         });
 
@@ -445,7 +445,7 @@ describe("イベント作成統合テスト - 基本的なイベント作成", (
         expect(event.payment_methods).toContain("stripe");
         expect(event.payment_methods.length).toBe(2);
 
-        // オンライン決済を含む場合、オンライン支払い期限が必要
+        // オンライン支払いを含む場合、オンライン支払い期限が必要
         expect(event.payment_deadline).not.toBeNull();
 
         // 猶予期間設定の確認

@@ -15,7 +15,7 @@ export const PricingSection: React.FC = () => {
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
               初期費用・月額費用は0円。
               <br className="md:hidden" />
-              手数料はオンライン決済で集金したときだけ。
+              手数料はオンライン支払いで集金したときだけ。
             </h2>
             <p className="text-slate-400">
               固定費なしで始められます。
@@ -45,7 +45,7 @@ export const PricingSection: React.FC = () => {
                     <div className="bg-green-100 p-1 rounded-full">
                       <Check size={16} className="text-green-600" aria-hidden="true" />
                     </div>
-                    <span className="font-medium">オンライン決済による集金</span>
+                    <span className="font-medium">オンライン支払いによる集金</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="bg-green-100 p-1 rounded-full">

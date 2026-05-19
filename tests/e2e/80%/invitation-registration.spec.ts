@@ -127,13 +127,13 @@ test.describe("回答（招待リンク）（E2E）", () => {
     await expect(page.getByText("決済方法", { exact: true }).first()).toBeVisible();
     await expect(
       page.getByRole("radio", {
-        name: /オンライン決済.*クレジットカード、Apple Pay、Google Payなど/,
+        name: /オンライン支払い.*クレジットカード.*Apple Pay.*Google Pay/,
       })
     ).toBeVisible();
 
     // 決済方法を選択
     await page
-      .getByRole("radio", { name: /オンライン決済.*クレジットカード、Apple Pay、Google Payなど/ })
+      .getByRole("radio", { name: /オンライン支払い.*クレジットカード.*Apple Pay.*Google Pay/ })
       .check();
 
     // 回答を送信

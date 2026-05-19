@@ -22,7 +22,7 @@ export const dynamic = "force-static";
 
 const title = "オンライン集金・振込のしくみ";
 const description =
-  "みんなの集金でオンライン決済を受け付けたときのお金の流れ、振込操作、振込タイミングの目安を主催者向けにまとめました。";
+  "みんなの集金でオンライン支払いを受け付けたときのお金の流れ、振込操作、振込タイミングの目安を主催者向けにまとめました。";
 
 export const metadata: Metadata = {
   title,

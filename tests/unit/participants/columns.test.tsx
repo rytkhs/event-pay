@@ -105,12 +105,12 @@ describe("buildParticipantsColumns", () => {
   });
 
   describe("決済方法列", () => {
-    it("現金決済バッジが表示される", () => {
+    it("現金払いバッジが表示される", () => {
       render(<TestTableRow participant={mockParticipant} eventFee={1000} />);
       expect(screen.getByText("現金")).toBeInTheDocument();
     });
 
-    it("オンライン決済バッジが表示される", () => {
+    it("オンライン支払いバッジが表示される", () => {
       const stripeParticipant = { ...mockParticipant, payment_method: "stripe" as const };
       render(<TestTableRow participant={stripeParticipant} eventFee={1000} />);
       expect(screen.getByText("オンライン")).toBeInTheDocument();
@@ -142,7 +142,7 @@ describe("buildParticipantsColumns", () => {
   });
 
   describe("アクション列", () => {
-    it("現金決済で未集金の場合、受領ボタンが表示される", () => {
+    it("現金払いで未集金の場合、受領ボタンが表示される", () => {
       render(<TestTableRow participant={mockParticipant} eventFee={1000} />);
 
       expect(screen.getByTitle("受領済みにする")).toBeInTheDocument();
@@ -158,7 +158,7 @@ describe("buildParticipantsColumns", () => {
       expect(screen.getByText("受領を取り消し")).toBeInTheDocument();
     });
 
-    it("オンライン決済の場合、アクションボタンが表示されない", () => {
+    it("オンライン支払いの場合、アクションボタンが表示されない", () => {
       const stripeParticipant = { ...mockParticipant, payment_method: "stripe" as const };
       render(<TestTableRow participant={stripeParticipant} eventFee={1000} />);
 

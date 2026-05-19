@@ -151,18 +151,18 @@ test.describe("イベント作成（E2E）", () => {
     // 決済方法を選択（有料なので表示されるはず）
     await expect(page.getByTestId("payment-methods")).toBeVisible();
 
-    // オンライン決済のラベルを取得
+    // オンライン支払いのラベルを取得
     const paymentMethodsContainer = page.getByTestId("payment-methods");
     const onlinePaymentLabel = paymentMethodsContainer.locator("label").filter({
       hasText: "オンライン",
     });
 
-    // オンライン決済が有効な場合のフロー
+    // オンライン支払いが有効な場合のフロー
     const onlinePaymentClass = await onlinePaymentLabel.getAttribute("class");
     const isOnlinePaymentDisabled = onlinePaymentClass?.includes("opacity-60") ?? false;
 
     if (!isOnlinePaymentDisabled) {
-      // オンライン決済を選択
+      // オンライン支払いを選択
       await onlinePaymentLabel.click();
 
       // オンライン支払い期限設定が表示されるのを待機（ラベルを特定）
@@ -177,7 +177,7 @@ test.describe("イベント作成（E2E）", () => {
       await page.getByLabel("期限後もオンライン支払いを許可").click();
       await page.getByPlaceholder("7").fill("3"); // 3日間の猶予
     } else {
-      // オンライン決済が無効な場合は現金を選択
+      // オンライン支払いが無効な場合は現金を選択
       const cashPaymentLabel = paymentMethodsContainer.locator("label").filter({
         hasText: "現金",
       });

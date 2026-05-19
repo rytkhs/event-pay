@@ -69,13 +69,13 @@ function getModificationRestrictionMessage(attendance: GuestAttendanceData): str
 function getConnectAccountErrorMessage(errorCode?: string): string {
   switch (errorCode) {
     case "CONNECT_ACCOUNT_NOT_FOUND":
-      return "オンライン決済の準備ができていません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
+      return "オンライン支払いの準備ができていません。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。";
     case "CONNECT_ACCOUNT_RESTRICTED":
-      return "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
+      return "現在オンライン支払いがご利用いただけません。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。";
     case "STRIPE_CONFIG_ERROR":
-      return "決済システムに一時的な問題が発生しています。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
+      return "決済システムに一時的な問題が発生しています。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。";
     default:
-      return "オンライン決済に問題が発生しました。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。";
+      return "オンライン支払いに問題が発生しました。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。";
   }
 }
 

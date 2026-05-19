@@ -187,7 +187,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                 同じ一覧で管理する。
               </h2>
               <p className="mt-3 text-sm leading-7 text-slate-600">
-                招待リンクを共有するだけで参加表明を集め、オンライン決済と現金集金をまとめて確認できます。
+                招待リンクを共有するだけで参加表明を集め、オンライン支払いと現金集金をまとめて確認できます。
               </p>
               <Button asChild className="mt-6">
                 <Link href="/register">

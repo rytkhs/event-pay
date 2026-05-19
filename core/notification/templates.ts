@@ -137,11 +137,11 @@ export function buildAccountVerifiedTemplate(params: { userName: string }): Emai
       <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${userName} 様</p>
       <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">アカウント設定が完了しました</h1>
       <div style="background:#f0fdf4;border-left:4px solid #22c55e;padding:14px 16px;border-radius:4px;margin-bottom:20px;color:#166534;line-height:1.7;">
-        Stripeアカウントの設定が正常に完了しました。オンライン決済を有効化できます。
+        Stripeアカウントの設定が正常に完了しました。オンライン支払いを有効化できます。
       </div>
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;">
         ${renderKeyValueRows([
-          { label: "オンライン決済", value: "オンライン決済が選択可能になりました。" },
+          { label: "オンライン支払い", value: "オンライン支払いが選択可能になりました。" },
           {
             label: "送金状況の確認",
             value: "ダッシュボードから送金履歴やステータスを確認できます。",
@@ -157,7 +157,7 @@ export function buildAccountVerifiedTemplate(params: { userName: string }): Emai
     "Stripeアカウントの設定が正常に完了しました。",
     "",
     "ご利用いただける機能:",
-    "- オンライン決済が選択可能になりました。",
+    "- オンライン支払いが選択可能になりました。",
     "- ダッシュボードから送金履歴やステータスを確認できます。",
   ].join("\n");
 

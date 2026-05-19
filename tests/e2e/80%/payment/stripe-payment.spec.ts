@@ -103,7 +103,7 @@ test.describe("Stripe決済 ケース1-1: 初回決済フロー", () => {
 
     console.log("✓ イベント作成完了（参加費: 2000円、オンライン支払い期限: +1日）");
 
-    // 参加者作成（オンライン決済選択）
+    // 参加者作成（オンライン支払い選択）
     const attendanceData = await TestDataManager.createAttendance({
       status: "attending",
     });
@@ -120,8 +120,8 @@ test.describe("Stripe決済 ケース1-1: 初回決済フロー", () => {
     await page.waitForTimeout(1000);
 
     // === 3. 決済を開始 ===
-    // 「オンライン決済へ進む」ボタンをクリック
-    const paymentButton = page.getByRole("button", { name: "オンライン決済へ進む" });
+    // 「オンライン支払いへ進む」ボタンをクリック
+    const paymentButton = page.getByRole("button", { name: "オンライン支払いへ進む" });
     await expect(paymentButton).toBeVisible({ timeout: 5000 });
 
     await paymentButton.click();
@@ -315,7 +315,7 @@ test.describe("Stripe決済 ケース1-1: 初回決済フロー", () => {
     console.log("✓ ゲストページに遷移");
 
     // === 3. 決済ボタンが表示されることを確認 ===
-    const paymentButton = page.getByRole("button", { name: "オンライン決済へ進む" });
+    const paymentButton = page.getByRole("button", { name: "オンライン支払いへ進む" });
     await expect(paymentButton).toBeVisible({ timeout: 5000 });
 
     console.log("✓ 決済ボタンが表示されている");
@@ -418,7 +418,7 @@ test.describe("Stripe決済 ケース1-1: 初回決済フロー", () => {
     console.log("✓ ゲストページに遷移");
 
     // 決済ボタンをクリック
-    const paymentButton = page.getByRole("button", { name: "オンライン決済へ進む" });
+    const paymentButton = page.getByRole("button", { name: "オンライン支払いへ進む" });
     await expect(paymentButton).toBeVisible({ timeout: 5000 });
     await paymentButton.click();
 

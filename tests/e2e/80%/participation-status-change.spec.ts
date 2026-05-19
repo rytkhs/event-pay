@@ -232,12 +232,12 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     // 参加状態の参加者を作成
     const attendance = await createTestAttendance(event.id, {
       email: "cancel-paid-cash@example.com",
-      nickname: "現金決済次郎",
+      nickname: "現金払い次郎",
       status: "attending",
     });
     testAttendances.push(attendance);
 
-    // received状態の現金決済を作成
+    // received状態の現金払いを作成
     const adminClient = await createAuditedAdminClient(
       AdminReason.TEST_DATA_SETUP,
       "Creating cash payment with received status",
@@ -295,7 +295,7 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     });
     console.log("✓ Participation cancelled successfully");
 
-    // 現金決済（received）はそのまま維持されることを確認
+    // 現金払い（received）はそのまま維持されることを確認
     const { data: payments, error: paymentsError } = await adminClient
       .from("payments")
       .select("*")
@@ -305,7 +305,7 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
       `Payment check result: ${JSON.stringify({ paymentsCount: payments?.length, payments, error: paymentsError })}`
     );
 
-    // 現金決済は削除されず、receivedステータスのまま維持されるべき
+    // 現金払いは削除されず、receivedステータスのまま維持されるべき
     expect(payments?.length).toBeGreaterThan(0);
     if (payments && payments.length > 0) {
       expect(payments[0].status).toBe("received");
@@ -481,8 +481,8 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     await expect(page.getByText("支払い方法").first()).toBeVisible();
     console.log("✓ Payment method selection displayed");
 
-    // オンライン決済を選択
-    await page.getByRole("button", { name: /オンライン決済/ }).click();
+    // オンライン支払いを選択
+    await page.getByRole("button", { name: /オンライン支払い/ }).click();
     console.log("✓ Selected online payment method");
 
     // 保存ボタンが有効になるまで待機
@@ -506,7 +506,7 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     console.log("✓ Status changed to 'attending' confirmed");
 
     // 決済ボタンが表示されることを確認
-    await expect(page.getByRole("button", { name: /オンライン決済へ進む/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /オンライン支払いへ進む/ })).toBeVisible();
     console.log("✓ Payment required state confirmed");
 
     console.log("🎉 Status change with payment flow initiation completed successfully");
@@ -611,7 +611,7 @@ test.describe("3-3. 参加状況変更フロー（E2E）", () => {
     console.log("✓ Modification not allowed message displayed");
 
     // 決済ボタンは表示されることを確認
-    await expect(page.getByRole("button", { name: /オンライン決済へ進む/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /オンライン支払いへ進む/ })).toBeVisible();
     console.log("✓ Payment button is still available");
 
     // 「ステータス・支払い方法の変更」ボタンは表示される

@@ -128,7 +128,7 @@ export const createEventSchema = z
       )
       .optional(),
 
-    // 締切後のオンライン決済許可（UIは未対応でもサーバーで受け入れ可能に）
+    // 締切後のオンライン支払い許可（UIは未対応でもサーバーで受け入れ可能に）
     allow_payment_after_deadline: z.boolean().optional().default(false),
 
     // 猶予（日）: 0〜30日（DB CHECK と整合）
@@ -163,7 +163,7 @@ export const createEventSchema = z
   )
   .refine(
     (data) => {
-      // オンライン決済選択時はオンライン支払い期限が必須
+      // オンライン支払い選択時はオンライン支払い期限が必須
       const hasStripe = Array.isArray(data.payment_methods)
         ? data.payment_methods.includes("stripe")
         : false;

@@ -170,7 +170,7 @@ const GuestScreenMock: React.FC = () => (
       </div>
       <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white text-center py-2.5 rounded-lg font-bold text-[10px] flex items-center justify-center gap-1">
         <CreditCard className="w-3.5 h-3.5" />
-        オンライン決済へ進む
+        オンライン支払いへ進む
       </div>
       <p className="text-[8px] text-slate-400 text-center mt-1.5">
         Stripeの安全な決済ページへ移動します
@@ -295,7 +295,7 @@ export const ParticipantFlowSection: React.FC = () => {
             </h3>
             <p className="text-slate-500 text-base leading-relaxed mb-6">
               回答後に発行されるゲストページから、自分の参加状況をいつでも確認できます。
-              出欠の変更やオンライン決済もここから行えます。
+              出欠の変更やオンライン支払いもここから行えます。
             </p>
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2.5 text-slate-600">
@@ -308,7 +308,7 @@ export const ParticipantFlowSection: React.FC = () => {
                 <div className="bg-emerald-500/10 p-1 rounded-full text-emerald-600 mt-0.5 shrink-0">
                   <Wallet size={12} strokeWidth={3} />
                 </div>
-                ボタンひとつでオンライン決済
+                ボタンひとつでオンライン支払い
               </li>
               <li className="flex items-start gap-2.5 text-slate-600">
                 <div className="bg-emerald-500/10 p-1 rounded-full text-emerald-600 mt-0.5 shrink-0">

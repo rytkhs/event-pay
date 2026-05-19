@@ -154,7 +154,7 @@ export const createEventFormSchema = z
     }
   })
   .superRefine((data, ctx) => {
-    // オンライン決済を選択した場合はオンライン支払い期限を必須にする
+    // オンライン支払いを選択した場合はオンライン支払い期限を必須にする
     const fee = parseFee(data.fee);
     const hasStripe = hasStripePaymentMethod(data.payment_methods);
     if (fee > 0 && hasStripe) {
@@ -173,7 +173,7 @@ export const createEventFormSchema = z
   })
   .refine(
     (data) => {
-      // オンライン決済を選択した場合のみ、オンライン支払い期限が必須
+      // オンライン支払いを選択した場合のみ、オンライン支払い期限が必須
       const fee = parseFee(data.fee);
       const hasStripe = hasStripePaymentMethod(data.payment_methods);
       if (fee > 0 && hasStripe) {
@@ -188,7 +188,7 @@ export const createEventFormSchema = z
   )
   .refine(
     (data) => {
-      // オンライン決済が選択されている場合のみ、オンライン支払い期限 ≤ 開催日時 + 30日
+      // オンライン支払いが選択されている場合のみ、オンライン支払い期限 ≤ 開催日時 + 30日
       const hasStripe = hasStripePaymentMethod(data.payment_methods);
       if (!hasStripe) return true;
       return isPaymentDeadlineWithinThirtyDays(data.payment_deadline, data.date);
@@ -200,7 +200,7 @@ export const createEventFormSchema = z
   )
   .refine(
     (data) => {
-      // オンライン決済が選択されている場合のみ、オンライン支払い期限が出欠回答期限以降であることを確認
+      // オンライン支払いが選択されている場合のみ、オンライン支払い期限が出欠回答期限以降であることを確認
       const hasStripe = hasStripePaymentMethod(data.payment_methods);
       if (!hasStripe) return true;
       return isPaymentDeadlineAfterRegistrationDeadline(
@@ -215,7 +215,7 @@ export const createEventFormSchema = z
   )
   .refine(
     (data) => {
-      // オンライン決済が選択されている場合のみ、最終支払い期限（payment_deadline + 猶予日） ≤ 開催日時 + 30日
+      // オンライン支払いが選択されている場合のみ、最終支払い期限（payment_deadline + 猶予日） ≤ 開催日時 + 30日
       const hasStripe = hasStripePaymentMethod(data.payment_methods);
       return isGracePeriodWithinThirtyDays({
         hasStripe,
@@ -341,7 +341,7 @@ export function createEventEditFormSchema(attendeeCount: number, existingEvent: 
     )
     .refine(
       (data) => {
-        // オンライン決済選択時はオンライン支払い期限が必須（existing値も考慮）
+        // オンライン支払い選択時はオンライン支払い期限が必須（existing値も考慮）
         const hasStripe = hasStripePaymentMethod(data.payment_methods);
         if (hasStripe) {
           // フォーム値または既存値のいずれかに締切が設定されていればOK

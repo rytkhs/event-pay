@@ -541,7 +541,7 @@ function SinglePageEventForm({
                             )}
                           </label>
 
-                          {/* オンライン決済 */}
+                          {/* オンライン支払い */}
                           <label
                             className={cn(
                               "relative flex min-h-[5.25rem] items-center rounded-lg border p-4 transition-colors sm:min-h-24",
@@ -596,7 +596,7 @@ function SinglePageEventForm({
 
                         {!canUseOnlinePayments && (
                           <p className="mt-2 text-xs text-muted-foreground">
-                            「オンライン決済」を選択するにはオンライン集金設定が必要です。
+                            「オンライン支払い」を選択するにはオンライン集金設定が必要です。
                             <Link
                               href={connectStatus?.actionUrl ?? "/settings/payments"}
                               className="ml-1 font-medium underline underline-offset-4"
@@ -611,7 +611,7 @@ function SinglePageEventForm({
                   />
                 )}
 
-                {/* オンライン決済設定（Stripe選択時のみ表示） */}
+                {/* オンライン支払い設定（Stripe選択時のみ表示） */}
                 {!isFreeEvent && isOnlineSelected && (
                   <div
                     className={cn(

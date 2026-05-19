@@ -18,7 +18,7 @@ export const MoneyFlowSection: React.FC = () => {
     {
       number: "2",
       title: "参加者がオンラインで支払い",
-      desc: "参加者は、招待ページからオンライン決済を選んで支払えます。",
+      desc: "参加者は、招待ページからオンライン支払いを選んで支払えます。",
     },
     {
       number: "3",
@@ -48,7 +48,7 @@ export const MoneyFlowSection: React.FC = () => {
               集めた参加費は、Stripeを通じて主催者の口座へ。
             </h2>
             <p className="text-slate-500 text-lg">
-              オンライン決済を利用する場合、主催者はStripeアカウントを連携します。
+              オンライン支払いを利用する場合、主催者はStripeアカウントを連携します。
               <br className="hidden md:block" />
               参加者が支払った参加費はStripeで処理され、主催者の口座へ振り込まれます。
             </p>

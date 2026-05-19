@@ -27,8 +27,8 @@ export interface IPaymentService {
   createStripeSession(params: CreateStripeSessionParams): Promise<CreateStripeSessionResult>;
 
   /**
-   * 現金決済レコードを作成する
-   * @param params 現金決済作成パラメータ
+   * 現金払いレコードを作成する
+   * @param params 現金払い作成パラメータ
    * @returns 作成された決済レコードのID
    * @throws PaymentError 決済レコード作成に失敗した場合
    */
@@ -130,7 +130,7 @@ export interface IPaymentValidator {
   validateCreateStripeSessionParams(params: CreateStripeSessionParams): Promise<void>;
 
   /**
-   * 現金決済作成パラメータを検証する
+   * 現金払い作成パラメータを検証する
    * @param params 検証対象のパラメータ
    * @throws PaymentError バリデーションに失敗した場合
    */

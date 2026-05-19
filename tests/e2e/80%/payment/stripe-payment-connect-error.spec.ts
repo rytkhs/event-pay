@@ -40,9 +40,9 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
      * - イベントが payout_profile を持たない
      *
      * 期待結果:
-     * - ゲスト管理ページでオンライン決済ボタンは表示される
+     * - ゲスト管理ページでオンライン支払いボタンは表示される
      * - 決済ボタンをクリックするとエラートーストが表示される
-     * - エラーメッセージ: "オンライン決済の準備ができていません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。"
+     * - エラーメッセージ: "オンライン支払いの準備ができていません。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。"
      */
 
     console.log("=== ケース2-1-1: Connect未設定時の決済不可 ===");
@@ -96,7 +96,7 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
     console.log("✓ ゲストページに遷移");
 
     // === 5. 決済ボタンが表示されていることを確認 ===
-    const paymentButton = page.getByRole("button", { name: "オンライン決済へ進む" });
+    const paymentButton = page.getByRole("button", { name: "オンライン支払いへ進む" });
     await expect(paymentButton).toBeVisible();
 
     console.log("✓ 決済ボタンが表示されている");
@@ -109,7 +109,7 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
 
     // エラートーストが表示されることを確認（タイムアウト時間を長めに設定）
     const errorToast = page.getByText(
-      /オンライン決済の準備ができていません.*現金決済をご利用いただくか.*再度お試しください/i
+      /オンライン支払いの準備ができていません.*現金払いをご利用いただくか.*再度お試しください/i
     );
     await expect(errorToast).toBeVisible({ timeout: 5000 });
 
@@ -129,9 +129,9 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
      * - payout_profile.status = onboarding（審査未完了）
      *
      * 期待結果:
-     * - ゲスト管理ページでオンライン決済ボタンは表示される
+     * - ゲスト管理ページでオンライン支払いボタンは表示される
      * - 決済ボタンをクリックするとエラートーストが表示される
-     * - エラーメッセージ: "現在オンライン決済がご利用いただけません。現金決済をご利用いただくか、しばらく時間をおいて再度お試しください。"
+     * - エラーメッセージ: "現在オンライン支払いがご利用いただけません。現金払いをご利用いただくか、しばらく時間をおいて再度お試しください。"
      */
 
     console.log("=== ケース2-1-2: payout_profile.status = onboarding の場合の決済不可 ===");
@@ -198,7 +198,7 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
     console.log("✓ ゲストページに遷移");
 
     // === 5. 決済ボタンが表示されていることを確認 ===
-    const paymentButton = page.getByRole("button", { name: "オンライン決済へ進む" });
+    const paymentButton = page.getByRole("button", { name: "オンライン支払いへ進む" });
     await expect(paymentButton).toBeVisible();
 
     console.log("✓ 決済ボタンが表示されている");
@@ -211,7 +211,7 @@ test.describe("Stripe決済 ケース2-1: Stripe Connect関連エラー (PAYMENT
 
     // エラートーストが表示されることを確認（タイムアウト時間を長めに設定）
     const errorToast = page.getByText(
-      /現在オンライン決済がご利用いただけません.*現金決済をご利用いただくか.*再度お試しください/i
+      /現在オンライン支払いがご利用いただけません.*現金払いをご利用いただくか.*再度お試しください/i
     );
     await expect(errorToast).toBeVisible({ timeout: 5000 });
 

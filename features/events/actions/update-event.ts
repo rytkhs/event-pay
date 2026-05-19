@@ -233,7 +233,7 @@ export async function updateEventAction(
           return fail("VALIDATION_ERROR", {
             userMessage:
               stripePayoutResolution.userMessage ||
-              "オンライン決済を追加するには受取先プロファイルの設定完了が必要です",
+              "オンライン支払いを追加するには受取先プロファイルの設定完了が必要です",
             fieldErrors: {
               payment_methods: [
                 stripePayoutResolution.userMessage ||

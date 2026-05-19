@@ -70,7 +70,7 @@ export class PaymentService implements IPaymentService {
   }
 
   /**
-   * 現金決済レコードを作成する
+   * 現金払いレコードを作成する
    */
   async createCashPayment(params: CreateCashPaymentParams): Promise<CreateCashPaymentResult> {
     return createCashPaymentFn(params, this.supabase);

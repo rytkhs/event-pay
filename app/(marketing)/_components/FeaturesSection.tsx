@@ -75,7 +75,7 @@ export const FeaturesSection: React.FC = () => {
                   <span>ハイブリッド集金</span>
                 </div>
                 <h3 className="text-2xl md:text-3xl font-bold mb-4">
-                  オンライン決済も現金も、
+                  オンライン支払いも現金も、
                   <br />
                   同じリストで管理。
                 </h3>
@@ -87,7 +87,7 @@ export const FeaturesSection: React.FC = () => {
                     <div className="bg-primary/20 p-1 rounded-full text-primary mt-0.5">
                       <Check size={14} strokeWidth={3} aria-hidden="true" />
                     </div>
-                    <span className="text-slate-200">オンライン決済は自動で入金確認</span>
+                    <span className="text-slate-200">オンライン支払いは自動で入金確認</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="bg-primary/20 p-1 rounded-full text-primary mt-0.5">

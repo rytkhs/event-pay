@@ -79,7 +79,7 @@ export const GuestActionArea: React.FC<GuestActionAreaProps> = ({
               ) : (
                 <>
                   <CreditCard className="w-5 h-5" />
-                  オンライン決済へ進む
+                  オンライン支払いへ進む
                 </>
               )}
             </button>

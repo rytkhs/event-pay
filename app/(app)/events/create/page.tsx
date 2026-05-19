@@ -45,7 +45,7 @@ export default async function CreateEventPage() {
     return notFound();
   }
 
-  // current community の payout profile 状態から、オンライン決済可否を決定する
+  // current community の payout profile 状態から、オンライン支払い可否を決定する
   const supabase = await createServerComponentSupabaseClient();
   const [connectStatus, payoutResolution, feeEstimateConfig] = await Promise.all([
     getDashboardConnectCtaStatus(supabase, workspace.currentUser.id, currentCommunity.id),

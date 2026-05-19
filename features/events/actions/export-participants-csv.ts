@@ -292,8 +292,8 @@ function generateCsvContent(participants: CsvParticipant[], columns: string[]): 
         case "payment_method":
           if (latestPayment?.method) {
             const methodMap: Record<string, string> = {
-              stripe: "オンライン決済",
-              cash: "現金決済",
+              stripe: "オンライン支払い",
+              cash: "現金払い",
             };
             value = methodMap[latestPayment.method] || latestPayment.method;
           }

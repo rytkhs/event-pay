@@ -38,7 +38,7 @@ export const HeroSection: React.FC = () => {
               <p className="text-lg md:text-xl text-slate-600 mb-8 leading-relaxed">
                 招待リンクを送るだけ。
                 <br className="hidden md:block" />
-                参加者はアカウント登録不要で、オンライン決済・現金払いどちらも選べます。
+                参加者はアカウント登録不要で、オンライン支払い・現金払いどちらも選べます。
                 <br className="hidden md:block" />
                 主催者は出欠・支払い状況・未払いをひとつの画面で管理できます。
               </p>
@@ -71,7 +71,7 @@ export const HeroSection: React.FC = () => {
                   参加者アカウント登録不要
                 </span>
                 <span className="text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-                  オンライン決済・現金払い対応
+                  オンライン支払い・現金払い対応
                 </span>
               </div>
 

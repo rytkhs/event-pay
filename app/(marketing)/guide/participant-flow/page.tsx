@@ -80,7 +80,7 @@ const phases: Phase[] = [
     icon: UserCog,
     points: [
       {
-        label: "オンライン決済",
+        label: "オンライン支払い",
         body: "オンライン支払いを選んだ場合は、ボタンからStripeの決済ページへ進みます。支払い完了後は状態が自動で更新されます。",
       },
       {
@@ -253,7 +253,7 @@ function GuestPhoneMock() {
           </div>
           <div className="flex items-center justify-center gap-1 rounded-lg bg-slate-900 py-2.5 text-[10px] font-bold text-white">
             <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
-            オンライン決済へ進む
+            オンライン支払いへ進む
           </div>
           <p className="mt-1.5 text-center text-[8px] text-slate-400">
             Stripeの安全な決済ページへ移動します
