@@ -73,7 +73,6 @@ export async function createDestinationCheckoutSession(
               unit_amount: amount,
               product_data: {
                 name: eventTitle,
-                description: `みんなの集金 - ${eventTitle}`,
               },
             },
             quantity: 1,
