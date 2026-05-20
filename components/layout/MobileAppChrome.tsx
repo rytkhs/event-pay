@@ -161,12 +161,12 @@ export function MobileAppChrome({
             <SheetTitle>メニュー</SheetTitle>
           </SheetHeader>
 
-          <div className="mt-5 space-y-5 px-5">
+          <div className="mt-5 space-y-4 px-5">
             <section className="space-y-2">
-              <p className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                コミュニティを切り替える
+              <p className="px-1 text-xs font-medium text-muted-foreground">
+                コミュニティ
               </p>
-              <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
+              <div className="overflow-hidden rounded-lg border border-border/60 bg-card">
                 {workspace.ownedCommunities.map((community) => {
                   const isCurrent = community.id === workspace.currentCommunity?.id;
                   const isPendingRow = pendingCommunityId === community.id && isCommunityPending;
@@ -200,7 +200,7 @@ export function MobileAppChrome({
               </div>
               <Link
                 href="/communities/create"
-                className="flex items-center gap-3 rounded-2xl border border-dashed border-border/70 px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
+                className="flex items-center gap-3 rounded-lg border border-dashed border-border/70 px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
                 onClick={() => setIsMoreOpen(false)}
               >
                 <Plus className="h-4 w-4 text-muted-foreground" />
@@ -209,7 +209,7 @@ export function MobileAppChrome({
             </section>
 
             <section className="space-y-2">
-              <p className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <p className="px-1 text-xs font-medium text-muted-foreground">
                 運営ツール
               </p>
 
@@ -217,7 +217,7 @@ export function MobileAppChrome({
                 type="button"
                 onClick={handleStripeDashboard}
                 disabled={isStripePending}
-                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/60 disabled:opacity-60"
+                className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/60 disabled:opacity-60"
               >
                 {isStripePending ? (
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -232,13 +232,13 @@ export function MobileAppChrome({
             </section>
 
             <section className="space-y-2">
-              <p className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <p className="px-1 text-xs font-medium text-muted-foreground">
                 サポート
               </p>
 
               <Link
                 href="/contact"
-                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
+                className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
                 onClick={() => setIsMoreOpen(false)}
               >
                 <CircleHelp className="h-4 w-4 text-muted-foreground" />
@@ -247,7 +247,7 @@ export function MobileAppChrome({
 
               <Link
                 href="/feedback"
-                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
+                className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
                 onClick={() => setIsMoreOpen(false)}
               >
                 <MessageSquare className="h-4 w-4 text-muted-foreground" />
@@ -256,13 +256,13 @@ export function MobileAppChrome({
             </section>
 
             <section className="space-y-2">
-              <p className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <p className="px-1 text-xs font-medium text-muted-foreground">
                 アカウント
               </p>
 
               {/* <Link
                 href="/settings"
-                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
+                className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
                 onClick={() => setIsMoreOpen(false)}
               >
                 <Settings className="h-4 w-4 text-muted-foreground" />
@@ -273,7 +273,7 @@ export function MobileAppChrome({
                 type="button"
                 onClick={handleLogout}
                 disabled={isLogoutPending}
-                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/5 disabled:opacity-60"
+                className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/5 disabled:opacity-60"
               >
                 {isLogoutPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
