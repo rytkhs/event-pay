@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import Link from "next/link";
 
@@ -34,6 +34,23 @@ type CommunitySwitcherProps = {
   createExpressDashboardLoginLinkAction: () => Promise<void>;
 };
 
+type OwnedCommunity = AppWorkspaceShellData["ownedCommunities"][number];
+
+const DEFAULT_COMMUNITY_ACCENT = "bg-sidebar-primary";
+
+const COMMUNITY_ACCENTS = [
+  "bg-teal-500",
+  "bg-rose-500",
+  "bg-sky-500",
+  "bg-amber-500",
+  "bg-indigo-500",
+  "bg-emerald-500",
+  "bg-violet-500",
+  "bg-cyan-500",
+  "bg-blue-500",
+  "bg-pink-500",
+];
+
 /** コミュニティ名からイニシャルを取得（最大2文字） */
 function getInitials(name: string): string {
   const trimmed = name.trim();
@@ -43,18 +60,32 @@ function getInitials(name: string): string {
   return firstChar.toUpperCase();
 }
 
-/** 一貫したグラデーションカラーをコミュニティ名から決定 */
-function getCommunityGradient(name: string): string {
-  const gradients = [
-    "from-teal-500 to-cyan-400",
-    "from-violet-500 to-indigo-400",
-    "from-emerald-500 to-teal-400",
-    "from-sky-500 to-blue-400",
-    "from-rose-500 to-pink-400",
-    "from-amber-500 to-orange-400",
-  ];
-  const index = name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % gradients.length;
-  return gradients[index];
+function hashCommunityId(communityId: string): number {
+  let hash = 2166136261;
+
+  for (const character of communityId) {
+    hash ^= character.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+}
+
+function buildCommunityAccentMap(
+  communities: readonly OwnedCommunity[]
+): Map<string, string> {
+  const sortedCommunities = [...communities].sort((a, b) => {
+    const hashDiff = hashCommunityId(a.id) - hashCommunityId(b.id);
+    if (hashDiff !== 0) return hashDiff;
+    return a.id.localeCompare(b.id);
+  });
+
+  return new Map(
+    sortedCommunities.map((community, index) => [
+      community.id,
+      COMMUNITY_ACCENTS[index % COMMUNITY_ACCENTS.length],
+    ])
+  );
 }
 
 export function CommunitySwitcher({
@@ -80,9 +111,15 @@ export function CommunitySwitcher({
     onMenuClose: () => setIsMenuOpen(false),
   });
 
+  const communityAccentMap = useMemo(
+    () => buildCommunityAccentMap(workspace.ownedCommunities),
+    [workspace.ownedCommunities]
+  );
   const currentCommunityName = workspace.currentCommunity?.name ?? "コミュニティ未作成";
   const communityInitial = getInitials(currentCommunityName);
-  const communityGradient = getCommunityGradient(currentCommunityName);
+  const communityAccent = workspace.currentCommunity
+    ? (communityAccentMap.get(workspace.currentCommunity.id) ?? DEFAULT_COMMUNITY_ACCENT)
+    : DEFAULT_COMMUNITY_ACCENT;
 
   return (
     <DropdownMenu
@@ -95,19 +132,19 @@ export function CommunitySwitcher({
       <DropdownMenuTrigger asChild>
         <SidebarMenuButton
           size="lg"
-          className="h-auto min-h-[3.9rem] group-data-[collapsible=icon]:min-h-0 items-center gap-3 rounded-xl border border-sidebar-border/70 bg-white/55 px-3 py-2 shadow-[0_1px_0_hsl(var(--sidebar-primary-foreground)/0.55)] backdrop-blur-sm transition-all duration-200 hover:border-sidebar-primary/25 hover:bg-sidebar-accent/65 hover:shadow-[0_8px_20px_-18px_hsl(var(--sidebar-primary)/0.9)] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-xl group-data-[collapsible=icon]:border-none group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0 group-data-[collapsible=icon]:shadow-none"
+          className="h-auto min-h-[3.65rem] group-data-[collapsible=icon]:min-h-0 items-center gap-3 rounded-lg border border-sidebar-border/70 bg-sidebar-accent/35 px-3 py-2 transition-colors duration-150 hover:border-sidebar-primary/20 hover:bg-sidebar-accent/65 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:border-none group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0"
           disabled={isCommunityPending || isStripePending || isLogoutPending}
         >
           {/* コミュニティアバター */}
           <div
-            className={`flex size-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${communityGradient} text-sm font-bold text-white shadow-[0_10px_18px_-12px_rgba(15,23,42,0.8)]`}
+            className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${communityAccent} text-sm font-bold text-white`}
           >
             {communityInitial}
           </div>
 
           {/* コミュニティ名 */}
           <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-            <p className="mt-0.5 text-[10px] font-semibold leading-none tracking-[0.14em] text-sidebar-foreground/45">
+            <p className="mt-0.5 text-[11px] font-medium leading-none text-sidebar-foreground/50">
               コミュニティ
             </p>
             <p className="truncate text-[13px] font-semibold leading-snug text-sidebar-foreground">
@@ -120,21 +157,24 @@ export function CommunitySwitcher({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        className="w-[20rem] overflow-hidden rounded-2xl border-border/60 p-0 shadow-2xl"
+        className="w-[20rem] overflow-hidden rounded-xl border-border/70 p-0 shadow-lg"
         align="start"
         side="bottom"
         sideOffset={8}
       >
-        <div className="flex flex-col gap-5 p-4">
+        <div className="flex flex-col gap-4 p-3">
           {/* コミュニティ切り替え */}
           <section className="space-y-2">
-            <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              コミュニティを切り替える
+            <p className="px-1 text-xs font-medium text-muted-foreground">
+              コミュニティ
             </p>
-            <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
+            <div className="overflow-hidden rounded-lg border border-border/60 bg-card">
               {workspace.ownedCommunities.map((community) => {
                 const isCurrent = community.id === workspace.currentCommunity?.id;
                 const isPendingRow = pendingCommunityId === community.id && isCommunityPending;
+                const rowCommunityAccent =
+                  communityAccentMap.get(community.id) ?? DEFAULT_COMMUNITY_ACCENT;
+                const rowCommunityInitial = getInitials(community.name);
 
                 return (
                   <DropdownMenuItem
@@ -145,12 +185,17 @@ export function CommunitySwitcher({
                     }}
                     disabled={isCurrent || isCommunityPending}
                     className={cn(
-                      "flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-sm transition-colors",
+                      "flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors",
                       isCurrent ? "bg-primary/5 text-foreground" : "text-foreground",
                       "focus:bg-muted/50 focus:text-foreground",
                       "disabled:opacity-100"
                     )}
                   >
+                    <div
+                      className={`flex size-6 shrink-0 items-center justify-center rounded-md ${rowCommunityAccent} text-[11px] font-bold text-white`}
+                    >
+                      {rowCommunityInitial}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{community.name}</p>
                     </div>
@@ -166,7 +211,7 @@ export function CommunitySwitcher({
 
             <DropdownMenuItem
               asChild
-              className="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-border/70 px-4 py-3 text-sm font-medium text-foreground transition-colors focus:bg-muted/40 focus:text-foreground"
+              className="flex w-full cursor-pointer items-center gap-3 rounded-lg border border-dashed border-border/70 px-3 py-2.5 text-sm font-medium text-foreground transition-colors focus:bg-muted/40 focus:text-foreground"
             >
               <Link href="/communities/create" onClick={() => setIsMenuOpen(false)}>
                 <Plus className="h-4 w-4 text-muted-foreground" />
@@ -177,7 +222,7 @@ export function CommunitySwitcher({
 
           {/* 運営ツール */}
           <section className="space-y-2">
-            <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="px-1 text-xs font-medium text-muted-foreground">
               運営ツール
             </p>
             <DropdownMenuItem
@@ -186,7 +231,7 @@ export function CommunitySwitcher({
                 handleStripeDashboard();
               }}
               disabled={isStripePending}
-              className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-foreground transition-colors focus:bg-muted/60 focus:text-foreground disabled:opacity-60"
+              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors focus:bg-muted/60 focus:text-foreground disabled:opacity-60"
             >
               {isStripePending ? (
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -202,7 +247,7 @@ export function CommunitySwitcher({
 
           {/* アカウント */}
           <section className="space-y-2">
-            <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="px-1 text-xs font-medium text-muted-foreground">
               アカウント
             </p>
             <DropdownMenuItem
@@ -211,7 +256,7 @@ export function CommunitySwitcher({
                 handleLogout();
               }}
               disabled={isLogoutPending}
-              className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-destructive transition-colors focus:bg-destructive/5 focus:text-destructive disabled:opacity-60"
+              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-destructive transition-colors focus:bg-destructive/5 focus:text-destructive disabled:opacity-60"
             >
               {isLogoutPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

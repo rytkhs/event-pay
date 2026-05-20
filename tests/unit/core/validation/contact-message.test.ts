@@ -24,7 +24,6 @@ describe("contact schemas", () => {
     name: "山田 太郎",
     email: "taro@example.com",
     message: "お問い合わせ本文です",
-    consent: true,
   };
 
   test("rejects blank-only names", () => {
@@ -48,6 +47,7 @@ describe("contact schemas", () => {
   test("rejects blank-only messages for community contact", () => {
     const result = CommunityContactInputSchema.safeParse({
       ...validInput,
+      consent: true,
       message: "          ",
     });
 

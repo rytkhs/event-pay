@@ -7,8 +7,6 @@ import { ja } from "date-fns/locale";
 import { formatUtcToJst } from "@core/utils/timezone";
 
 import type {
-  AccountRestrictedNotification,
-  AccountStatusChangeNotification,
   EmailTemplate,
   PaymentCompletedNotification,
   ParticipationRegisteredNotification,
@@ -20,13 +18,6 @@ const STATUS_TEXT: Record<ParticipationRegisteredNotification["attendanceStatus"
   attending: "参加",
   maybe: "未定",
   not_attending: "不参加",
-};
-
-const ACCOUNT_STATUS_MAP: Record<string, string> = {
-  unverified: "未認証",
-  onboarding: "認証中",
-  verified: "認証済み",
-  restricted: "制限中",
 };
 
 function escapeHtml(input: string): string {
@@ -76,12 +67,18 @@ function renderKeyValueRows(rows: Array<{ label: string; value: string }>): stri
     .map(
       (row) => `
         <tr>
-          <th style="padding:10px 12px;text-align:left;background:#f8fafc;border-bottom:1px solid #e2e8f0;width:140px;color:#475569;font-size:13px;font-weight:600;">${escapeHtml(row.label)}</th>
+          <th style="padding:10px 12px;text-align:left;background:#f8fafc;border-bottom:1px solid #e2e8f0;width:32%;max-width:120px;color:#475569;font-size:13px;font-weight:600;white-space:nowrap;">${escapeHtml(row.label)}</th>
           <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;color:#0f172a;font-size:14px;line-height:1.6;">${row.value}</td>
         </tr>
       `
     )
     .join("\n");
+}
+
+function renderCtaButton(params: { href: string; label: string; marginBottom?: number }): string {
+  const marginBottom = params.marginBottom ?? 8;
+
+  return `<p style="margin:0 0 ${marginBottom}px;text-align:center;"><a href="${escapeAttr(params.href)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">${escapeHtml(params.label)}</a></p>`;
 }
 
 function renderLayout(params: { preheader?: string; contentHtml: string }): string {
@@ -127,145 +124,6 @@ function toSafeString(value: unknown): string {
   }
 }
 
-export function buildAccountVerifiedTemplate(params: { userName: string }): EmailTemplate {
-  const userName = escapeHtml(params.userName);
-  const subject = "Stripeアカウントの設定が完了しました";
-
-  const html = renderLayout({
-    preheader: subject,
-    contentHtml: `
-      <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${userName} 様</p>
-      <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">アカウント設定が完了しました</h1>
-      <div style="background:#f0fdf4;border-left:4px solid #22c55e;padding:14px 16px;border-radius:4px;margin-bottom:20px;color:#166534;line-height:1.7;">
-        Stripeアカウントの設定が正常に完了しました。オンライン支払いを有効化できます。
-      </div>
-      <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;">
-        ${renderKeyValueRows([
-          { label: "オンライン支払い", value: "オンライン支払いが選択可能になりました。" },
-          {
-            label: "送金状況の確認",
-            value: "ダッシュボードから送金履歴やステータスを確認できます。",
-          },
-        ])}
-      </table>
-    `,
-  });
-
-  const text = [
-    `${params.userName} 様`,
-    "",
-    "Stripeアカウントの設定が正常に完了しました。",
-    "",
-    "ご利用いただける機能:",
-    "- オンライン支払いが選択可能になりました。",
-    "- ダッシュボードから送金履歴やステータスを確認できます。",
-  ].join("\n");
-
-  return { subject, html, text };
-}
-
-export function buildAccountRestrictedTemplate(
-  params: Pick<
-    AccountRestrictedNotification,
-    "restrictionReason" | "requiredActions" | "dashboardUrl"
-  > & { userName: string }
-): EmailTemplate {
-  const subject = "Stripeアカウントに制限が設定されました";
-  const preheader = params.requiredActions?.length
-    ? "アカウントに制限が設定されました — 対応が必要です"
-    : "アカウントに制限が設定されました — 詳細をご確認ください";
-
-  const actionsHtml = (params.requiredActions || [])
-    .map((action) => `<li style="margin-bottom:6px;">${escapeHtml(action)}</li>`)
-    .join("\n");
-
-  const html = renderLayout({
-    preheader,
-    contentHtml: `
-      <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${escapeHtml(params.userName)} 様</p>
-      <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">アカウントに制限が設定されました</h1>
-      <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:14px 16px;border-radius:4px;margin-bottom:20px;color:#7f1d1d;line-height:1.7;">
-        アカウントに一部の機能制限が適用されています。内容をご確認のうえ、必要な対応をお願いします。
-        ${
-          params.restrictionReason
-            ? `<br><strong>制限理由:</strong> ${escapeHtml(params.restrictionReason)}`
-            : ""
-        }
-      </div>
-      ${
-        actionsHtml
-          ? `<h2 style="margin:0 0 10px;font-size:18px;">必要な対応</h2><ol style="margin:0 0 20px 20px;padding:0;color:#374151;line-height:1.7;">${actionsHtml}</ol>`
-          : ""
-      }
-      ${
-        params.dashboardUrl
-          ? `<p style="margin:0 0 16px;"><a href="${escapeAttr(params.dashboardUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">ダッシュボードで対応する</a></p>`
-          : ""
-      }
-    `,
-  });
-
-  const textLines = [
-    `${params.userName} 様`,
-    "",
-    "アカウントに制限が設定されました。",
-    "内容をご確認のうえ、必要な対応をお願いします。",
-  ];
-  if (params.restrictionReason) {
-    textLines.push(`制限理由: ${params.restrictionReason}`);
-  }
-  if (params.requiredActions?.length) {
-    textLines.push("", "必要な対応:");
-    params.requiredActions.forEach((action, index) => {
-      textLines.push(`${index + 1}. ${action}`);
-    });
-  }
-  if (params.dashboardUrl) {
-    textLines.push("", `ダッシュボード: ${params.dashboardUrl}`);
-  }
-
-  return { subject, html, text: textLines.join("\n") };
-}
-
-export function buildAccountStatusChangedTemplate(
-  params: Pick<AccountStatusChangeNotification, "oldStatus" | "newStatus" | "payoutsEnabled"> & {
-    userName: string;
-  }
-): EmailTemplate {
-  const oldLabel = ACCOUNT_STATUS_MAP[params.oldStatus] || params.oldStatus;
-  const newLabel = ACCOUNT_STATUS_MAP[params.newStatus] || params.newStatus;
-  const subject = "Stripeアカウントの状態が更新されました";
-
-  const html = renderLayout({
-    preheader: `Stripeアカウントの状態が「${newLabel}」に更新されました`,
-    contentHtml: `
-      <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${escapeHtml(params.userName)} 様</p>
-      <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">アカウント状態が更新されました</h1>
-      <div style="background:#eff6ff;border-left:4px solid #3b82f6;padding:14px 16px;border-radius:4px;margin-bottom:20px;color:#0f172a;line-height:1.7;">
-        状態: ${escapeHtml(oldLabel)} → <strong>${escapeHtml(newLabel)}</strong>
-      </div>
-      <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;">
-        ${renderKeyValueRows([
-          {
-            label: "送金",
-            value: params.payoutsEnabled ? "有効（送金が可能です）" : "無効（送金は無効です）",
-          },
-        ])}
-      </table>
-    `,
-  });
-
-  const text = [
-    `${params.userName} 様`,
-    "",
-    "アカウント状態が更新されました",
-    `状態: ${oldLabel} → ${newLabel}`,
-    `送金: ${params.payoutsEnabled ? "有効" : "無効"}`,
-  ].join("\n");
-
-  return { subject, html, text };
-}
-
 export function buildParticipationRegisteredTemplate(
   params: Pick<
     ParticipationRegisteredNotification,
@@ -284,11 +142,11 @@ export function buildParticipationRegisteredTemplate(
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;margin-bottom:20px;">
         ${renderKeyValueRows([
           { label: "イベント名", value: escapeHtml(params.eventTitle) },
-          { label: "開催日時", value: escapeHtml(formattedDate) },
+          { label: "日時", value: escapeHtml(formattedDate) },
           { label: "参加状況", value: escapeHtml(statusText) },
         ])}
       </table>
-      <p style="margin:0 0 8px;"><a href="${escapeAttr(params.guestUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">参加状況を確認・変更する</a></p>
+      ${renderCtaButton({ href: params.guestUrl, label: "回答を確認・変更する" })}
       <p style="margin:6px 0 0;color:#64748b;font-size:13px;line-height:1.6;word-break:break-all;">URL: ${escapeHtml(params.guestUrl)}</p>
     `,
   });
@@ -298,7 +156,7 @@ export function buildParticipationRegisteredTemplate(
     "",
     "回答が完了しました",
     `イベント名: ${params.eventTitle}`,
-    `開催日時: ${formattedDate}`,
+    `日時: ${formattedDate}`,
     `参加状況: ${statusText}`,
     "",
     `参加状況の確認・変更: ${params.guestUrl}`,
@@ -323,7 +181,7 @@ export function buildPaymentCompletedTemplate(
     contentHtml: `
       <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${escapeHtml(params.nickname)} 様</p>
       <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">お支払いが完了しました</h1>
-      <div style="background:#f0fdf4;border-left:4px solid #22c55e;padding:14px 16px;border-radius:4px;margin-bottom:20px;color:#166534;line-height:1.7;">
+      <div style="background:#ecfdf5;border:1px solid #bbf7d0;padding:14px 16px;border-radius:8px;margin-bottom:20px;color:#14532d;line-height:1.7;font-weight:500;">
         お支払いの処理が正常に完了しました。ありがとうございます。
       </div>
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;margin-bottom:20px;">
@@ -335,7 +193,7 @@ export function buildPaymentCompletedTemplate(
       </table>
       ${
         params.receiptUrl
-          ? `<p style="margin:0 0 12px;"><a href="${escapeAttr(params.receiptUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">レシートを表示</a></p>`
+          ? renderCtaButton({ href: params.receiptUrl, label: "レシートを表示", marginBottom: 12 })
           : ""
       }
     `,
@@ -380,13 +238,13 @@ export function buildResponseDeadlineReminderTemplate(params: {
     contentHtml: `
       <p style="margin:0 0 8px;font-size:16px;color:#475569;">${escapeHtml(params.nickname)} 様</p>
       <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">出欠回答期限が近づいています</h1>
-      <div style="background:#fff7ed;border-left:4px solid #f97316;padding:12px 16px;border-radius:4px;margin-bottom:20px;color:#7c2d12;line-height:1.7;">
-        出欠回答期限が近づいています。ご都合をご確認のうえ、参加ステータスの更新をお願いします。
+      <div style="background:#fff7ed;border:1px solid #fed7aa;padding:14px 16px;border-radius:8px;margin-bottom:20px;color:#7c2d12;line-height:1.7;font-weight:500;">
+        出欠回答期限が近づいています。ご都合をご確認のうえ、回答の更新をお願いします。
       </div>
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;margin-bottom:20px;">
         ${renderKeyValueRows(rows)}
       </table>
-      <p style="margin:0 0 8px;"><a href="${escapeAttr(params.guestUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">参加ステータスを更新する</a></p>
+      ${renderCtaButton({ href: params.guestUrl, label: "回答を確認・変更する" })}
       <p style="margin:6px 0 0;color:#64748b;font-size:13px;line-height:1.6;word-break:break-all;">URL: ${escapeHtml(params.guestUrl)}</p>
     `,
   });
@@ -425,8 +283,8 @@ export function buildPaymentDeadlineReminderTemplate(params: {
     contentHtml: `
       <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${escapeHtml(params.nickname)} 様</p>
       <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">オンライン支払い期限が近づいています</h1>
-      <div style="background:#fef2f2;border-left:4px solid #ef4444;padding:12px 16px;border-radius:4px;margin-bottom:20px;color:#7f1d1d;line-height:1.7;">
-        オンライン支払い期限が近づいています（${escapeHtml(deadline)} まで）。以下の参加費の決済をお早めに完了してください。
+      <div style="background:#fef2f2;border:1px solid #fecaca;padding:14px 16px;border-radius:8px;margin-bottom:20px;color:#7f1d1d;line-height:1.7;font-weight:500;">
+        オンライン支払い期限が近づいています（${escapeHtml(deadline)} まで）。
       </div>
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;margin-bottom:20px;">
         ${renderKeyValueRows([
@@ -439,7 +297,7 @@ export function buildPaymentDeadlineReminderTemplate(params: {
           { label: "オンライン支払い期限", value: `<strong>${escapeHtml(deadline)}</strong>` },
         ])}
       </table>
-      <p style="margin:0 0 8px;"><a href="${escapeAttr(params.paymentUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">支払いを完了する</a></p>
+      ${renderCtaButton({ href: params.paymentUrl, label: "支払いを完了する" })}
       <p style="margin:6px 0 0;color:#64748b;font-size:13px;line-height:1.6;word-break:break-all;">URL: ${escapeHtml(params.paymentUrl)}</p>
     `,
   });
@@ -490,7 +348,7 @@ export function buildEventStartReminderTemplate(params: {
           ? `<div style="margin:0 0 20px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;color:#334155;line-height:1.8;">${nl2br(params.eventDescription)}</div>`
           : ""
       }
-      <p style="margin:0 0 8px;"><a href="${escapeAttr(params.guestUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">詳細を確認する</a></p>
+      ${renderCtaButton({ href: params.guestUrl, label: "詳細を確認する" })}
       <p style="margin:6px 0 0;color:#64748b;font-size:13px;line-height:1.6;word-break:break-all;">URL: ${escapeHtml(params.guestUrl)}</p>
     `,
   });

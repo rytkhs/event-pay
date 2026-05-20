@@ -872,16 +872,6 @@ export const ERROR_REGISTRY: Record<ErrorCode, ErrorDefinition> = {
     retryable: true,
     category: "system",
   },
-  CONNECT_WEBHOOK_NOTIFICATION_ERROR: {
-    code: "CONNECT_WEBHOOK_NOTIFICATION_ERROR",
-    httpStatus: 500,
-    message: "Error sending Connect webhook notification",
-    userMessage: "通知送信に失敗しました。",
-    typeUri: `${BASE_URI}/connect-webhook-notification-error`,
-    severity: "medium",
-    retryable: true,
-    category: "system",
-  },
 
   // --- セキュリティ ---
   SUSPICIOUS_ACTIVITY: {

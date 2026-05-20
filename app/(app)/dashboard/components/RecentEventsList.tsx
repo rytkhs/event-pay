@@ -26,7 +26,7 @@ export async function RecentEventsList({
   }
 
   return (
-    <Card className="bg-white/55 dark:bg-card/40 backdrop-blur-sm border-border/70 shadow-sm rounded-2xl md:rounded-3xl overflow-hidden">
+    <Card className="bg-white/55 dark:bg-card/40 backdrop-blur-sm border-border/70 shadow-sm rounded-xl overflow-hidden">
       <CardHeader className="border-b border-border/50 px-5 sm:px-7 py-4 sm:py-5">
         <div className="flex items-center justify-between">
           <div className="space-y-1">

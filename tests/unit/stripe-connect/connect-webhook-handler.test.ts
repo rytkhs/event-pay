@@ -4,8 +4,6 @@
 
 import type Stripe from "stripe";
 
-import { okResult } from "@core/errors";
-
 import { ConnectWebhookHandler } from "@features/stripe-connect/server";
 
 jest.mock("@core/logging/app-logger", () => {
@@ -19,15 +17,6 @@ jest.mock("@core/logging/app-logger", () => {
   mockLogger.withContext.mockReturnValue(mockLogger);
   return { logger: mockLogger };
 });
-
-const mockSendNotification = jest.fn();
-jest.mock("@core/notification/service", () => ({
-  NotificationService: jest.fn().mockImplementation(() => ({
-    sendAccountVerifiedNotification: mockSendNotification,
-    sendAccountRestrictedNotification: mockSendNotification,
-    sendAccountStatusChangeNotification: mockSendNotification,
-  })),
-}));
 
 const mockUpdateAccountStatus = jest.fn();
 jest.mock("@core/ports/stripe-connect", () => ({
@@ -109,7 +98,6 @@ describe("ConnectWebhookHandler", () => {
       error: null,
     });
     mockUpdateAccountStatus.mockResolvedValue(undefined);
-    mockSendNotification.mockResolvedValue(okResult(undefined));
 
     handler = await ConnectWebhookHandler.create();
   });

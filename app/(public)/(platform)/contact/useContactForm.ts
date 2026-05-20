@@ -26,7 +26,6 @@ export function useContactForm() {
       name: "",
       email: "",
       message: "",
-      consent: false,
     },
     mode: "onBlur",
   });

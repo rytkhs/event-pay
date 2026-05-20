@@ -3,7 +3,6 @@
  */
 
 import type { AppResult } from "@core/errors";
-import type { StripeAccountStatus } from "@core/types/statuses";
 
 /**
  * メール送信エラータイプ
@@ -45,34 +44,6 @@ export interface EmailTemplate {
 }
 
 /**
- * Stripe Connect関連の通知データ
- */
-export interface StripeConnectNotificationData {
-  userId: string;
-  accountId: string;
-  userEmail?: string;
-  userName?: string;
-}
-
-/**
- * アカウント状態変更通知データ
- */
-export interface AccountStatusChangeNotification extends StripeConnectNotificationData {
-  oldStatus: StripeAccountStatus;
-  newStatus: StripeAccountStatus;
-  payoutsEnabled: boolean;
-}
-
-/**
- * アカウント制限通知データ
- */
-export interface AccountRestrictedNotification extends StripeConnectNotificationData {
-  restrictionReason?: string;
-  requiredActions?: string[];
-  dashboardUrl?: string;
-}
-
-/**
  * 回答完了通知データ
  */
 export interface ParticipationRegisteredNotification {
@@ -102,25 +73,6 @@ export interface PaymentCompletedNotification {
  * 通知サービスインターフェース
  */
 export interface INotificationService {
-  /**
-   * アカウント認証完了通知を送信
-   */
-  sendAccountVerifiedNotification(data: StripeConnectNotificationData): Promise<NotificationResult>;
-
-  /**
-   * アカウント制限通知を送信
-   */
-  sendAccountRestrictedNotification(
-    data: AccountRestrictedNotification
-  ): Promise<NotificationResult>;
-
-  /**
-   * アカウント状態変更通知を送信
-   */
-  sendAccountStatusChangeNotification(
-    data: AccountStatusChangeNotification
-  ): Promise<NotificationResult>;
-
   /**
    * 回答完了通知を送信
    */

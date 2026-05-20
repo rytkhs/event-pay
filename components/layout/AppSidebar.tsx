@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { MessageSquare, Plus } from "lucide-react";
+import { CircleHelp, MessageSquare, Plus } from "lucide-react";
 
 import type { AppWorkspaceShellData } from "@core/community/app-workspace";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
@@ -154,7 +154,23 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border/60 px-2.5 py-3">
-        <SidebarMenu>
+        <SidebarMenu className="gap-1">
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              tooltip="サポート"
+              className={[
+                "h-9 rounded-xl px-3 text-[13px] font-medium transition-all duration-150",
+                "text-sidebar-foreground/55 hover:bg-sidebar-accent/65 hover:text-sidebar-foreground",
+                "group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0",
+              ].join(" ")}
+            >
+              <Link href="/contact">
+                <CircleHelp className="size-4 text-sidebar-foreground/45" />
+                <span className="group-data-[collapsible=icon]:hidden">サポート</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
@@ -167,7 +183,7 @@ export function AppSidebar({
             >
               <Link href="/feedback">
                 <MessageSquare className="size-4 text-sidebar-foreground/45" />
-                <span className="group-data-[collapsible=icon]:hidden">フィードバック</span>
+                <span className="group-data-[collapsible=icon]:hidden">要望・不具合</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

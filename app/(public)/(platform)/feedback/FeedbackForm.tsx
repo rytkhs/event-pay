@@ -16,7 +16,6 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -281,46 +280,28 @@ export function FeedbackForm() {
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="consent"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 sm:p-4">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={isPending}
-                        data-testid="feedback-consent-checkbox"
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        <Link
-                          href="/privacy"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline"
-                        >
-                          プライバシーポリシー
-                        </Link>
-                        に同意します <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormDescription>入力内容はサービス改善のために利用されます</FormDescription>
-                      <FormMessage />
-                    </div>
-                  </FormItem>
-                )}
-              />
-
-              <Button
-                type="submit"
-                disabled={isPending}
-                className="w-full"
-                data-testid="feedback-submit-button"
-              >
-                {isPending ? "送信中..." : "フィードバックを送信する"}
-              </Button>
+              <div className="flex flex-col gap-4">
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  className="w-full"
+                  data-testid="feedback-submit-button"
+                >
+                  {isPending ? "送信中..." : "フィードバックを送信する"}
+                </Button>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  入力内容はサービス改善のために利用されます。送信することで、
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    プライバシーポリシー
+                  </Link>
+                  に同意したものとみなされます。
+                </p>
+              </div>
             </form>
           </Form>
         )}

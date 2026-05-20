@@ -19,7 +19,6 @@ test.describe("お問い合わせフォーム", () => {
     await expect(page.getByTestId("contact-name-input")).toBeVisible();
     await expect(page.getByTestId("contact-email-input")).toBeVisible();
     await expect(page.getByTestId("contact-message-input")).toBeVisible();
-    await expect(page.getByTestId("contact-consent-checkbox")).toBeVisible();
     await expect(page.getByTestId("contact-submit-button")).toBeVisible();
   });
 
@@ -32,7 +31,6 @@ test.describe("お問い合わせフォーム", () => {
     await page
       .getByTestId("contact-message-input")
       .fill("これはE2Eテストのお問い合わせです。テストメッセージの内容を記載しています。");
-    await page.getByTestId("contact-consent-checkbox").check();
 
     // 送信
     await page.getByTestId("contact-submit-button").click();
@@ -59,7 +57,6 @@ test.describe("お問い合わせフォーム", () => {
     await page
       .getByTestId("contact-message-input")
       .fill("これはテストのお問い合わせです。10文字以上の内容を記載しています。");
-    await page.getByTestId("contact-consent-checkbox").check();
 
     // フォーカスを移動してバリデーションをトリガー
     await page.getByTestId("contact-message-input").click();
@@ -73,7 +70,6 @@ test.describe("お問い合わせフォーム", () => {
     await page.getByTestId("contact-name-input").fill("山田 太郎");
     await page.getByTestId("contact-email-input").fill("test@example.com");
     await page.getByTestId("contact-message-input").fill("短い");
-    await page.getByTestId("contact-consent-checkbox").check();
 
     // フォーカスを移動してバリデーションをトリガー
     await page.getByTestId("contact-name-input").click();
@@ -99,7 +95,6 @@ test.describe("お問い合わせフォーム", () => {
     await page
       .getByTestId("contact-message-input")
       .fill("これはテストのお問い合わせです。10文字以上の内容を記載しています。");
-    await page.getByTestId("contact-consent-checkbox").check();
 
     // 送信ボタンをクリック
     const submitButton = page.getByTestId("contact-submit-button");
@@ -120,7 +115,6 @@ test.describe("お問い合わせフォーム", () => {
       await page
         .getByTestId("contact-message-input")
         .fill(`レート制限テスト ${i + 1}回目の送信です。これは10文字以上の内容です。`);
-      await page.getByTestId("contact-consent-checkbox").check();
       await page.getByTestId("contact-submit-button").click();
 
       if (i < 5) {

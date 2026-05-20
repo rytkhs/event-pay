@@ -90,7 +90,7 @@ export const footerNavigationGroups: FooterLinkGroup[] = [
       },
       {
         label: "運営元",
-        href: "https://project.tklab.workers.dev/",
+        href: "https://project.tklabs.workers.dev/",
         external: true,
         ariaLabel: "みんなの集金の運営元を確認する",
       },

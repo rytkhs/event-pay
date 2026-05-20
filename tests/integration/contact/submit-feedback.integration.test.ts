@@ -120,7 +120,6 @@ describe("submitFeedback Server Action", () => {
     pageContext: "",
     name: "",
     email: "",
-    consent: true,
   };
 
   test("有効な入力で送信が成功する", async () => {
@@ -242,6 +241,5 @@ describe("submitFeedback Server Action", () => {
     expect(FeedbackInputSchema.shape).toHaveProperty("pageContext");
     expect(FeedbackInputSchema.shape).toHaveProperty("name");
     expect(FeedbackInputSchema.shape).toHaveProperty("email");
-    expect(FeedbackInputSchema.shape).toHaveProperty("consent");
   });
 });
