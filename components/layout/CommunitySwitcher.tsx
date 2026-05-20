@@ -43,8 +43,8 @@ function getInitials(name: string): string {
   return firstChar.toUpperCase();
 }
 
-/** 一貫したアクセントカラーをコミュニティ名から決定 */
-function getCommunityAccent(name: string): string {
+/** 一貫したアクセントカラーをコミュニティIDから決定 */
+function getCommunityAccent(communityId: string): string {
   const accents = [
     "bg-teal-600",
     "bg-indigo-600",
@@ -53,7 +53,9 @@ function getCommunityAccent(name: string): string {
     "bg-rose-600",
     "bg-amber-600",
   ];
-  const index = name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % accents.length;
+  const index =
+    communityId.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) %
+    accents.length;
   return accents[index];
 }
 
@@ -82,7 +84,7 @@ export function CommunitySwitcher({
 
   const currentCommunityName = workspace.currentCommunity?.name ?? "コミュニティ未作成";
   const communityInitial = getInitials(currentCommunityName);
-  const communityAccent = getCommunityAccent(currentCommunityName);
+  const communityAccent = getCommunityAccent(workspace.currentCommunity?.id ?? "");
 
   return (
     <DropdownMenu
