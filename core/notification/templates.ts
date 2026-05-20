@@ -7,8 +7,6 @@ import { ja } from "date-fns/locale";
 import { formatUtcToJst } from "@core/utils/timezone";
 
 import type {
-  AccountRestrictedNotification,
-  AccountStatusChangeNotification,
   EmailTemplate,
   PaymentCompletedNotification,
   ParticipationRegisteredNotification,
@@ -20,13 +18,6 @@ const STATUS_TEXT: Record<ParticipationRegisteredNotification["attendanceStatus"
   attending: "参加",
   maybe: "未定",
   not_attending: "不参加",
-};
-
-const ACCOUNT_STATUS_MAP: Record<string, string> = {
-  unverified: "未認証",
-  onboarding: "認証中",
-  verified: "認証済み",
-  restricted: "制限中",
 };
 
 function escapeHtml(input: string): string {
@@ -125,145 +116,6 @@ function toSafeString(value: unknown): string {
   } catch {
     return String(value);
   }
-}
-
-export function buildAccountVerifiedTemplate(params: { userName: string }): EmailTemplate {
-  const userName = escapeHtml(params.userName);
-  const subject = "Stripeアカウントの設定が完了しました";
-
-  const html = renderLayout({
-    preheader: subject,
-    contentHtml: `
-      <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${userName} 様</p>
-      <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">アカウント設定が完了しました</h1>
-      <div style="background:#f0fdf4;border-left:4px solid #22c55e;padding:14px 16px;border-radius:4px;margin-bottom:20px;color:#166534;line-height:1.7;">
-        Stripeアカウントの設定が正常に完了しました。オンライン支払いを有効化できます。
-      </div>
-      <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;">
-        ${renderKeyValueRows([
-          { label: "オンライン支払い", value: "オンライン支払いが選択可能になりました。" },
-          {
-            label: "送金状況の確認",
-            value: "ダッシュボードから送金履歴やステータスを確認できます。",
-          },
-        ])}
-      </table>
-    `,
-  });
-
-  const text = [
-    `${params.userName} 様`,
-    "",
-    "Stripeアカウントの設定が正常に完了しました。",
-    "",
-    "ご利用いただける機能:",
-    "- オンライン支払いが選択可能になりました。",
-    "- ダッシュボードから送金履歴やステータスを確認できます。",
-  ].join("\n");
-
-  return { subject, html, text };
-}
-
-export function buildAccountRestrictedTemplate(
-  params: Pick<
-    AccountRestrictedNotification,
-    "restrictionReason" | "requiredActions" | "dashboardUrl"
-  > & { userName: string }
-): EmailTemplate {
-  const subject = "Stripeアカウントに制限が設定されました";
-  const preheader = params.requiredActions?.length
-    ? "アカウントに制限が設定されました — 対応が必要です"
-    : "アカウントに制限が設定されました — 詳細をご確認ください";
-
-  const actionsHtml = (params.requiredActions || [])
-    .map((action) => `<li style="margin-bottom:6px;">${escapeHtml(action)}</li>`)
-    .join("\n");
-
-  const html = renderLayout({
-    preheader,
-    contentHtml: `
-      <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${escapeHtml(params.userName)} 様</p>
-      <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">アカウントに制限が設定されました</h1>
-      <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:14px 16px;border-radius:4px;margin-bottom:20px;color:#7f1d1d;line-height:1.7;">
-        アカウントに一部の機能制限が適用されています。内容をご確認のうえ、必要な対応をお願いします。
-        ${
-          params.restrictionReason
-            ? `<br><strong>制限理由:</strong> ${escapeHtml(params.restrictionReason)}`
-            : ""
-        }
-      </div>
-      ${
-        actionsHtml
-          ? `<h2 style="margin:0 0 10px;font-size:18px;">必要な対応</h2><ol style="margin:0 0 20px 20px;padding:0;color:#374151;line-height:1.7;">${actionsHtml}</ol>`
-          : ""
-      }
-      ${
-        params.dashboardUrl
-          ? `<p style="margin:0 0 16px;"><a href="${escapeAttr(params.dashboardUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">ダッシュボードで対応する</a></p>`
-          : ""
-      }
-    `,
-  });
-
-  const textLines = [
-    `${params.userName} 様`,
-    "",
-    "アカウントに制限が設定されました。",
-    "内容をご確認のうえ、必要な対応をお願いします。",
-  ];
-  if (params.restrictionReason) {
-    textLines.push(`制限理由: ${params.restrictionReason}`);
-  }
-  if (params.requiredActions?.length) {
-    textLines.push("", "必要な対応:");
-    params.requiredActions.forEach((action, index) => {
-      textLines.push(`${index + 1}. ${action}`);
-    });
-  }
-  if (params.dashboardUrl) {
-    textLines.push("", `ダッシュボード: ${params.dashboardUrl}`);
-  }
-
-  return { subject, html, text: textLines.join("\n") };
-}
-
-export function buildAccountStatusChangedTemplate(
-  params: Pick<AccountStatusChangeNotification, "oldStatus" | "newStatus" | "payoutsEnabled"> & {
-    userName: string;
-  }
-): EmailTemplate {
-  const oldLabel = ACCOUNT_STATUS_MAP[params.oldStatus] || params.oldStatus;
-  const newLabel = ACCOUNT_STATUS_MAP[params.newStatus] || params.newStatus;
-  const subject = "Stripeアカウントの状態が更新されました";
-
-  const html = renderLayout({
-    preheader: `Stripeアカウントの状態が「${newLabel}」に更新されました`,
-    contentHtml: `
-      <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${escapeHtml(params.userName)} 様</p>
-      <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">アカウント状態が更新されました</h1>
-      <div style="background:#eff6ff;border-left:4px solid #3b82f6;padding:14px 16px;border-radius:4px;margin-bottom:20px;color:#0f172a;line-height:1.7;">
-        状態: ${escapeHtml(oldLabel)} → <strong>${escapeHtml(newLabel)}</strong>
-      </div>
-      <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;">
-        ${renderKeyValueRows([
-          {
-            label: "送金",
-            value: params.payoutsEnabled ? "有効（送金が可能です）" : "無効（送金は無効です）",
-          },
-        ])}
-      </table>
-    `,
-  });
-
-  const text = [
-    `${params.userName} 様`,
-    "",
-    "アカウント状態が更新されました",
-    `状態: ${oldLabel} → ${newLabel}`,
-    `送金: ${params.payoutsEnabled ? "有効" : "無効"}`,
-  ].join("\n");
-
-  return { subject, html, text };
 }
 
 export function buildParticipationRegisteredTemplate(
