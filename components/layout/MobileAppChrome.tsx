@@ -242,7 +242,7 @@ export function MobileAppChrome({
                 onClick={() => setIsMoreOpen(false)}
               >
                 <CircleHelp className="h-4 w-4 text-muted-foreground" />
-                サポートに連絡
+                サポート
               </Link>
 
               <Link
@@ -251,7 +251,7 @@ export function MobileAppChrome({
                 onClick={() => setIsMoreOpen(false)}
               >
                 <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                フィードバックを送る
+                要望・不具合を送る
               </Link>
             </section>
 

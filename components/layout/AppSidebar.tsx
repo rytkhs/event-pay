@@ -183,7 +183,7 @@ export function AppSidebar({
             >
               <Link href="/feedback">
                 <MessageSquare className="size-4 text-sidebar-foreground/45" />
-                <span className="group-data-[collapsible=icon]:hidden">フィードバック</span>
+                <span className="group-data-[collapsible=icon]:hidden">要望・不具合</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

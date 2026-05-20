@@ -9,7 +9,7 @@ export default function FeedbackPage() {
         <div className="text-center">
           <h1 className="mb-2 text-2xl font-bold text-foreground sm:text-4xl">フィードバック</h1>
           <p className="text-xs text-muted-foreground sm:text-base">
-            機能要望や不具合報告など、気づいたことを気軽にお寄せください
+            機能要望や不具合など、気づいたことを気軽にお寄せください
           </p>
         </div>
 
