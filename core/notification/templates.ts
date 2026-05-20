@@ -75,6 +75,12 @@ function renderKeyValueRows(rows: Array<{ label: string; value: string }>): stri
     .join("\n");
 }
 
+function renderCtaButton(params: { href: string; label: string; marginBottom?: number }): string {
+  const marginBottom = params.marginBottom ?? 8;
+
+  return `<p style="margin:0 0 ${marginBottom}px;text-align:center;"><a href="${escapeAttr(params.href)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">${escapeHtml(params.label)}</a></p>`;
+}
+
 function renderLayout(params: { preheader?: string; contentHtml: string }): string {
   const year = new Date().getFullYear();
   const preheader = params.preheader ? escapeHtml(params.preheader) : "";
@@ -140,7 +146,7 @@ export function buildParticipationRegisteredTemplate(
           { label: "参加状況", value: escapeHtml(statusText) },
         ])}
       </table>
-      <p style="margin:0 0 8px;"><a href="${escapeAttr(params.guestUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">参加状況を確認・変更する</a></p>
+      ${renderCtaButton({ href: params.guestUrl, label: "参加状況を確認・変更する" })}
       <p style="margin:6px 0 0;color:#64748b;font-size:13px;line-height:1.6;word-break:break-all;">URL: ${escapeHtml(params.guestUrl)}</p>
     `,
   });
@@ -187,7 +193,7 @@ export function buildPaymentCompletedTemplate(
       </table>
       ${
         params.receiptUrl
-          ? `<p style="margin:0 0 12px;"><a href="${escapeAttr(params.receiptUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">レシートを表示</a></p>`
+          ? renderCtaButton({ href: params.receiptUrl, label: "レシートを表示", marginBottom: 12 })
           : ""
       }
     `,
@@ -238,7 +244,7 @@ export function buildResponseDeadlineReminderTemplate(params: {
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;margin-bottom:20px;">
         ${renderKeyValueRows(rows)}
       </table>
-      <p style="margin:0 0 8px;"><a href="${escapeAttr(params.guestUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">参加ステータスを更新する</a></p>
+      ${renderCtaButton({ href: params.guestUrl, label: "参加ステータスを更新する" })}
       <p style="margin:6px 0 0;color:#64748b;font-size:13px;line-height:1.6;word-break:break-all;">URL: ${escapeHtml(params.guestUrl)}</p>
     `,
   });
@@ -278,7 +284,7 @@ export function buildPaymentDeadlineReminderTemplate(params: {
       <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${escapeHtml(params.nickname)} 様</p>
       <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">オンライン支払い期限が近づいています</h1>
       <div style="background:#fef2f2;border-left:4px solid #ef4444;padding:12px 16px;border-radius:4px;margin-bottom:20px;color:#7f1d1d;line-height:1.7;">
-        オンライン支払い期限が近づいています（${escapeHtml(deadline)} まで）。以下の参加費の決済をお早めに完了してください。
+        オンライン支払い期限が近づいています（${escapeHtml(deadline)} まで）。
       </div>
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;margin-bottom:20px;">
         ${renderKeyValueRows([
@@ -291,7 +297,7 @@ export function buildPaymentDeadlineReminderTemplate(params: {
           { label: "オンライン支払い期限", value: `<strong>${escapeHtml(deadline)}</strong>` },
         ])}
       </table>
-      <p style="margin:0 0 8px;"><a href="${escapeAttr(params.paymentUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">支払いを完了する</a></p>
+      ${renderCtaButton({ href: params.paymentUrl, label: "支払いを完了する" })}
       <p style="margin:6px 0 0;color:#64748b;font-size:13px;line-height:1.6;word-break:break-all;">URL: ${escapeHtml(params.paymentUrl)}</p>
     `,
   });
@@ -342,7 +348,7 @@ export function buildEventStartReminderTemplate(params: {
           ? `<div style="margin:0 0 20px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;color:#334155;line-height:1.8;">${nl2br(params.eventDescription)}</div>`
           : ""
       }
-      <p style="margin:0 0 8px;"><a href="${escapeAttr(params.guestUrl)}" style="display:inline-block;background:#24A6B5;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;padding:10px 16px;">詳細を確認する</a></p>
+      ${renderCtaButton({ href: params.guestUrl, label: "詳細を確認する" })}
       <p style="margin:6px 0 0;color:#64748b;font-size:13px;line-height:1.6;word-break:break-all;">URL: ${escapeHtml(params.guestUrl)}</p>
     `,
   });
