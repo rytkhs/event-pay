@@ -67,7 +67,7 @@ function renderKeyValueRows(rows: Array<{ label: string; value: string }>): stri
     .map(
       (row) => `
         <tr>
-          <th style="padding:10px 12px;text-align:left;background:#f8fafc;border-bottom:1px solid #e2e8f0;width:140px;color:#475569;font-size:13px;font-weight:600;">${escapeHtml(row.label)}</th>
+          <th style="padding:10px 12px;text-align:left;background:#f8fafc;border-bottom:1px solid #e2e8f0;width:32%;max-width:120px;color:#475569;font-size:13px;font-weight:600;white-space:nowrap;">${escapeHtml(row.label)}</th>
           <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;color:#0f172a;font-size:14px;line-height:1.6;">${row.value}</td>
         </tr>
       `
@@ -142,11 +142,11 @@ export function buildParticipationRegisteredTemplate(
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;margin-bottom:20px;">
         ${renderKeyValueRows([
           { label: "イベント名", value: escapeHtml(params.eventTitle) },
-          { label: "開催日時", value: escapeHtml(formattedDate) },
+          { label: "日時", value: escapeHtml(formattedDate) },
           { label: "参加状況", value: escapeHtml(statusText) },
         ])}
       </table>
-      ${renderCtaButton({ href: params.guestUrl, label: "参加状況を確認・変更する" })}
+      ${renderCtaButton({ href: params.guestUrl, label: "回答を確認・変更する" })}
       <p style="margin:6px 0 0;color:#64748b;font-size:13px;line-height:1.6;word-break:break-all;">URL: ${escapeHtml(params.guestUrl)}</p>
     `,
   });
@@ -156,7 +156,7 @@ export function buildParticipationRegisteredTemplate(
     "",
     "回答が完了しました",
     `イベント名: ${params.eventTitle}`,
-    `開催日時: ${formattedDate}`,
+    `日時: ${formattedDate}`,
     `参加状況: ${statusText}`,
     "",
     `参加状況の確認・変更: ${params.guestUrl}`,
@@ -181,7 +181,7 @@ export function buildPaymentCompletedTemplate(
     contentHtml: `
       <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${escapeHtml(params.nickname)} 様</p>
       <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">お支払いが完了しました</h1>
-      <div style="background:#f0fdf4;border-left:4px solid #22c55e;padding:14px 16px;border-radius:4px;margin-bottom:20px;color:#166534;line-height:1.7;">
+      <div style="background:#ecfdf5;border:1px solid #bbf7d0;padding:14px 16px;border-radius:8px;margin-bottom:20px;color:#14532d;line-height:1.7;font-weight:500;">
         お支払いの処理が正常に完了しました。ありがとうございます。
       </div>
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;margin-bottom:20px;">
@@ -238,13 +238,13 @@ export function buildResponseDeadlineReminderTemplate(params: {
     contentHtml: `
       <p style="margin:0 0 8px;font-size:16px;color:#475569;">${escapeHtml(params.nickname)} 様</p>
       <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">出欠回答期限が近づいています</h1>
-      <div style="background:#fff7ed;border-left:4px solid #f97316;padding:12px 16px;border-radius:4px;margin-bottom:20px;color:#7c2d12;line-height:1.7;">
-        出欠回答期限が近づいています。ご都合をご確認のうえ、参加ステータスの更新をお願いします。
+      <div style="background:#fff7ed;border:1px solid #fed7aa;padding:14px 16px;border-radius:8px;margin-bottom:20px;color:#7c2d12;line-height:1.7;font-weight:500;">
+        出欠回答期限が近づいています。ご都合をご確認のうえ、回答の更新をお願いします。
       </div>
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;margin-bottom:20px;">
         ${renderKeyValueRows(rows)}
       </table>
-      ${renderCtaButton({ href: params.guestUrl, label: "参加ステータスを更新する" })}
+      ${renderCtaButton({ href: params.guestUrl, label: "回答を確認・変更する" })}
       <p style="margin:6px 0 0;color:#64748b;font-size:13px;line-height:1.6;word-break:break-all;">URL: ${escapeHtml(params.guestUrl)}</p>
     `,
   });
@@ -283,7 +283,7 @@ export function buildPaymentDeadlineReminderTemplate(params: {
     contentHtml: `
       <p style="margin:0 0 8px;font-size:16px;color:#64748b;">${escapeHtml(params.nickname)} 様</p>
       <h1 style="margin:0 0 16px;font-size:24px;line-height:1.4;">オンライン支払い期限が近づいています</h1>
-      <div style="background:#fef2f2;border-left:4px solid #ef4444;padding:12px 16px;border-radius:4px;margin-bottom:20px;color:#7f1d1d;line-height:1.7;">
+      <div style="background:#fef2f2;border:1px solid #fecaca;padding:14px 16px;border-radius:8px;margin-bottom:20px;color:#7f1d1d;line-height:1.7;font-weight:500;">
         オンライン支払い期限が近づいています（${escapeHtml(deadline)} まで）。
       </div>
       <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;border-collapse:collapse;overflow:hidden;margin-bottom:20px;">
