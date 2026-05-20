@@ -9,7 +9,7 @@ export default function ContactPage() {
         <div className="text-center">
           <h1 className="mb-2 text-2xl font-bold text-foreground sm:text-4xl">お問い合わせ</h1>
           <p className="text-xs text-muted-foreground sm:text-base">
-            問題や質問があればお問い合わせください。
+            問題やご質問があればお問い合わせください。
           </p>
         </div>
 
