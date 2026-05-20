@@ -1,6 +1,5 @@
 /**
  * Slack Webhook通知ヘルパー
- * MVP: シンプルなテキスト送信のみサポート
  */
 
 import { AppError, errResult, okResult } from "@core/errors";

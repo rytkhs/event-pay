@@ -59,7 +59,7 @@ export async function adminAddAttendanceAction(
     // ゲストトークン生成
     const guestToken = generateGuestToken();
 
-    // プレースホルダーメール生成（MVP: emailは未収集）
+    // プレースホルダーメール生成（emailは未収集）
     const placeholderEmail = `noemail+${guestToken.substring(4, 12)}.${validatedEventId.substring(0, 8)}@guest.eventpay.local`;
 
     // 専用RPC関数で参加者を追加（排他ロック付き定員チェック）

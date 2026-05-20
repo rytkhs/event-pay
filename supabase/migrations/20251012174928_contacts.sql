@@ -1,4 +1,4 @@
--- お問い合わせテーブル（MVP）
+-- お問い合わせテーブル
 -- 要件: docs/spec/contact/required.md
 
 create table if not exists public.contacts (
@@ -19,7 +19,7 @@ create unique index if not exists ux_contacts_fingerprint on public.contacts(fin
 -- RLS有効化
 alter table public.contacts enable row level security;
 
--- ポリシー: 匿名/公開からの読み取りを禁止（MVPでは管理者UIなし）
+-- ポリシー: 匿名/公開からの読み取りを禁止（管理者UIなし）
 create policy contacts_no_select on public.contacts
   for select
   using (false);
