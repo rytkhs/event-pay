@@ -7,7 +7,6 @@ describe("FeedbackInputSchema", () => {
     pageContext: "",
     name: "",
     email: "",
-    consent: true,
   };
 
   test("有効な入力を受け入れる", () => {
@@ -48,15 +47,6 @@ describe("FeedbackInputSchema", () => {
     const result = FeedbackInputSchema.safeParse({
       ...validInput,
       message: "短い",
-    });
-
-    expect(result.success).toBe(false);
-  });
-
-  test("プライバシーポリシー未同意を拒否する", () => {
-    const result = FeedbackInputSchema.safeParse({
-      ...validInput,
-      consent: false,
     });
 
     expect(result.success).toBe(false);

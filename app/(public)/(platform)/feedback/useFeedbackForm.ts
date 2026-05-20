@@ -19,7 +19,6 @@ const defaultValues: FeedbackInput = {
   pageContext: "",
   name: "",
   email: "",
-  consent: false,
 };
 
 export function useFeedbackForm() {

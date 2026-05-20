@@ -159,7 +159,6 @@ describe("submitContact Server Action - 統合テスト", () => {
         name: "山田 太郎",
         email: "test@example.com",
         message: "これはテストのお問い合わせ内容です。10文字以上の内容を記載しています。",
-        consent: true,
       };
 
       // Act
@@ -176,7 +175,6 @@ describe("submitContact Server Action - 統合テスト", () => {
         name: "<script>alert('XSS')</script>山田 太郎",
         email: "test@example.com",
         message: "<p>HTMLタグを含むメッセージです</p>これはテストのお問い合わせ内容です。",
-        consent: true,
       };
 
       let insertedData: any = null;
@@ -212,7 +210,6 @@ describe("submitContact Server Action - 統合テスト", () => {
         name: "",
         email: "test@example.com",
         message: "これはテストのお問い合わせ内容です。",
-        consent: true,
       };
 
       // Act
@@ -229,7 +226,6 @@ describe("submitContact Server Action - 統合テスト", () => {
         name: "山田 太郎",
         email: "invalid-email",
         message: "これはテストのお問い合わせ内容です。",
-        consent: true,
       };
 
       // Act
@@ -246,24 +242,6 @@ describe("submitContact Server Action - 統合テスト", () => {
         name: "山田 太郎",
         email: "test@example.com",
         message: "短い",
-        consent: true,
-      };
-
-      // Act
-      const result = await submitContact(invalidInput);
-
-      // Assert
-      expect(result).toMatchObject({ success: false });
-      expect(expectActionFailure(result).code).toBe("VALIDATION_ERROR");
-    });
-
-    test("consentがfalseの場合エラーを返す", async () => {
-      // Arrange
-      const invalidInput = {
-        name: "山田 太郎",
-        email: "test@example.com",
-        message: "これはテストのお問い合わせ内容です。",
-        consent: false,
       };
 
       // Act
@@ -282,7 +260,6 @@ describe("submitContact Server Action - 統合テスト", () => {
         name: "山田 太郎",
         email: "test@example.com",
         message: "重複テスト用のメッセージです。これは10文字以上の内容です。",
-        consent: true,
       };
 
       let callCount = 0;
@@ -325,7 +302,6 @@ describe("submitContact Server Action - 統合テスト", () => {
       const baseInput = {
         name: "山田 太郎",
         email: "test@example.com",
-        consent: true,
       };
 
       let callCount = 0;
@@ -376,7 +352,6 @@ describe("submitContact Server Action - 統合テスト", () => {
       expect(shape).toHaveProperty("name");
       expect(shape).toHaveProperty("email");
       expect(shape).toHaveProperty("message");
-      expect(shape).toHaveProperty("consent");
     });
 
     test("スキーマは正しい値を受け入れる", () => {
@@ -385,7 +360,6 @@ describe("submitContact Server Action - 統合テスト", () => {
         name: "山田 太郎",
         email: "test@example.com",
         message: "これはテストのお問い合わせ内容です。",
-        consent: true,
       };
 
       // Act
@@ -401,7 +375,6 @@ describe("submitContact Server Action - 統合テスト", () => {
         name: "",
         email: "not-an-email",
         message: "短い",
-        consent: false,
       };
 
       // Act

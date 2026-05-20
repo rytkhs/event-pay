@@ -40,9 +40,6 @@ export const FeedbackInputSchema = z.object({
   pageContext: z.string().max(1000, "画面名・URLは1000文字以内で入力してください"),
   name: z.string().max(100, "お名前は100文字以内で入力してください"),
   email: OptionalEmailSchema,
-  consent: z.boolean().refine((val) => val === true, {
-    message: "プライバシーポリシーに同意してください",
-  }),
 });
 
 export type FeedbackInput = z.infer<typeof FeedbackInputSchema>;

@@ -7,7 +7,6 @@ import { CheckCircle2, Mail, MessageSquare, User } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -158,41 +157,6 @@ export function ContactForm() {
                 )}
               />
 
-              {/* プライバシーポリシー同意 */}
-              <FormField
-                control={form.control}
-                name="consent"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 sm:p-4">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={isPending}
-                        data-testid="contact-consent-checkbox"
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        <Link
-                          href="/privacy"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline"
-                        >
-                          プライバシーポリシー
-                        </Link>
-                        に同意します <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormDescription>
-                        お問い合わせ内容は、ご返信のためにのみ使用します
-                      </FormDescription>
-                      <FormMessage />
-                    </div>
-                  </FormItem>
-                )}
-              />
-
               {/* 送信ボタン */}
               <div className="flex flex-col gap-4">
                 <Button
@@ -203,6 +167,18 @@ export function ContactForm() {
                 >
                   {isPending ? "送信中..." : "送信する"}
                 </Button>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  お問い合わせ内容はご返信のためにのみ使用します。送信することで、
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    プライバシーポリシー
+                  </Link>
+                  に同意したものとみなされます。
+                </p>
               </div>
             </form>
           </Form>
