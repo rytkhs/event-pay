@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import Link from "next/link";
 
@@ -34,6 +34,23 @@ type CommunitySwitcherProps = {
   createExpressDashboardLoginLinkAction: () => Promise<void>;
 };
 
+type OwnedCommunity = AppWorkspaceShellData["ownedCommunities"][number];
+
+const DEFAULT_COMMUNITY_ACCENT = "bg-sidebar-primary";
+
+const COMMUNITY_ACCENTS = [
+  "bg-teal-500",
+  "bg-rose-500",
+  "bg-sky-500",
+  "bg-amber-500",
+  "bg-indigo-500",
+  "bg-emerald-500",
+  "bg-violet-500",
+  "bg-cyan-500",
+  "bg-blue-500",
+  "bg-pink-500",
+];
+
 /** コミュニティ名からイニシャルを取得（最大2文字） */
 function getInitials(name: string): string {
   const trimmed = name.trim();
@@ -43,20 +60,32 @@ function getInitials(name: string): string {
   return firstChar.toUpperCase();
 }
 
-/** 一貫したアクセントカラーをコミュニティIDから決定 */
-function getCommunityAccent(communityId: string): string {
-  const accents = [
-    "bg-teal-600",
-    "bg-indigo-600",
-    "bg-emerald-600",
-    "bg-sky-600",
-    "bg-rose-600",
-    "bg-amber-600",
-  ];
-  const index =
-    communityId.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) %
-    accents.length;
-  return accents[index];
+function hashCommunityId(communityId: string): number {
+  let hash = 2166136261;
+
+  for (const character of communityId) {
+    hash ^= character.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+}
+
+function buildCommunityAccentMap(
+  communities: readonly OwnedCommunity[]
+): Map<string, string> {
+  const sortedCommunities = [...communities].sort((a, b) => {
+    const hashDiff = hashCommunityId(a.id) - hashCommunityId(b.id);
+    if (hashDiff !== 0) return hashDiff;
+    return a.id.localeCompare(b.id);
+  });
+
+  return new Map(
+    sortedCommunities.map((community, index) => [
+      community.id,
+      COMMUNITY_ACCENTS[index % COMMUNITY_ACCENTS.length],
+    ])
+  );
 }
 
 export function CommunitySwitcher({
@@ -82,9 +111,15 @@ export function CommunitySwitcher({
     onMenuClose: () => setIsMenuOpen(false),
   });
 
+  const communityAccentMap = useMemo(
+    () => buildCommunityAccentMap(workspace.ownedCommunities),
+    [workspace.ownedCommunities]
+  );
   const currentCommunityName = workspace.currentCommunity?.name ?? "コミュニティ未作成";
   const communityInitial = getInitials(currentCommunityName);
-  const communityAccent = getCommunityAccent(workspace.currentCommunity?.id ?? "");
+  const communityAccent = workspace.currentCommunity
+    ? (communityAccentMap.get(workspace.currentCommunity.id) ?? DEFAULT_COMMUNITY_ACCENT)
+    : DEFAULT_COMMUNITY_ACCENT;
 
   return (
     <DropdownMenu
@@ -102,7 +137,7 @@ export function CommunitySwitcher({
         >
           {/* コミュニティアバター */}
           <div
-            className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${communityAccent} text-sm font-bold text-white`}
+            className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${communityAccent} text-sm font-bold text-white`}
           >
             {communityInitial}
           </div>
@@ -137,6 +172,9 @@ export function CommunitySwitcher({
               {workspace.ownedCommunities.map((community) => {
                 const isCurrent = community.id === workspace.currentCommunity?.id;
                 const isPendingRow = pendingCommunityId === community.id && isCommunityPending;
+                const rowCommunityAccent =
+                  communityAccentMap.get(community.id) ?? DEFAULT_COMMUNITY_ACCENT;
+                const rowCommunityInitial = getInitials(community.name);
 
                 return (
                   <DropdownMenuItem
@@ -153,6 +191,11 @@ export function CommunitySwitcher({
                       "disabled:opacity-100"
                     )}
                   >
+                    <div
+                      className={`flex size-6 shrink-0 items-center justify-center rounded-md ${rowCommunityAccent} text-[11px] font-bold text-white`}
+                    >
+                      {rowCommunityInitial}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{community.name}</p>
                     </div>
