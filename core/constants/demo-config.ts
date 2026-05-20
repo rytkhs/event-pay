@@ -7,7 +7,17 @@
  *
  * @see middleware.ts - getDemoAction()
  */
-export const DEMO_REDIRECT_PATHS = ["/", "/terms", "/privacy", "/contact", "/tokushoho/platform"];
+export const DEMO_REDIRECT_PATHS = [
+  "/",
+  "/terms",
+  "/privacy",
+  "/contact",
+  "/tokushoho/platform",
+  "/guide/getting-started",
+  "/guide/participant-flow",
+  "/guide/online-collection",
+  "/guide/pricing-and-fees",
+];
 
 /**
  * クライアントサイドリダイレクトで許可されるパス（オープンリダイレクト対策）
