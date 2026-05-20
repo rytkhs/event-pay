@@ -9,11 +9,12 @@ import {
   Check,
   CreditCard,
   ExternalLink,
+  CircleHelp,
   Loader2,
   LogOut,
   MessageSquare,
-  SquareMenu,
   Plus,
+  SquareMenu,
 } from "lucide-react";
 
 import type { AppWorkspaceShellData } from "@core/community/app-workspace";
@@ -234,6 +235,15 @@ export function MobileAppChrome({
               <p className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 サポート
               </p>
+
+              <Link
+                href="/contact"
+                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
+                onClick={() => setIsMoreOpen(false)}
+              >
+                <CircleHelp className="h-4 w-4 text-muted-foreground" />
+                サポートに連絡
+              </Link>
 
               <Link
                 href="/feedback"
