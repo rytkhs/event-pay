@@ -178,7 +178,7 @@ export function OnboardingForm({
 
   return (
     <div className="w-full">
-      <OnboardingIntro hasExistingAccount={hasExistingAccount} />
+      <OnboardingIntro />
 
       {!state.success && error?.userMessage ? (
         <Alert variant="destructive" className="mb-5 sm:mb-6">

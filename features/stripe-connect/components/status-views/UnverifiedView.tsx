@@ -20,7 +20,7 @@ interface UnverifiedViewProps {
 export function UnverifiedView({ refreshUrl }: UnverifiedViewProps) {
   return (
     <div>
-      <OnboardingIntro hasExistingAccount />
+      <OnboardingIntro />
 
       <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3.5 sm:p-4">
         <div className="flex items-start gap-3">
