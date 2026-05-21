@@ -7,8 +7,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const mockPush = jest.fn();
-const defaultCommunityDescription =
-  "本コミュニティでは、サークル・グループの活動やイベント等の企画・運営を行っています。イベント管理プラットフォーム「みんなの集金」を利用して、イベント開催時の参加費や会費の支払い受付を行っています。詳細な内容や料金、支払方法は各イベントの案内で確認できます。";
+const communityNamePlaceholder = "例: 〇〇サークル、〇〇会、〇〇のコミュニティ";
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -47,7 +46,7 @@ describe("CreateCommunityForm", () => {
     jest.clearAllMocks();
   });
 
-  it("name と description を表示する", async () => {
+  it("初回オンボーディング用の name フォームを表示する", async () => {
     const createCommunityAction = jest.fn(async () => ({
       success: true as const,
       data: { communityId: "community-1" },
@@ -65,12 +64,9 @@ describe("CreateCommunityForm", () => {
       />
     );
 
-    expect(screen.getByPlaceholderText("例: ボドゲ会、読書会、テニスサークル")).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText(
-        "例: サークル・グループの活動やイベント等の企画・運営を行っています..."
-      )
-    ).toHaveValue("");
+    expect(screen.getByText("最初のコミュニティを作成")).toBeInTheDocument();
+    expect(screen.getAllByText(/1 \/ 2/).length).toBeGreaterThan(0);
+    expect(screen.getByPlaceholderText(communityNamePlaceholder)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /コミュニティを作成/ })).toBeInTheDocument();
   });
 
@@ -78,7 +74,6 @@ describe("CreateCommunityForm", () => {
     const user = userEvent.setup();
     const createCommunityAction = jest.fn(async (_state, formData: FormData) => {
       expect(formData.get("name")).toBe("");
-      expect(formData.get("description")).toBe("");
 
       return {
         success: false as const,
@@ -135,7 +130,7 @@ describe("CreateCommunityForm", () => {
       />
     );
 
-    await user.type(screen.getByPlaceholderText("例: ボドゲ会、読書会、テニスサークル"), "読書会");
+    await user.type(screen.getByPlaceholderText(communityNamePlaceholder), "読書会");
     await user.click(screen.getByRole("button", { name: /コミュニティを作成/ }));
 
     expect(await screen.findByText("作成できませんでした")).toBeInTheDocument();
@@ -165,7 +160,7 @@ describe("CreateCommunityForm", () => {
       />
     );
 
-    await user.type(screen.getByPlaceholderText("例: ボドゲ会、読書会、テニスサークル"), "映画会");
+    await user.type(screen.getByPlaceholderText(communityNamePlaceholder), "映画会");
     await user.click(screen.getByRole("button", { name: /コミュニティを作成/ }));
 
     await waitFor(() => {
@@ -193,7 +188,7 @@ describe("CreateCommunityForm", () => {
       />
     );
 
-    await user.type(screen.getByPlaceholderText("例: ボドゲ会、読書会、テニスサークル"), "散歩会");
+    await user.type(screen.getByPlaceholderText(communityNamePlaceholder), "散歩会");
     await user.click(screen.getByRole("button", { name: /コミュニティを作成/ }));
 
     expect(await screen.findByRole("button", { name: /作成中/ })).toBeDisabled();

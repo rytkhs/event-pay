@@ -71,7 +71,7 @@ export default async function OnboardingPaymentsPage() {
 
         <div className="flex flex-1 items-center justify-center py-8 sm:py-12">
           <div className="w-full">
-            <div className="mx-auto mb-10 flex max-w-2xl flex-col items-center">
+            <div className="mx-auto flex max-w-2xl flex-col">
               <OnboardingForm
                 communities={representativeCommunityOptions}
                 defaultRepresentativeCommunityId={currentCommunity.id}
@@ -82,7 +82,7 @@ export default async function OnboardingPaymentsPage() {
                   <Button
                     asChild
                     variant="ghost"
-                    className="h-11 w-full text-muted-foreground hover:text-foreground"
+                    className="h-11 w-full rounded-xl text-muted-foreground hover:bg-background hover:text-foreground"
                   >
                     <Link href="/dashboard">今は設定せずにダッシュボードへ</Link>
                   </Button>

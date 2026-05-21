@@ -5,7 +5,7 @@ import { useActionState, useCallback, useEffect, useState, useTransition } from 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { ArrowLeft, ArrowRight, CalendarDays, Link2, Loader2, LogOut, Wallet } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, LogOut } from "lucide-react";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
@@ -41,29 +41,6 @@ const initialState: CreateCommunityFormState = {
     userMessage: "",
   },
 };
-
-const features = [
-  {
-    icon: CalendarDays,
-    title: "イベント管理",
-    description: "開催予定・終了イベントを一覧で把握",
-  },
-  // {
-  //   icon: Users,
-  //   title: "参加者管理",
-  //   description: "招待リンクで手軽に出欠確認",
-  // },
-  {
-    icon: Wallet,
-    title: "オンライン集金",
-    description: "Stripeで安全に参加費を受け取る",
-  },
-  {
-    icon: Link2,
-    title: "出欠確認",
-    description: "参加者がリンク1つで出欠回答完了",
-  },
-];
 
 const LOGOUT_ERROR_MESSAGE = "ログアウトに失敗しました。再度お試しください。";
 
@@ -230,55 +207,33 @@ export function CreateCommunityForm({
     );
   }
 
-  // 新規ユーザー向け：2カラムレイアウト（モバイル時はブランド部分をミニバージョンとして上部に表示）
+  // 新規ユーザー向け：初回オンボーディングの1ステップ目として表示
   return (
-    <div className="flex min-h-screen flex-col bg-background lg:grid lg:grid-cols-[5fr_7fr]">
-      {/* ── 左/上パネル: ブランド & PR ───────────────────── */}
-      <div
-        className="relative flex shrink-0 flex-col justify-center overflow-hidden px-6 py-8 sm:px-10 lg:justify-between lg:px-12 lg:py-14"
-        style={{
-          background:
-            "linear-gradient(150deg, hsl(186,67%,36%) 0%, hsl(186,67%,28%) 55%, hsl(210,70%,22%) 100%)",
-        }}
-      >
-        {/* 背景装飾 */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div
-            className="absolute -right-24 -top-24 h-80 w-80 rounded-full opacity-[0.12]"
-            style={{ background: "hsl(186,67%,75%)" }}
-          />
-          <div
-            className="absolute -bottom-16 -left-16 h-64 w-64 rounded-full opacity-[0.10]"
-            style={{ background: "hsl(210,70%,65%)" }}
-          />
-          <svg
-            className="absolute inset-0 h-full w-full opacity-[0.035]"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-          >
-            <defs>
-              <pattern id="cc-grid" width="36" height="36" patternUnits="userSpaceOnUse">
-                <path d="M 36 0 L 0 0 0 36" fill="none" stroke="white" strokeWidth="1" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#cc-grid)" />
-          </svg>
-        </div>
+    <div className="min-h-screen bg-[linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--muted)/0.42)_52%,hsl(var(--background))_100%)]">
+      <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-5 py-6 sm:px-8 lg:px-10">
+        <header className="flex items-start justify-between gap-4">
+          <div className="pt-1">
+            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground/80">
+              みんなの集金
+            </span>
+          </div>
 
-        {/* ヘッダーエリア (ロゴ & ログアウト) */}
-        <div className="relative z-10 flex items-center justify-between lg:block">
-          <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/80 lg:text-white/50">
-            みんなの集金
-          </span>
-          {/* モバイル用ログアウトラベル */}
-          <div className="lg:hidden">
+          <div className="flex items-start gap-3">
+            <div className="hidden items-center gap-3 pt-1 sm:flex">
+              <span className="text-[11px] font-medium text-muted-foreground/60">
+                セットアップ
+              </span>
+              <span className="rounded-full border border-border/60 bg-background/80 px-3 py-1 text-[11px] font-bold text-foreground/80 shadow-sm backdrop-blur-sm">
+                1 / 2
+              </span>
+            </div>
             <form action={handleLogout}>
               <Button
                 variant="ghost"
                 size="sm"
                 type="submit"
                 disabled={isLogoutPending}
-                className="h-8 rounded-lg px-3 text-[11px] font-bold text-white/80 transition-all hover:bg-white/10 hover:text-white"
+                className="h-9 rounded-xl px-3 text-[11px] font-bold text-muted-foreground transition-all hover:bg-background hover:text-foreground hover:shadow-sm"
               >
                 {isLogoutPending ? (
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -288,118 +243,51 @@ export function CreateCommunityForm({
                 ログアウト
               </Button>
               {logoutError && (
-                <p className="mt-1 px-1 text-right text-[10px] font-medium text-destructive-foreground animate-in fade-in slide-in-from-top-1">
+                <p className="mt-1 max-w-36 text-right text-[10px] font-medium text-destructive animate-in fade-in slide-in-from-top-1">
                   {logoutError}
                 </p>
               )}
             </form>
           </div>
-        </div>
+        </header>
 
-        {/* lg用ログアウトラベル */}
-        <div className="absolute right-12 top-12 z-20 hidden lg:block">
-          <form action={handleLogout}>
-            <Button
-              variant="ghost"
-              size="sm"
-              type="submit"
-              disabled={isLogoutPending}
-              className="h-10 rounded-xl px-4 text-[11px] font-bold text-white/50 transition-all hover:bg-white/10 hover:text-white"
-            >
-              {isLogoutPending ? (
-                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <LogOut className="mr-2 h-3.5 w-3.5" />
-              )}
-              ログアウト
-            </Button>
-            {logoutError && (
-              <p className="mt-1 px-1 text-right text-[10px] font-medium text-destructive-foreground animate-in fade-in slide-in-from-top-1">
-                {logoutError}
+        <main className="flex flex-1 items-center justify-center py-8 sm:py-12">
+          <div className="w-full max-w-md">
+            <div className="mb-8 space-y-3 text-center sm:mb-10">
+              <div className="mx-auto inline-flex rounded-full border border-border/60 bg-background/80 px-3 py-1 text-[11px] font-bold text-foreground/80 shadow-sm backdrop-blur-sm sm:hidden">
+                セットアップ 1 / 2
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                最初のコミュニティを作成
+              </h1>
+              <p className="mx-auto max-w-sm text-sm leading-6 text-muted-foreground">
+                イベントと集金を管理する単位です。名前はあとから変更できます。
               </p>
-            )}
-          </form>
-        </div>
+            </div>
 
-        {/* メインコピー */}
-        <div className="relative z-10 mt-8 mb-2 lg:my-10">
-          <h2 className="text-2xl font-bold leading-snug tracking-tight text-white sm:text-3xl xl:text-4xl">
-            出欠確認から集金まで、
-            <br className="hidden lg:block" />
-            リンク1本でまとめて管理。
-          </h2>
-          <p className="mt-3 text-[13px] leading-relaxed text-white/80 lg:mt-4 lg:text-sm lg:text-white/65">
-            イベント・集金はコミュニティやグループごとに束ねて管理することができます。
-            <br />
-            まずは最初のコミュニティを作成しましょう。
-          </p>
+            <div className="rounded-[1.75rem] border border-border/60 bg-background/85 p-6 shadow-[0_24px_70px_-44px_hsl(var(--foreground)/0.45)] backdrop-blur-sm sm:p-8">
+              {!state.success && error?.userMessage ? (
+                <Alert
+                  variant="destructive"
+                  className="mb-8 rounded-2xl border-destructive/20 bg-destructive/5"
+                >
+                  <AlertTitle className="text-sm font-bold">作成できませんでした</AlertTitle>
+                  <AlertDescription className="text-xs opacity-90">
+                    {error.userMessage}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
 
-          {/* 機能一覧 (lg以上のみ表示) */}
-          <div className="mt-12 hidden space-y-6 lg:block">
-            {features.map((f) => {
-              const Icon = f.icon;
-              return (
-                <div key={f.title} className="group flex items-start gap-5">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white shadow-lg backdrop-blur-md transition-transform group-hover:scale-110">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="mb-1.5 text-sm font-bold text-white">{f.title}</h3>
-                    <p className="text-[13px] leading-snug text-white/50">{f.description}</p>
-                  </div>
-                </div>
-              );
-            })}
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {formElement}
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-dashed border-border/70 bg-muted/30 px-4 py-3 text-center text-xs leading-5 text-muted-foreground">
+              次にオンライン集金の設定へ進みます。設定はスキップしてあとから再開できます。
+            </div>
           </div>
-        </div>
-
-        {/* フッター (lg以上のみ表示) */}
-        <div className="relative z-10 hidden lg:block">
-          <div className="mb-6 h-px w-16 bg-white/20" />
-          <p className="text-[11px] font-medium uppercase tracking-wide text-white/40">
-            Start creating your first community today
-          </p>
-        </div>
-      </div>
-
-      {/* ── 右/下パネル: フォーム ───────────────────────── */}
-      <div className="relative flex flex-1 items-center justify-center px-6 py-12 sm:px-10 lg:overflow-y-auto lg:py-16">
-        {/* ステップインジケーター */}
-        <div className="absolute right-6 top-6 flex items-center gap-3 sm:right-10 sm:top-10 lg:right-12 lg:top-12">
-          <span className="hidden text-[11px] font-medium text-muted-foreground/60 sm:block">
-            セットアップ
-          </span>
-          <span className="rounded-full border border-border/60 bg-background/80 px-3 py-1 text-[11px] font-bold text-foreground/80 shadow-sm backdrop-blur-sm">
-            1 / 2
-          </span>
-        </div>
-
-        <div className="w-full max-w-sm">
-          {/* ヘッダー */}
-          <div className="mb-12">
-            <p className="mt-4 text-xl font-semibold">
-              まずは最初のコミュニティを作成してください。
-            </p>
-          </div>
-
-          {/* エラー */}
-          {!state.success && error?.userMessage ? (
-            <Alert
-              variant="destructive"
-              className="mb-8 rounded-2xl border-destructive/20 bg-destructive/5"
-            >
-              <AlertTitle className="text-sm font-bold">エラーが発生しました</AlertTitle>
-              <AlertDescription className="text-xs opacity-90">
-                {error.userMessage}
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          {/* フォーム */}
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {formElement}
-          </div>
-        </div>
+        </main>
       </div>
     </div>
   );
