@@ -7,7 +7,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const mockPush = jest.fn();
-const communityNamePlaceholder = "例: 〇〇サークル、〇〇会、〇〇のコミュニティ";
+const communityNamePlaceholder = "コミュニティ名を入力";
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({
