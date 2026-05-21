@@ -12,7 +12,6 @@ export * from "./components/EventList";
 export * from "./components/EventFilters";
 export * from "./components/PaymentStatusAlert";
 export * from "./components/EventListWithFilters";
-export * from "./components/EventLoading";
 export * from "./components/UnifiedRestrictionNoticeV2";
 export * from "./components/FeeCalculatorDisplay";
 
