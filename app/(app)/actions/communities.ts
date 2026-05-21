@@ -49,6 +49,9 @@ export type DeleteCommunityActionResult = ActionResult<{
   nextCurrentCommunityId: string | null;
 }>;
 
+const MAX_OWNED_COMMUNITIES = 5;
+const COMMUNITY_CREATE_LIMIT_MESSAGE = "作成できるコミュニティは5件までです";
+
 function getStringFormValue(formData: FormData, key: string): string | undefined {
   const value = formData.get(key);
   return typeof value === "string" ? value : undefined;
@@ -118,7 +121,19 @@ export async function createCommunityAction(
       });
     }
 
-    const isInitialCommunity = (ownedCommunitiesResult.data ?? []).length === 0;
+    const ownedCommunities = ownedCommunitiesResult.data ?? [];
+    if (ownedCommunities.length >= MAX_OWNED_COMMUNITIES) {
+      return fail("RESOURCE_CONFLICT", {
+        details: {
+          currentCount: ownedCommunities.length,
+          maxCount: MAX_OWNED_COMMUNITIES,
+        },
+        retryable: false,
+        userMessage: COMMUNITY_CREATE_LIMIT_MESSAGE,
+      });
+    }
+
+    const isInitialCommunity = ownedCommunities.length === 0;
     const result = await createCommunity(supabase, user.id, parsedInput.data);
 
     if (!result.success || !result.data) {

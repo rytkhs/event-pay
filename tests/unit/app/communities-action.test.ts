@@ -245,6 +245,45 @@ describe("app/(app)/actions/communities", () => {
     expect(mockRevalidatePath).not.toHaveBeenCalled();
   });
 
+  it("所有コミュニティが5件ある場合は作成せず RESOURCE_CONFLICT を返す", async () => {
+    const supabase = { from: jest.fn() };
+    mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
+    mockCreateServerActionSupabaseClient.mockResolvedValue(supabase);
+    mockListOwnedCommunities.mockResolvedValue(
+      okResult(
+        Array.from({ length: 5 }, (_, index) => ({
+          id: `community-${index + 1}`,
+          name: `コミュニティ${index + 1}`,
+          slug: `community-${index + 1}`,
+          createdAt: `2026-03-0${index + 1}T00:00:00.000Z`,
+        }))
+      )
+    );
+
+    const { createCommunityAction } = await loadCommunitiesActionModule();
+    const formData = new FormData();
+    formData.set("name", "追加コミュニティ");
+
+    await expect(createCommunityAction(formData)).resolves.toEqual(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: "RESOURCE_CONFLICT",
+          retryable: false,
+          userMessage: "作成できるコミュニティは5件までです",
+          details: {
+            currentCount: 5,
+            maxCount: 5,
+          },
+        }),
+      })
+    );
+
+    expect(mockCreateCommunity).not.toHaveBeenCalled();
+    expect(mockSetCurrentCommunityCookie).not.toHaveBeenCalled();
+    expect(mockRevalidatePath).not.toHaveBeenCalled();
+  });
+
   it("service failure は ActionResult の失敗へ投影する", async () => {
     const supabase = { from: jest.fn() };
     mockGetCurrentUserForServerAction.mockResolvedValue({ id: "user-1" });
