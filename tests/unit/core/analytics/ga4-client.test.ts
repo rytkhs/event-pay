@@ -235,12 +235,87 @@ describe("GA4ClientService", () => {
     });
   });
 
+  describe("getSessionId", () => {
+    describe("正常系", () => {
+      test("有効なSession IDを取得できる", async () => {
+        const validSessionId = 1699999999;
+
+        (global as any).window.gtag = jest.fn((command, targetId, config, callback) => {
+          if (command === "get" && config === "session_id" && typeof callback === "function") {
+            callback(validSessionId);
+          }
+        });
+
+        const result = await service.getSessionId();
+
+        expect(result).toBe(validSessionId);
+        expect((global as any).window.gtag).toHaveBeenCalledWith(
+          "get",
+          "G-TEST123",
+          "session_id",
+          expect.any(Function)
+        );
+      });
+
+      test("文字列のSession IDを数値に変換できる", async () => {
+        (global as any).window.gtag = jest.fn((command, targetId, config, callback) => {
+          if (command === "get" && config === "session_id" && typeof callback === "function") {
+            callback("1699999999");
+          }
+        });
+
+        const result = await service.getSessionId();
+
+        expect(result).toBe(1699999999);
+      });
+    });
+
+    describe("エラーハンドリング", () => {
+      test("無効なSession IDの場合はnullを返す", async () => {
+        (global as any).window.gtag = jest.fn((command, targetId, config, callback) => {
+          if (command === "get" && config === "session_id" && typeof callback === "function") {
+            callback("invalid-session-id");
+          }
+        });
+
+        const result = await service.getSessionId();
+
+        expect(result).toBeNull();
+      });
+
+      test("タイムアウト時にnullを返す", async () => {
+        mockGtag.mockImplementation(() => {
+          // コールバックを呼ばない
+        });
+
+        const result = await service.getSessionId(100);
+
+        expect(result).toBeNull();
+      });
+
+      test("GA4が無効な場合はnullを返す", async () => {
+        jest.spyOn(configModule, "getGA4Config").mockReturnValue({
+          enabled: false,
+          measurementId: "G-TEST123",
+          apiSecret: "test-secret",
+          debug: false,
+        });
+        service = new GA4ClientService();
+
+        const result = await service.getSessionId();
+
+        expect(result).toBeNull();
+        expect(mockGtag).not.toHaveBeenCalled();
+      });
+    });
+  });
+
   describe("sendEventWithCallback", () => {
     describe("正常系", () => {
       test("イベント送信後にコールバックが実行される", (done) => {
         const event = { name: "test_event", params: { value: 1 } } as any;
 
-        sendGAEvent.mockImplementation((name: string, params: any) => {
+        sendGAEvent.mockImplementation((command: string, name: string, params: any) => {
           // event_callbackを即座に実行
           if (params.event_callback) {
             params.event_callback();
@@ -249,6 +324,7 @@ describe("GA4ClientService", () => {
 
         service.sendEventWithCallback(event, () => {
           expect(sendGAEvent).toHaveBeenCalledWith(
+            "event",
             "test_event",
             expect.objectContaining({
               value: 1,
@@ -262,7 +338,7 @@ describe("GA4ClientService", () => {
       test("カスタムタイムアウトを指定できる", (done) => {
         const event = { name: "test_event", params: {} } as any;
 
-        sendGAEvent.mockImplementation((name: string, params: any) => {
+        sendGAEvent.mockImplementation((command: string, name: string, params: any) => {
           if (params.event_callback) {
             params.event_callback();
           }
@@ -288,7 +364,7 @@ describe("GA4ClientService", () => {
         const event = { name: "test_event", params: {} } as any;
         let callbackCount = 0;
 
-        sendGAEvent.mockImplementation((name: string, params: any) => {
+        sendGAEvent.mockImplementation((command: string, name: string, params: any) => {
           // 少し遅延してコールバックを実行（タイムアウトと競合）
           setTimeout(() => {
             if (params.event_callback) {
@@ -350,7 +426,7 @@ describe("GA4ClientService", () => {
 
       service.sendEvent(event);
 
-      expect(sendGAEvent).toHaveBeenCalledWith("test_event", { value: 1 });
+      expect(sendGAEvent).toHaveBeenCalledWith("event", "test_event", { value: 1 });
     });
 
     test("GA4が無効な場合は送信しない", () => {

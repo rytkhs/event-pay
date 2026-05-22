@@ -140,6 +140,7 @@ export class CheckoutSessionHandler {
         attendanceId: payment.attendance_id,
         sessionId,
         gaClientId,
+        gaSessionId: metadata?.["ga_session_id"],
         amount: payment.amount,
       });
 

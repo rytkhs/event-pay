@@ -69,7 +69,7 @@ export class GA4ClientService {
     }
 
     try {
-      sendGAEvent(event.name, event.params);
+      sendGAEvent("event", event.name, event.params);
 
       if (this.config.debug) {
         this.logger.debug("[GA4] Event sent", {
@@ -152,16 +152,17 @@ export class GA4ClientService {
       const checkGtag = () => {
         if (typeof window !== "undefined" && window.gtag) {
           try {
-            window.gtag("get", this.config.measurementId, "client_id", (clientId: string) => {
+            window.gtag("get", this.config.measurementId, "client_id", (clientId: unknown) => {
+              const rawClientId = typeof clientId === "string" ? clientId : String(clientId ?? "");
               // プレフィックス（GA1.1.など）を除去してサニタイズ
-              const sanitizedClientId = GA4Validator.sanitizeClientId(clientId);
+              const sanitizedClientId = GA4Validator.sanitizeClientId(rawClientId);
 
               // Client ID検証
               const validation = GA4Validator.validateClientId(sanitizedClientId);
               if (!validation.isValid) {
                 if (this.config.debug) {
                   this.logger.debug("[GA4] Invalid client ID received", {
-                    original_client_id: clientId,
+                    original_client_id: rawClientId,
                     sanitized_client_id: sanitizedClientId,
                     errors: validation.errors,
                     outcome: "failure",
@@ -173,7 +174,7 @@ export class GA4ClientService {
 
               if (this.config.debug) {
                 this.logger.debug("[GA4] Client ID retrieved", {
-                  original_client_id: clientId,
+                  original_client_id: rawClientId,
                   sanitized_client_id: sanitizedClientId,
                   outcome: "success",
                 });
@@ -199,6 +200,99 @@ export class GA4ClientService {
       // 即時チェック
       if (!checkGtag()) {
         // 利用できない場合はポーリング開始 (100ms間隔)
+        intervalId = setInterval(() => {
+          if (checkGtag()) {
+            if (intervalId) clearInterval(intervalId);
+          }
+        }, 100);
+      }
+    });
+  }
+
+  /**
+   * GA4 Session IDを取得する（Measurement Protocol連携用）
+   *
+   * タイムアウトまたは検証失敗時はnullを返します。
+   *
+   * @param timeoutMs - タイムアウト時間（ミリ秒）、デフォルトは1000ms
+   * @returns Promise<number | null> Session ID、取得できない場合はnull
+   */
+  async getSessionId(timeoutMs: number = 1000): Promise<number | null> {
+    if (!this.config.enabled) {
+      if (this.config.debug) {
+        this.logger.debug("[GA4] Session ID request skipped (disabled)", {
+          outcome: "success",
+        });
+      }
+      return null;
+    }
+
+    return new Promise((resolve) => {
+      let resolved = false;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      let intervalId: ReturnType<typeof setInterval> | null = null;
+
+      const safeResolve = (value: number | null) => {
+        if (!resolved) {
+          resolved = true;
+          if (timeoutId) clearTimeout(timeoutId);
+          if (intervalId) clearInterval(intervalId);
+          resolve(value);
+        }
+      };
+
+      timeoutId = setTimeout(() => {
+        if (this.config.debug) {
+          this.logger.debug("[GA4] Session ID retrieval timed out", {
+            outcome: "failure",
+          });
+        }
+        safeResolve(null);
+      }, timeoutMs);
+
+      const checkGtag = () => {
+        if (typeof window !== "undefined" && window.gtag) {
+          try {
+            window.gtag("get", this.config.measurementId, "session_id", (sessionId: unknown) => {
+              const normalizedSessionId =
+                typeof sessionId === "number" ? sessionId : Number(sessionId);
+
+              if (!Number.isSafeInteger(normalizedSessionId) || normalizedSessionId <= 0) {
+                if (this.config.debug) {
+                  this.logger.debug("[GA4] Invalid session ID received", {
+                    session_id: sessionId,
+                    outcome: "failure",
+                  });
+                }
+                safeResolve(null);
+                return;
+              }
+
+              if (this.config.debug) {
+                this.logger.debug("[GA4] Session ID retrieved", {
+                  session_id: normalizedSessionId,
+                  outcome: "success",
+                });
+              }
+              safeResolve(normalizedSessionId);
+            });
+          } catch (error) {
+            handleClientError("GA4_TRACKING_FAILED", {
+              category: "system",
+              action: "ga4_get_session_id",
+              actorType: "user",
+              additionalData: {
+                error_message: error instanceof Error ? error.message : String(error),
+              },
+            });
+            safeResolve(null);
+          }
+          return true;
+        }
+        return false;
+      };
+
+      if (!checkGtag()) {
         intervalId = setInterval(() => {
           if (checkGtag()) {
             if (intervalId) clearInterval(intervalId);
@@ -288,7 +382,7 @@ export class GA4ClientService {
         },
       };
 
-      sendGAEvent(eventWithCallback.name, eventWithCallback.params);
+      sendGAEvent("event", eventWithCallback.name, eventWithCallback.params);
 
       if (this.config.debug) {
         this.logger.debug("[GA4] Event with callback sent", {
@@ -360,7 +454,7 @@ declare global {
       command: "get" | "config" | "event",
       targetId: string,
       config?: string | object,
-      callback?: (value: string) => void
+      callback?: (value: unknown) => void
     ) => void;
   }
 }

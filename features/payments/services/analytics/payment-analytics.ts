@@ -26,6 +26,8 @@ export interface TrackPurchaseCompletionParams {
   eventTitle: string;
   /** 金額（円） */
   amount: number;
+  /** GA4 Session ID */
+  sessionId?: number;
 }
 
 /**
@@ -41,7 +43,7 @@ export class PaymentAnalyticsService {
    * @param params - 購入完了追跡のパラメータ
    */
   async trackPurchaseCompletion(params: TrackPurchaseCompletionParams): Promise<void> {
-    const { clientId, transactionId, eventId, eventTitle, amount } = params;
+    const { clientId, transactionId, eventId, eventTitle, amount, sessionId } = params;
 
     // パラメータのバリデーション
     if (!clientId || !transactionId || !eventId || !eventTitle) {
@@ -88,7 +90,13 @@ export class PaymentAnalyticsService {
 
     try {
       // GA4サーバーサービスを使用してイベントを送信
-      await ga4Server.sendEvent({ name: "purchase", params: purchaseParams }, clientId);
+      await ga4Server.sendEvent(
+        { name: "purchase", params: purchaseParams },
+        clientId,
+        undefined,
+        sessionId,
+        sessionId ? 1 : undefined
+      );
 
       logger.info("[Payment Analytics] Purchase event tracked successfully", {
         category: "payment",
