@@ -118,11 +118,10 @@ describe("GA4 Analytics - 統合テスト", () => {
       const clientId = await ga4Client.getClientId();
       expect(clientId).toBe(mockClientId);
 
-      if (clientId) {
-        await ga4Server.sendEvent(testEvent, clientId);
-      }
+      const result = clientId ? await ga4Server.sendEvent(testEvent, clientId) : null;
 
       // Assert
+      expect(result).toEqual({ status: "sent" });
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining("measurement_id=G-TEST123456"),
@@ -147,6 +146,34 @@ describe("GA4 Analytics - 統合テスト", () => {
             },
           },
         ],
+      });
+    });
+
+    test("有効なClient IDがある場合、User IDを同梱できる", async () => {
+      // Arrange
+      const testEvent: GA4Event = {
+        name: "login",
+        params: {
+          method: "password",
+        },
+      };
+
+      // Act
+      const result = await ga4Server.sendEvent(
+        testEvent,
+        "1234567890.0987654321",
+        "user-123"
+      );
+
+      // Assert
+      expect(result).toEqual({ status: "sent" });
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      const callArgs = mockFetch.mock.calls[0];
+      const body = JSON.parse(callArgs[1]?.body as string);
+      expect(body).toMatchObject({
+        client_id: "1234567890.0987654321",
+        user_id: "user-123",
       });
     });
 
@@ -179,9 +206,10 @@ describe("GA4 Analytics - 統合テスト", () => {
       };
 
       // Act
-      await ga4Server.sendEvent(testEvent, invalidClientId);
+      const result = await ga4Server.sendEvent(testEvent, invalidClientId);
 
       // Assert - 無効なClient IDのため、fetchは呼ばれない
+      expect(result).toEqual({ status: "skipped", reason: "invalid_or_missing_client_id" });
       expect(mockFetch).not.toHaveBeenCalled();
     });
   });
@@ -216,9 +244,10 @@ describe("GA4 Analytics - 統合テスト", () => {
       });
 
       // Act
-      await ga4Server.sendEvent(testEvent, "1234567890.0987654321");
+      const result = await ga4Server.sendEvent(testEvent, "1234567890.0987654321");
 
       // Assert - 3回呼ばれる（2回失敗 + 1回成功）
+      expect(result).toEqual({ status: "sent" });
       expect(mockFetch).toHaveBeenCalledTimes(3);
       expect(callCount).toBe(3);
     });
@@ -238,13 +267,14 @@ describe("GA4 Analytics - 統合テスト", () => {
         },
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { logger } = require("@core/logging/app-logger");
-
       // Act
-      await ga4Server.sendEvent(testEvent, "1234567890.0987654321");
+      const result = await ga4Server.sendEvent(testEvent, "1234567890.0987654321");
 
       // Assert - 最大リトライ回数（3回）呼ばれる
+      expect(result).toMatchObject({
+        status: "failed",
+        code: "GA4_RETRY_EXHAUSTED",
+      });
       expect(mockFetch).toHaveBeenCalledTimes(3);
       // handleServerError 経由でエラーが記録される（新形式）
       // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -274,9 +304,13 @@ describe("GA4 Analytics - 統合テスト", () => {
       });
 
       // Act
-      await ga4Server.sendEvent(testEvent, "1234567890.0987654321");
+      const result = await ga4Server.sendEvent(testEvent, "1234567890.0987654321");
 
       // Assert - 1回のみ呼ばれる（リトライしない）
+      expect(result).toMatchObject({
+        status: "failed",
+        code: "GA4_API_ERROR",
+      });
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });
@@ -528,18 +562,19 @@ describe("GA4 Analytics - 統合テスト", () => {
       const { logger } = require("@core/logging/app-logger");
 
       // Act
-      await ga4Server.sendEvent(testEvent);
+      const result = await ga4Server.sendEvent(testEvent);
 
       // Assert
+      expect(result).toEqual({ status: "skipped", reason: "invalid_or_missing_client_id" });
       expect(mockFetch).not.toHaveBeenCalled();
       // withContextで返されるロガーのwarnを確認
       expect(logger.withContext().warn).toHaveBeenCalledWith(
-        expect.stringContaining("Neither valid client ID nor user ID provided"),
+        expect.stringContaining("No valid client ID provided"),
         expect.any(Object)
       );
     });
 
-    test("User IDのみでイベントを送信できる", async () => {
+    test("User IDのみの場合、送信をスキップする", async () => {
       // Arrange
       const testEvent: GA4Event = asGA4Event({
         name: "test_event",
@@ -551,25 +586,11 @@ describe("GA4 Analytics - 統合テスト", () => {
       const userId = "user123";
 
       // Act
-      await ga4Server.sendEvent(testEvent, undefined, userId);
+      const result = await ga4Server.sendEvent(testEvent, undefined, userId);
 
       // Assert
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-
-      const callArgs = mockFetch.mock.calls[0];
-      const body = JSON.parse(callArgs[1]?.body as string);
-      expect(body).toEqual({
-        user_id: userId,
-        events: [
-          {
-            name: "test_event",
-            params: {
-              test_param: "test_value",
-            },
-          },
-        ],
-      });
-      expect(body).not.toHaveProperty("client_id");
+      expect(result).toEqual({ status: "skipped", reason: "invalid_or_missing_client_id" });
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
     test("全てのイベントが無効な場合、バッチ送信をスキップする", async () => {

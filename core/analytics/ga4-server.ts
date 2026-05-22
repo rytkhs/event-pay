@@ -12,8 +12,24 @@ import { handleServerError } from "@core/utils/error-handler.server";
 
 import { getGA4Config } from "./config";
 import type { GA4Event } from "./event-types";
-import { GA4Error, GA4ErrorCode } from "./ga4-error";
+import { GA4Error, GA4ErrorCode, type GA4ErrorCodeType } from "./ga4-error";
 import { GA4Validator } from "./ga4-validator";
+
+export type GA4SendEventResult =
+  | { status: "sent" }
+  | {
+      status: "skipped";
+      reason:
+        | "disabled"
+        | "missing_api_secret"
+        | "invalid_or_missing_client_id"
+        | "invalid_params";
+    }
+  | {
+      status: "failed";
+      code: GA4ErrorCodeType;
+      error: string;
+    };
 
 /**
  * GA4サーバー側サービスクラス
@@ -63,11 +79,11 @@ export class GA4ServerService {
    *
    * Client IDとイベントパラメータの検証を自動的に実行します。
    * 5xxエラーの場合は自動的にリトライします（最大3回、指数バックオフ）。
-   * Client IDまたはUser IDのいずれかが必須です。
+   * Web streamのMeasurement Protocolでは有効なClient IDが必須です。
    *
    * @param event - 送信するGA4イベント
    * @param clientId - GA4 Client ID（オプショナル、_ga Cookieから取得した値）
-   * @param userId - ユーザーID（オプショナル、clientIdがない場合のフォールバック）
+   * @param userId - ユーザーID（オプショナル、clientIdが有効な場合のみ同梱）
    * @param sessionId - セッションID（オプショナル、正の整数）
    * @param engagementTimeMsec - エンゲージメント時間（ミリ秒、オプショナル）
    *
@@ -86,10 +102,10 @@ export class GA4ServerService {
    *   '1234567890.0987654321'
    * );
    *
-   * // User IDとセッション情報を使用
+   * // User IDとセッション情報を同梱
    * await ga4Server.sendEvent(
    *   event,
-   *   undefined,
+   *   '1234567890.0987654321',
    *   'user123',
    *   1234567890,
    *   5000
@@ -102,14 +118,23 @@ export class GA4ServerService {
     userId?: string,
     sessionId?: number,
     engagementTimeMsec?: number
-  ): Promise<void> {
-    if (!this.config.enabled || !this.config.apiSecret) {
+  ): Promise<GA4SendEventResult> {
+    if (!this.config.enabled) {
       this.logger.debug("[GA4] Server event skipped (disabled or no API secret)", {
         event_name: event.name,
         client_id: clientId,
         user_id: userId,
       });
-      return;
+      return { status: "skipped", reason: "disabled" };
+    }
+
+    if (!this.config.apiSecret) {
+      this.logger.debug("[GA4] Server event skipped (disabled or no API secret)", {
+        event_name: event.name,
+        client_id: clientId,
+        user_id: userId,
+      });
+      return { status: "skipped", reason: "missing_api_secret" };
     }
 
     // Client ID検証（GA4Validator使用）
@@ -128,14 +153,13 @@ export class GA4ServerService {
       }
     }
 
-    // Client IDもUserIdもない場合は送信できない
-    if (!validClientId && !userId) {
-      this.logger.warn("[GA4] Neither valid client ID nor user ID provided", {
+    if (!validClientId) {
+      this.logger.warn("[GA4] No valid client ID provided", {
         client_id: clientId,
         user_id: userId,
         event_name: event.name,
       });
-      return;
+      return { status: "skipped", reason: "invalid_or_missing_client_id" };
     }
 
     // パラメータ検証とサニタイズ（GA4Validator使用）
@@ -158,7 +182,7 @@ export class GA4ServerService {
           : 0,
         errors: paramValidation.errors,
       });
-      return;
+      return { status: "skipped", reason: "invalid_params" };
     }
 
     const url = `${this.MEASUREMENT_PROTOCOL_URL}?measurement_id=${this.config.measurementId}&api_secret=${this.config.apiSecret}`;
@@ -172,15 +196,16 @@ export class GA4ServerService {
       eventParams.engagement_time_msec = engagementTimeMsec;
     }
 
-    // ペイロードを構築（client_id優先、なければuser_id）
+    // ペイロードを構築（Web streamのMPではclient_idが必須）
     const payload: {
-      client_id?: string;
+      client_id: string;
       user_id?: string;
       events: Array<{
         name: string;
         params: Record<string, unknown>;
       }>;
     } = {
+      client_id: validClientId,
       events: [
         {
           name: event.name,
@@ -189,9 +214,7 @@ export class GA4ServerService {
       ],
     };
 
-    if (validClientId) {
-      payload.client_id = validClientId;
-    } else if (userId) {
+    if (userId) {
       payload.user_id = userId;
     }
 
@@ -227,7 +250,11 @@ export class GA4ServerService {
           payload: JSON.stringify(payload),
         });
       }
+      return { status: "sent" };
     } catch (error) {
+      const errorMessage = error instanceof GA4Error ? error.message : String(error);
+      const errorCode = error instanceof GA4Error ? error.code : GA4ErrorCode.API_ERROR;
+
       handleServerError("GA4_TRACKING_FAILED", {
         category: "system",
         action: "ga4_send_event",
@@ -236,8 +263,8 @@ export class GA4ServerService {
           event_name: event.name,
           client_id: validClientId,
           user_id: userId,
-          error: error instanceof GA4Error ? error.message : String(error),
-          error_code: error instanceof GA4Error ? error.code : undefined,
+          error: errorMessage,
+          error_code: errorCode,
         },
       });
 
@@ -248,6 +275,8 @@ export class GA4ServerService {
           payload: JSON.stringify(payload),
         });
       }
+
+      return { status: "failed", code: errorCode, error: errorMessage };
     }
   }
 

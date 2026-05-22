@@ -90,13 +90,30 @@ export class PaymentAnalyticsService {
 
     try {
       // GA4サーバーサービスを使用してイベントを送信
-      await ga4Server.sendEvent(
+      const result = await ga4Server.sendEvent(
         { name: "purchase", params: purchaseParams },
         clientId,
         undefined,
         sessionId,
         sessionId ? 1 : undefined
       );
+
+      if (result.status !== "sent") {
+        logger.warn("[Payment Analytics] Purchase event tracking did not complete", {
+          category: "payment",
+          action: "payment_analytics",
+          actor_type: "system",
+          transaction_id: transactionId,
+          event_id: eventId,
+          amount,
+          outcome: "failure",
+          ga4_status: result.status,
+          ga4_reason: result.status === "skipped" ? result.reason : undefined,
+          ga4_error_code: result.status === "failed" ? result.code : undefined,
+          ga4_error: result.status === "failed" ? result.error : undefined,
+        });
+        return;
+      }
 
       logger.info("[Payment Analytics] Purchase event tracked successfully", {
         category: "payment",
