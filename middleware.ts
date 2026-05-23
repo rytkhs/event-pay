@@ -6,6 +6,7 @@ import {
   getMaintenancePageHTML,
 } from "@core/maintenance/maintenance-page";
 import { buildCsp } from "@core/security/csp";
+import { isUnauthenticatedAuthError } from "@core/supabase/auth-guards";
 import { createMiddlewareSupabaseClient } from "@core/supabase/middleware-client";
 
 const AFTER_LOGIN_REDIRECT_PATH = "/dashboard";
@@ -239,6 +240,39 @@ export async function middleware(request: NextRequest) {
 
   // 11. ログイン済みが認証ページへ来たらダッシュボードへ
   if (isAuth) {
+    let hasCurrentUser = false;
+    const signOutStaleSession = async () => {
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // stale cookie cleanup is best-effort here; the auth page remains reachable.
+      }
+    };
+
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        hasCurrentUser = true;
+      } else if (!userError || isUnauthenticatedAuthError(userError)) {
+        await signOutStaleSession();
+      }
+    } catch (error) {
+      if (isUnauthenticatedAuthError(error)) {
+        await signOutStaleSession();
+      }
+    } finally {
+      response = getResponse();
+      applyCommonHeaders(response, { requestId, nonce, isDemo, csp, reportUrl });
+    }
+
+    if (!hasCurrentUser) {
+      return response;
+    }
+
     const dashboardUrl = new URL(AFTER_LOGIN_REDIRECT_PATH, request.url);
     const redirectResponse = NextResponse.redirect(dashboardUrl);
 
