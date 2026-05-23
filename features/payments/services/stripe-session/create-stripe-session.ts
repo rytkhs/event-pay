@@ -117,7 +117,8 @@ export async function createStripeSession(
       successUrl: params.successUrl,
       cancelUrl: params.cancelUrl,
       actorId: params.actorId,
-      gaClientId: params.gaClientId, // GA4 Client IDを渡す
+      ...(params.gaClientId ? { gaClientId: params.gaClientId } : {}),
+      ...(params.gaSessionId ? { gaSessionId: params.gaSessionId } : {}),
       metadata: {
         payment_id: targetPaymentId,
         attendance_id: params.attendanceId,

@@ -115,14 +115,18 @@ export function GuestPageClient({
       };
 
       // GA4 Client IDを取得
-      const gaClientId = await ga4Client.getClientId();
+      const [gaClientId, gaSessionId] = await Promise.all([
+        ga4Client.getClientId(),
+        ga4Client.getSessionId(),
+      ]);
 
       // 2. Server Actionを開始 (非同期)
       const sessionCreationPromise = createGuestStripeSessionAction({
         guestToken: attendance.guest_token,
         successUrl: buildRedirectUrl("success"),
         cancelUrl: buildRedirectUrl("canceled"),
-        gaClientId: gaClientId ?? undefined,
+        ...(gaClientId ? { gaClientId } : {}),
+        ...(gaSessionId ? { gaSessionId } : {}),
       });
 
       // 3. GA4イベント送信 (Fire and Forget)

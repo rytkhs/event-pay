@@ -89,7 +89,7 @@ export async function createGuestStripeSessionAction(
       userMessage: "入力データが無効です。",
     });
   }
-  const { guestToken, successUrl, cancelUrl, gaClientId } = parsed.data;
+  const { guestToken, successUrl, cancelUrl, gaClientId, gaSessionId } = parsed.data;
 
   // 2. guestToken 検証 & 参加データ取得
   const tokenResult = await validateGuestToken(guestToken);
@@ -208,7 +208,8 @@ export async function createGuestStripeSessionAction(
       successUrl,
       cancelUrl,
       destinationCharges: destinationChargesConfig,
-      gaClientId, // GA4 Client IDを渡す
+      ...(gaClientId ? { gaClientId } : {}),
+      ...(gaSessionId ? { gaSessionId } : {}),
     });
 
     return ok({

@@ -229,31 +229,17 @@ console.log('エラー:', result.errors);
 
 ### エラーハンドリング
 
-#### GA4Errorの使用
+#### 送信結果の使用
 
 ```typescript
-import { GA4Error, GA4ErrorCode } from '@core/analytics';
+const result = await ga4Server.sendEvent(event, invalidClientId);
 
-try {
-  await ga4Server.sendEvent(event, invalidClientId);
-} catch (error) {
-  if (error instanceof GA4Error) {
-    console.error('GA4エラー:', error.code);
-    console.error('メッセージ:', error.message);
-    console.error('コンテキスト:', error.context);
+if (result.status === "skipped") {
+  console.warn("GA4送信スキップ:", result.reason);
+}
 
-    switch (error.code) {
-      case GA4ErrorCode.INVALID_CLIENT_ID:
-        // Client ID検証エラーの処理
-        break;
-      case GA4ErrorCode.RETRY_EXHAUSTED:
-        // リトライ失敗の処理
-        break;
-      case GA4ErrorCode.API_ERROR:
-        // APIエラーの処理
-        break;
-    }
-  }
+if (result.status === "failed") {
+  console.error("GA4送信失敗:", result.code, result.error);
 }
 ```
 
@@ -284,14 +270,14 @@ NEXT_PUBLIC_GA4_DEBUG=true
 [GA4] Event sent: purchase
 [GA4] Retrying after error (attempt: 1, delay: 1234ms)
 [GA4] Truncated parameter description from 150 to 100 characters
-[GA4] Batch sent successfully (batch_index: 0, event_count: 25)
+[GA4] Batch accepted by endpoint (batch_index: 0, event_count: 25)
 ```
 
 ## マイグレーションガイド
 
 ### 既存コードからの移行
 
-既存のGA4実装からの移行は段階的に行えます。新しいAPIは後方互換性を維持しているため、既存のコードは引き続き動作します。
+既存のGA4実装からの移行は段階的に行えます。`sendEvent` の戻り値を確認することで、送信・スキップ・失敗を判定できます。
 
 #### Phase 1: タイムアウト処理の追加
 
@@ -313,17 +299,10 @@ try {
   console.error('Error:', error);
 }
 
-// 新コード（構造化エラー）
-try {
-  await ga4Server.sendEvent(event, clientId);
-} catch (error) {
-  if (error instanceof GA4Error) {
-    logger.error('GA4 error', {
-      code: error.code,
-      message: error.message,
-      context: error.context,
-    });
-  }
+// 新コード（結果型）
+const result = await ga4Server.sendEvent(event, clientId);
+if (result.status !== "sent") {
+  logger.warn("GA4 event was not sent", result);
 }
 ```
 
@@ -362,7 +341,8 @@ await ga4Server.sendEvents(events, clientId);
 
 ### 破壊的変更
 
-このアップデートには破壊的変更はありません。すべての既存APIは引き続き動作します。
+- `sendEvent` は `Promise<void>` ではなく `Promise<GA4SendEventResult>` を返します。
+- Web streamのMeasurement Protocolに合わせ、Client IDがないイベントは送信されません。User IDはClient IDの代替ではなく補助フィールドとして扱います。
 
 ### 推奨される移行手順
 
@@ -462,15 +442,16 @@ Client IDを取得します。`window.gtag` が利用可能になるまでポー
 
 ### GA4ServerService
 
-#### `sendEvent(event: GA4Event, clientId?: string, userId?: string, sessionId?: number, engagementTimeMsec?: number): Promise<void>`
+#### `sendEvent(event: GA4Event, clientId?: string, userId?: string, sessionId?: number, engagementTimeMsec?: number): Promise<GA4SendEventResult>`
 
 サーバー側でイベントを送信します。
 
 - **event**: 送信するイベント
-- **clientId**: Client ID（オプション）
-- **userId**: User ID（オプション）
+- **clientId**: Client ID（Web streamのMeasurement Protocolでは必須）
+- **userId**: User ID（オプション、有効なClient IDがある場合のみ同梱）
 - **sessionId**: Session ID（オプション）
 - **engagementTimeMsec**: エンゲージメント時間（オプション）
+- **戻り値**: `{ status: "sent" }`、`{ status: "skipped", reason }`、または `{ status: "failed", code, error }`
 
 #### `sendEvents(events: GA4Event[], clientId: string): Promise<void>`
 
@@ -488,12 +469,13 @@ Client IDを検証します。
 - **clientId**: 検証するClient ID
 - **戻り値**: 検証結果
 
-#### `static validateAndSanitizeParams(params: Record<string, unknown>, debug?: boolean): ValidationResult`
+#### `static validateAndSanitizeParams(params: Record<string, unknown>, debug?: boolean, eventName?: string): ValidationResult`
 
 イベントパラメータを検証・サニタイズします。
 
 - **params**: 検証するパラメータ
 - **debug**: デバッグログを出力するか
+- **eventName**: イベント固有の必須パラメータを検証する場合のイベント名
 - **戻り値**: 検証結果とサニタイズ済みパラメータ
 
 ## ライセンス

@@ -33,6 +33,7 @@ const createStripeSessionParamsSchema = z.object({
   successUrl: z.string().url("成功時URLは有効なURLである必要があります"),
   cancelUrl: z.string().url("キャンセル時URLは有効なURLである必要があります"),
   gaClientId: z.string().optional(),
+  gaSessionId: z.number().int().positive().optional(),
 });
 
 // 現金払い用スキーマ（内部使用専用）

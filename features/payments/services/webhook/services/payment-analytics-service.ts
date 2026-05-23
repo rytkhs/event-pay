@@ -17,6 +17,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function parseGaSessionId(value: string | undefined): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const sessionId = Number(value);
+  return Number.isSafeInteger(sessionId) && sessionId > 0 ? sessionId : undefined;
+}
+
 function extractEventFromAttendance(attendance: unknown): { id: string; title: string } | null {
   if (!isRecord(attendance)) {
     return null;
@@ -51,9 +60,10 @@ export class PaymentAnalyticsWebhookService {
     attendanceId: string;
     sessionId: string;
     gaClientId: string;
+    gaSessionId?: string;
     amount: number;
   }): Promise<void> {
-    const { paymentId, attendanceId, sessionId, gaClientId, amount } = params;
+    const { paymentId, attendanceId, sessionId, gaClientId, gaSessionId, amount } = params;
 
     try {
       const { data: attendance, error: attendanceError } = await this.supabase
@@ -93,6 +103,7 @@ export class PaymentAnalyticsWebhookService {
         eventId: eventData.id,
         eventTitle: eventData.title,
         amount,
+        sessionId: parseGaSessionId(gaSessionId),
       });
     } catch (error) {
       handleServerError("GA4_TRACKING_FAILED", {

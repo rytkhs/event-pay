@@ -101,11 +101,12 @@ describe("GA4ServerService", () => {
             statusText: "OK",
           } as Response);
 
-        await service.sendEvent(
+        const result = await service.sendEvent(
           { name: "sign_up", params: { method: "password" } },
           "1234567890.0987654321"
         );
 
+        expect(result).toEqual({ status: "sent" });
         expect(mockFetch).toHaveBeenCalledTimes(3);
       });
 
@@ -116,11 +117,15 @@ describe("GA4ServerService", () => {
           statusText: "Internal Server Error",
         } as Response);
 
-        await service.sendEvent(
+        const result = await service.sendEvent(
           { name: "sign_up", params: { method: "password" } },
           "1234567890.0987654321"
         );
 
+        expect(result).toMatchObject({
+          status: "failed",
+          code: "GA4_RETRY_EXHAUSTED",
+        });
         expect(mockFetch).toHaveBeenCalledTimes(3);
       });
 
@@ -131,11 +136,15 @@ describe("GA4ServerService", () => {
           statusText: "Bad Request",
         } as Response);
 
-        await service.sendEvent(
+        const result = await service.sendEvent(
           { name: "sign_up", params: { method: "password" } },
           "1234567890.0987654321"
         );
 
+        expect(result).toMatchObject({
+          status: "failed",
+          code: "GA4_API_ERROR",
+        });
         expect(mockFetch).toHaveBeenCalledTimes(1);
       });
     });
@@ -150,11 +159,12 @@ describe("GA4ServerService", () => {
           statusText: "OK",
         } as Response);
 
-        await service.sendEvent(
+        const result = await service.sendEvent(
           { name: "sign_up", params: { method: "email" } },
           "1234567890.0987654321"
         );
 
+        expect(result).toEqual({ status: "sent" });
         expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining("measurement_id=G-TEST123"),
           expect.objectContaining({
@@ -190,19 +200,26 @@ describe("GA4ServerService", () => {
         expect(body.events[0].params.method).toBe("email");
       });
 
-      test("User IDでイベントを送信できる", async () => {
+      test("Client IDとUser IDでイベントを送信できる", async () => {
         mockFetch.mockResolvedValue({
           ok: true,
           status: 200,
           statusText: "OK",
         } as Response);
 
-        await service.sendEvent(
+        const result = await service.sendEvent(
           { name: "login", params: { method: "password" } },
-          undefined,
+          "1234567890.0987654321",
           "user-123"
         );
 
+        expect(result).toEqual({ status: "sent" });
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({
+            body: expect.stringContaining('"client_id":"1234567890.0987654321"'),
+          })
+        );
         expect(mockFetch).toHaveBeenCalledWith(
           expect.any(String),
           expect.objectContaining({
@@ -243,11 +260,12 @@ describe("GA4ServerService", () => {
           debug: false,
         });
 
-        await service.sendEvent(
+        const result = await service.sendEvent(
           { name: "sign_up", params: { method: "password" } },
           "1234567890.0987654321"
         );
 
+        expect(result).toEqual({ status: "skipped", reason: "disabled" });
         expect(mockFetch).not.toHaveBeenCalled();
       });
 
@@ -259,28 +277,45 @@ describe("GA4ServerService", () => {
           debug: false,
         });
 
-        await service.sendEvent(
+        const result = await service.sendEvent(
           { name: "sign_up", params: { method: "password" } },
           "1234567890.0987654321"
         );
 
+        expect(result).toEqual({ status: "skipped", reason: "missing_api_secret" });
         expect(mockFetch).not.toHaveBeenCalled();
       });
 
       test("Client IDもUser IDもない場合は送信しない", async () => {
-        await service.sendEvent({ name: "logout", params: {} });
+        const result = await service.sendEvent({ name: "logout", params: {} });
 
+        expect(result).toEqual({ status: "skipped", reason: "invalid_or_missing_client_id" });
         expect(mockFetch).not.toHaveBeenCalled();
       });
 
       test("無効なClient IDの場合は送信しない", async () => {
-        await service.sendEvent({ name: "logout", params: {} }, "invalid-client-id");
+        const result = await service.sendEvent(
+          { name: "logout", params: {} },
+          "invalid-client-id"
+        );
 
+        expect(result).toEqual({ status: "skipped", reason: "invalid_or_missing_client_id" });
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
+
+      test("User IDのみの場合は送信しない", async () => {
+        const result = await service.sendEvent(
+          { name: "login", params: { method: "password" } },
+          undefined,
+          "user-123"
+        );
+
+        expect(result).toEqual({ status: "skipped", reason: "invalid_or_missing_client_id" });
         expect(mockFetch).not.toHaveBeenCalled();
       });
 
       test("無効なパラメータ名を含む場合は送信しない", async () => {
-        await service.sendEvent(
+        const result = await service.sendEvent(
           {
             name: "sign_up",
             params: { "invalid-param": "value" } as any, // ハイフンは無効
@@ -288,11 +323,12 @@ describe("GA4ServerService", () => {
           "1234567890.0987654321"
         );
 
+        expect(result).toEqual({ status: "skipped", reason: "invalid_params" });
         expect(mockFetch).not.toHaveBeenCalled();
       });
 
       test("全てのパラメータが無効な場合は送信しない", async () => {
-        await service.sendEvent(
+        const result = await service.sendEvent(
           {
             name: "sign_up",
             params: {
@@ -303,6 +339,59 @@ describe("GA4ServerService", () => {
           "1234567890.0987654321"
         );
 
+        expect(result).toEqual({ status: "skipped", reason: "invalid_params" });
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
+
+      test("purchaseイベントの必須パラメータが不足している場合は送信しない", async () => {
+        const result = await service.sendEvent(
+          {
+            name: "purchase",
+            params: {
+              currency: "JPY",
+              value: 1000,
+              items: [{ item_id: "event-1" }],
+            } as any,
+          },
+          "1234567890.0987654321"
+        );
+
+        expect(result).toEqual({ status: "skipped", reason: "invalid_params" });
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
+
+      test("purchaseイベントのitemsが不正な場合は送信しない", async () => {
+        const result = await service.sendEvent(
+          {
+            name: "purchase",
+            params: {
+              transaction_id: "cs_test_123",
+              currency: "JPY",
+              value: 1000,
+              items: [{ price: 1000, quantity: 1 }],
+            } as any,
+          },
+          "1234567890.0987654321"
+        );
+
+        expect(result).toEqual({ status: "skipped", reason: "invalid_params" });
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
+
+      test("共通パラメータ追加後に25個を超える場合は送信しない", async () => {
+        const params = Object.fromEntries(
+          Array.from({ length: 24 }, (_, i) => [`param_${i}`, i])
+        );
+
+        const result = await service.sendEvent(
+          { name: "logout", params: params as any },
+          "1234567890.0987654321",
+          undefined,
+          12345,
+          1
+        );
+
+        expect(result).toEqual({ status: "skipped", reason: "invalid_params" });
         expect(mockFetch).not.toHaveBeenCalled();
       });
     });
@@ -472,7 +561,9 @@ describe("GA4ServerService", () => {
         } as Response);
 
         const longString = "a".repeat(150);
-        const events = [{ name: "sign_up" as const, params: { description: longString } as any }];
+        const events = [
+          { name: "sign_up" as const, params: { method: "email", description: longString } as any },
+        ];
 
         await service.sendEvents(events as any, "1234567890.0987654321");
 

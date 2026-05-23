@@ -8,8 +8,6 @@
 
 import { useEffect } from "react";
 
-import { ga4Client } from "@core/analytics/ga4-client";
-
 import { ErrorLayout } from "@/components/errors/ErrorLayout";
 
 interface GlobalErrorProps {
@@ -17,16 +15,33 @@ interface GlobalErrorProps {
   reset: () => void;
 }
 
+function reportGlobalException(error: Error & { digest?: string }) {
+  const payload = JSON.stringify({
+    description: `Global Error: ${error.message}${error.digest ? ` (${error.digest})` : ""}`,
+    fatal: true,
+  });
+
+  if (navigator.sendBeacon) {
+    const sent = navigator.sendBeacon(
+      "/api/analytics/ga4-exception",
+      new Blob([payload], { type: "application/json" })
+    );
+    if (sent) {
+      return;
+    }
+  }
+
+  void fetch("/api/analytics/ga4-exception", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: payload,
+    keepalive: true,
+  });
+}
+
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
-    // グローバルエラーをGA4に送信
-    ga4Client.sendEvent({
-      name: "exception",
-      params: {
-        description: `Global Error: ${error.message}${error.digest ? ` (${error.digest})` : ""}`,
-        fatal: true,
-      },
-    });
+    reportGlobalException(error);
 
     // グローバルエラーの発生をトラッキング
     // 本番環境では重要度が最高レベル

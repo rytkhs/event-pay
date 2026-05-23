@@ -203,7 +203,7 @@ describe("GA4Validator", () => {
 
         const result = GA4Validator.validateAndSanitizeParams(params);
 
-        expect(result.isValid).toBe(true);
+        expect(result.isValid).toBe(false);
         expect(result.errors.length).toBe(3);
         expect(result.sanitizedParams).toEqual({ valid_name: "value4" });
       });
@@ -217,7 +217,7 @@ describe("GA4Validator", () => {
 
         const result = GA4Validator.validateAndSanitizeParams(params);
 
-        expect(result.isValid).toBe(true);
+        expect(result.isValid).toBe(false);
         expect(result.sanitizedParams).toEqual({ short_name: "value" });
       });
 
@@ -231,6 +231,40 @@ describe("GA4Validator", () => {
 
         expect(result.isValid).toBe(true);
         expect(result.sanitizedParams).toHaveProperty(exactName);
+      });
+
+      test("予約済みprefixと予約名を拒否する", () => {
+        const params = {
+          valid_param: "value",
+          ga_custom: "blocked",
+          google_custom: "blocked",
+          firebase_custom: "blocked",
+          _private: "blocked",
+        };
+
+        const result = GA4Validator.validateAndSanitizeParams(params);
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toEqual(
+          expect.arrayContaining([
+            "Invalid parameter name: ga_custom",
+            "Invalid parameter name: google_custom",
+            "Invalid parameter name: firebase_custom",
+            "Invalid parameter name: _private",
+          ])
+        );
+        expect(result.sanitizedParams).toEqual({ valid_param: "value" });
+      });
+
+      test("25個を超えるイベントパラメータを拒否する", () => {
+        const params = Object.fromEntries(
+          Array.from({ length: 26 }, (_, i) => [`param_${i}`, i])
+        );
+
+        const result = GA4Validator.validateAndSanitizeParams(params);
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain("Too many event parameters: 26");
       });
     });
 
@@ -343,8 +377,7 @@ describe("GA4Validator", () => {
 
         const result = GA4Validator.validateAndSanitizeParams(params);
 
-        // 無効なパラメータは除外されるが、空の結果も有効（パラメータなしのイベント）
-        expect(result.isValid).toBe(true);
+        expect(result.isValid).toBe(false);
         expect(result.sanitizedParams).toEqual({});
       });
 
@@ -423,11 +456,110 @@ describe("GA4Validator", () => {
 
         const result = GA4Validator.validateAndSanitizeParams(params);
 
-        expect(result.isValid).toBe(true);
+        expect(result.isValid).toBe(false);
         expect(result.sanitizedParams).toEqual({
           valid_param: "value",
           another_valid: 123,
         });
+      });
+
+      test("正常なpurchaseイベントを受け入れる", () => {
+        const params = {
+          transaction_id: "cs_test_123",
+          event_id: "event-1",
+          currency: "JPY",
+          value: 1000,
+          items: [{ item_id: "event-1", item_name: "Test Event", price: 1000, quantity: 1 }],
+        };
+
+        const result = GA4Validator.validateAndSanitizeParams(params, false, "purchase");
+
+        expect(result.isValid).toBe(true);
+        expect(result.errors).toHaveLength(0);
+        expect(result.sanitizedParams).toEqual(params);
+      });
+
+      test("purchaseイベントの必須パラメータ欠落を拒否する", () => {
+        const result = GA4Validator.validateAndSanitizeParams(
+          {
+            currency: "JPY",
+            value: 1000,
+            items: [{ item_id: "event-1" }],
+          },
+          false,
+          "purchase"
+        );
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain("Missing required parameter for purchase: transaction_id");
+      });
+
+      test("正常なbegin_checkoutイベントを受け入れる", () => {
+        const params = {
+          event_id: "event-1",
+          currency: "JPY",
+          value: 1000,
+          items: [{ item_name: "Test Event", price: 1000, quantity: 1 }],
+        };
+
+        const result = GA4Validator.validateAndSanitizeParams(params, false, "begin_checkout");
+
+        expect(result.isValid).toBe(true);
+        expect(result.errors).toHaveLength(0);
+        expect(result.sanitizedParams).toEqual(params);
+      });
+
+      test("purchaseイベントのitems不正を拒否する", () => {
+        const result = GA4Validator.validateAndSanitizeParams(
+          {
+            transaction_id: "cs_test_123",
+            currency: "JPY",
+            value: 1000,
+            items: [{ price: 1000, quantity: 1, "invalid-item-param": "value" }],
+          },
+          false,
+          "purchase"
+        );
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toEqual(
+          expect.arrayContaining([
+            "items[0] must include item_id or item_name",
+            "Invalid item parameter name at items[0]: invalid-item-param",
+          ])
+        );
+      });
+
+      test("purchaseイベントのitemsが配列でない場合は拒否する", () => {
+        const result = GA4Validator.validateAndSanitizeParams(
+          {
+            transaction_id: "cs_test_123",
+            currency: "JPY",
+            value: 1000,
+            items: "not-array",
+          },
+          false,
+          "purchase"
+        );
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain("items must be an array");
+      });
+
+      test("purchaseイベントのitemsが空配列の場合は拒否する", () => {
+        const result = GA4Validator.validateAndSanitizeParams(
+          {
+            transaction_id: "cs_test_123",
+            currency: "JPY",
+            value: 1000,
+            items: [],
+          },
+          false,
+          "purchase"
+        );
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain("items must contain at least one item");
       });
     });
   });

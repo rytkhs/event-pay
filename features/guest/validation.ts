@@ -5,4 +5,5 @@ export const guestStripeSessionInputSchema = z.object({
   successUrl: z.string().url(),
   cancelUrl: z.string().url(),
   gaClientId: z.string().optional(), // GA4 Client ID（アナリティクス追跡用）
+  gaSessionId: z.number().int().positive().optional(), // GA4 Session ID（アナリティクス追跡用）
 });
