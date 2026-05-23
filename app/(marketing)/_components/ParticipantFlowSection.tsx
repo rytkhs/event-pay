@@ -208,7 +208,7 @@ export const ParticipantFlowSection: React.FC = () => {
         </FadeIn>
 
         {/* ─── Phase 1: 招待ページ ─── */}
-        <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-16 md:mb-20">
+        <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-14 md:mb-16">
           {/* テキスト */}
           <FadeIn direction="right" delay={0.1} className="flex-1 order-1 md:order-1">
             <div className="flex items-center gap-3 mb-4">
@@ -259,7 +259,7 @@ export const ParticipantFlowSection: React.FC = () => {
         </div>
 
         {/* ─── 矢印コネクタ ─── */}
-        <FadeIn direction="up" className="flex justify-center mb-16 md:mb-20">
+        <FadeIn direction="up" className="flex justify-center mb-14 md:mb-16">
           <div className="flex flex-col items-center gap-2 text-slate-300">
             <div className="w-px h-8 bg-gradient-to-b from-transparent via-slate-300 to-slate-300" />
             <div className="bg-white border-2 border-slate-200 rounded-full px-5 py-2 text-xs font-bold text-slate-500 shadow-sm">

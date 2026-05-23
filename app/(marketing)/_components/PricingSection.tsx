@@ -87,7 +87,7 @@ export const PricingSection: React.FC = () => {
                 <div className="flex items-baseline justify-center md:justify-start gap-1">
                   <span className="text-4xl font-bold text-primary">4.9</span>
                   <span className="text-2xl font-bold text-slate-700">%</span>
-                  <span className="text-4xl font-bold text-slate-500">+ 50</span>
+                  <span className="text-4xl font-bold text-primary">+ 50</span>
                   <span className="text-2xl font-bold text-slate-700">円</span>
                 </div>
 
