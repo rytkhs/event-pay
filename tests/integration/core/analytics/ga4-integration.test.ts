@@ -488,7 +488,7 @@ describe("GA4 Analytics - 統合テスト", () => {
       expect(body.events[0].params.long_param).toHaveLength(100);
     });
 
-    test("無効なパラメータ名は除外される", async () => {
+    test("無効なパラメータ名を含むイベントは送信されない", async () => {
       // Arrange
       const testEvent: GA4Event = asGA4Event({
         name: "test_event",
@@ -500,18 +500,11 @@ describe("GA4 Analytics - 統合テスト", () => {
       });
 
       // Act
-      await ga4Server.sendEvent(testEvent, "1234567890.0987654321");
+      const result = await ga4Server.sendEvent(testEvent, "1234567890.0987654321");
 
       // Assert
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-
-      const callArgs = mockFetch.mock.calls[0];
-      const body = JSON.parse(callArgs[1]?.body as string);
-      expect(body.events[0].params).toEqual({
-        valid_param: "valid",
-        another_valid: "valid",
-      });
-      expect(body.events[0].params).not.toHaveProperty("invalid-param");
+      expect(result).toEqual({ status: "skipped", reason: "invalid_params" });
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
     test("セッションIDとエンゲージメント時間が正しく追加される", async () => {

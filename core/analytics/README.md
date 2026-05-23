@@ -270,7 +270,7 @@ NEXT_PUBLIC_GA4_DEBUG=true
 [GA4] Event sent: purchase
 [GA4] Retrying after error (attempt: 1, delay: 1234ms)
 [GA4] Truncated parameter description from 150 to 100 characters
-[GA4] Batch sent successfully (batch_index: 0, event_count: 25)
+[GA4] Batch accepted by endpoint (batch_index: 0, event_count: 25)
 ```
 
 ## マイグレーションガイド
@@ -469,12 +469,13 @@ Client IDを検証します。
 - **clientId**: 検証するClient ID
 - **戻り値**: 検証結果
 
-#### `static validateAndSanitizeParams(params: Record<string, unknown>, debug?: boolean): ValidationResult`
+#### `static validateAndSanitizeParams(params: Record<string, unknown>, debug?: boolean, eventName?: string): ValidationResult`
 
 イベントパラメータを検証・サニタイズします。
 
 - **params**: 検証するパラメータ
 - **debug**: デバッグログを出力するか
+- **eventName**: イベント固有の必須パラメータを検証する場合のイベント名
 - **戻り値**: 検証結果とサニタイズ済みパラメータ
 
 ## ライセンス

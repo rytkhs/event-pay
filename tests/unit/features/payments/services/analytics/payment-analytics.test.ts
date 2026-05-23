@@ -43,7 +43,7 @@ describe("PaymentAnalyticsService", () => {
     await service.trackPurchaseCompletion(validParams);
 
     expect(logger.info).toHaveBeenCalledWith(
-      "[Payment Analytics] Purchase event tracked successfully",
+      "[Payment Analytics] Purchase event submitted to GA4 endpoint",
       expect.objectContaining({
         transaction_id: "cs_test_123",
         event_id: "event-1",
@@ -65,7 +65,7 @@ describe("PaymentAnalyticsService", () => {
     await service.trackPurchaseCompletion(validParams);
 
     expect(logger.info).not.toHaveBeenCalledWith(
-      "[Payment Analytics] Purchase event tracked successfully",
+      "[Payment Analytics] Purchase event submitted to GA4 endpoint",
       expect.any(Object)
     );
     expect(logger.warn).toHaveBeenCalledWith(
@@ -90,7 +90,7 @@ describe("PaymentAnalyticsService", () => {
     await service.trackPurchaseCompletion(validParams);
 
     expect(logger.info).not.toHaveBeenCalledWith(
-      "[Payment Analytics] Purchase event tracked successfully",
+      "[Payment Analytics] Purchase event submitted to GA4 endpoint",
       expect.any(Object)
     );
     expect(logger.warn).toHaveBeenCalledWith(

@@ -40,6 +40,7 @@ export class GA4ServerService {
   private readonly MAX_RETRY_DELAY = 10000;
   private readonly MAX_JITTER = 1000;
   private readonly MAX_EVENTS_PER_BATCH = 25;
+  private readonly MAX_EVENT_PARAMS = 25;
 
   /**
    * 設定を動的に取得するgetter
@@ -165,11 +166,13 @@ export class GA4ServerService {
     // パラメータ検証とサニタイズ（GA4Validator使用）
     const paramValidation = GA4Validator.validateAndSanitizeParams(
       event.params as Record<string, unknown>,
-      this.config.debug
+      this.config.debug,
+      event.name
     );
 
-    // sanitizedParamsが存在しない、または元のパラメータが空でないのにサニタイズ後が空の場合はエラー
+    // sanitizedParamsが存在しない、検証エラーがある、または元のパラメータが空でないのにサニタイズ後が空の場合はエラー
     if (
+      !paramValidation.isValid ||
       !paramValidation.sanitizedParams ||
       (Object.keys(event.params).length > 0 &&
         Object.keys(paramValidation.sanitizedParams).length === 0)
@@ -194,6 +197,16 @@ export class GA4ServerService {
     }
     if (engagementTimeMsec !== undefined && engagementTimeMsec >= 0) {
       eventParams.engagement_time_msec = engagementTimeMsec;
+    }
+
+    if (Object.keys(eventParams).length > this.MAX_EVENT_PARAMS) {
+      this.logger.warn("[GA4] Event parameters validation failed", {
+        event_name: event.name,
+        original_param_count: Object.keys(event.params).length,
+        sanitized_param_count: Object.keys(eventParams).length,
+        errors: [`Too many event parameters: ${Object.keys(eventParams).length}`],
+      });
+      return { status: "skipped", reason: "invalid_params" };
     }
 
     // ペイロードを構築（Web streamのMPではclient_idが必須）
@@ -236,7 +249,7 @@ export class GA4ServerService {
         );
       }
 
-      this.logger.info("[GA4] Server event sent successfully", {
+      this.logger.info("[GA4] Server event accepted by endpoint", {
         event_name: event.name,
         client_id: validClientId,
         user_id: userId,
@@ -329,11 +342,13 @@ export class GA4ServerService {
       .map((event) => {
         const paramValidation = GA4Validator.validateAndSanitizeParams(
           event.params as Record<string, unknown>,
-          this.config.debug
+          this.config.debug,
+          event.name
         );
 
-        // sanitizedParamsが存在し、かつ元のパラメータが空でないのにサニタイズ後が空でない場合のみ有効
+        // sanitizedParamsが存在し、検証エラーがなく、かつ元のパラメータが空でないのにサニタイズ後が空でない場合のみ有効
         if (
+          paramValidation.isValid &&
           paramValidation.sanitizedParams &&
           !(
             Object.keys(event.params).length > 0 &&
@@ -472,7 +487,7 @@ export class GA4ServerService {
         );
       }
 
-      this.logger.info("[GA4] Batch sent successfully", {
+      this.logger.info("[GA4] Batch accepted by endpoint", {
         batch_index: batchIndex,
         batch_size: batch.length,
         event_names: batch.map((e) => e.name).join(", "),

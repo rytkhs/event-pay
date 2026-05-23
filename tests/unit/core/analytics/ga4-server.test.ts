@@ -342,6 +342,58 @@ describe("GA4ServerService", () => {
         expect(result).toEqual({ status: "skipped", reason: "invalid_params" });
         expect(mockFetch).not.toHaveBeenCalled();
       });
+
+      test("purchaseイベントの必須パラメータが不足している場合は送信しない", async () => {
+        const result = await service.sendEvent(
+          {
+            name: "purchase",
+            params: {
+              currency: "JPY",
+              value: 1000,
+              items: [{ item_id: "event-1" }],
+            } as any,
+          },
+          "1234567890.0987654321"
+        );
+
+        expect(result).toEqual({ status: "skipped", reason: "invalid_params" });
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
+
+      test("purchaseイベントのitemsが不正な場合は送信しない", async () => {
+        const result = await service.sendEvent(
+          {
+            name: "purchase",
+            params: {
+              transaction_id: "cs_test_123",
+              currency: "JPY",
+              value: 1000,
+              items: [{ price: 1000, quantity: 1 }],
+            } as any,
+          },
+          "1234567890.0987654321"
+        );
+
+        expect(result).toEqual({ status: "skipped", reason: "invalid_params" });
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
+
+      test("共通パラメータ追加後に25個を超える場合は送信しない", async () => {
+        const params = Object.fromEntries(
+          Array.from({ length: 24 }, (_, i) => [`param_${i}`, i])
+        );
+
+        const result = await service.sendEvent(
+          { name: "logout", params: params as any },
+          "1234567890.0987654321",
+          undefined,
+          12345,
+          1
+        );
+
+        expect(result).toEqual({ status: "skipped", reason: "invalid_params" });
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
     });
   });
 
@@ -509,7 +561,9 @@ describe("GA4ServerService", () => {
         } as Response);
 
         const longString = "a".repeat(150);
-        const events = [{ name: "sign_up" as const, params: { description: longString } as any }];
+        const events = [
+          { name: "sign_up" as const, params: { method: "email", description: longString } as any },
+        ];
 
         await service.sendEvents(events as any, "1234567890.0987654321");
 

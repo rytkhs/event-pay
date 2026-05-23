@@ -115,7 +115,7 @@ export class PaymentAnalyticsService {
         return;
       }
 
-      logger.info("[Payment Analytics] Purchase event tracked successfully", {
+      logger.info("[Payment Analytics] Purchase event submitted to GA4 endpoint", {
         category: "payment",
         action: "payment_analytics",
         actor_type: "system",
