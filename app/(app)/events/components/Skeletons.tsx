@@ -46,7 +46,7 @@ export function EventListPageSkeleton() {
     <div className="container mx-auto max-w-7xl">
       <div className="space-y-6">
         <div className="w-full space-y-2">
-          <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-card/60 p-1 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.08)] backdrop-blur-md">
+          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card/60 p-1 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.08)] backdrop-blur-md">
             <div className="flex flex-1 items-center gap-3 px-3">
               <Skeleton className="h-4 w-4 rounded-full" />
               <Skeleton className="h-4 w-40 max-w-[60%]" />
@@ -65,7 +65,7 @@ export function EventListPageSkeleton() {
           </div>
 
           <div className="pt-2 pb-4">
-            <div className="group/list flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-white/55 shadow-sm backdrop-blur-sm divide-y divide-border/50 dark:bg-card/40 md:rounded-3xl">
+            <div className="group/list flex flex-col overflow-hidden rounded-xl border border-border/70 bg-white/55 shadow-sm backdrop-blur-sm divide-y divide-border/50 dark:bg-card/40">
               {Array.from({ length: 6 }).map((_, index) => (
                 <EventListRowSkeleton key={index} />
               ))}

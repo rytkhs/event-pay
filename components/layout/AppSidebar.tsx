@@ -24,9 +24,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+import { isAppSidebarNavActive } from "./app-sidebar-active";
 import { CommunitySwitcher } from "./CommunitySwitcher";
 import { navigationConfig } from "./GlobalHeader/navigation-config";
-import { isAppSidebarNavActive } from "./app-sidebar-active";
 
 type AppSidebarProps = {
   workspace: AppWorkspaceShellData;

@@ -22,8 +22,8 @@ import {
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { navigationConfig } from "./GlobalHeader/navigation-config";
 import { isAppSidebarNavActive } from "./app-sidebar-active";
+import { navigationConfig } from "./GlobalHeader/navigation-config";
 
 export function AppSidebarFallback(props: ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
