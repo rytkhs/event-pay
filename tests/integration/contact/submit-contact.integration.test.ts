@@ -12,8 +12,8 @@ import {
 } from "@tests/setup/common-mocks";
 import { expectActionFailure } from "@tests/helpers/assert-result";
 
-import { submitContact } from "@/app/(public)/contact/actions";
-import { ContactInputSchema } from "@/app/(public)/contact/useContactForm";
+import { submitContact } from "@/app/(public)/(platform)/contact/actions";
+import { ContactInputSchema } from "@/app/(public)/(platform)/contact/useContactForm";
 const originalEnv = process.env;
 
 // モック化の宣言（共通関数を使用するため、モック化のみ宣言）
