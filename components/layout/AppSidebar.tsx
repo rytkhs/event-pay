@@ -24,6 +24,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+import { isAppSidebarNavActive } from "./app-sidebar-active";
 import { CommunitySwitcher } from "./CommunitySwitcher";
 import { navigationConfig } from "./GlobalHeader/navigation-config";
 
@@ -73,12 +74,7 @@ export function AppSidebar({
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
               {navigationConfig.app.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  (item.exactMatch === false &&
-                    pathname.startsWith(item.href) &&
-                    item.href !== "/dashboard") ||
-                  (item.href === "/dashboard" && pathname === "/dashboard");
+                const isActive = isAppSidebarNavActive(item, pathname);
 
                 return (
                   <SidebarMenuItem key={item.href}>
@@ -101,8 +97,8 @@ export function AppSidebar({
                         <span
                           className={
                             isActive
-                              ? "text-sidebar-primary"
-                              : "text-sidebar-foreground/45 transition-colors group-hover/menu-item:text-sidebar-foreground/70"
+                              ? "text-sidebar-primary [&>svg]:size-4 [&>svg]:shrink-0"
+                              : "text-sidebar-foreground/55 transition-colors group-hover/menu-item:text-sidebar-foreground/70 [&>svg]:size-4 [&>svg]:shrink-0"
                           }
                         >
                           {item.icon}
@@ -130,11 +126,11 @@ export function AppSidebar({
                   isActive={pathname === "/events/create"}
                   tooltip="新しいイベントを作成"
                   className={[
-                    "h-10 rounded-xl border border-sidebar-primary/25 bg-gradient-to-r from-sidebar-primary/16 via-sidebar-primary/10 to-sidebar-primary/5 text-[13px] font-semibold text-sidebar-primary transition-all duration-150",
-                    "shadow-[inset_0_1px_0_hsl(var(--sidebar-primary-foreground)/0.4),0_10px_20px_-18px_hsl(var(--sidebar-primary)/0.9)] hover:border-sidebar-primary/45 hover:from-sidebar-primary/24 hover:via-sidebar-primary/16 hover:to-sidebar-primary/8 hover:shadow-[inset_0_1px_0_hsl(var(--sidebar-primary-foreground)/0.5),0_14px_26px_-18px_hsl(var(--sidebar-primary)/1)]",
+                    "h-10 rounded-lg border border-sidebar-primary/20 bg-sidebar-primary/10 px-3 text-[13px] font-semibold text-sidebar-primary transition-colors duration-150",
+                    "hover:border-sidebar-primary/35 hover:bg-sidebar-primary/15",
                     "group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center",
                     pathname === "/events/create"
-                      ? "border-sidebar-primary/50 from-sidebar-primary/28 via-sidebar-primary/18 to-sidebar-primary/10"
+                      ? "border-sidebar-primary/40 bg-sidebar-primary/15"
                       : "",
                   ]
                     .filter(Boolean)
@@ -161,12 +157,12 @@ export function AppSidebar({
               tooltip="サポート"
               className={[
                 "h-9 rounded-xl px-3 text-[13px] font-medium transition-all duration-150",
-                "text-sidebar-foreground/55 hover:bg-sidebar-accent/65 hover:text-sidebar-foreground",
+                "text-sidebar-foreground/60 hover:bg-sidebar-accent/65 hover:text-sidebar-foreground",
                 "group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0",
               ].join(" ")}
             >
               <Link href="/contact">
-                <CircleHelp className="size-4 text-sidebar-foreground/45" />
+                <CircleHelp className="size-4 text-sidebar-foreground/55" />
                 <span className="group-data-[collapsible=icon]:hidden">サポート</span>
               </Link>
             </SidebarMenuButton>
@@ -177,12 +173,12 @@ export function AppSidebar({
               tooltip="フィードバック"
               className={[
                 "h-9 rounded-xl px-3 text-[13px] font-medium transition-all duration-150",
-                "text-sidebar-foreground/55 hover:bg-sidebar-accent/65 hover:text-sidebar-foreground",
+                "text-sidebar-foreground/60 hover:bg-sidebar-accent/65 hover:text-sidebar-foreground",
                 "group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0",
               ].join(" ")}
             >
               <Link href="/feedback">
-                <MessageSquare className="size-4 text-sidebar-foreground/45" />
+                <MessageSquare className="size-4 text-sidebar-foreground/55" />
                 <span className="group-data-[collapsible=icon]:hidden">要望・不具合</span>
               </Link>
             </SidebarMenuButton>
