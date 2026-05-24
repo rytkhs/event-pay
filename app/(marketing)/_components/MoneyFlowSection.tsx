@@ -12,8 +12,8 @@ export const MoneyFlowSection: React.FC = () => {
   const steps = [
     {
       number: "1",
-      title: "主催者がStripe連携",
-      desc: "オンライン集金を使うには、主催者側でStripe連携と受取設定を行います。",
+      title: "主催者がオンライン集金を設定",
+      desc: "オンライン集金を使うには、主催者側でStripeアカウントと受取設定を行います。",
     },
     {
       number: "2",
@@ -48,7 +48,7 @@ export const MoneyFlowSection: React.FC = () => {
               集めた参加費は、Stripeを通じて主催者の口座へ。
             </h2>
             <p className="text-slate-500 text-lg">
-              オンライン支払いを利用する場合、主催者はStripeアカウントを連携します。
+              オンライン支払いを利用する場合、主催者はStripeアカウントと受取設定を行います。
               <br className="hidden md:block" />
               参加者が支払った参加費はStripeで処理され、主催者の口座へ振り込まれます。
             </p>
