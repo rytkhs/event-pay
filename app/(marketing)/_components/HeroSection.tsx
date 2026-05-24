@@ -77,7 +77,7 @@ export const HeroSection: React.FC = () => {
 
               {/* Stripe注記 */}
               <p className="mt-3 text-xs text-slate-400">
-                ※ オンライン集金の利用には、主催者によるStripe連携が必要です。
+                ※ オンライン集金の利用には、主催者による受取設定が必要です。
               </p>
             </FadeIn>
           </div>
