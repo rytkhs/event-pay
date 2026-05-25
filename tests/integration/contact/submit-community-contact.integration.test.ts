@@ -7,7 +7,7 @@ import {
 } from "@tests/setup/common-mocks";
 import { expectActionFailure } from "@tests/helpers/assert-result";
 
-import { submitCommunityContact } from "@/app/(public)/c/[slug]/contact/actions";
+import { submitCommunityContact } from "@/app/(public)/(community)/c/[slug]/contact/actions";
 
 const originalEnv = process.env;
 

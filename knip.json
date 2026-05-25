@@ -22,14 +22,21 @@
   ],
   "ignoreDependencies": [
     "shadcn",
+    "@typescript-eslint/eslint-plugin",
+    "@typescript-eslint/parser",
+    "eslint-config-next",
+    "eslint-config-prettier",
+    "eslint-import-resolver-typescript",
+    "eslint-plugin-boundaries",
+    "eslint-plugin-import",
+    "eslint-plugin-jsx-a11y",
     "eslint-plugin-react",
     "eslint-plugin-react-hooks",
     "postcss-load-config",
     "globals",
     "jest-environment-jsdom",
     "remark",
-    "remark-frontmatter",
-    "server-only"
+    "remark-frontmatter"
   ],
   "ignoreIssues": {
     "components/ui/**": ["exports", "types"]
