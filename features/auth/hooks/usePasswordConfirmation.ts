@@ -19,7 +19,6 @@ interface PasswordConfirmationValidation {
   isMatching: boolean;
   hasError: boolean;
   isEmpty: boolean;
-  className: string;
   iconType: "success" | "error" | "none";
 }
 
@@ -37,8 +36,8 @@ export function usePasswordConfirmation(): UsePasswordConfirmationReturn {
   // パスワード一致確認ロジック
   const validateMatch = useCallback((): boolean => {
     if (confirmPassword === "") {
-      setError("");
-      return true;
+      setError("確認用パスワードを入力してください");
+      return false;
     }
 
     if (password !== confirmPassword) {
@@ -82,16 +81,6 @@ export function usePasswordConfirmation(): UsePasswordConfirmationReturn {
     const isEmpty = confirmPassword === "";
     const isMatching = !isEmpty && !hasError && password === confirmPassword;
 
-    // CSSクラス名の生成
-    let className = "w-full p-2 border rounded transition-colors";
-    if (hasError) {
-      className += " border-red-500 focus:ring-red-500";
-    } else if (isMatching) {
-      className += " border-green-500 focus:ring-green-500";
-    } else {
-      className += " border-gray-300 focus:ring-blue-500";
-    }
-
     // アイコンタイプの決定
     let iconType: "success" | "error" | "none" = "none";
     if (hasError) {
@@ -104,7 +93,6 @@ export function usePasswordConfirmation(): UsePasswordConfirmationReturn {
       isMatching,
       hasError,
       isEmpty,
-      className,
       iconType,
     };
   }, [password, confirmPassword, error]);

@@ -23,13 +23,13 @@ export const HeroSection: React.FC = () => {
       <div className="container max-w-7xl mx-auto px-4 md:px-6 relative z-10">
         <div className="flex flex-col md:flex-row items-center gap-12 lg:gap-20">
           {/* Text Content */}
-          <div className="md:w-5/12 text-center md:text-left">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-800 leading-snug mb-6">
+          <div className="md:w-1/2 text-center md:text-left">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-800 leading-tight md:leading-tight lg:leading-tight mb-6">
               出欠確認から集金まで、
               <br />
               <span className="text-[#04a6b8ef]">
                 リンク1本で
-                <br className="md:hidden" />
+                <br className="" />
                 まとめて管理。
               </span>
             </h1>
@@ -83,7 +83,7 @@ export const HeroSection: React.FC = () => {
           </div>
 
           {/* Dashboard Mock Visual */}
-          <div className="md:w-7/12 w-full flex justify-center md:justify-end">
+          <div className="md:w-1/2 w-full flex justify-center md:justify-end">
             <FadeIn
               direction="up"
               delay={0.5}

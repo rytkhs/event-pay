@@ -22,13 +22,8 @@ export default function UpdatePasswordPage() {
   const passwordConfirmation = usePasswordConfirmation();
 
   const handleSubmit = async (formData: FormData) => {
-    // パスワード確認バリデーション
+    // パスワード確認バリデーション（空チェック含む）
     if (!passwordConfirmation.actions.validateMatch()) {
-      return;
-    }
-
-    // 確認パスワードが空の場合
-    if (passwordConfirmation.validation.isEmpty) {
       return;
     }
 
@@ -82,9 +77,6 @@ export default function UpdatePasswordPage() {
 
         {passwordConfirmation.validation.iconType === "success" && (
           <PasswordStatusIcon type="success" message="パスワードが一致しています" />
-        )}
-        {passwordConfirmation.validation.iconType === "error" && (
-          <PasswordStatusIcon type="error" message={passwordConfirmation.state.error} />
         )}
       </div>
 
