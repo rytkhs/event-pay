@@ -110,7 +110,6 @@ enabled = true
 site_url = "http://localhost:3000"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 additional_redirect_urls = [
-  "http://localhost:3000/auth/confirm",
   "http://localhost:3000/reset-password/update",
   "http://localhost:8787/auth/callback"
 ]

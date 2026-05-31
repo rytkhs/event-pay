@@ -51,7 +51,7 @@ export function AuthFormField({
       {/* 常に説明文を提供 */}
       <div
         id={`${inputProps.name}-description`}
-        className="text-sm text-gray-500"
+        className="text-sm text-muted-foreground"
         aria-live="polite"
       >
         {inputProps.placeholder || `${label}を入力してください`}

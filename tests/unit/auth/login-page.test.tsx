@@ -22,6 +22,20 @@ jest.mock("@/app/(auth)/actions", () => ({
 
 // useLoginFormRHFのモック
 jest.mock("@features/auth", () => ({
+  AuthCard: ({ children, title, description }: any) => (
+    <section>
+      <h1>{title}</h1>
+      {description && <p>{description}</p>}
+      {children}
+    </section>
+  ),
+  AuthSocialLoginSection: ({ next, oauthErrorMessage }: any) => (
+    <div>
+      <a href={`/auth/line?next=${encodeURIComponent(next)}`}>LINE Login</a>
+      {oauthErrorMessage && <div data-testid="oauth-error-message">{oauthErrorMessage}</div>}
+      <span>または</span>
+    </div>
+  ),
   useLoginFormRHF: jest.fn(() => ({
     form: {
       control: {},

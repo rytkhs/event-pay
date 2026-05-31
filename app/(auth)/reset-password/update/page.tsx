@@ -85,7 +85,7 @@ export default function UpdatePasswordPage() {
       <div className="text-center">
         <Link
           href="/login"
-          className="inline-block py-2 text-sm sm:text-base text-blue-600 hover:text-blue-500 hover:underline"
+          className="inline-block py-2 text-sm text-primary hover:text-primary/80 hover:underline sm:text-base"
         >
           ログインページに戻る
         </Link>
