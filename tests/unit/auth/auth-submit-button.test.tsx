@@ -16,6 +16,5 @@ describe("AuthSubmitButton", () => {
     );
 
     expect(screen.getByRole("button", { name: "送信中..." })).toBeDisabled();
-    expect(screen.getByText("送信中...")).toBeInTheDocument();
   });
 });
