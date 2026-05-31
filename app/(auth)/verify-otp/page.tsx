@@ -11,16 +11,11 @@ import { useForm } from "react-hook-form";
 
 import { otpCodeFormSchema, type OtpCodeFormInput } from "@core/validation/auth";
 
+import { AuthCard, useAuthResendOtp } from "@features/auth";
+
 import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert";
 import { Button } from "@components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@components/ui/card";
+import { CardFooter } from "@components/ui/card";
 import {
   Form,
   FormControl,
@@ -36,17 +31,26 @@ import { verifyOtpAction, resendOtpAction } from "@/app/(auth)/actions";
 export const dynamic = "force-dynamic";
 
 function VerifyOtpContent() {
-  const [error, setError] = useState<string | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [resendLoading, setResendLoading] = useState(false);
-  const [resendDisabled, setResendDisabled] = useState(false);
-  const [countdown, setCountdown] = useState(0);
   const [success, setSuccess] = useState(false);
 
   const searchParams = useSearchParams();
   const router = useRouter();
   const email = searchParams.get("email");
   const type = searchParams.get("type") || "signup";
+  const {
+    resend,
+    isPending: resendLoading,
+    isDisabled: resendDisabled,
+    countdown,
+    error: resendError,
+  } = useAuthResendOtp({
+    email,
+    type,
+    action: resendOtpAction,
+  });
+  const error = verifyError || (!loading ? resendError : null);
 
   const form = useForm<OtpCodeFormInput>({
     resolver: zodResolver(otpCodeFormSchema),
@@ -54,16 +58,6 @@ function VerifyOtpContent() {
       otp: "",
     },
   });
-
-  // カウントダウンタイマー
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (resendDisabled && countdown === 0) {
-      setResendDisabled(false);
-    }
-  }, [countdown, resendDisabled]);
 
   // メールアドレスがない場合はリダイレクト
   useEffect(() => {
@@ -77,7 +71,7 @@ function VerifyOtpContent() {
     if (!email) return;
 
     setLoading(true);
-    setError(null);
+    setVerifyError(null);
 
     try {
       const formData = new FormData();
@@ -88,7 +82,7 @@ function VerifyOtpContent() {
       const result = await verifyOtpAction(formData);
 
       if (!result.success) {
-        setError(result.error.userMessage);
+        setVerifyError(result.error.userMessage);
         form.setValue("otp", ""); // エラー時にOTPをクリア
       } else if (result.redirectUrl) {
         setSuccess(true);
@@ -101,36 +95,9 @@ function VerifyOtpContent() {
         }
       }
     } catch {
-      setError("認証に失敗しました。再度お試しください。");
+      setVerifyError("認証に失敗しました。再度お試しください。");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleResend = async () => {
-    if (!email || resendDisabled) return;
-
-    setResendLoading(true);
-    setError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append("email", email);
-      formData.append("type", type);
-
-      const result = await resendOtpAction(formData);
-
-      if (!result.success) {
-        setError(result.error.userMessage);
-      } else {
-        setResendDisabled(true);
-        setCountdown(60);
-        setError(null);
-      }
-    } catch {
-      setError("再送信に失敗しました。");
-    } finally {
-      setResendLoading(false);
     }
   };
 
@@ -138,136 +105,35 @@ function VerifyOtpContent() {
 
   if (success) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] px-4 py-12">
-        <Card className="w-full max-w-md shadow-lg border-green-100">
-          <CardContent className="pt-10 pb-10 text-center space-y-6">
-            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center animate-in zoom-in duration-300">
-              <CheckCircle2 className="w-8 h-8 text-green-600" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">認証完了</h2>
-              <p className="text-gray-500">メールアドレスが確認されました</p>
-            </div>
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-500 animate-pulse">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>ホームに移動中...</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <AuthCard title="認証完了" cardClassName="border-success/20" contentClassName="text-center">
+        <div className="flex flex-col items-center gap-6 py-4">
+          <div className="flex size-16 items-center justify-center rounded-full bg-success/10 animate-in zoom-in duration-300">
+            <CheckCircle2 className="size-8 text-success" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <p className="text-muted-foreground">メールアドレスが確認されました</p>
+          </div>
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground animate-pulse">
+            <Loader2 className="size-4 animate-spin" />
+            <span>ホームに移動中...</span>
+          </div>
+        </div>
+      </AuthCard>
     );
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[60vh] px-4 py-12">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-1 text-center pb-2">
-          <CardTitle className="text-2xl font-bold">
-            {type === "recovery" ? "パスワードリセット" : "確認コードを入力"}
-          </CardTitle>
-          <CardDescription>
-            <span className="font-medium text-foreground">{email}</span>{" "}
-            に送信された6桁のコードを入力してください
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6 pt-6">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="otp"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="sr-only">確認コード</FormLabel>
-                    <FormControl>
-                      <div className="flex justify-center">
-                        <InputOTP maxLength={6} {...field} id="otp" disabled={loading}>
-                          <InputOTPGroup>
-                            <InputOTPSlot index={0} />
-                            <InputOTPSlot index={1} />
-                            <InputOTPSlot index={2} />
-                          </InputOTPGroup>
-                          <InputOTPSeparator />
-                          <InputOTPGroup>
-                            <InputOTPSlot index={3} />
-                            <InputOTPSlot index={4} />
-                            <InputOTPSlot index={5} />
-                          </InputOTPGroup>
-                        </InputOTP>
-                      </div>
-                    </FormControl>
-                    <FormMessage className="text-center" />
-                  </FormItem>
-                )}
-              />
-
-              {error && (
-                <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>エラー</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <Button type="submit" className="w-full" disabled={loading} size="lg">
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                認証する
-              </Button>
-            </form>
-          </Form>
-
-          {/* 再送信セクション */}
-          <div className="space-y-4 pt-4 border-t">
-            <div className="text-center space-y-2">
-              <p className="text-sm text-gray-500">コードが届かない場合</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                type="button"
-                onClick={handleResend}
-                disabled={resendDisabled || resendLoading}
-                className="text-primary hover:text-primary/90 hover:bg-primary/5"
-              >
-                {resendLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                    送信中...
-                  </>
-                ) : resendDisabled ? (
-                  <>
-                    <RefreshCw className="mr-2 h-3 w-3 opacity-50" />
-                    再送信まで {countdown}秒
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="mr-2 h-3 w-3" />
-                    コードを再送信
-                  </>
-                )}
-              </Button>
-            </div>
-
-            <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground border">
-              <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-primary" />
-                メールが届かない場合
-              </h4>
-              <ul className="list-disc list-inside space-y-1 text-xs">
-                <li>迷惑メールフォルダをご確認ください</li>
-                <li>ドメイン受信設定をご確認ください</li>
-                {type === "recovery" ? (
-                  <li>
-                    <span className="font-medium text-foreground">登録済みメールアドレス</span>
-                    でない場合、コードは送信されません
-                  </li>
-                ) : (
-                  <li>入力されたメールアドレスに間違いがないかご確認ください</li>
-                )}
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="justify-center border-t py-4 bg-muted/20">
+    <AuthCard
+      title={type === "recovery" ? "パスワードリセット" : "確認コードを入力"}
+      description={
+        <>
+          <span className="font-medium text-foreground">{email}</span>{" "}
+          に送信された6桁のコードを入力してください
+        </>
+      }
+      contentClassName="flex flex-col gap-6"
+      footer={
+        <CardFooter className="justify-center border-t bg-muted/20 py-4">
           <Button variant="link" size="sm" asChild className="text-muted-foreground">
             <Link href={type === "recovery" ? "/reset-password" : "/login"}>
               <ArrowLeft className="mr-2 h-3 w-3" />
@@ -275,8 +141,103 @@ function VerifyOtpContent() {
             </Link>
           </Button>
         </CardFooter>
-      </Card>
-    </div>
+      }
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
+          <FormField
+            control={form.control}
+            name="otp"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="sr-only">確認コード</FormLabel>
+                <FormControl>
+                  <div className="flex justify-center">
+                    <InputOTP maxLength={6} {...field} id="otp" disabled={loading}>
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                      </InputOTPGroup>
+                      <InputOTPSeparator />
+                      <InputOTPGroup>
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                </FormControl>
+                <FormMessage className="text-center" />
+              </FormItem>
+            )}
+          />
+
+          {error && (
+            <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>エラー</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <Button type="submit" className="w-full" disabled={loading} size="lg">
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            認証する
+          </Button>
+        </form>
+      </Form>
+
+      <div className="flex flex-col gap-4 border-t pt-4">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <p className="text-sm text-muted-foreground">コードが届かない場合</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            onClick={resend}
+            disabled={resendDisabled || resendLoading}
+            className="text-primary hover:text-primary/90 hover:bg-primary/5"
+          >
+            {resendLoading ? (
+              <>
+                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                送信中...
+              </>
+            ) : resendDisabled ? (
+              <>
+                <RefreshCw className="mr-2 h-3 w-3 opacity-50" />
+                再送信まで {countdown}秒
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-3 w-3" />
+                コードを再送信
+              </>
+            )}
+          </Button>
+        </div>
+
+        <div className="rounded-lg border bg-muted/50 p-4 text-sm text-muted-foreground">
+          <h4 className="mb-2 flex items-center gap-2 font-medium text-foreground">
+            <Mail className="h-4 w-4 text-primary" />
+            メールが届かない場合
+          </h4>
+          <ul className="list-inside list-disc space-y-1 text-xs">
+            <li>迷惑メールフォルダをご確認ください</li>
+            <li>ドメイン受信設定をご確認ください</li>
+            {type === "recovery" ? (
+              <li>
+                <span className="font-medium text-foreground">登録済みメールアドレス</span>
+                でない場合、コードは送信されません
+              </li>
+            ) : (
+              <li>入力されたメールアドレスに間違いがないかご確認ください</li>
+            )}
+          </ul>
+        </div>
+      </div>
+    </AuthCard>
   );
 }
 
@@ -284,14 +245,10 @@ export default function VerifyOtpPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center min-h-[60vh] px-4 py-12">
-          <Card className="w-full max-w-md shadow-lg">
-            <CardContent className="pt-10 pb-10 text-center">
-              <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-              <p className="mt-4 text-gray-500">読み込み中...</p>
-            </CardContent>
-          </Card>
-        </div>
+        <AuthCard title="読み込み中" contentClassName="text-center">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+          <p className="mt-4 text-muted-foreground">読み込み中...</p>
+        </AuthCard>
       }
     >
       <VerifyOtpContent />

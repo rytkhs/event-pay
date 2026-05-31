@@ -25,29 +25,29 @@ export default function ResetPasswordPage() {
       <AuthEmailField
         name="email"
         label="メールアドレス"
-        placeholder="登録されたメールアドレスを入力"
+        // placeholder="登録したメールアドレスを入力"
         fieldErrors={error?.fieldErrors?.email}
         required
       />
 
       <AuthSubmitButton isPending={isPending}>確認コード送信</AuthSubmitButton>
 
-      <div className="text-center space-y-3 sm:space-y-2">
+      <div className="flex flex-col gap-2 text-center">
         <div>
           <Link
             href="/login"
-            className="inline-block py-2 text-sm sm:text-base text-blue-600 hover:text-blue-500 hover:underline"
+            className="inline-block py-2 text-sm text-primary hover:text-primary/80 hover:underline sm:text-base"
           >
             ログインページに戻る
           </Link>
         </div>
-        <div className="text-sm sm:text-base text-gray-600">
+        <div className="text-sm text-muted-foreground sm:text-base">
           アカウントをお持ちでない方は{" "}
           <Link
             href="/register"
-            className="inline-block py-1 text-blue-600 hover:text-blue-500 hover:underline"
+            className="inline-block py-1 text-primary hover:text-primary/80 hover:underline"
           >
-            新規登録
+            アカウント作成
           </Link>
         </div>
       </div>

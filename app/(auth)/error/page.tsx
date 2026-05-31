@@ -2,6 +2,11 @@ import Link from "next/link";
 
 import type { Metadata } from "next";
 
+import { AuthCard } from "@features/auth";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
@@ -20,42 +25,32 @@ export default async function AuthErrorPage(props: ErrorPageProps) {
   const { message } = searchParams;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md space-y-6">
-        <header className="text-center">
-          <h1 className="text-2xl font-bold text-red-600">認証エラー</h1>
-        </header>
-
-        <main className="space-y-4">
-          <div className="p-3 rounded-md text-sm bg-red-50 text-red-800 border border-red-200">
+    <AuthCard title="認証エラー">
+      <div className="flex flex-col gap-4">
+        <Alert variant="destructive">
+          <AlertDescription>
             {message ? decodeURIComponent(message) : "認証に失敗しました。"}
-          </div>
+          </AlertDescription>
+        </Alert>
 
-          <div className="text-center space-y-2">
-            <p className="text-sm text-gray-600">以下の方法をお試しください：</p>
-            <ul className="text-sm text-gray-500 list-disc list-inside space-y-1">
-              <li>再度ログインを試す</li>
-              <li>新しい確認メールを送信する</li>
-              <li>時間をおいてから再度お試しください</li>
-            </ul>
-          </div>
+        <div className="flex flex-col gap-2 text-center">
+          <p className="text-sm text-muted-foreground">以下の方法をお試しください：</p>
+          <ul className="list-inside list-disc text-sm text-muted-foreground">
+            <li>再度ログインを試す</li>
+            <li>新しい確認メールを送信する</li>
+            <li>時間をおいてから再度お試しください</li>
+          </ul>
+        </div>
 
-          <div className="text-center space-y-3">
-            <Link
-              href="/login"
-              className="inline-block w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              ログインページに戻る
-            </Link>
-            <Link
-              href="/register"
-              className="inline-block text-blue-600 underline hover:text-blue-800"
-            >
-              アカウント登録
-            </Link>
-          </div>
-        </main>
+        <div className="flex flex-col items-center gap-3 text-center">
+          <Button asChild className="w-full">
+            <Link href="/login">ログインページに戻る</Link>
+          </Button>
+          <Button variant="link" asChild>
+            <Link href="/register">アカウント登録</Link>
+          </Button>
+        </div>
       </div>
-    </div>
+    </AuthCard>
   );
 }
