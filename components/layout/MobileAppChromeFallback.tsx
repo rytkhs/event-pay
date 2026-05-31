@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 
 import { CircleHelp, CreditCard, LogOut, MessageSquare, Plus, SquareMenu } from "lucide-react";
 
+import { AppInstallPrompt } from "@/components/layout/AppInstallPrompt";
 import { navigationConfig } from "@/components/layout/GlobalHeader/navigation-config";
 import { cn } from "@/components/ui/_lib/cn";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ export function MobileAppChromeFallback() {
           </div>
 
           <div className="flex items-center">
+            <AppInstallPrompt />
             <Button
               type="button"
               variant="ghost"

@@ -20,6 +20,7 @@ import {
 import type { AppWorkspaceShellData } from "@core/community/app-workspace";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
+import { AppInstallPrompt } from "@/components/layout/AppInstallPrompt";
 import { navigationConfig } from "@/components/layout/GlobalHeader/navigation-config";
 import { cn } from "@/components/ui/_lib/cn";
 import { Button } from "@/components/ui/button";
@@ -91,6 +92,7 @@ export function MobileAppChrome({
           </div>
 
           <div className="flex items-center">
+            <AppInstallPrompt />
             <Button
               type="button"
               variant="ghost"
