@@ -9,13 +9,10 @@ export const dynamic = "force-dynamic";
 
 import { LINE_ERROR_MESSAGES } from "@core/auth/line-error-messages";
 
-import { useLoginFormRHF } from "@features/auth";
+import { AuthCard, AuthSocialLoginSection, useLoginFormRHF } from "@features/auth";
 
 import { loginAction, startGoogleOAuth } from "@/app/(auth)/actions";
-import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
-import { LINELoginButton } from "@/components/auth/LINELoginButton";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -38,134 +35,100 @@ function LoginForm() {
   });
 
   return (
-    <>
-      <div className="w-full flex justify-center py-10 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md space-y-8">
-          <Card>
-            <CardHeader className="text-center">
-              <CardTitle as="h1" className="text-2xl sm:text-3xl font-bold">
-                ログイン
-              </CardTitle>
-              <CardDescription className="text-xs sm:text-sm">
-                みんなの集金アカウントにログインしてください
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <LINELoginButton href={`/auth/line?next=${encodeURIComponent(next)}`} />
-                <form action={startGoogleOAuth}>
-                  <input type="hidden" name="next" value={next} />
-                  <GoogleLoginButton />
-                </form>
-              </div>
+    <AuthCard title="ログイン" description="みんなの集金アカウントにログインしてください">
+      <div className="flex flex-col gap-6">
+        <AuthSocialLoginSection
+          next={next}
+          googleAction={startGoogleOAuth}
+          oauthErrorMessage={errorMessage}
+        />
 
-              {/* OAuthエラーメッセージ */}
-              {errorMessage && (
-                <div
-                  className="mt-4 bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded text-sm"
-                  data-testid="oauth-error-message"
-                >
-                  {errorMessage}
-                </div>
+        <Form {...form}>
+          <form
+            onSubmit={onSubmit}
+            className="flex flex-col gap-4 sm:gap-6"
+            noValidate
+            data-testid="login-form"
+          >
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>メールアドレス</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="email"
+                      placeholder="example@mail.com"
+                      disabled={isPending}
+                      autoComplete="email"
+                      required
+                      name="email"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-              <div className="flex items-center my-6">
-                <div className="h-px flex-1 bg-border" />
-                <span className="mx-3 text-xs text-muted-foreground">または</span>
-                <div className="h-px flex-1 bg-border" />
+            />
+
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>パスワード</FormLabel>
+                  <FormControl>
+                    <PasswordInput
+                      {...field}
+                      placeholder="パスワードを入力"
+                      disabled={isPending}
+                      autoComplete="current-password"
+                      required
+                      name="password"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex items-center justify-end text-xs sm:text-sm">
+              <Link
+                href="/reset-password"
+                prefetch={false}
+                className="rounded text-primary underline hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+              >
+                パスワードを忘れた方
+              </Link>
+            </div>
+
+            {form.formState.errors.root && (
+              <div
+                className="rounded border border-destructive/20 bg-destructive/10 px-4 py-3 text-destructive"
+                data-testid="error-message"
+              >
+                {form.formState.errors.root.message}
               </div>
-              <Form {...form}>
-                <form
-                  onSubmit={onSubmit}
-                  className="space-y-4 sm:space-y-6"
-                  noValidate
-                  data-testid="login-form"
-                >
-                  {/* メールアドレス */}
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>メールアドレス</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            type="email"
-                            placeholder="example@mail.com"
-                            disabled={isPending}
-                            autoComplete="email"
-                            required
-                            name="email"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+            )}
 
-                  {/* パスワード */}
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>パスワード</FormLabel>
-                        <FormControl>
-                          <PasswordInput
-                            {...field}
-                            placeholder="パスワードを入力"
-                            disabled={isPending}
-                            autoComplete="current-password"
-                            required
-                            name="password"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+            <Button type="submit" className="w-full" disabled={isPending}>
+              {isPending ? "ログイン中..." : "ログイン"}
+            </Button>
 
-                  <div className="flex items-center justify-end text-xs sm:text-sm">
-                    <Link
-                      href="/reset-password"
-                      prefetch={false}
-                      className="text-primary hover:text-primary/80 underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
-                    >
-                      パスワードを忘れた方
-                    </Link>
-                  </div>
-
-                  {/* 全体エラーメッセージ */}
-                  {form.formState.errors.root && (
-                    <div
-                      className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded"
-                      data-testid="error-message"
-                    >
-                      {form.formState.errors.root.message}
-                    </div>
-                  )}
-
-                  {/* 送信ボタン */}
-                  <Button type="submit" className="w-full" disabled={isPending}>
-                    {isPending ? "ログイン中..." : "ログイン"}
-                  </Button>
-
-                  <div className="text-center text-xs sm:text-sm text-muted-foreground">
-                    アカウントをお持ちでない方は{" "}
-                    <Link
-                      href="/register"
-                      className="text-primary hover:text-primary/80 underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
-                    >
-                      アカウントを作成
-                    </Link>
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </div>
+            <div className="text-center text-xs text-muted-foreground sm:text-sm">
+              アカウントをお持ちでない方は{" "}
+              <Link
+                href="/register"
+                className="rounded text-primary underline hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+              >
+                アカウントを作成
+              </Link>
+            </div>
+          </form>
+        </Form>
       </div>
-    </>
+    </AuthCard>
   );
 }
 

@@ -8,13 +8,10 @@ import { useSearchParams } from "next/navigation";
 
 import { Lock } from "lucide-react";
 
-import { useRegisterFormRHF } from "@features/auth";
+import { AuthCard, AuthSocialLoginSection, useRegisterFormRHF } from "@features/auth";
 
 import { registerAction, startGoogleOAuth } from "@/app/(auth)/actions";
-import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
-import { LINELoginButton } from "@/components/auth/LINELoginButton";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -35,174 +32,144 @@ function RegisterForm() {
   });
 
   return (
-    <>
-      <div className="w-full flex justify-center py-10 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md space-y-8">
-          <Card>
-            <CardHeader className="text-center">
-              <CardTitle as="h1" className="text-2xl sm:text-3xl font-bold">
-                アカウント作成
-              </CardTitle>
-              <CardDescription className="text-xs sm:text-sm">
-                みんなの集金アカウントを作成してください
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <LINELoginButton href={`/auth/line?next=${encodeURIComponent(next)}`} />
-                <form action={startGoogleOAuth}>
-                  <input type="hidden" name="next" value={next} />
-                  <GoogleLoginButton label="Googleでログイン" />
-                </form>
-              </div>
-              <div className="flex items-center my-6">
-                <div className="h-px flex-1 bg-border" />
-                <span className="mx-3 text-xs text-muted-foreground">または</span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-              <Form {...form}>
-                <form
-                  onSubmit={onSubmit}
-                  className="space-y-4 sm:space-y-6"
-                  noValidate
-                  data-testid="register-form"
-                >
-                  {/* 名前 */}
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ユーザーネーム</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            type="text"
-                            placeholder="ユーザーネームを入力"
-                            disabled={isPending}
-                            autoComplete="name"
-                            required
-                            data-testid="name-input"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+    <AuthCard title="アカウント作成" description="みんなの集金アカウントを作成してください">
+      <div className="flex flex-col gap-6">
+        <AuthSocialLoginSection next={next} googleAction={startGoogleOAuth} />
 
-                  {/* メールアドレス */}
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>メールアドレス</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            type="email"
-                            placeholder="example@mail.com"
-                            disabled={isPending}
-                            autoComplete="email"
-                            required
-                            data-testid="email-input"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* パスワード */}
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>パスワード</FormLabel>
-                        <FormControl>
-                          <PasswordInput
-                            {...field}
-                            placeholder="パスワードを入力"
-                            disabled={isPending}
-                            autoComplete="new-password"
-                            required
-                            data-testid="password-input"
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs sm:text-sm">
-                          8文字以上で設定してください
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* 全体エラーメッセージ */}
-                  {form.formState.errors.root && (
-                    <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded">
-                      {form.formState.errors.root.message}
-                    </div>
-                  )}
-
-                  {/* 送信ボタンとセキュリティ表示 */}
-                  <div className="space-y-2">
-                    <Button
-                      type="submit"
-                      className="w-full"
+        <Form {...form}>
+          <form
+            onSubmit={onSubmit}
+            className="flex flex-col gap-4 sm:gap-6"
+            noValidate
+            data-testid="register-form"
+          >
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>ユーザーネーム</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="text"
+                      placeholder="ユーザーネームを入力"
                       disabled={isPending}
-                      data-testid="submit-button"
-                    >
-                      {isPending ? "登録中..." : "アカウントを作成"}
-                    </Button>
+                      autoComplete="name"
+                      required
+                      data-testid="name-input"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                    <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                      <Lock className="h-3 w-3" />
-                      <span>通信は暗号化され、安全に保護されます</span>
-                    </div>
-                  </div>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>メールアドレス</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="email"
+                      placeholder="example@mail.com"
+                      disabled={isPending}
+                      autoComplete="email"
+                      required
+                      data-testid="email-input"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                  {/* 利用規約同意の注釈 */}
-                  <p className="text-xs text-muted-foreground text-center">
-                    送信することで、
-                    <Link
-                      href="/terms"
-                      prefetch={false}
-                      className="text-primary hover:text-primary/80 underline"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      利用規約
-                    </Link>
-                    と
-                    <Link
-                      href="/privacy"
-                      prefetch={false}
-                      className="text-primary hover:text-primary/80 underline"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      プライバシーポリシー
-                    </Link>
-                    に同意したものとみなされます。
-                  </p>
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>パスワード</FormLabel>
+                  <FormControl>
+                    <PasswordInput
+                      {...field}
+                      placeholder="パスワードを入力"
+                      disabled={isPending}
+                      autoComplete="new-password"
+                      required
+                      data-testid="password-input"
+                    />
+                  </FormControl>
+                  <FormDescription className="text-xs sm:text-sm">
+                    8文字以上で設定してください
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                  <div className="text-center text-xs sm:text-sm text-muted-foreground">
-                    すでにアカウントをお持ちの方は{" "}
-                    <Link
-                      href="/login"
-                      className="text-primary hover:text-primary/80 underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
-                    >
-                      ログイン
-                    </Link>
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </div>
+            {form.formState.errors.root && (
+              <div className="rounded border border-destructive/20 bg-destructive/10 px-4 py-3 text-destructive">
+                {form.formState.errors.root.message}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isPending}
+                data-testid="submit-button"
+              >
+                {isPending ? "登録中..." : "アカウントを作成"}
+              </Button>
+
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <Lock className="h-3 w-3" />
+                <span>通信は暗号化され、安全に保護されます</span>
+              </div>
+            </div>
+
+            <p className="text-center text-xs text-muted-foreground">
+              送信することで、
+              <Link
+                href="/terms"
+                prefetch={false}
+                className="text-primary underline hover:text-primary/80"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                利用規約
+              </Link>
+              と
+              <Link
+                href="/privacy"
+                prefetch={false}
+                className="text-primary underline hover:text-primary/80"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                プライバシーポリシー
+              </Link>
+              に同意したものとみなされます。
+            </p>
+
+            <div className="text-center text-xs text-muted-foreground sm:text-sm">
+              すでにアカウントをお持ちの方は{" "}
+              <Link
+                href="/login"
+                className="rounded text-primary underline hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+              >
+                ログイン
+              </Link>
+            </div>
+          </form>
+        </Form>
       </div>
-    </>
+    </AuthCard>
   );
 }
 

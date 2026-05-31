@@ -5,8 +5,7 @@ import { ReactNode, useEffect, useRef } from "react";
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 import { useFocusManagement } from "@core/hooks/useFocusManagement";
 
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
-
+import { AuthCard } from "./AuthCard";
 import { AuthFormMessages } from "./AuthFormMessages";
 
 interface AuthFormWrapperProps {
@@ -67,51 +66,29 @@ export function AuthFormWrapper({
       previousActiveElement.current = null;
     }
   }, [isPending, state.success, error?.fieldErrors, restoreFocus]);
-  // 最大幅のスタイル
-  const maxWidthStyles = {
-    sm: "max-w-sm",
-    md: "max-w-md",
-    lg: "max-w-lg",
-    xl: "max-w-xl",
-  };
-
   return (
-    <>
-      <div className="w-full flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className={`w-full ${maxWidthStyles[maxWidth]} space-y-6 md:space-y-8`}>
-          <Card>
-            <CardHeader className="text-center">
-              <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
-              {subtitle && (
-                <CardDescription className="text-sm md:text-base">{subtitle}</CardDescription>
-              )}
-            </CardHeader>
-            <CardContent>
-              <form
-                ref={formRef}
-                action={typeof action === "string" ? action : undefined}
-                onSubmit={
-                  typeof action === "function"
-                    ? async (e) => {
-                        e.preventDefault();
-                        const formData = new FormData(e.currentTarget);
-                        await action(formData);
-                      }
-                    : undefined
-                }
-                className={`space-y-4 md:space-y-6 ${className}`}
-                noValidate
-                aria-describedby={error?.userMessage ? "form-error" : undefined}
-                data-testid={testId}
-              >
-                <AuthFormMessages state={state} />
+    <AuthCard title={title} description={subtitle} maxWidth={maxWidth} className="py-12">
+      <form
+        ref={formRef}
+        action={typeof action === "string" ? action : undefined}
+        onSubmit={
+          typeof action === "function"
+            ? async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                await action(formData);
+              }
+            : undefined
+        }
+        className={`flex flex-col gap-4 md:gap-6 ${className}`}
+        noValidate
+        aria-describedby={error?.userMessage ? "form-error" : undefined}
+        data-testid={testId}
+      >
+        <AuthFormMessages state={state} />
 
-                <fieldset className="space-y-3 md:space-y-4">{children}</fieldset>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </>
+        <fieldset className="flex flex-col gap-3 md:gap-4">{children}</fieldset>
+      </form>
+    </AuthCard>
   );
 }

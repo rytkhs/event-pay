@@ -1,5 +1,7 @@
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
 interface AuthFormMessagesProps {
   state: ActionResult;
   className?: string;
@@ -14,26 +16,16 @@ export function AuthFormMessages({ state, className = "" }: AuthFormMessagesProp
     <div className={`space-y-2 ${className}`}>
       {/* エラーメッセージ */}
       {!state.success && state.error?.userMessage && (
-        <div
-          data-testid="error-message"
-          className="text-red-600 text-sm bg-red-50 p-3 rounded border border-red-200"
-          role="alert"
-          aria-live="polite"
-        >
-          {state.error.userMessage}
-        </div>
+        <Alert data-testid="error-message" variant="destructive" aria-live="polite">
+          <AlertDescription>{state.error.userMessage}</AlertDescription>
+        </Alert>
       )}
 
       {/* 成功メッセージ */}
       {state.success && state.message && (
-        <div
-          data-testid="success-message"
-          className="text-green-600 text-sm bg-green-50 p-3 rounded border border-green-200"
-          role="status"
-          aria-live="polite"
-        >
-          {state.message}
-        </div>
+        <Alert data-testid="success-message" variant="success" role="status" aria-live="polite">
+          <AlertDescription>{state.message}</AlertDescription>
+        </Alert>
       )}
     </div>
   );
