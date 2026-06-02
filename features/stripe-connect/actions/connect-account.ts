@@ -31,11 +31,10 @@ import {
 } from "../services/factories";
 import {
   resolveRepresentativeCommunitySelection,
-  updateRepresentativeCommunityDescription,
   updateRepresentativeCommunitySelection,
 } from "../services/representative-community";
 import { type ConnectAccountStatusPayload, StripeConnectError } from "../types";
-import { requiredOnboardingCommunityDescriptionSchema, startOnboardingSchema } from "../validation";
+import { startOnboardingSchema } from "../validation";
 
 type StartOnboardingPayload = Record<string, never>;
 
@@ -43,7 +42,6 @@ type StartOnboardingActionResult = ActionResult<StartOnboardingPayload>;
 
 const CONNECT_BUSINESS_PROFILE_PRODUCT_DESCRIPTION =
   "イベントを企画・運営しています。イベント管理プラットフォームの「みんなの集金」のシステムを利用して、イベント開催時の参加費や会費の事前決済を行います。";
-const COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE = "コミュニティ説明を入力してください";
 
 function getStringFormValue(formData: FormData, key: string): string | undefined {
   const value = formData.get(key);
@@ -574,7 +572,6 @@ export async function startOnboardingAction(
     userId = user.id;
 
     const parsedInput = startOnboardingSchema.safeParse({
-      communityDescription: getStringFormValue(formData, "communityDescription"),
       representativeCommunityId: getStringFormValue(formData, "representativeCommunityId"),
     });
     if (!parsedInput.success) {
@@ -605,45 +602,6 @@ export async function startOnboardingAction(
       });
     }
     const representativeCommunity = representativeCommunityResult.data;
-    const hasRepresentativeCommunityDescription =
-      (representativeCommunity.description?.trim() ?? "").length > 0;
-
-    if (!hasRepresentativeCommunityDescription) {
-      const communityDescriptionResult = requiredOnboardingCommunityDescriptionSchema.safeParse({
-        communityDescription: parsedInput.data.communityDescription,
-      });
-      if (!communityDescriptionResult.success) {
-        const isMissingDescription =
-          (parsedInput.data.communityDescription?.trim() ?? "").length === 0;
-        return fail("VALIDATION_ERROR", {
-          fieldErrors: {
-            communityDescription: [
-              isMissingDescription
-                ? COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE
-                : (communityDescriptionResult.error.flatten().fieldErrors
-                    .communityDescription?.[0] ?? COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE),
-            ],
-          },
-          retryable: false,
-          userMessage: isMissingDescription
-            ? COMMUNITY_DESCRIPTION_REQUIRED_MESSAGE
-            : "コミュニティ説明を確認してください",
-        });
-      }
-      const communityDescription = communityDescriptionResult.data.communityDescription;
-
-      const descriptionUpdateResult = await updateRepresentativeCommunityDescription(
-        supabase,
-        user.id,
-        representativeCommunity.id,
-        communityDescription
-      );
-      if (!descriptionUpdateResult.success) {
-        return failFrom(descriptionUpdateResult.error, {
-          userMessage: "コミュニティ説明の保存に失敗しました",
-        });
-      }
-    }
 
     // 3. StripeConnectServiceを初期化
     const stripeConnectService = await createUserStripeConnectServiceForServerAction();
