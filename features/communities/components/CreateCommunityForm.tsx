@@ -113,7 +113,7 @@ export function CreateCommunityForm({
           </p>
         ) : (
           <p id="community-name-hint" className="text-xs text-muted-foreground">
-            サークル、団体、一時的なグループの名前などを入力してください。あとから変更できます。
+            サークル、団体、一時的なグループの名前など。あとから変更できます。
           </p>
         )}
       </div>
@@ -131,7 +131,7 @@ export function CreateCommunityForm({
             </>
           ) : (
             <>
-              <span>コミュニティを作成</span>
+              <span>作成する</span>
               <ArrowRight className="h-4 w-4" />
             </>
           )}
@@ -160,7 +160,7 @@ export function CreateCommunityForm({
                 コミュニティを追加
               </h1>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                運営単位となる新しいコミュニティを作成します。
+                新しいコミュニティを作成します。
               </p>
             </div>
 
@@ -232,7 +232,7 @@ export function CreateCommunityForm({
                 最初のコミュニティを作成
               </h1>
               <p className="mx-auto max-w-sm text-sm leading-6 text-muted-foreground">
-                イベントと集金を管理する単位です。名前はあとから変更できます。
+                イベント・集金を束ねます。
               </p>
             </div>
 
@@ -249,9 +249,6 @@ export function CreateCommunityForm({
               </div>
             </div>
 
-            <div className="mt-4 rounded-lg border border-dashed border-border/70 bg-background/60 px-4 py-3 text-center text-xs leading-5 text-muted-foreground">
-              次にオンライン集金の設定へ進みます。設定はスキップしてあとから再開できます。
-            </div>
           </div>
         </main>
       </div>
