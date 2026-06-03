@@ -68,7 +68,9 @@ export function EventInfo({ event }: EventInfoProps) {
 
           {/* 2. 場所 */}
           <InfoItem icon={MapPin} label="場所">
-            <span className="font-medium">{sanitizeForEventPay(event.location)}</span>
+            <span className={event.location ? "font-medium" : "text-muted-foreground"}>
+              {sanitizeForEventPay(event.location) || "設定なし"}
+            </span>
           </InfoItem>
 
           {/* 3. 参加費 */}
