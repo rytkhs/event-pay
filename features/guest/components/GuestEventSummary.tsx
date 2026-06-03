@@ -66,53 +66,61 @@ export const GuestEventSummary: React.FC<GuestEventSummaryProps> = ({ attendance
             </div>
           </div>
 
-          <div className="flex items-start gap-3">
-            <MapPin className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-slate-900">
-                {sanitizeForEventPay(event.location || "未定")}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Metadata Grid (Deadlines & Capacity) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8 pt-6 mt-6 border-t border-slate-100">
-          {/* Registration Deadline */}
-          <div className="flex items-start gap-3">
-            <div className="bg-blue-50 p-2 rounded-full shrink-0">
-              <Clock className="w-4 h-4 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 mb-0.5 font-medium">出欠回答期限</p>
-              <p className="text-sm font-bold text-gray-700">{regDeadline || "設定なし"}</p>
-            </div>
-          </div>
-
-          {/* Payment Deadline */}
-          <div className="flex items-start gap-3">
-            <div className="bg-emerald-50 p-2 rounded-full shrink-0">
-              <Clock className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 mb-0.5 font-medium">オンライン支払い期限</p>
-              <p className="text-sm font-bold text-gray-700">{payDeadline || "設定なし"}</p>
-            </div>
-          </div>
-
-          {/* Capacity */}
-          {showCapacity && (
-            <div className="flex items-start gap-3 sm:col-span-2">
-              <div className="bg-slate-50 p-2 rounded-full shrink-0">
-                <Users className="w-4 h-4 text-slate-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs text-slate-500 mb-0.5 font-medium">定員</p>
-                <p className="text-sm font-bold text-slate-700">{event.capacity}名</p>
+          {event.location && (
+            <div className="flex items-start gap-3">
+              <MapPin className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-slate-900">
+                  {sanitizeForEventPay(event.location)}
+                </p>
               </div>
             </div>
           )}
         </div>
+
+        {/* Metadata Grid (Deadlines & Capacity) */}
+        {(regDeadline || payDeadline || showCapacity) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8 pt-6 mt-6 border-t border-slate-100">
+            {/* Registration Deadline */}
+            {regDeadline && (
+              <div className="flex items-start gap-3">
+                <div className="bg-blue-50 p-2 rounded-full shrink-0">
+                  <Clock className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 mb-0.5 font-medium">出欠回答期限</p>
+                  <p className="text-sm font-bold text-gray-700">{regDeadline}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Payment Deadline */}
+            {payDeadline && (
+              <div className="flex items-start gap-3">
+                <div className="bg-emerald-50 p-2 rounded-full shrink-0">
+                  <Clock className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 mb-0.5 font-medium">オンライン支払い期限</p>
+                  <p className="text-sm font-bold text-gray-700">{payDeadline}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Capacity */}
+            {showCapacity && (
+              <div className="flex items-start gap-3 sm:col-span-2">
+                <div className="bg-slate-50 p-2 rounded-full shrink-0">
+                  <Users className="w-4 h-4 text-slate-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-slate-500 mb-0.5 font-medium">定員</p>
+                  <p className="text-sm font-bold text-slate-700">{event.capacity}名</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Description Toggle (Only if description exists) */}
