@@ -1,13 +1,12 @@
 /**
- * checkout.session.expired Webhook ステータス降格防止テスト
+ * checkout.session.expired Webhook non-pending 保護テスト
  *
- * 異常系: ステータス降格防止
+ * 異常系: pending 以外は更新しない
  */
 
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
 import { logger } from "../../../../../core/logging/app-logger";
-import { canPromoteStatus } from "../../../../../core/utils/payments/status-rank";
 import { StripeWebhookEventHandler } from "../../../../../features/payments/services/webhook/webhook-event-handler";
 import {
   createTestAttendance,
@@ -18,13 +17,20 @@ import { createWebhookTestSetup, type WebhookTestSetup } from "../../../../setup
 import { createTestWebhookEvent } from "../../../../setup/stripe-test-helpers";
 
 // 外部依存のモック（統合テストなので最小限）
-jest.mock("../../../../../core/logging/app-logger", () => ({
-  logger: {
+jest.mock("../../../../../core/logging/app-logger", () => {
+  const mockMethods = {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-  },
-}));
+    debug: jest.fn(),
+  };
+  return {
+    logger: {
+      ...mockMethods,
+      withContext: jest.fn(() => mockMethods),
+    },
+  };
+});
 
 /**
  * Checkout Session Expired イベントを作成
@@ -44,7 +50,7 @@ function createCheckoutExpiredEvent(
   });
 }
 
-describe("🚫 異常系: ステータス降格防止", () => {
+describe("🚫 異常系: non-pending 保護", () => {
   let setup: WebhookTestSetup;
   let mockLogger: jest.Mocked<typeof logger>;
 
@@ -75,7 +81,7 @@ describe("🚫 異常系: ステータス降格防止", () => {
     ["waived", 25],
     ["canceled", 35],
     ["refunded", 40],
-  ])("%s ステータス（ランク %d）からの降格を防止", async (currentStatus, _expectedRank) => {
+  ])("%s ステータス（ランク %d）のpaymentは更新しない", async (currentStatus, _expectedRank) => {
     // Arrange: 高位ステータスの決済レコード
     const sessionId = `cs_test_prevent_${currentStatus}_` + Date.now();
 
@@ -126,9 +132,11 @@ describe("🚫 異常系: ステータス降格防止", () => {
     const result = await handler.handleEvent(event);
 
     // Assert: 正常レスポンス（更新はスキップ）
-    expect(result).toEqual({
-      success: true,
-    });
+    expect(result).toEqual(
+      expect.objectContaining({
+        success: true,
+      })
+    );
 
     // Assert: ステータス変更されていない
     const { data: unchangedPayment } = await setup.adminClient
@@ -139,24 +147,18 @@ describe("🚫 異常系: ステータス降格防止", () => {
 
     expect(unchangedPayment.status).toBe(currentStatus);
 
-    // Assert: 重複処理防止ログ
     expect(mockLogger.info).toHaveBeenCalledWith(
-      "Webhook security event",
+      "Checkout session expiration ignored for non-pending payment",
       expect.objectContaining({
-        event_action: "webhook_duplicate_processing_prevented",
-        details: expect.objectContaining({
-          eventId: event.id,
-          paymentId: payment.id,
-          currentStatus: currentStatus,
-        }),
+        event_id: event.id,
+        payment_id: payment.id,
+        current_status: currentStatus,
+        outcome: "success",
       })
     );
-
-    // Assert: ステータスランク検証（仕様書との整合性）
-    expect(canPromoteStatus(currentStatus as any, "failed")).toBe(false);
   });
 
-  test("同一ステータス failed → failed の重複処理防止", async () => {
+  test("failed ステータスのpaymentは更新しない", async () => {
     // Arrange: 既にfailedステータス
     const sessionId = "cs_test_duplicate_failed_" + Date.now();
 
@@ -188,23 +190,19 @@ describe("🚫 異常系: ステータス降格防止", () => {
     const handler = new StripeWebhookEventHandler();
     const result = await handler.handleEvent(event);
 
-    // Assert: 正常レスポンス（重複処理防止）
     expect(result).toEqual(
       expect.objectContaining({
         success: true,
       })
     );
 
-    // Assert: 重複処理防止ログ
     expect(mockLogger.info).toHaveBeenCalledWith(
-      "Webhook security event",
+      "Checkout session expiration ignored for non-pending payment",
       expect.objectContaining({
-        event_action: "webhook_duplicate_processing_prevented",
-        details: expect.objectContaining({
-          eventId: event.id,
-          paymentId: payment.id,
-          currentStatus: "failed",
-        }),
+        event_id: event.id,
+        payment_id: payment.id,
+        current_status: "failed",
+        outcome: "success",
       })
     );
   });

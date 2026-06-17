@@ -41,11 +41,9 @@ interface UpdateStatusFailedFromPaymentIntentParams {
   stripePaymentIntentId: string;
 }
 
-interface UpdateStatusFailedFromCheckoutSessionParams {
+interface ClearExpiredCheckoutSessionParams {
   paymentId: string;
-  eventId: string;
   checkoutSessionId: string;
-  paymentIntentId: string | null;
 }
 
 interface UpdateStatusPaidFromChargeSnapshotParams {
@@ -440,24 +438,19 @@ export class PaymentWebhookRepository {
       .eq("id", paymentId);
   }
 
-  async updateStatusFailedFromCheckoutSession({
+  async clearExpiredCheckoutSession({
     paymentId,
-    eventId,
     checkoutSessionId,
-    paymentIntentId,
-  }: UpdateStatusFailedFromCheckoutSessionParams) {
+  }: ClearExpiredCheckoutSessionParams) {
     const now = nowIso();
     return this.supabase
       .from("payments")
       .update({
-        status: "failed",
-        webhook_event_id: eventId,
-        webhook_processed_at: now,
         updated_at: now,
-        stripe_checkout_session_id: checkoutSessionId,
-        ...(paymentIntentId ? { stripe_payment_intent_id: paymentIntentId } : {}),
+        stripe_checkout_session_id: null,
       })
-      .eq("id", paymentId);
+      .eq("id", paymentId)
+      .eq("stripe_checkout_session_id", checkoutSessionId);
   }
 
   async updateStatusPaidFromChargeSnapshot({

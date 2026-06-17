@@ -2,10 +2,8 @@ import Stripe from "stripe";
 
 import { okResult } from "@core/errors";
 import { getMetadata, getPaymentIntentId } from "@core/stripe/guards";
-import type { PaymentStatus } from "@core/types/statuses";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { maskSessionId } from "@core/utils/mask";
-import { canPromoteStatus } from "@core/utils/payments/status-rank";
 
 import type { WebhookContextLogger } from "../context/webhook-handler-context";
 import { createWebhookDbError } from "../errors/webhook-error-factory";
@@ -176,23 +174,34 @@ export class CheckoutSessionHandler {
 
       logStripeAccountSnapshotMismatch({ event, payment, logger: this.logger });
 
-      if (!canPromoteStatus(payment.status as PaymentStatus, "failed")) {
-        this.logger.info("Status promotion rule preventing update", {
+      if (payment.status !== "pending") {
+        this.logger.info("Checkout session expiration ignored for non-pending payment", {
           event_id: event.id,
           ...getPaymentWebhookLogContext(payment),
           current_status: payment.status,
+          session_id: maskSessionId(sessionId),
           outcome: "success",
         });
         return okResult();
       }
 
-      const { error: updateError } =
-        await this.paymentRepository.updateStatusFailedFromCheckoutSession({
-          paymentId: payment.id,
-          eventId: event.id,
-          checkoutSessionId: sessionId,
-          paymentIntentId,
+      if (payment.stripe_checkout_session_id !== sessionId) {
+        this.logger.info("Stale checkout session expiration ignored", {
+          event_id: event.id,
+          ...getPaymentWebhookLogContext(payment),
+          session_id: maskSessionId(sessionId),
+          current_session_id: payment.stripe_checkout_session_id
+            ? maskSessionId(payment.stripe_checkout_session_id)
+            : undefined,
+          outcome: "success",
         });
+        return okResult(undefined, buildPaymentWebhookMeta({ eventId: event.id, payment }));
+      }
+
+      const { error: updateError } = await this.paymentRepository.clearExpiredCheckoutSession({
+        paymentId: payment.id,
+        checkoutSessionId: sessionId,
+      });
       if (updateError) {
         handleServerError("STRIPE_CHECKOUT_SESSION_EXPIRED_UPDATE_FAILED", {
           action: "processCheckoutSessionExpired",
@@ -206,12 +215,12 @@ export class CheckoutSessionHandler {
         });
         return createWebhookDbError({
           code: "STRIPE_CHECKOUT_SESSION_EXPIRED_UPDATE_FAILED",
-          reason: "checkout_status_update_failed",
+          reason: "checkout_session_expiration_clear_failed",
           eventId: event.id,
           paymentId: payment.id,
           payoutProfileId: payment.payout_profile_id,
           stripeAccountId: payment.stripe_account_id,
-          userMessage: "決済ステータス更新に失敗しました",
+          userMessage: "期限切れCheckout Sessionの更新に失敗しました",
           dbError: updateError,
           details: {
             eventId: event.id,
