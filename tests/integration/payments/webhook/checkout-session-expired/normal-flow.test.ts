@@ -1,26 +1,36 @@
 /**
  * checkout.session.expired Webhook 正常系テスト
  *
- * 正常系: pending → failed へのステータス遷移
+ * 正常系: pending 維持と Checkout Session リンク解除
  */
 
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
 import { logger } from "../../../../../core/logging/app-logger";
 import { StripeWebhookEventHandler } from "../../../../../features/payments/services/webhook/webhook-event-handler";
-import { createPendingTestPayment } from "../../../../helpers/test-payment-data";
+import {
+  createPendingTestPayment,
+  createTestAttendance,
+} from "../../../../helpers/test-payment-data";
 import { setupLoggerMocks } from "../../../../setup/common-mocks";
 import { createWebhookTestSetup, type WebhookTestSetup } from "../../../../setup/common-test-setup";
 import { createTestWebhookEvent } from "../../../../setup/stripe-test-helpers";
 
 // 外部依存のモック（統合テストなので最小限）
-jest.mock("../../../../../core/logging/app-logger", () => ({
-  logger: {
+jest.mock("../../../../../core/logging/app-logger", () => {
+  const mockMethods = {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-  },
-}));
+    debug: jest.fn(),
+  };
+  return {
+    logger: {
+      ...mockMethods,
+      withContext: jest.fn(() => mockMethods),
+    },
+  };
+});
 
 /**
  * Checkout Session Expired イベントを作成
@@ -40,7 +50,7 @@ function createCheckoutExpiredEvent(
   });
 }
 
-describe("🔄 正常系: pending → failed 遷移", () => {
+describe("🔄 正常系: pending 維持", () => {
   let setup: WebhookTestSetup;
   let mockLogger: jest.Mocked<typeof logger>;
 
@@ -65,7 +75,7 @@ describe("🔄 正常系: pending → failed 遷移", () => {
     }
   });
 
-  test("stripe_checkout_session_idによる突合で決済レコードを更新", async () => {
+  test("stripe_checkout_session_idによる突合でCheckout Sessionリンクを解除", async () => {
     // Arrange: pending状態の決済レコードを準備
     const sessionId = "cs_test_expired_" + Date.now();
     const paymentIntentId = "pi_test_expired_" + Date.now();
@@ -94,10 +104,12 @@ describe("🔄 正常系: pending → failed 遷移", () => {
     const result = await handler.handleEvent(event);
 
     // Assert: レスポンス検証
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       success: true,
-      eventId: event.id,
-      paymentId: payment.id,
+      meta: {
+        eventId: event.id,
+        paymentId: payment.id,
+      },
     });
 
     // Assert: データベース更新検証
@@ -108,30 +120,27 @@ describe("🔄 正常系: pending → failed 遷移", () => {
       .single();
 
     expect(updatedPayment).toMatchObject({
-      status: "failed",
-      webhook_event_id: event.id,
-      stripe_checkout_session_id: sessionId,
-      stripe_payment_intent_id: paymentIntentId,
+      status: "pending",
+      stripe_checkout_session_id: null,
+      stripe_payment_intent_id: null,
     });
-    expect(updatedPayment.webhook_processed_at).toBeTruthy();
+    expect(updatedPayment.webhook_event_id).toBeNull();
+    expect(updatedPayment.webhook_processed_at).toBeNull();
     expect(updatedPayment.updated_at).toBeTruthy();
 
     // Assert: ログ出力検証
     expect(mockLogger.info).toHaveBeenCalledWith(
-      "Webhook security event",
+      "Checkout session expiration processed",
       expect.objectContaining({
-        event_action: "webhook_checkout_expired_processed",
-        details: expect.objectContaining({
-          eventId: event.id,
-          paymentId: payment.id,
-          sessionId,
-          paymentIntentId,
-        }),
+        event_id: event.id,
+        payment_id: payment.id,
+        payment_intent_id: paymentIntentId,
+        outcome: "success",
       })
     );
   });
 
-  test("metadata.payment_id フォールバック突合で決済レコードを更新", async () => {
+  test("metadata.payment_id フォールバック突合で古いCheckout Session期限切れを無視", async () => {
     // Arrange: metadata経由での突合テスト用
     const sessionId = "cs_test_metadata_" + Date.now();
 
@@ -159,10 +168,12 @@ describe("🔄 正常系: pending → failed 遷移", () => {
     const result = await handler.handleEvent(event);
 
     // Assert: レスポンス検証
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       success: true,
-      eventId: event.id,
-      paymentId: payment.id,
+      meta: {
+        eventId: event.id,
+        paymentId: payment.id,
+      },
     });
 
     // Assert: データベース更新検証
@@ -173,13 +184,58 @@ describe("🔄 正常系: pending → failed 遷移", () => {
       .single();
 
     expect(updatedPayment).toMatchObject({
-      status: "failed",
-      webhook_event_id: event.id,
-      stripe_checkout_session_id: sessionId,
+      status: "pending",
+      stripe_checkout_session_id: null,
     });
+    expect(updatedPayment.webhook_event_id).toBeNull();
+    expect(updatedPayment.webhook_processed_at).toBeNull();
   });
 
-  test("PaymentIntent ID が null の場合はデータベース制約エラー", async () => {
+  test("古いCheckout Sessionの期限切れは現在のCheckout Sessionリンクを変更しない", async () => {
+    const expiredSessionId = "cs_test_expired_old_" + Date.now();
+    const currentSessionId = "cs_test_current_" + Date.now();
+    const dedicatedAttendance = await createTestAttendance(setup.testEvent.id);
+    const payment = await createPendingTestPayment(dedicatedAttendance.id, {
+      amount: 1500,
+      stripeAccountId: setup.testUser.stripeConnectAccountId,
+    });
+
+    await setup.adminClient
+      .from("payments")
+      .update({
+        status: "pending",
+        stripe_checkout_session_id: currentSessionId,
+      })
+      .eq("id", payment.id);
+
+    const event = createCheckoutExpiredEvent(expiredSessionId, {
+      metadata: { payment_id: payment.id },
+    });
+
+    const handler = new StripeWebhookEventHandler();
+    const result = await handler.handleEvent(event);
+
+    expect(result).toMatchObject({
+      success: true,
+      meta: {
+        eventId: event.id,
+        paymentId: payment.id,
+      },
+    });
+
+    const { data: updatedPayment } = await setup.adminClient
+      .from("payments")
+      .select("*")
+      .eq("id", payment.id)
+      .single();
+
+    expect(updatedPayment.status).toBe("pending");
+    expect(updatedPayment.stripe_checkout_session_id).toBe(currentSessionId);
+    expect(updatedPayment.webhook_event_id).toBeNull();
+    expect(updatedPayment.webhook_processed_at).toBeNull();
+  });
+
+  test("PaymentIntent ID が null の場合もpendingのままCheckout Sessionリンクを解除", async () => {
     // Arrange
     const sessionId = "cs_test_no_pi_" + Date.now();
 
@@ -205,13 +261,14 @@ describe("🔄 正常系: pending → failed 遷移", () => {
     const handler = new StripeWebhookEventHandler();
     const result = await handler.handleEvent(event);
 
-    // Assert: データベース制約違反によりエラー
-    expect(result).toEqual({
-      success: false,
-      error: expect.stringContaining("payments_stripe_intent_required"),
+    expect(result).toMatchObject({
+      success: true,
+      meta: {
+        eventId: event.id,
+        paymentId: payment.id,
+      },
     });
 
-    // Assert: 決済レコードは更新されていない
     const { data: unchangedPayment } = await setup.adminClient
       .from("payments")
       .select("*")
@@ -219,5 +276,7 @@ describe("🔄 正常系: pending → failed 遷移", () => {
       .single();
 
     expect(unchangedPayment.status).toBe("pending");
+    expect(unchangedPayment.stripe_checkout_session_id).toBeNull();
+    expect(unchangedPayment.stripe_payment_intent_id).toBeNull();
   });
 });

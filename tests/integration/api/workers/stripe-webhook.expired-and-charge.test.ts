@@ -49,7 +49,7 @@ describe("/api/workers/stripe-webhook (expired & charge)", () => {
     mockChargeRetrieve.mockReset();
   });
 
-  it("checkout.session.expired は 204 を返す（failed 昇格パスを実行）", async () => {
+  it("checkout.session.expired は 204 を返す", async () => {
     const evt = {
       ...webhookEventFixtures.checkoutCompleted(),
       type: "checkout.session.expired",

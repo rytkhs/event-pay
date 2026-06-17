@@ -101,11 +101,10 @@ describe("🔍 ログ出力仕様検証", () => {
         },
       },
       {
-        name: "重複処理防止",
-        // 既に処理済みの場合は logger.info("Duplicate webhook event preventing double processing") が呼ばれる
+        name: "non-pending payment の無視",
         verifyFn: async (data: any) => {
           expect(logger.withContext().info).toHaveBeenCalledWith(
-            "Duplicate webhook event preventing double processing",
+            "Checkout session expiration ignored for non-pending payment",
             expect.objectContaining({
               event_id: data.event.id,
               payment_id: data.payment.id,

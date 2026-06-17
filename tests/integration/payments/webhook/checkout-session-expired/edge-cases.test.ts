@@ -71,7 +71,7 @@ describe("🎯 境界値・エッジケース", () => {
     }
   });
 
-  test("空文字のPaymentIntent IDは制約エラー", async () => {
+  test("空文字のPaymentIntent IDはpendingのままCheckout Sessionリンクを解除", async () => {
     // Arrange
     const sessionId = "cs_test_empty_pi_" + Date.now();
 
@@ -100,11 +100,17 @@ describe("🎯 境界値・エッジケース", () => {
     const handler = new StripeWebhookEventHandler();
     const result = await handler.handleEvent(event);
 
-    // Assert: データベース制約違反によりエラー
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.message).toContain("payments_stripe_intent_required");
-    }
+    expect(result.success).toBe(true);
+
+    const { data: updatedPayment } = await setup.adminClient
+      .from("payments")
+      .select("*")
+      .eq("id", payment.id)
+      .single();
+
+    expect(updatedPayment.status).toBe("pending");
+    expect(updatedPayment.stripe_checkout_session_id).toBeNull();
+    expect(updatedPayment.stripe_payment_intent_id).toBeNull();
   });
 
   test("metadata.payment_id が空文字の場合は無視", async () => {
@@ -161,7 +167,7 @@ describe("🎯 境界値・エッジケース", () => {
     );
   });
 
-  test("非文字列型のPaymentIntentは制約エラー", async () => {
+  test("非文字列型のPaymentIntentはpendingのままCheckout Sessionリンクを解除", async () => {
     // Arrange
     const sessionId = "cs_test_non_string_pi_" + Date.now();
 
@@ -190,10 +196,16 @@ describe("🎯 境界値・エッジケース", () => {
     const handler = new StripeWebhookEventHandler();
     const result = await handler.handleEvent(event);
 
-    // Assert: データベース制約違反によりエラー
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.message).toContain("payments_stripe_intent_required");
-    }
+    expect(result.success).toBe(true);
+
+    const { data: updatedPayment } = await setup.adminClient
+      .from("payments")
+      .select("*")
+      .eq("id", payment.id)
+      .single();
+
+    expect(updatedPayment.status).toBe("pending");
+    expect(updatedPayment.stripe_checkout_session_id).toBeNull();
+    expect(updatedPayment.stripe_payment_intent_id).toBeNull();
   });
 });

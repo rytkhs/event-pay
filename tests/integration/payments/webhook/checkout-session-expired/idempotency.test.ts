@@ -5,7 +5,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
 
 import { logger } from "../../../../../core/logging/app-logger";
-import { canPromoteStatus } from "../../../../../core/utils/payments/status-rank";
 import { StripeWebhookEventHandler } from "../../../../../features/payments/services/webhook/webhook-event-handler";
 import {
   createTestAttendance,
@@ -16,13 +15,20 @@ import { createWebhookTestSetup, type WebhookTestSetup } from "../../../../setup
 import { createTestWebhookEvent } from "../../../../setup/stripe-test-helpers";
 
 // 外部依存のモック（統合テストなので最小限）
-jest.mock("../../../../../core/logging/app-logger", () => ({
-  logger: {
+jest.mock("../../../../../core/logging/app-logger", () => {
+  const mockMethods = {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-  },
-}));
+    debug: jest.fn(),
+  };
+  return {
+    logger: {
+      ...mockMethods,
+      withContext: jest.fn(() => mockMethods),
+    },
+  };
+});
 
 /**
  * Checkout Session Expired イベントを作成
@@ -97,8 +103,10 @@ describe("⚙️ 冪等性保証", () => {
     // Assert: 初回は正常処理
     expect(firstResult).toMatchObject({
       success: true,
-      eventId: event.id,
-      paymentId: payment.id,
+      meta: {
+        eventId: event.id,
+        paymentId: payment.id,
+      },
     });
 
     // Act: 同一イベントで再処理
@@ -112,14 +120,11 @@ describe("⚙️ 冪等性保証", () => {
     );
 
     expect(mockLogger.info).toHaveBeenCalledWith(
-      "Webhook security event",
+      "Duplicate webhook event acknowledged via ledger",
       expect.objectContaining({
-        event_action: "webhook_duplicate_processing_prevented",
-        details: expect.objectContaining({
-          eventId: event.id,
-          paymentId: payment.id,
-          currentStatus: "failed",
-        }),
+        event_id: event.id,
+        event_type: "checkout.session.expired",
+        outcome: "success",
       })
     );
 
@@ -130,22 +135,47 @@ describe("⚙️ 冪等性保証", () => {
       .eq("id", payment.id)
       .single();
 
-    expect(finalPayment.status).toBe("failed");
-    expect(finalPayment.webhook_event_id).toBe(event.id);
+    expect(finalPayment.status).toBe("pending");
+    expect(finalPayment.stripe_checkout_session_id).toBeNull();
+    expect(finalPayment.webhook_event_id).toBeNull();
   });
 
-  test("ステータスランク違反による冪等性", async () => {
-    // canPromoteStatus関数のロジックを直接テスト
-    const statusTests = [
-      { current: "paid", target: "failed", expected: false },
-      { current: "received", target: "failed", expected: false },
-      { current: "refunded", target: "failed", expected: false },
-      { current: "pending", target: "failed", expected: true },
-      { current: "failed", target: "failed", expected: true }, // 同一ステータス（冪等性）
-    ];
-
-    statusTests.forEach(({ current, target, expected }) => {
-      expect(canPromoteStatus(current as any, target as any)).toBe(expected);
+  test("期限切れ処理後に同じpaymentへ別セッションを紐づけられる", async () => {
+    const sessionId = "cs_test_recreate_" + Date.now();
+    const nextSessionId = "cs_test_recreate_next_" + Date.now();
+    const dedicatedAttendance = await createTestAttendance(setup.testEvent.id);
+    const payment = await createPendingTestPayment(dedicatedAttendance.id, {
+      amount: 1500,
+      stripeAccountId: setup.testUser.stripeConnectAccountId,
     });
+
+    await setup.adminClient
+      .from("payments")
+      .update({
+        status: "pending",
+        stripe_checkout_session_id: sessionId,
+      })
+      .eq("id", payment.id);
+
+    const handler = new StripeWebhookEventHandler();
+    await handler.handleEvent(createCheckoutExpiredEvent(sessionId));
+
+    const { error } = await setup.adminClient
+      .from("payments")
+      .update({
+        stripe_checkout_session_id: nextSessionId,
+      })
+      .eq("id", payment.id);
+
+    expect(error).toBeNull();
+
+    const { data: updatedPayment } = await setup.adminClient
+      .from("payments")
+      .select("*")
+      .eq("id", payment.id)
+      .single();
+
+    expect(updatedPayment.status).toBe("pending");
+    expect(updatedPayment.stripe_checkout_session_id).toBe(nextSessionId);
   });
 });
