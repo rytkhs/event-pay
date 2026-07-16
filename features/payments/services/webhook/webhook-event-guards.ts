@@ -20,6 +20,8 @@ const REFUND_FAILED_EVENT_TYPES: ReadonlySet<RefundFailedCompatibleEventType> = 
   "refund.failed",
 ]);
 
+const PAYOUT_REQUEST_SYSTEM_FEE_PURPOSE = "payout_request_system_fee";
+
 export function isRefundCreatedCompatibleEventType(
   eventType: string
 ): eventType is RefundCreatedCompatibleEventType {
@@ -36,6 +38,19 @@ export function isRefundFailedCompatibleEventType(
   eventType: string
 ): eventType is RefundFailedCompatibleEventType {
   return REFUND_FAILED_EVENT_TYPES.has(eventType as RefundFailedCompatibleEventType);
+}
+
+export function isPayoutRequestSystemFeeCharge(charge: unknown): boolean {
+  if (!charge || typeof charge !== "object") {
+    return false;
+  }
+
+  const metadata = (charge as { metadata?: unknown }).metadata;
+  if (!metadata || typeof metadata !== "object") {
+    return false;
+  }
+
+  return (metadata as Record<string, unknown>).purpose === PAYOUT_REQUEST_SYSTEM_FEE_PURPOSE;
 }
 
 function isRefundObject(object: unknown): object is Stripe.Refund {

@@ -16,6 +16,7 @@ import {
   StripeObjectFetchService,
 } from "../services/stripe-object-fetch-service";
 import type { WebhookProcessingResult } from "../types";
+import { isPayoutRequestSystemFeeCharge } from "../webhook-event-guards";
 import {
   buildPaymentWebhookMeta,
   getPaymentWebhookLogContext,
@@ -82,6 +83,18 @@ export class ChargeHandler {
     const charge = event.data.object;
 
     try {
+      if (isPayoutRequestSystemFeeCharge(charge)) {
+        this.logger.info("Payout request system fee charge skipped by payment webhook", {
+          event_id: event.id,
+          event_type: event.type,
+          charge_id: charge.id,
+          payout_request_id: charge.metadata.payout_request_id ?? undefined,
+          purpose: charge.metadata.purpose,
+          outcome: "success",
+        });
+        return okResult();
+      }
+
       this.logger.debug("Stripe object fetch policy applied", {
         event_id: event.id,
         trust_webhook_payload: STRIPE_OBJECT_FETCH_POLICY.trustWebhookPayload.join(","),
@@ -242,9 +255,21 @@ export class ChargeHandler {
 
   async handleFailed(event: Stripe.ChargeFailedEvent): Promise<WebhookProcessingResult> {
     const charge = event.data.object;
-    const stripePaymentIntentId = getPaymentIntentId(charge);
 
     try {
+      if (isPayoutRequestSystemFeeCharge(charge)) {
+        this.logger.info("Payout request system fee charge skipped by payment webhook", {
+          event_id: event.id,
+          event_type: event.type,
+          charge_id: charge.id,
+          payout_request_id: charge.metadata.payout_request_id ?? undefined,
+          purpose: charge.metadata.purpose,
+          outcome: "success",
+        });
+        return okResult();
+      }
+
+      const stripePaymentIntentId = getPaymentIntentId(charge);
       const payment = await this.paymentRepository.resolveByChargeOrFallback({
         paymentIntentId: stripePaymentIntentId,
         chargeId: charge.id,
