@@ -16,7 +16,10 @@ import {
 } from "../repositories/payment-webhook-repository";
 import { StripeObjectFetchService } from "../services/stripe-object-fetch-service";
 import type { WebhookProcessingResult } from "../types";
-import { getRefundFromWebhookEvent } from "../webhook-event-guards";
+import {
+  getRefundFromWebhookEvent,
+  isPayoutRequestSystemFeeCharge,
+} from "../webhook-event-guards";
 import {
   buildPaymentWebhookMeta,
   getPaymentWebhookLogContext,
@@ -154,6 +157,18 @@ export class RefundHandler {
     const charge = event.data.object;
 
     try {
+      if (isPayoutRequestSystemFeeCharge(charge)) {
+        this.logger.info("Payout request system fee charge skipped by payment webhook", {
+          event_id: event.id,
+          event_type: event.type,
+          charge_id: charge.id,
+          payout_request_id: charge.metadata.payout_request_id ?? undefined,
+          purpose: charge.metadata.purpose,
+          outcome: "success",
+        });
+        return okResult();
+      }
+
       const applied = await this.applyRefundAggregateFromCharge({
         charge,
         eventId: event.id,

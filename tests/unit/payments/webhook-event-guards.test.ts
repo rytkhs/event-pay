@@ -3,12 +3,36 @@ import Stripe from "stripe";
 
 import {
   getRefundFromWebhookEvent,
+  isPayoutRequestSystemFeeCharge,
   isRefundCreatedCompatibleEventType,
   isRefundFailedCompatibleEventType,
   isRefundUpdatedCompatibleEventType,
 } from "@/features/payments/services/webhook/webhook-event-guards";
 
 describe("webhook-event-guards", () => {
+  describe("isPayoutRequestSystemFeeCharge", () => {
+    it("should identify payout request system fee charge", () => {
+      expect(
+        isPayoutRequestSystemFeeCharge({
+          id: "py_123",
+          metadata: { purpose: "payout_request_system_fee" },
+        })
+      ).toBe(true);
+    });
+
+    it.each([
+      undefined,
+      null,
+      {},
+      { metadata: null },
+      { metadata: {} },
+      { metadata: { purpose: "event_payment" } },
+      { metadata: { purpose: 123 } },
+    ])("should reject a non-system-fee charge: %p", (charge) => {
+      expect(isPayoutRequestSystemFeeCharge(charge)).toBe(false);
+    });
+  });
+
   describe("isRefundCreatedCompatibleEventType", () => {
     it("should identify refund.created event", () => {
       expect(isRefundCreatedCompatibleEventType("refund.created")).toBe(true);
