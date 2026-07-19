@@ -23,7 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: `${appUrl}/terms`,
-      lastModified: "2026-05-16",
+      lastModified: "2026-07-19",
       changeFrequency: "yearly",
       priority: 0.2,
     },
