@@ -105,18 +105,15 @@ const scenarios: Feature[] = [
 ];
 
 function SectionHeading({
-  eyebrow,
   title,
   body,
 }: {
-  eyebrow: string;
   title: string;
   body: string;
 }) {
   return (
     <div className="max-w-3xl">
-      <p className="text-sm font-bold text-primary">{eyebrow}</p>
-      <h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-4xl">
+      <h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-4xl">
         {title}
       </h2>
       {body && <p className="mt-4 text-base leading-8 text-slate-600">{body}</p>}
@@ -130,8 +127,7 @@ export default function OrganizerGettingStartedPage() {
       <section className="border-b border-slate-900/10 bg-[#f7f5f0]">
         <div className="mx-auto w-full max-w-7xl px-4 pb-16 pt-24 sm:px-6 lg:px-8 lg:pb-24 lg:pt-32">
           <div className="max-w-3xl">
-            <p className="text-sm font-bold text-primary">Organizer guide</p>
-            <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
+            <h1 className="text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
               主催者の
               <span className="text-primary">はじめ方</span>
             </h1>
@@ -145,7 +141,6 @@ export default function OrganizerGettingStartedPage() {
 
       <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <SectionHeading
-          eyebrow="3 steps"
           title="3ステップで、最初のイベントを作成できます。"
           body=""
         />
@@ -181,7 +176,6 @@ export default function OrganizerGettingStartedPage() {
       <section className="border-y border-slate-900/10 bg-white">
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
           <SectionHeading
-            eyebrow="After publishing"
             title="イベント公開後にできること。"
             body="参加状況と集金の管理は、イベントの管理画面から行います。"
           />
@@ -211,7 +205,6 @@ export default function OrganizerGettingStartedPage() {
 
       <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <SectionHeading
-          eyebrow="Variations"
           title="現金集金だけでも、すぐに始められます。"
           body=""
         />
@@ -236,7 +229,7 @@ export default function OrganizerGettingStartedPage() {
       <section className="border-y border-slate-900/10 bg-[#e9f2ef]">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
           <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
-            <SectionHeading eyebrow="Next" title="次に読む" body="" />
+            <SectionHeading title="次に読む" body="" />
 
             <div>
               <Link
@@ -276,7 +269,6 @@ export default function OrganizerGettingStartedPage() {
       </section>
 
       <GuideBottomCTA
-        eyebrow="Start now"
         title="まずは、次のイベントを1つ作ってみる。"
         body="アカウント作成は無料です。3ステップで最初のイベントを公開できます。"
         secondaryHref={demoStartUrl}

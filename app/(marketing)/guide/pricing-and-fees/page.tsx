@@ -88,18 +88,15 @@ function formatCurrency(amount: number): string {
 }
 
 function SectionHeading({
-  eyebrow,
   title,
   body,
 }: {
-  eyebrow: string;
   title: string;
   body: string;
 }) {
   return (
     <div className="max-w-3xl">
-      <p className="text-sm font-bold text-primary">{eyebrow}</p>
-      <h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-4xl">
+      <h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-4xl">
         {title}
       </h2>
       {body && <p className="mt-4 text-base leading-8 text-slate-600">{body}</p>}
@@ -113,8 +110,7 @@ export default function PricingAndFeesGuidePage() {
       <section className="border-b border-slate-900/10 bg-[#f7f5f0]">
         <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 pb-16 pt-24 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(360px,0.55fr)] lg:px-8 lg:pb-24 lg:pt-32">
           <div className="max-w-3xl">
-            <p className="text-sm font-bold text-primary">Pricing and fees</p>
-            <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
+            <h1 className="text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
               料金と
               <span className="text-primary">手数料</span>
             </h1>
@@ -145,7 +141,6 @@ export default function PricingAndFeesGuidePage() {
 
       <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <SectionHeading
-          eyebrow="Overview"
           title="固定費なし。必要なイベントから使えます。"
           body=""
         />
@@ -171,7 +166,6 @@ export default function PricingAndFeesGuidePage() {
       <section className="border-y border-slate-900/10 bg-white">
         <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8 lg:py-24">
           <SectionHeading
-            eyebrow="Fee examples"
             title="参加費から4.9% + 50円を差し引いた額が受取目安です。"
             body="受け取りたい金額がある場合は、イベント作成時に参加費を調整できます。"
           />
@@ -214,7 +208,7 @@ export default function PricingAndFeesGuidePage() {
 
       <section className="border-b border-slate-900/10 bg-[#f7f5f0]">
         <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:px-8 lg:py-20">
-          <SectionHeading eyebrow="Payout fee" title="振込手数料" body="" />
+          <SectionHeading title="振込手数料" body="" />
 
           <article className="grid gap-4 border border-slate-200 bg-white/70 p-6 sm:grid-cols-[48px_minmax(0,1fr)]">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-950 text-white">
@@ -236,7 +230,7 @@ export default function PricingAndFeesGuidePage() {
       <section className="border-b border-slate-900/10 bg-[#e9f2ef]">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
           <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
-            <SectionHeading eyebrow="Next" title="次に読む" body="" />
+            <SectionHeading title="次に読む" body="" />
 
             <div>
               <Link
@@ -274,7 +268,6 @@ export default function PricingAndFeesGuidePage() {
       </section>
 
       <GuideBottomCTA
-        eyebrow="Start with no fixed cost"
         title="固定費なしで、次のイベントから始められます。"
         body="アカウント作成は無料。オンライン集金が必要になったら設定するだけです。"
         secondaryHref="/guide/getting-started"
