@@ -38,7 +38,6 @@ export const metadata: Metadata = {
 };
 
 type Phase = {
-  eyebrow: string;
   title: string;
   summary: string;
   icon: LucideIcon;
@@ -52,7 +51,6 @@ type AutoEmail = {
 
 const phases: Phase[] = [
   {
-    eyebrow: "招待ページ",
     title: "リンクを開いて、出欠と支払い方法を回答する。",
     summary:
       "主催者から届いたリンクを開くと、イベントの回答ページが表示されます。ログインや会員登録は不要です。",
@@ -73,7 +71,6 @@ const phases: Phase[] = [
     ],
   },
   {
-    eyebrow: "ゲストページ",
     title: "決済と変更は、ゲストページから。",
     summary:
       "回答完了後に届くメールに含まれるゲストページURLからアクセスします。第三者には共有しないでください。",
@@ -103,18 +100,15 @@ const autoEmails: AutoEmail[] = [
 ];
 
 function SectionHeading({
-  eyebrow,
   title,
   body,
 }: {
-  eyebrow: string;
   title: string;
   body: string;
 }) {
   return (
     <div className="max-w-3xl">
-      <p className="text-sm font-bold text-primary">{eyebrow}</p>
-      <h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-4xl">
+      <h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-4xl">
         {title}
       </h2>
       {body && <p className="mt-4 text-base leading-8 text-slate-600">{body}</p>}
@@ -294,8 +288,7 @@ export default function ParticipantFlowGuidePage() {
       <section className="border-b border-slate-900/10 bg-[#f7f5f0]">
         <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 pb-16 pt-24 sm:px-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(520px,1fr)] lg:px-8 lg:pb-12 lg:pt-32">
           <div className="max-w-3xl">
-            <p className="text-sm font-bold text-primary">Participant guide</p>
-            <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
+            <h1 className="text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
               参加者の回答と
               <span className="text-primary">支払いの流れ</span>
             </h1>
@@ -312,10 +305,10 @@ export default function ParticipantFlowGuidePage() {
       {phases.map((phase) => {
 
         return (
-          <section key={phase.eyebrow} className="border-b border-slate-900/10">
+          <section key={phase.title} className="border-b border-slate-900/10">
             <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
               <div>
-                <SectionHeading eyebrow={phase.eyebrow} title={phase.title} body={phase.summary} />
+                <SectionHeading title={phase.title} body={phase.summary} />
               </div>
 
               <div className="grid gap-4">
@@ -337,7 +330,6 @@ export default function ParticipantFlowGuidePage() {
       <section className="border-b border-slate-900/10 bg-white">
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
           <SectionHeading
-            eyebrow="Auto emails"
             title="自動で届くメール"
             body="参加者には、以下のタイミングでゲストページURLを含むメールが届きます。"
           />
@@ -364,7 +356,7 @@ export default function ParticipantFlowGuidePage() {
       <section className="border-b border-slate-900/10 bg-[#e9f2ef]">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
           <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
-            <SectionHeading eyebrow="Next" title="次に読む" body="" />
+            <SectionHeading title="次に読む" body="" />
 
             <div>
               <Link
@@ -404,7 +396,6 @@ export default function ParticipantFlowGuidePage() {
       </section>
 
       <GuideBottomCTA
-        eyebrow="Share the link"
         title="参加者には、招待リンクを送るだけ。"
         body="回答から決済まで、参加者自身で進められます。主催者は管理画面で状況をまとめて確認できます。"
         secondaryHref="/guide/getting-started"

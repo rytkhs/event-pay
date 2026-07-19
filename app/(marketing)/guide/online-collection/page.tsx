@@ -63,10 +63,6 @@ const prepareItems: PrepareItem[] = [
     label: "振込先銀行口座",
     body: "集金した参加費を受け取る銀行口座。",
   },
-  {
-    label: "コミュニティの説明",
-    body: "コミュニティの簡単な説明文。",
-  },
 ];
 
 const flowSteps: FlowStep[] = [
@@ -111,18 +107,15 @@ const payoutItems: PayoutItem[] = [
 ];
 
 function SectionHeading({
-  eyebrow,
   title,
   body,
 }: {
-  eyebrow: string;
   title: string;
   body: string;
 }) {
   return (
     <div className="max-w-3xl">
-      <p className="text-sm font-bold text-primary">{eyebrow}</p>
-      <h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-4xl">
+      <h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-4xl">
         {title}
       </h2>
       {body && <p className="mt-4 text-base leading-8 text-slate-600">{body}</p>}
@@ -136,8 +129,7 @@ export default function OnlineCollectionGuidePage() {
       <section className="border-b border-slate-900/10 bg-[#f7f5f0]">
         <div className="mx-auto w-full max-w-7xl px-4 pb-16 pt-24 sm:px-6 lg:px-8 lg:pb-24 lg:pt-32">
           <div className="max-w-3xl">
-            <p className="text-sm font-bold text-primary">Online collection</p>
-            <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
+            <h1 className="text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
               オンライン集金・
               <span className="text-primary">振込のしくみ</span>
             </h1>
@@ -152,7 +144,6 @@ export default function OnlineCollectionGuidePage() {
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
           <div>
             <SectionHeading
-              eyebrow="Setup"
               title="オンライン集金設定の準備"
               body="オンライン集金設定を行うと、イベントでオンラインで参加費を受け付けられるようになります。この設定で、集金を受け取るのためのStripeアカウントを作成します。以下を用意してください。"
             />
@@ -181,7 +172,7 @@ export default function OnlineCollectionGuidePage() {
       </section>
 
       <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <SectionHeading eyebrow="Money flow" title="支払いから振込までの流れ" body="" />
+        <SectionHeading title="支払いから振込までの流れ" body="" />
 
         <div className="mt-12 divide-y divide-slate-900/10 border-y border-slate-900/10 bg-white/60">
           {flowSteps.map((step, index) => {
@@ -212,7 +203,7 @@ export default function OnlineCollectionGuidePage() {
 
       <section className="border-y border-slate-900/10 bg-white">
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
-          <SectionHeading eyebrow="Payout" title="振込のタイミングと確認" body="" />
+          <SectionHeading title="振込のタイミングと確認" body="" />
 
           <div className="grid gap-4">
             {payoutItems.map((item) => {
@@ -240,7 +231,7 @@ export default function OnlineCollectionGuidePage() {
       <section className="border-b border-slate-900/10 bg-[#e9f2ef]">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
           <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
-            <SectionHeading eyebrow="Next" title="次に読む" body="" />
+            <SectionHeading title="次に読む" body="" />
 
             <div>
               <Link
@@ -280,7 +271,6 @@ export default function OnlineCollectionGuidePage() {
       </section>
 
       <GuideBottomCTA
-        eyebrow="Start online collection"
         title="オンライン集金は、必要なイベントから始められます。"
         body="オンライン集金を設定すれば、参加費の事前回収と出欠管理をまとめて行えます。"
         secondaryHref="/guide/pricing-and-fees"
