@@ -230,6 +230,9 @@ export function PayoutRequestPanel({ payoutPanel, requestPayoutAction }: PayoutR
               </span>
             </div>
           </div>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            振込先口座の情報不備などにより、申請後に振込が失敗した場合も、振込手数料は返還されません。口座情報を確認してから申請してください。
+          </p>
           <DialogFooter>
             <Button
               type="button"
