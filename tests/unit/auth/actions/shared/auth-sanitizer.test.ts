@@ -2,7 +2,6 @@ import { jest } from "@jest/globals";
 
 import {
   sanitizeEmailOrNull,
-  sanitizeName,
   sanitizePasswordOrNull,
 } from "@features/auth/services/shared/auth-sanitizer";
 
@@ -41,9 +40,5 @@ describe("auth-sanitizer", () => {
     });
 
     expect(sanitizePasswordOrNull("bad")).toBeNull();
-  });
-
-  test("sanitizeName: trim済み文字列を返す", () => {
-    expect(sanitizeName("  Taro  ")).toBe("Taro");
   });
 });

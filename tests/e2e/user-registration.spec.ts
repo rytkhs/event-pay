@@ -29,7 +29,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     const timestamp = Date.now();
     const testEmail = `test-registration-${timestamp}@example.com`;
     const testPassword = "TestPassword123";
-    const testName = "テストユーザー";
 
     // テストユーザー情報を記録（後でクリーンアップ用）
     testUsers.push({ id: "", email: testEmail, password: testPassword });
@@ -43,7 +42,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await expect(page.getByTestId("register-form")).toBeVisible();
 
     // フォームに入力
-    await page.getByTestId("name-input").fill(testName);
     await page.getByTestId("email-input").fill(testEmail);
     await page.getByTestId("password-input").fill(testPassword);
 
@@ -79,7 +77,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.getByTestId("submit-button").click();
 
     // バリデーションエラーが表示されることを確認
-    await expect(page.locator("text=ユーザーネームを入力してください")).toBeVisible();
     await expect(page.locator("text=メールアドレスを入力してください")).toBeVisible();
     await expect(page.locator("text=パスワードは8文字以上で入力してください")).toBeVisible();
 
@@ -91,7 +88,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.goto("/register");
 
     // フォームに入力（短いパスワード）
-    await page.getByTestId("name-input").fill("テストユーザー");
     await page.getByTestId("email-input").fill("test@example.com");
 
     // 短いパスワードを入力
@@ -115,7 +111,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.goto("/register");
 
     // 既存のメールアドレスでフォームを入力
-    await page.getByTestId("name-input").fill("テストユーザー");
     await page.getByTestId("email-input").fill(existingEmail);
     await page.getByTestId("password-input").fill("TestPassword123");
 
@@ -158,12 +153,10 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     await page.goto("/register");
 
     // 必須フィールドのrequired属性を確認
-    await expect(page.getByTestId("name-input")).toHaveAttribute("required");
     await expect(page.getByTestId("email-input")).toHaveAttribute("required");
     await expect(page.getByTestId("password-input")).toHaveAttribute("required");
 
     // autocomplete属性の確認（HTML属性名は小文字）
-    await expect(page.getByTestId("name-input")).toHaveAttribute("autocomplete", "name");
     await expect(page.getByTestId("email-input")).toHaveAttribute("autocomplete", "email");
     await expect(page.getByTestId("password-input")).toHaveAttribute(
       "autocomplete",
@@ -189,9 +182,7 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     expect(buttonClasses).toContain("w-full");
 
     // 入力フィールドが適切にスタックされていることを確認
-    const nameInput = page.getByTestId("name-input");
     const emailInput = page.getByTestId("email-input");
-    await expect(nameInput).toBeVisible();
     await expect(emailInput).toBeVisible();
   });
 
@@ -200,7 +191,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     const timestamp = Date.now();
     const testEmail = `test-complete-flow-${timestamp}@example.com`;
     const testPassword = "CompleteFlow123";
-    const testName = "完全フローテスト";
 
     // テストユーザー情報を記録（後でクリーンアップ用）
     testUsers.push({ id: "", email: testEmail, password: testPassword });
@@ -210,7 +200,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
 
     // 1. 登録フォーム入力・送信
     await page.goto("/register");
-    await page.getByTestId("name-input").fill(testName);
     await page.getByTestId("email-input").fill(testEmail);
     await page.getByTestId("password-input").fill(testPassword);
 
@@ -249,7 +238,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     const timestamp = Date.now();
     const testEmail = `test-invalid-otp-${timestamp}@example.com`;
     const testPassword = "InvalidOtp123";
-    const testName = "無効OTPテスト";
 
     // テストユーザー情報を記録
     testUsers.push({ id: "", email: testEmail, password: testPassword });
@@ -259,7 +247,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
 
     // 1. 登録フォーム送信してOTP入力ページへ
     await page.goto("/register");
-    await page.getByTestId("name-input").fill(testName);
     await page.getByTestId("email-input").fill(testEmail);
     await page.getByTestId("password-input").fill(testPassword);
 
@@ -299,7 +286,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
     const timestamp = Date.now();
     const testEmail = `test-otp-resend-${timestamp}@example.com`;
     const testPassword = "OtpResend123";
-    const testName = "OTP再送信テスト";
 
     // テストユーザー情報を記録
     testUsers.push({ id: "", email: testEmail, password: testPassword });
@@ -309,7 +295,6 @@ test.describe("ユーザー登録フロー（E2E）", () => {
 
     // 1. 登録フォーム送信してOTP入力ページへ
     await page.goto("/register");
-    await page.getByTestId("name-input").fill(testName);
     await page.getByTestId("email-input").fill(testEmail);
     await page.getByTestId("password-input").fill(testPassword);
 

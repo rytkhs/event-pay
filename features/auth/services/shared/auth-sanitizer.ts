@@ -15,7 +15,3 @@ export function sanitizePasswordOrNull(password: string): string | null {
     return null;
   }
 }
-
-export function sanitizeName(name: string): string {
-  return name.trim();
-}
