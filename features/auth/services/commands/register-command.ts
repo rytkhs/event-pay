@@ -12,7 +12,6 @@ import { logAuthError } from "../shared/auth-logging";
 import { checkAuthRateLimit } from "../shared/auth-rate-limit";
 import {
   sanitizeEmailOrNull,
-  sanitizeName,
   sanitizePasswordOrNull,
 } from "../shared/auth-sanitizer";
 import { validationErrorResult } from "../shared/auth-validation-error";
@@ -31,7 +30,7 @@ export async function registerAction(
       );
     }
 
-    const { name, email, password } = validationResult.data;
+    const { email, password } = validationResult.data;
 
     const sanitizedEmail = sanitizeEmailOrNull(email);
     const sanitizedPassword = sanitizePasswordOrNull(password);
@@ -41,7 +40,7 @@ export async function registerAction(
       return validationErrorResult("入力内容を確認してください");
     }
 
-    const sanitizedName = sanitizeName(name);
+    const defaultUserName = sanitizedEmail.split("@", 1)[0];
 
     const rateLimitError = await checkAuthRateLimit({
       scope: "auth.register",
@@ -64,7 +63,7 @@ export async function registerAction(
           password: sanitizedPassword,
           options: {
             data: {
-              name: sanitizedName,
+              name: defaultUserName,
               terms_agreed: true,
             },
           },
@@ -98,7 +97,7 @@ export async function registerAction(
             userId: signUpData?.user?.id,
           },
           accountCreatedSlack: {
-            userName: sanitizedName,
+            userName: defaultUserName,
           },
         },
       }

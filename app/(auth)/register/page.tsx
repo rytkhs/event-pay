@@ -45,28 +45,6 @@ function RegisterForm() {
           >
             <FormField
               control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>ユーザーネーム</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      type="text"
-                      placeholder="ユーザーネームを入力"
-                      disabled={isPending}
-                      autoComplete="name"
-                      required
-                      data-testid="name-input"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
