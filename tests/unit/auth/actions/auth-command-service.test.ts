@@ -114,7 +114,6 @@ describe("auth-command-service", () => {
 
     const result = await registerAction({
       rawData: {
-        name: "Taro",
         email: "taro@example.com",
         password: "password123",
       },
@@ -126,6 +125,16 @@ describe("auth-command-service", () => {
       throw new Error("expected success");
     }
 
+    expect(mockSupabase.auth.signUp).toHaveBeenCalledWith({
+      email: "taro@example.com",
+      password: "password123",
+      options: {
+        data: {
+          name: "taro",
+          terms_agreed: true,
+        },
+      },
+    });
     expect(result.meta?.message).toBe("登録が完了しました。確認メールを送信しました。");
     expect(result.meta?.redirectUrl).toBe("/verify-otp?email=taro%40example.com");
     expect(result.meta?.needsVerification).toBe(true);
@@ -135,7 +144,7 @@ describe("auth-command-service", () => {
       userId: "user_signup_1",
     });
     expect(result.meta?.sideEffects?.accountCreatedSlack).toEqual({
-      userName: "Taro",
+      userName: "taro",
     });
   });
 

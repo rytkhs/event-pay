@@ -199,7 +199,6 @@ export function useRegisterFormRHF<T extends ActionResult>(
   const form = useForm<RegisterFormDataRHF>({
     resolver: zodResolver(registerInputSchema),
     defaultValues: {
-      name: "",
       email: "",
       password: "",
     },
@@ -211,7 +210,6 @@ export function useRegisterFormRHF<T extends ActionResult>(
       try {
         // FormDataオブジェクトに変換
         const formData = new FormData();
-        formData.append("name", data.name);
         formData.append("email", data.email);
         formData.append("password", data.password);
         formData.append("termsAgreed", "true"); // 暗黙的に同意とみなす
