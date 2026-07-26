@@ -2,7 +2,7 @@ import type { DetailedAccountStatus } from "../types";
 
 export const NO_ACCOUNT_STATUS: DetailedAccountStatus = {
   statusType: "no_account",
-  title: "オンライン集金を有効にする",
+  title: "オンライン集金を設定する",
   description: "参加費・会費をオンラインで受け取れます。約3分で設定完了。",
   actionText: "設定を始める",
   actionUrl: "/settings/payments",
