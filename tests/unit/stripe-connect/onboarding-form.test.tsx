@@ -89,7 +89,7 @@ describe("OnboardingForm", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "オンライン集金を有効にする" }));
+    await user.click(screen.getByRole("button", { name: "オンライン集金を設定する" }));
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await waitFor(() => expect(onStartOnboarding).toHaveBeenCalledTimes(1));
@@ -123,7 +123,7 @@ describe("OnboardingForm", () => {
     );
 
     await user.click(screen.getByLabelText("読書会"));
-    await user.click(screen.getByRole("button", { name: "オンライン集金を有効にする" }));
+    await user.click(screen.getByRole("button", { name: "オンライン集金を設定する" }));
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await waitFor(() => expect(onStartOnboarding).toHaveBeenCalledTimes(1));

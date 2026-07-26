@@ -162,7 +162,7 @@ export function OnboardingForm({
           ) : hasExistingAccount ? (
             "設定を再開する"
           ) : (
-            "オンライン集金を有効にする"
+            "オンライン集金を設定する"
           )}
         </Button>
 
