@@ -139,7 +139,7 @@ export default function OnboardingGuidePage() {
               {[
                 {
                   title: "本人確認情報",
-                  body: "Stripeの安全な画面で、本人確認に必要な情報を入力します。",
+                  body: "Stripeの画面で、本人確認に必要な情報を入力します。",
                 },
                 {
                   title: "振込先口座",
