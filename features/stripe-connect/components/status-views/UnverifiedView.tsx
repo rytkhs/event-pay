@@ -7,7 +7,7 @@
 
 import Link from "next/link";
 
-import { ArrowRight, CircleAlert, Lock } from "lucide-react";
+import { ArrowRight, CircleAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -47,10 +47,6 @@ export function UnverifiedView({ refreshUrl }: UnverifiedViewProps) {
         </Link>
       </Button>
 
-      <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
-        <Lock className="size-3" />
-        Stripeの安全な画面で設定します・約3分で完了
-      </p>
     </div>
   );
 }

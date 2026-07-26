@@ -11,7 +11,6 @@ import {
   ChevronDown,
   FileCheck,
   Building2,
-  Lock,
 } from "lucide-react";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
@@ -165,11 +164,6 @@ export function OnboardingForm({
             "オンライン集金を設定する"
           )}
         </Button>
-
-        <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
-          <Lock className="size-3" />
-          Stripeの安全な画面で設定します・約3分で完了
-        </p>
 
         {secondaryAction ? <div className="mt-3 sm:mt-4">{secondaryAction}</div> : null}
       </form>
