@@ -27,8 +27,7 @@
       "@core/actions/*": ["./core/actions/*"],
       "@features/*": ["./features/*"],
       "@components/*": ["./components/*"],
-      "@/types/*": ["./types/*"],
-      "@tests/*": ["./tests/*"]
+      "@/types/*": ["./types/*"]
     }
   },
   "include": [
