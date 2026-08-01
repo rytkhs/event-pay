@@ -107,7 +107,6 @@ event-pay/
 ├── core/                    # 共有ユーティリティ（auth/logging/security等）
 ├── components/              # UIコンポーネント
 ├── supabase/                # migrations
-├── tests/                   # unit / e2e
 └── wrangler.jsonc           # Cloudflare Workers 設定
 ```
 
@@ -154,22 +153,6 @@ npm run check:all
 Stripe Webhook（必要時）:
 ```
 npm run stripe:listen
-```
-
-## テスト
-
-ユニットテスト（Jest）:
-```
-npm run test:unit
-npm run test:unit:watch
-npm run test:unit:coverage
-```
-
-E2E（Playwright）:
-```
-npm run test:e2e
-npm run test:e2e:headed
-npm run test:e2e:debug
 ```
 
 ## デプロイ（Cloudflare Workers）

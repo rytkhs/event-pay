@@ -2,10 +2,7 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": [
     "sentry-worker.ts",
-    "open-next.config.ts",
-    "tests/e2e/auth.setup.ts",
-    "tests/setup/**/*.ts",
-    "tests/integration/**/*-setup.ts"
+    "open-next.config.ts"
   ],
   "project": ["**/*.{ts,tsx,js,jsx,mjs,cjs}"],
   "ignore": [
@@ -34,7 +31,6 @@
     "eslint-plugin-react-hooks",
     "postcss-load-config",
     "globals",
-    "jest-environment-jsdom",
     "remark",
     "remark-frontmatter"
   ],
@@ -43,8 +39,6 @@
   },
   "ignoreBinaries": ["stripe"],
   "next": true,
-  "playwright": true,
-  "jest": true,
   "postcss": true,
   "eslint": true,
   "prettier": true,

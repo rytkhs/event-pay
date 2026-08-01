@@ -71,7 +71,6 @@ effectiveAt: "2026-06-01"
 ```bash
 npm run typecheck
 npm run lint
-npm run test:unit tests/unit/core/announcements
 ```
 
 ローカル確認URL:

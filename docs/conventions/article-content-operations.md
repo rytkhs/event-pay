@@ -135,7 +135,6 @@ heroImage: "/images/articles/event-fee-collection-methods.webp"
 ```bash
 npm run typecheck
 npm run lint
-npm run test:unit tests/unit/core/articles
 ```
 
 大きな変更やSEO出力の確認が必要な場合は、追加でビルドする。
