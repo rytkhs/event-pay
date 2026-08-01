@@ -94,8 +94,6 @@ DIRECTORY_STRUCTURE.md
 # ARCHITECTURE_RULES.md
 tmp/
 
-# Playwright authentication state
-playwright/.auth/
 .env.test
 
 .tbls.yml
