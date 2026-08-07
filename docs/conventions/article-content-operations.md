@@ -133,14 +133,14 @@ heroImage: "/images/articles/event-fee-collection-methods.webp"
 5. 検証コマンドを実行する。
 
 ```bash
-npm run typecheck
-npm run lint
+pnpm run typecheck
+pnpm run lint
 ```
 
 大きな変更やSEO出力の確認が必要な場合は、追加でビルドする。
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 ローカル確認URL:

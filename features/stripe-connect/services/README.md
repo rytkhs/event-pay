@@ -176,13 +176,3 @@ try {
 3. **レート制限**: Stripe APIのレート制限に注意してください
 
 4. **エラーログ**: エラーは自動的にログ出力されます
-
-## テスト
-
-```bash
-# 単体テスト
-npm test -- --testPathPattern="stripe-connect/service.test.ts"
-
-# 統合テスト（環境変数が設定されている場合のみ）
-npm test -- --testPathPattern="stripe-connect/integration.test.ts"
-```
