@@ -92,6 +92,9 @@ tmp/
 
 .env.test
 
+# `pnpm test:db:prepare` が生成するローカル Supabase の接続情報
+tests/.env.local-supabase
+
 .tbls.yml
 jdbc-driver.jar
 schemaspy.jar
