@@ -22,7 +22,7 @@ type AllowedKey = (typeof ALLOWED_KEYS)[number];
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1"]);
 
-const PREPARE_HINT = `\`pnpm test:db:prepare\` を実行してローカル Supabase の接続情報を生成してください。`;
+export const PREPARE_HINT = `\`pnpm test:db:prepare\` を実行してローカル Supabase の接続情報を生成してください。`;
 
 function stripQuotes(value: string): string {
   const first = value[0];
@@ -50,19 +50,25 @@ function parseEnvFile(content: string): Map<string, string> {
   return entries;
 }
 
-function assertLocalHost(url: string): void {
+/**
+ * Supabase URL がローカルスタックを指していることを検証する。
+ *
+ * config ロード時（本ファイル）と worker プロセス内（`test-environment.ts`）の
+ * 双方から呼ばれる。ガードの実装をひとつに保つため export している。
+ *
+ * @param source エラーメッセージに出す取得元の説明
+ */
+export function assertLocalSupabaseUrl(url: string, source: string): void {
   let host: string;
   try {
     host = new URL(url).hostname;
   } catch {
-    throw new Error(
-      `${RELATIVE_ENV_PATH} の NEXT_PUBLIC_SUPABASE_URL が URL として不正です: ${url}`
-    );
+    throw new Error(`${source} の NEXT_PUBLIC_SUPABASE_URL が URL として不正です: ${url}`);
   }
 
   if (!LOCAL_HOSTS.has(host)) {
     throw new Error(
-      `${RELATIVE_ENV_PATH} の NEXT_PUBLIC_SUPABASE_URL がローカルスタックを指していません（host: ${host}）。` +
+      `${source} の NEXT_PUBLIC_SUPABASE_URL がローカルスタックを指していません（host: ${host}）。` +
         `テストはローカル Supabase に対してのみ実行できます。`
     );
   }
@@ -86,7 +92,7 @@ export function readLocalSupabaseEnv(): Record<AllowedKey, string> | null {
   const parsed = parseEnvFile(content);
 
   const url = parsed.get("NEXT_PUBLIC_SUPABASE_URL");
-  if (url) assertLocalHost(url);
+  if (url) assertLocalSupabaseUrl(url, RELATIVE_ENV_PATH);
 
   const env = {} as Record<AllowedKey, string>;
   for (const key of ALLOWED_KEYS) {

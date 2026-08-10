@@ -284,6 +284,14 @@ const eslintConfig = [
           'no-console': 'off',
         },
       },
+      // テストコード全体（fixture含む）
+      {
+        files: ['tests/**/*'],
+        rules: {
+          // Vitest fixture の第2引数 `use` を React Hook の呼び出しと誤検知するため無効化
+          'react-hooks/rules-of-hooks': 'off',
+        },
+      },
       // Next.js設定ファイル用
       {
         files: ['next.config.*', 'tailwind.config.*', 'postcss.config.*'],

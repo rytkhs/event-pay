@@ -8,6 +8,11 @@ import { readLocalSupabaseEnv } from './tests/setup/local-supabase-env.ts';
 const serverOnlyStub = fileURLToPath(new URL('./tests/setup/server-only.ts', import.meta.url));
 const localSupabaseGuard = './tests/setup/local-supabase-env.ts';
 
+// setupFiles はプロジェクトごとに必要なものだけを配線する。
+// unit-node は環境固有の初期化を持たないため設定しない。
+const jsdomSetup = './tests/setup/unit-jsdom.ts';
+const serverSetup = './tests/setup/test-environment.ts';
+
 // prepare 未実行時は空のまま。失敗は db / integration の globalSetup で起こす。
 const localSupabaseEnv = readLocalSupabaseEnv() ?? {};
 
@@ -51,6 +56,7 @@ export default defineConfig({
           name: 'unit-jsdom',
           environment: 'jsdom',
           include: ['tests/unit/**/*.test.tsx'],
+          setupFiles: [jsdomSetup],
         },
       },
       {
@@ -63,6 +69,7 @@ export default defineConfig({
           include: ['tests/db/**/*.db.test.ts'],
           env: localSupabaseEnv,
           globalSetup: [localSupabaseGuard],
+          setupFiles: [serverSetup],
         },
       },
       {
@@ -75,6 +82,7 @@ export default defineConfig({
           include: ['tests/integration/**/*.integration.test.ts'],
           env: localSupabaseEnv,
           globalSetup: [localSupabaseGuard],
+          setupFiles: [serverSetup],
         },
       },
     ],
