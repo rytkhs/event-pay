@@ -1,0 +1,17 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["node"],
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "../next-env.d.ts",
+    "../env.d.ts",
+    "../cloudflare-env.d.ts",
+    "../vitest.config.mts",
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": ["../node_modules"]
+}

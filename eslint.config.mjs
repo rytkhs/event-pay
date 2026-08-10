@@ -68,7 +68,7 @@ const eslintConfig = [
         ecmaFeatures: {
           jsx: true,
         },
-        project: ['./tsconfig.json'],
+        project: ['./tsconfig.json', './tests/tsconfig.json'],
       },
       settings: {
         react: {
@@ -77,7 +77,8 @@ const eslintConfig = [
         'import/resolver': {
           typescript: {
             alwaysTryTypes: true,
-            project: ['./tsconfig.json'],
+            project: ['./tsconfig.json', './tests/tsconfig.json'],
+            noWarnOnMultipleProjects: true,
           },
           node: {
             extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
