@@ -59,7 +59,7 @@ jobs:
       # テストが使わないサービスを除外して起動時間を削る。
       # 起動済みスタックを prepare が検出するため、prepare 側は reset と接続情報の生成だけを行う。
       - name: Start local Supabase
-        run: pnpm exec supabase start -x studio,imgproxy,edge-runtime
+        run: pnpm exec supabase start -x studio,imgproxy,edge-runtime > /dev/null
 
       # prepare（migrations + seed の reset、接続情報の生成）を経由して db / integration を実行する。
       # Supabase の秘密情報は CI に設定せず、すべてローカルスタックから取得する。
