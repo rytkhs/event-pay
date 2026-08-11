@@ -104,13 +104,7 @@ const scenarios: Feature[] = [
   },
 ];
 
-function SectionHeading({
-  title,
-  body,
-}: {
-  title: string;
-  body: string;
-}) {
+function SectionHeading({ title, body }: { title: string; body: string }) {
   return (
     <div className="max-w-3xl">
       <h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-4xl">
@@ -140,10 +134,7 @@ export default function OrganizerGettingStartedPage() {
       </section>
 
       <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <SectionHeading
-          title="3ステップで、最初のイベントを作成できます。"
-          body=""
-        />
+        <SectionHeading title="3ステップで、最初のイベントを作成できます。" body="" />
 
         <div className="mt-12 divide-y divide-slate-900/10 border-y border-slate-900/10 bg-white/60">
           {steps.map((step, index) => {
@@ -204,10 +195,7 @@ export default function OrganizerGettingStartedPage() {
       </section>
 
       <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <SectionHeading
-          title="現金集金だけでも、すぐに始められます。"
-          body=""
-        />
+        <SectionHeading title="現金集金だけでも、すぐに始められます。" body="" />
 
         <div className="mt-10 grid gap-4 sm:grid-cols-3">
           {scenarios.map((scenario) => {

@@ -32,7 +32,8 @@ export async function getEventPayoutProfileReadiness(
   if (error || !data) {
     return {
       isReady: false,
-      userMessage: "受取先プロファイルの状態を確認できないため、オンライン支払いを有効化できません。",
+      userMessage:
+        "受取先プロファイルの状態を確認できないため、オンライン支払いを有効化できません。",
     };
   }
 

@@ -8,7 +8,6 @@ import { PaymentLogger } from "@core/logging/payment-logger";
 import { ApplicationFeeCalculator } from "@core/stripe/fee-config/application-fee-calculator";
 import type { AppSupabaseClient } from "@core/types/supabase";
 
-
 import { createCashPayment as createCashPaymentFn } from "./cash-payment/create-cash-payment";
 import { deletePayment as deletePaymentFn } from "./delete-payment/delete-payment";
 import { IPaymentService, IPaymentErrorHandler } from "./interface";

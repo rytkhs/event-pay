@@ -10,10 +10,7 @@ import type { AuthCommandResult, RegisterCommandInput } from "../auth-command-se
 import { mapRegisterAuthErrorResult } from "../shared/auth-error-mappers";
 import { logAuthError } from "../shared/auth-logging";
 import { checkAuthRateLimit } from "../shared/auth-rate-limit";
-import {
-  sanitizeEmailOrNull,
-  sanitizePasswordOrNull,
-} from "../shared/auth-sanitizer";
+import { sanitizeEmailOrNull, sanitizePasswordOrNull } from "../shared/auth-sanitizer";
 import { validationErrorResult } from "../shared/auth-validation-error";
 
 export async function registerAction(

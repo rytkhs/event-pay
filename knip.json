@@ -1,9 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "entry": [
-    "sentry-worker.ts",
-    "open-next.config.ts"
-  ],
+  "entry": ["sentry-worker.ts", "open-next.config.ts"],
   "project": ["**/*.{ts,tsx,js,jsx,mjs,cjs}"],
   "ignore": [
     "**/*.d.ts",

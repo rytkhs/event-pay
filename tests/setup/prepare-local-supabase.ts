@@ -164,7 +164,10 @@ function main(): void {
 
   // config.toml の [db.migrations] / [db.seed] がいずれも有効なため、
   // `db reset` 1回でマイグレーションと seed の両方が適用される。
-  log("ローカル Supabase をリセットします（migrations + seed）。");
+  //
+  // このスタックは `pnpm dev` と共有のため、開発用に手で作ったデータも失われる。
+  // 破壊的であることが `pnpm test:server` から見えにくいため、ここで明示する。
+  log(`ローカル Supabase をリセットします（migrations + seed）: ${dbUrl}`);
   run(["db", "reset"]);
 
   // リセット成功後に書き出す。生成ファイルの存在が prepare 完了の signal であり、

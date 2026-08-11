@@ -79,7 +79,7 @@ export class ApplicationFeeCalculator {
     amount: number,
     options: ApplicationFeeCalculationOptions = false
   ): Promise<ApplicationFeeCalculation> {
-    const forceRefresh = typeof options === "boolean" ? options : options.forceRefresh ?? false;
+    const forceRefresh = typeof options === "boolean" ? options : (options.forceRefresh ?? false);
     // 入力値検証
     if (!Number.isInteger(amount) || amount <= 0) {
       throw new Error(`Invalid amount: ${amount}. Amount must be a positive integer.`);

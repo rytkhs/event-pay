@@ -87,13 +87,7 @@ function formatCurrency(amount: number): string {
   return amount.toLocaleString("ja-JP");
 }
 
-function SectionHeading({
-  title,
-  body,
-}: {
-  title: string;
-  body: string;
-}) {
+function SectionHeading({ title, body }: { title: string; body: string }) {
   return (
     <div className="max-w-3xl">
       <h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-4xl">
@@ -140,10 +134,7 @@ export default function PricingAndFeesGuidePage() {
       </section>
 
       <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <SectionHeading
-          title="固定費なし。必要なイベントから使えます。"
-          body=""
-        />
+        <SectionHeading title="固定費なし。必要なイベントから使えます。" body="" />
 
         <div className="mt-12 grid gap-4 sm:grid-cols-3">
           {pricePoints.map((point) => {

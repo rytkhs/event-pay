@@ -99,13 +99,7 @@ const autoEmails: AutoEmail[] = [
   { label: "イベント前日リマインド", body: "参加予定者へ" },
 ];
 
-function SectionHeading({
-  title,
-  body,
-}: {
-  title: string;
-  body: string;
-}) {
+function SectionHeading({ title, body }: { title: string; body: string }) {
   return (
     <div className="max-w-3xl">
       <h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-4xl">
@@ -303,7 +297,6 @@ export default function ParticipantFlowGuidePage() {
       </section>
 
       {phases.map((phase) => {
-
         return (
           <section key={phase.title} className="border-b border-slate-900/10">
             <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
@@ -313,10 +306,7 @@ export default function ParticipantFlowGuidePage() {
 
               <div className="grid gap-4">
                 {phase.points.map((point) => (
-                  <article
-                    key={point.label}
-                    className="border border-slate-200 bg-white/70 p-5"
-                  >
+                  <article key={point.label} className="border border-slate-200 bg-white/70 p-5">
                     <h3 className="text-base font-bold text-slate-950">{point.label}</h3>
                     <p className="mt-2 text-sm leading-7 text-slate-600">{point.body}</p>
                   </article>
@@ -364,9 +354,7 @@ export default function ParticipantFlowGuidePage() {
                 className="group grid gap-3 border border-slate-900/10 bg-white/70 px-5 py-6 transition-colors hover:bg-white sm:grid-cols-[minmax(0,1fr)_32px] sm:items-center sm:px-7"
               >
                 <span>
-                  <span className="block text-lg font-bold text-slate-950">
-                    主催者として始める
-                  </span>
+                  <span className="block text-lg font-bold text-slate-950">主催者として始める</span>
                   <span className="mt-2 block text-sm leading-7 text-slate-600">
                     アカウント作成からイベント公開までの主催者向け手順を確認できます。
                   </span>

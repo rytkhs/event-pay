@@ -7,7 +7,6 @@ import { LINELoginButton } from "@/components/auth/LINELoginButton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 
-
 interface AuthSocialLoginSectionProps {
   next: string;
   googleAction: ComponentProps<"form">["action"];

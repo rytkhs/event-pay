@@ -6,12 +6,7 @@
 
 import { useActionState, useState, type ReactNode } from "react";
 
-import {
-  Loader2,
-  ChevronDown,
-  FileCheck,
-  Building2,
-} from "lucide-react";
+import { Loader2, ChevronDown, FileCheck, Building2 } from "lucide-react";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
 

@@ -165,9 +165,7 @@ export function MobileAppChrome({
 
           <div className="mt-5 space-y-4 px-5">
             <section className="space-y-2">
-              <p className="px-1 text-xs font-medium text-muted-foreground">
-                コミュニティ
-              </p>
+              <p className="px-1 text-xs font-medium text-muted-foreground">コミュニティ</p>
               <div className="overflow-hidden rounded-lg border border-border/60 bg-card">
                 {workspace.ownedCommunities.map((community) => {
                   const isCurrent = community.id === workspace.currentCommunity?.id;
@@ -211,9 +209,7 @@ export function MobileAppChrome({
             </section>
 
             <section className="space-y-2">
-              <p className="px-1 text-xs font-medium text-muted-foreground">
-                運営ツール
-              </p>
+              <p className="px-1 text-xs font-medium text-muted-foreground">運営ツール</p>
 
               <button
                 type="button"
@@ -234,9 +230,7 @@ export function MobileAppChrome({
             </section>
 
             <section className="space-y-2">
-              <p className="px-1 text-xs font-medium text-muted-foreground">
-                サポート
-              </p>
+              <p className="px-1 text-xs font-medium text-muted-foreground">サポート</p>
 
               <Link
                 href="/contact"
@@ -258,9 +252,7 @@ export function MobileAppChrome({
             </section>
 
             <section className="space-y-2">
-              <p className="px-1 text-xs font-medium text-muted-foreground">
-                アカウント
-              </p>
+              <p className="px-1 text-xs font-medium text-muted-foreground">アカウント</p>
 
               {/* <Link
                 href="/settings"

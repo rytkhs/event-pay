@@ -347,7 +347,7 @@ export class PayoutRequestService {
             ? "no_available_balance"
             : balance.availableAmount < minimumRequiredAmount
               ? "below_payout_fee"
-            : undefined);
+              : undefined);
 
       return okResult({
         ...balance,
@@ -777,8 +777,7 @@ export class PayoutRequestService {
           communityId: params.communityId,
           userId: params.userId,
           amount: params.systemFeeAmount,
-          idempotencyKey:
-            params.systemFeeIdempotencyKey ?? generateIdempotencyKey("payout_fee"),
+          idempotencyKey: params.systemFeeIdempotencyKey ?? generateIdempotencyKey("payout_fee"),
           expectedSystemFeeState: params.systemFeeState,
         });
         if (!systemFeeResult.success) {
@@ -1116,7 +1115,7 @@ export class PayoutRequestService {
               ? "振込リクエストの処理状況を確認中です。しばらくしてから再度確認してください。"
               : status === "manual_review_required"
                 ? "振込手数料の回収後に振込リクエストの作成に失敗しました。確認完了まで新しい振込は実行できません。"
-              : params.failedUserMessage,
+                : params.failedUserMessage,
           cause: params.stripeError,
           retryable,
           details: { payoutRequestId: params.payoutRequestId, status },
@@ -1125,9 +1124,7 @@ export class PayoutRequestService {
     );
   }
 
-  private async getCreationUnknownRequest(
-    payoutProfileId: string
-  ): Promise<{
+  private async getCreationUnknownRequest(payoutProfileId: string): Promise<{
     id: string;
     amount: number;
     currency: string;
@@ -1194,8 +1191,7 @@ export class PayoutRequestService {
   private isCreationUnknownExpired(request: Pick<LatestPayoutRequest, "requestedAt">): boolean {
     const requestedAt = new Date(request.requestedAt).getTime();
     return (
-      Number.isFinite(requestedAt) &&
-      Date.now() - requestedAt >= IDEMPOTENCY_KEY_RECOVERY_WINDOW_MS
+      Number.isFinite(requestedAt) && Date.now() - requestedAt >= IDEMPOTENCY_KEY_RECOVERY_WINDOW_MS
     );
   }
 

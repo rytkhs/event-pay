@@ -16,10 +16,7 @@ import {
 } from "../repositories/payment-webhook-repository";
 import { StripeObjectFetchService } from "../services/stripe-object-fetch-service";
 import type { WebhookProcessingResult } from "../types";
-import {
-  getRefundFromWebhookEvent,
-  isPayoutRequestSystemFeeCharge,
-} from "../webhook-event-guards";
+import { getRefundFromWebhookEvent, isPayoutRequestSystemFeeCharge } from "../webhook-event-guards";
 import {
   buildPaymentWebhookMeta,
   getPaymentWebhookLogContext,

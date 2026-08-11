@@ -21,9 +21,7 @@ export function GuideBottomCTA({
     <section className="bg-slate-950 px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-20">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl">
-          <h2 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
-            {title}
-          </h2>
+          <h2 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl">{title}</h2>
           <p className="mt-4 text-base leading-8 text-slate-300">{body}</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">

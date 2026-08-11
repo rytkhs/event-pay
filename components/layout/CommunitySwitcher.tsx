@@ -71,9 +71,7 @@ function hashCommunityId(communityId: string): number {
   return hash >>> 0;
 }
 
-function buildCommunityAccentMap(
-  communities: readonly OwnedCommunity[]
-): Map<string, string> {
+function buildCommunityAccentMap(communities: readonly OwnedCommunity[]): Map<string, string> {
   const sortedCommunities = [...communities].sort((a, b) => {
     const hashDiff = hashCommunityId(a.id) - hashCommunityId(b.id);
     if (hashDiff !== 0) return hashDiff;
@@ -165,9 +163,7 @@ export function CommunitySwitcher({
         <div className="flex flex-col gap-4 p-3">
           {/* コミュニティ切り替え */}
           <section className="space-y-2">
-            <p className="px-1 text-xs font-medium text-muted-foreground">
-              コミュニティ
-            </p>
+            <p className="px-1 text-xs font-medium text-muted-foreground">コミュニティ</p>
             <div className="overflow-hidden rounded-lg border border-border/60 bg-card">
               {workspace.ownedCommunities.map((community) => {
                 const isCurrent = community.id === workspace.currentCommunity?.id;
@@ -222,9 +218,7 @@ export function CommunitySwitcher({
 
           {/* 運営ツール */}
           <section className="space-y-2">
-            <p className="px-1 text-xs font-medium text-muted-foreground">
-              運営ツール
-            </p>
+            <p className="px-1 text-xs font-medium text-muted-foreground">運営ツール</p>
             <DropdownMenuItem
               onSelect={(event) => {
                 event.preventDefault();
@@ -247,9 +241,7 @@ export function CommunitySwitcher({
 
           {/* アカウント */}
           <section className="space-y-2">
-            <p className="px-1 text-xs font-medium text-muted-foreground">
-              アカウント
-            </p>
+            <p className="px-1 text-xs font-medium text-muted-foreground">アカウント</p>
             <DropdownMenuItem
               onSelect={(event) => {
                 event.preventDefault();

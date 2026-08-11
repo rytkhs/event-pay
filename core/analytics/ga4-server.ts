@@ -19,11 +19,7 @@ export type GA4SendEventResult =
   | { status: "sent" }
   | {
       status: "skipped";
-      reason:
-        | "disabled"
-        | "missing_api_secret"
-        | "invalid_or_missing_client_id"
-        | "invalid_params";
+      reason: "disabled" | "missing_api_secret" | "invalid_or_missing_client_id" | "invalid_params";
     }
   | {
       status: "failed";
