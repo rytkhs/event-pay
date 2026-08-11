@@ -68,7 +68,7 @@ const eslintConfig = [
         ecmaFeatures: {
           jsx: true,
         },
-        project: ['./tsconfig.json'],
+        project: ['./tsconfig.json', './tests/tsconfig.json'],
       },
       settings: {
         react: {
@@ -77,7 +77,8 @@ const eslintConfig = [
         'import/resolver': {
           typescript: {
             alwaysTryTypes: true,
-            project: ['./tsconfig.json'],
+            project: ['./tsconfig.json', './tests/tsconfig.json'],
+            noWarnOnMultipleProjects: true,
           },
           node: {
             extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
@@ -281,6 +282,16 @@ const eslintConfig = [
           '@typescript-eslint/no-unsafe-call': 'off',
           '@typescript-eslint/no-unsafe-member-access': 'off',
           'no-console': 'off',
+        },
+      },
+      // テストコード全体（fixture含む）
+      // 生成物（tests/.env.local-supabase、tsconfig.json、tsbuildinfo）を lint 対象へ
+      // 引き込まないよう、拡張子まで指定する
+      {
+        files: ['tests/**/*.{ts,tsx}'],
+        rules: {
+          // Vitest fixture の第2引数 `use` を React Hook の呼び出しと誤検知するため無効化
+          'react-hooks/rules-of-hooks': 'off',
         },
       },
       // Next.js設定ファイル用
