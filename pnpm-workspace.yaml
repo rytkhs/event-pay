@@ -1,0 +1,17 @@
+overrides:
+  "@types/react": 19.2.14
+  "@types/react-dom": 19.2.3
+
+strictDepBuilds: true
+
+onlyBuiltDependencies:
+  - "@sentry/cli"
+  - esbuild
+  - fsevents
+  - sharp
+  - supabase
+  - unrs-resolver
+  - workerd
+
+ignoredBuiltDependencies:
+  - msw

@@ -114,7 +114,7 @@ event-pay/
 
 前提:
 - Node.js 20+
-- npm 10+
+- pnpm 10.11.1（Corepack経由）
 - Supabase CLI（ローカルDB）
 - Stripe CLI（Webhook転送が必要な場合）
 
@@ -122,16 +122,17 @@ event-pay/
 ```
 git clone https://github.com/rytkhs/event-pay.git
 cd event-pay
-npm install
+corepack enable
+pnpm install --frozen-lockfile
 
 cp .env.example .env.local
 # .env.local を編集（最低限 Supabase / Stripe / App URL）
 
 supabase start
-npm run db:reset
-npm run db:migrate
+pnpm run db:reset
+pnpm run db:migrate
 
-npm run dev
+pnpm run dev
 # http://localhost:3000
 ```
 
@@ -139,20 +140,20 @@ npm run dev
 
 ```
 # 開発サーバー
-npm run dev
+pnpm run dev
 
 # Lint / Format / Typecheck
-npm run lint
-npm run lint:fix
-npm run typecheck
-npm run format
-npm run format:check
-npm run check:all
+pnpm run lint
+pnpm run lint:fix
+pnpm run typecheck
+pnpm run format
+pnpm run format:check
+pnpm run check:all
 ```
 
 Stripe Webhook（必要時）:
 ```
-npm run stripe:listen
+pnpm run stripe:listen
 ```
 
 ## デプロイ（Cloudflare Workers）
@@ -168,16 +169,16 @@ npm run stripe:listen
 コマンド:
 ```
 # プレビューデプロイ
-npm run preview
+pnpm run preview
 
 # 本番デプロイ
-npm run deploy
+pnpm run deploy
 
 # アセットのみアップロード
-npm run upload
+pnpm run upload
 
 # Cloudflare型生成
-npm run cf-typegen
+pnpm run cf-typegen
 ```
 
 ## 環境変数

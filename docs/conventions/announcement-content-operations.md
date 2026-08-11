@@ -69,8 +69,8 @@ effectiveAt: "2026-06-01"
 4. 検証コマンドを実行する。
 
 ```bash
-npm run typecheck
-npm run lint
+pnpm run typecheck
+pnpm run lint
 ```
 
 ローカル確認URL:
