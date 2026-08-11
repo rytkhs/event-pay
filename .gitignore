@@ -69,7 +69,6 @@ usage_tracking2.json
 
 scripts/
 supabase/migrations/20250624185107_setup_utility_functions.sql
-supabase/seed.sql
 
 playwright-report/
 test-results/
@@ -91,6 +90,9 @@ DIRECTORY_STRUCTURE.md
 tmp/
 
 .env.test
+
+# `pnpm test:db:prepare` が生成するローカル Supabase の接続情報
+tests/.env.local-supabase
 
 .tbls.yml
 jdbc-driver.jar
