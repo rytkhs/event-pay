@@ -442,5 +442,4 @@ export class ConnectWebhookHandler {
       // skip logging failures
     }
   }
-
 }

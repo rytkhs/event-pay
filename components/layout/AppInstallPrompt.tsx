@@ -39,9 +39,7 @@ function isIosLike(navigatorValue: Navigator) {
 function isStandaloneDisplay() {
   const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
 
-  return (
-    window.matchMedia(STANDALONE_QUERY).matches || navigatorWithStandalone.standalone === true
-  );
+  return window.matchMedia(STANDALONE_QUERY).matches || navigatorWithStandalone.standalone === true;
 }
 
 function hasConfirmedInstall() {

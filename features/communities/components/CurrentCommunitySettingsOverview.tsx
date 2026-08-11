@@ -1,10 +1,6 @@
 import { ChevronDown } from "lucide-react";
 
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
 
 import type { CurrentCommunitySettingsReadModel } from "../server";

@@ -31,8 +31,7 @@ export function mapLoginAuthErrorResult(params: {
 
   let errorMessage = "メールアドレスまたはパスワードが正しくありません";
 
-  const remaining =
-    ACCOUNT_LOCKOUT_CONFIG.maxFailedAttempts - params.lockoutResult.failedAttempts;
+  const remaining = ACCOUNT_LOCKOUT_CONFIG.maxFailedAttempts - params.lockoutResult.failedAttempts;
   const lockoutDuration = ACCOUNT_LOCKOUT_CONFIG.lockoutDurationMs / 1000 / 60;
 
   if (remaining <= 3 && remaining > 0) {

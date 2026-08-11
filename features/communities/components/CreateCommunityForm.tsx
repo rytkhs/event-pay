@@ -248,7 +248,6 @@ export function CreateCommunityForm({
                 {formElement}
               </div>
             </div>
-
           </div>
         </main>
       </div>

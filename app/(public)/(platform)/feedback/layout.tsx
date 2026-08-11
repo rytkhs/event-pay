@@ -6,8 +6,7 @@ import { buildOpenGraphMetadata, getPublicUrl } from "@core/seo/metadata";
 
 export const metadata: Metadata = {
   title: "フィードバック",
-  description:
-    "みんなの集金へのフィードバックフォームです。機能要望や不具合を気軽に送信できます。",
+  description: "みんなの集金へのフィードバックフォームです。機能要望や不具合を気軽に送信できます。",
   alternates: {
     canonical: getPublicUrl("/feedback"),
   },

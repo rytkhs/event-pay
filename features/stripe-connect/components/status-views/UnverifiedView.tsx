@@ -46,7 +46,6 @@ export function UnverifiedView({ refreshUrl }: UnverifiedViewProps) {
           <ArrowRight className="ml-2 size-4 sm:size-5" />
         </Link>
       </Button>
-
     </div>
   );
 }

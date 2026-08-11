@@ -247,9 +247,7 @@ export async function generateMetadata(props: InvitePageProps): Promise<Metadata
       robots: "noindex, nofollow",
       openGraph: {
         title: `${event.title} - 出欠回答`,
-        description: sanitizeEventDescription(
-          event.description || `${event.title}への出欠回答`
-        ),
+        description: sanitizeEventDescription(event.description || `${event.title}への出欠回答`),
         type: "website",
         images: [
           {
@@ -263,9 +261,7 @@ export async function generateMetadata(props: InvitePageProps): Promise<Metadata
       twitter: {
         card: "summary_large_image",
         title: `${event.title} - 出欠回答`,
-        description: sanitizeEventDescription(
-          event.description || `${event.title}への出欠回答`
-        ),
+        description: sanitizeEventDescription(event.description || `${event.title}への出欠回答`),
         images: [ogImageUrl],
       },
       referrer: "no-referrer",

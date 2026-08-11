@@ -12,7 +12,6 @@ import type { AppSupabaseClient } from "@core/types/supabase";
 import { maskSessionId } from "@core/utils/mask";
 import { toErrorLike } from "@core/utils/type-guards";
 
-
 import { IPaymentErrorHandler } from "../interface";
 import type { CreateStripeSessionParams, CreateStripeSessionResult } from "../types";
 import { updateWithRetries } from "../utils/supabase-retry";
@@ -156,7 +155,8 @@ export async function createStripeSession(
     if (lastDbError || !updatedPayment) {
       const dbError = new PaymentError(
         PaymentErrorType.DATABASE_ERROR,
-        `Failed to update payment record with destination charges data after retries: ${lastDbError?.message ?? "no rows updated"
+        `Failed to update payment record with destination charges data after retries: ${
+          lastDbError?.message ?? "no rows updated"
         }`,
         lastDbError ?? undefined
       );

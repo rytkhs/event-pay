@@ -106,13 +106,7 @@ const payoutItems: PayoutItem[] = [
   },
 ];
 
-function SectionHeading({
-  title,
-  body,
-}: {
-  title: string;
-  body: string;
-}) {
+function SectionHeading({ title, body }: { title: string; body: string }) {
   return (
     <div className="max-w-3xl">
       <h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-4xl">
