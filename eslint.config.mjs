@@ -285,8 +285,10 @@ const eslintConfig = [
         },
       },
       // テストコード全体（fixture含む）
+      // 生成物（tests/.env.local-supabase、tsconfig.json、tsbuildinfo）を lint 対象へ
+      // 引き込まないよう、拡張子まで指定する
       {
-        files: ['tests/**/*'],
+        files: ['tests/**/*.{ts,tsx}'],
         rules: {
           // Vitest fixture の第2引数 `use` を React Hook の呼び出しと誤検知するため無効化
           'react-hooks/rules-of-hooks': 'off',

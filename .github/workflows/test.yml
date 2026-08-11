@@ -1,0 +1,67 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch: # 手動実行を許可
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm のバージョンは package.json の packageManager から解決される
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck tests
+        run: pnpm run typecheck:test
+
+      - name: Run unit tests
+        run: pnpm run test
+
+  server:
+    name: DB / Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # config.toml の [auth.external.google] は enabled = true で env() を参照するため、
+      # 未設定だと gotrue が起動に失敗しうる。ローカルスタック専用のダミー値を渡す
+      # （認証フローの検証には使わないため、秘密情報ではない）。
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: local-ci-client-id
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET: local-ci-client-secret
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # テストが使わないサービスを除外して起動時間を削る。
+      # 起動済みスタックを prepare が検出するため、prepare 側は reset と接続情報の生成だけを行う。
+      - name: Start local Supabase
+        run: pnpm exec supabase start -x studio,imgproxy,edge-runtime
+
+      # prepare（migrations + seed の reset、接続情報の生成）を経由して db / integration を実行する。
+      # Supabase の秘密情報は CI に設定せず、すべてローカルスタックから取得する。
+      - name: Run db / integration tests
+        run: pnpm run test:server

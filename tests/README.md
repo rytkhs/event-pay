@@ -50,7 +50,7 @@ tests/
 
 ### `setup/`
 
-- Jest、Playwright、Supabaseなど、実行環境ごとの初期化と終了処理を置く。
+- Vitest、Supabaseなど、実行環境ごとの初期化と終了処理を置く。
 - ドメインシナリオや機能固有fixtureを含めない。
 - 複数テスト間で認証クライアントや可変データを共有しない。
 
@@ -62,3 +62,42 @@ tests/
 - `e2e/`: `*.spec.ts`
 
 テスト名は実装手順ではなく、外部から観測できる振る舞いを表す。
+
+## Commands
+
+Vitestの4プロジェクト（`unit-node` / `unit-jsdom` / `db` / `integration`）は、接続先の有無で実行コマンドが分かれる。
+
+| コマンド | 対象 | ローカルSupabase |
+| --- | --- | --- |
+| `pnpm test` | `unit-node` / `unit-jsdom` | 不要 |
+| `pnpm test:server` | `db` / `integration` | 必要（prepareを内部で実行） |
+| `pnpm test:db:prepare` | prepareのみ | 必要 |
+| `pnpm typecheck:test` | `tests/tsconfig.json` の型検査 | 不要 |
+
+`pnpm test`はDB、ネットワーク、環境変数のいずれにも依存しない。ローカルSupabaseの接続情報はunitプロジェクトへ渡らない。
+
+### Watch
+
+watchはVitest CLIの既定（`vitest`がwatch、`vitest run`が単発）を使う。プロジェクトごとのnpmスクリプトは用意しない。
+
+```bash
+pnpm exec vitest --project unit-node
+pnpm exec vitest --project unit-jsdom
+pnpm exec vitest --project db           # pnpm test:db:prepare の実行後
+pnpm exec vitest --project integration  # pnpm test:db:prepare の実行後
+```
+
+`db`と`integration`はprepareが生成した接続情報を前提にする。prepare未実行の場合はglobalSetupが失敗する。watch中にDBを初期状態へ戻したいときは、watchを止めて`pnpm test:db:prepare`を再実行する。
+
+## Local Supabase
+
+`db`と`integration`はローカルSupabaseスタックへ直接接続する。前提はDockerが動作していることだけで、手書きの環境変数ファイルは使わない。
+
+`pnpm test:db:prepare`が以下を担う。
+
+1. ローカルスタックの状態を確認し、停止していれば`supabase start`で起動する
+2. 接続先がローカルスタックであることを検証する
+3. `supabase db reset`でマイグレーションとseedを1回だけ適用する
+4. 接続情報を`tests/.env.local-supabase`（gitignore対象）へ書き出す
+
+DBのライフサイクルはprepareの責務であり、Vitestの`setupFiles`や`globalSetup`からリセット・起動は行わない。テスト間のデータ分離はスイートの直列化ではなくfixtureが担う。
