@@ -121,53 +121,52 @@ const eslintConfig = [
       },
       rules: {
       // ===== アーキテクチャ境界ルール =====
-      // 依存方向（レイヤ境界）は boundaries/element-types で一元管理
-      'boundaries/element-types': [
+      // 依存方向とfeaturesの公開入口は boundaries/dependencies で一元管理
+      'boundaries/dependencies': [
         'error',
         {
           default: 'disallow',
           rules: [
             // app層は全てにアクセス可能（自分自身も含む）
             {
-              from: 'app',
-              allow: ['app', 'features', 'core', 'components-ui', 'components-errors', 'types'],
+              from: { type: 'app' },
+              allow: [
+                { to: { type: 'app' } },
+                {
+                  to: {
+                    type: 'features',
+                    internalPath: ['index.{js,ts,tsx}', 'server.{js,ts,tsx}'],
+                  },
+                },
+                { to: { type: 'core' } },
+                { to: { type: 'components-ui' } },
+                { to: { type: 'components-errors' } },
+                { to: { type: 'types' } },
+              ],
             },
             // features層はcoreとcomponents/uiのみアクセス可能
             {
-              from: 'features',
-              allow: ['core', 'components-ui', 'types'],
+              from: { type: 'features' },
+              allow: [
+                { to: { type: 'core' } },
+                { to: { type: 'components-ui' } },
+                { to: { type: 'types' } },
+              ],
             },
             // core層は自身とtypesのみ
             {
-              from: 'core',
-              allow: ['core', 'types'],
+              from: { type: 'core' },
+              allow: [{ to: { type: 'core' } }, { to: { type: 'types' } }],
             },
             // components/ui層は外部ライブラリとtypesのみ
             {
-              from: 'components-ui',
-              allow: ['types'],
+              from: { type: 'components-ui' },
+              allow: [{ to: { type: 'types' } }],
             },
             // components/errors層はtypesとcoreのみ
             {
-              from: 'components-errors',
-              allow: ['types', 'core'],
-            },
-          ],
-        },
-      ],
-      // 公開入口（features配下のimport可能ファイル）は boundaries/entry-point で一元管理
-      'boundaries/entry-point': [
-        'error',
-        {
-          default: 'allow',
-          rules: [
-            {
-              target: 'features',
-              disallow: ['**/*'],
-            },
-            {
-              target: 'features',
-              allow: ['index.{js,ts,tsx}', 'server.{js,ts,tsx}'],
+              from: { type: 'components-errors' },
+              allow: [{ to: { type: 'types' } }, { to: { type: 'core' } }],
             },
           ],
         },
@@ -311,7 +310,7 @@ const eslintConfig = [
         files: ['supabase/**/*'],
         rules: {
           '@typescript-eslint/explicit-function-return-type': 'off',
-          'boundaries/element-types': 'off',
+          'boundaries/dependencies': 'off',
         },
       },
       // API routes用
