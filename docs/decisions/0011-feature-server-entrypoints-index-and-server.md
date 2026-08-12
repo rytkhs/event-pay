@@ -10,7 +10,7 @@ Next.js App Router の `app/api/**` や worker（server-only 実行環境）か�
 一方で、Feature の公開入口を `index.ts` に一本化すると、以下の問題が起きる：
 
 - `index.ts` が client component / client hook / UI を export している場合、API/worker が `@features/<domain>` を import すると **client依存が server-only 領域に混入**するリスクがある。
-- `boundaries/entry-point` を厳格に運用しているため、server-only 側が安全に参照できる公開入口を別に持ちづらい。
+- Featureの公開入口をESLintで厳格に制限しているため、server-only 側が安全に参照できる公開入口を別に持ちづらい。
 
 これにより、境界違反を回避するために深いパス import / 動的import による迂回が増え、責務や依存関係が不明瞭になりうる。
 
@@ -49,7 +49,7 @@ Next.js App Router の `app/api/**` や worker（server-only 実行環境）か�
 
 ### ESLint
 
-`boundaries/entry-point` の許可対象を `index.{js,ts,tsx}` に加えて `server.{js,ts,tsx}` も許可する。
+`boundaries/dependencies` で許可するFeature公開入口に、`index.{js,ts,tsx}` に加えて `server.{js,ts,tsx}` も含める。
 
 ## Consequences
 
@@ -57,7 +57,7 @@ Next.js App Router の `app/api/**` や worker（server-only 実行環境）か�
 
 - server-only 側の import が安全になり、client混入リスクが下がる
 - 公開APIの設計が明確になり、深いパス import を減らせる
-- boundaries/entry-point の強制力を維持したまま運用できる
+- boundaries/dependencies の強制力を維持したまま運用できる
 
 ### Negative
 
@@ -67,5 +67,5 @@ Next.js App Router の `app/api/**` や worker（server-only 実行環境）か�
 ## Links
 
 - `ARCHITECTURE_RULES.md`
-- `eslint.config.mjs`（`boundaries/entry-point`）
+- `eslint.config.mjs`（`boundaries/dependencies`）
 - Supersedes: ADR-0007（entry-point制約の「index.tsのみ」部分。相互依存禁止やレイヤ境界の方針は継続）

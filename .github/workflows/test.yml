@@ -11,6 +11,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # import/no-cycle はローカルの lint では無効化しているため、循環参照はここでのみ検出される
+      - name: Lint (循環参照チェック込み)
+        run: pnpm run lint:cycle
+
   unit:
     name: Unit
     runs-on: ubuntu-latest
