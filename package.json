@@ -16,6 +16,7 @@
     "start": "next start",
     "lint": "eslint app components core features types tests",
     "lint:fix": "eslint app components core features types tests --fix",
+    "lint:cycle": "LINT_NO_CYCLE=1 eslint app components core features types tests",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "typecheck": "NODE_OPTIONS=\"--max-old-space-size=4096\" tsc --noEmit",

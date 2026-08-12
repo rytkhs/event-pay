@@ -20,6 +20,10 @@ const featureDatabaseImportRestrictionPattern = {
   group: ['@/types/database'],
   message: 'features層では@/types/databaseを直接importせず、@core/types/* を使用してください',
 }
+// import/no-cycle は lint 対象ファイルごとに依存グラフを DFS するため重い、
+// そのためローカル（pre-commit 含む）では無効化し、CI の Lint ジョブでのみ有効にする（pnpm lint:cycle）。
+const cycleCheckEnabled = process.env.LINT_NO_CYCLE === '1'
+
 const featureSelfReferenceOverrides = readdirSync(new URL('./features', import.meta.url), {
   withFileTypes: true,
 })
@@ -71,6 +75,9 @@ const eslintConfig = [
         // 型情報を要するルールは有効化していないため project は指定しない。
       },
       settings: {
+        // eslint-module-utils の解決キャッシュ既定値は 30 秒で、全体lintの実行時間がそれを超えると
+        // 実行の途中で失効して同じモジュールを再解決する。単発の CLI 実行では失効させる理由がない。
+        'import/cache': { lifetime: Infinity },
         react: {
           version: 'detect',
         },
@@ -256,7 +263,7 @@ const eslintConfig = [
           },
         },
       ],
-      'import/no-cycle': 'error',
+      'import/no-cycle': cycleCheckEnabled ? 'error' : 'off',
       'import/no-self-import': 'error',
 
       // ===== アクセシビリティルール（recommendedとの差分・追加のみ） =====
