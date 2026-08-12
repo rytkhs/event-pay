@@ -68,7 +68,7 @@ const eslintConfig = [
         ecmaFeatures: {
           jsx: true,
         },
-        project: ['./tsconfig.json', './tests/tsconfig.json'],
+        // 型情報を要するルールは有効化していないため project は指定しない。
       },
       settings: {
         react: {
@@ -186,9 +186,6 @@ const eslintConfig = [
         },
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
-
-      '@typescript-eslint/prefer-nullish-coalescing': 'off',
-      '@typescript-eslint/prefer-optional-chain': 'warn',
 
       // ===== セキュリティ関連ルール =====
       'no-console': ['warn', { allow: ['warn', 'error'] }],
