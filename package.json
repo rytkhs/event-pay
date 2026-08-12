@@ -6,7 +6,7 @@
   "packageManager": "pnpm@10.11.1",
   "scripts": {
     "dev": "FORCE_COLOR=true next dev --turbopack",
-    "build": "NODE_OPTIONS=\"--max-old-space-size=4096\" next build",
+    "build": "next build",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy -- --keep-vars --outdir dist --upload-source-maps --var SENTRY_RELEASE:$(sentry-cli releases propose-version)",
     "deploy:demo": "opennextjs-cloudflare deploy --env demo --keep-vars",
@@ -19,7 +19,7 @@
     "lint:cycle": "LINT_NO_CYCLE=1 eslint app components core features types tests",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "typecheck": "NODE_OPTIONS=\"--max-old-space-size=4096\" tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "typecheck:test": "tsc -p tests/tsconfig.json --noEmit",
     "test": "vitest run --project unit-node --project unit-jsdom",
     "test:db:prepare": "tsx tests/setup/prepare-local-supabase.ts",
