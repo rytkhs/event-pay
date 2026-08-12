@@ -20,10 +20,10 @@ import { createLocalAdminClient, createLocalAnonClient } from "../setup/local-su
 export type UniqueValues = {
   /** このテスト固有のトークン。値の一意性はすべてこれに由来する。 */
   token: string;
-  email(): string;
+  email(label?: string): string;
   password(): string;
-  organizerName(): string;
-  communityName(): string;
+  organizerName(label?: string): string;
+  communityName(label?: string): string;
 };
 
 export type BaseFixtures = {
@@ -40,11 +40,11 @@ function createUniqueValues(): UniqueValues {
 
   return {
     token,
-    email: () => `organizer-${token}@example.com`,
+    email: (label = "organizer") => `${label}-${token}@example.com`,
     // config.toml の minimum_password_length = 6
     password: () => `pw-${shortToken}`,
-    organizerName: () => `テスト主催者-${shortToken}`,
-    communityName: () => `テストコミュニティ-${shortToken}`,
+    organizerName: (label = "主催者") => `テスト${label}-${shortToken}`,
+    communityName: (label = "コミュニティ") => `テスト${label}-${shortToken}`,
   };
 }
 
