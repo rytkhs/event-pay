@@ -1,4 +1,4 @@
-import { describe, expect } from "vitest";
+import { assert, describe, expect } from "vitest";
 
 import { createCommunity, createCommunitySchema } from "@features/communities/server";
 
@@ -25,7 +25,7 @@ describe("createCommunity", () => {
     const result = await createCommunity(organizerClient, organizer.id, input);
 
     expect(result.success).toBe(true);
-    if (!result.success) return;
+    assert(result.success);
 
     const communityId = result.data?.communityId;
     expect(communityId).toEqual(expect.any(String));
