@@ -34,6 +34,34 @@ describe("updateCurrentCommunityAction", () => {
     );
   });
 
+  test("主催者が現在のコミュニティ選択を解除できる", async ({
+    community,
+    organizerRequestCookies,
+  }) => {
+    const execution = await runInNextServerActionContext(
+      {
+        cookies: [
+          ...organizerRequestCookies,
+          { name: CURRENT_COMMUNITY_COOKIE_NAME, value: community.id },
+        ],
+      },
+      async () => await updateCurrentCommunityAction(null)
+    );
+
+    expect(execution.result.success).toBe(true);
+    assert(execution.result.success);
+    expect(execution.result.data).toEqual({ currentCommunityId: null });
+    expect(execution.responseCookies).toContainEqual(
+      expect.objectContaining({
+        name: CURRENT_COMMUNITY_COOKIE_NAME,
+        expires: new Date(0),
+        httpOnly: true,
+        path: "/",
+        sameSite: "lax",
+      })
+    );
+  });
+
   test("別主催者のコミュニティは選択できずcookieも更新しない", async ({
     community,
     organizerRequestCookies,
