@@ -1,3 +1,4 @@
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 import type { AppDatabase, AppSupabaseClient } from "@core/types/supabase";
@@ -20,6 +21,47 @@ const AUTH_OPTIONS = {
   autoRefreshToken: false,
   detectSessionInUrl: false,
 } as const;
+
+export type TestCookie = {
+  name: string;
+  value: string;
+  options?: CookieOptions;
+};
+
+export type TestCookieJar = {
+  getAll(): TestCookie[];
+  setAll(cookies: TestCookie[]): void;
+};
+
+export function createTestCookieJar(initialCookies: TestCookie[] = []): TestCookieJar {
+  const cookies = new Map(initialCookies.map((cookie) => [cookie.name, { ...cookie }]));
+
+  return {
+    getAll: () => [...cookies.values()].map((cookie) => ({ ...cookie })),
+    setAll: (nextCookies) => {
+      for (const cookie of nextCookies) {
+        if (cookie.value === "" || cookie.options?.maxAge === 0) {
+          cookies.delete(cookie.name);
+          continue;
+        }
+        cookies.set(cookie.name, { ...cookie });
+      }
+    },
+  };
+}
+
+/** @supabase/ssr の公開APIで、Next.jsと同じCookie storageを使うテストクライアントを作る。 */
+export function createLocalSsrClient(cookieJar: TestCookieJar): AppSupabaseClient {
+  const { url, anonKey } = requireLocalSupabaseEnv();
+
+  return createServerClient<AppDatabase>(url, anonKey, {
+    auth: AUTH_OPTIONS,
+    cookies: {
+      getAll: () => cookieJar.getAll(),
+      setAll: (cookies) => cookieJar.setAll(cookies),
+    },
+  });
+}
 
 /** service_role キーのクライアント。RLS を迂回するため fixture のセットアップ／後始末に使う。 */
 export function createLocalAdminClient(): AppSupabaseClient {

@@ -1,17 +1,18 @@
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath } from "node:url";
 
-import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vitest/config';
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vitest/config";
 
-import { readLocalSupabaseEnv } from './tests/setup/local-supabase-env.ts';
+import { readLocalSupabaseEnv } from "./tests/setup/local-supabase-env.ts";
 
-const serverOnlyStub = fileURLToPath(new URL('./tests/setup/server-only.ts', import.meta.url));
-const localSupabaseGuard = './tests/setup/local-supabase-env.ts';
+const serverOnlyStub = fileURLToPath(new URL("./tests/setup/server-only.ts", import.meta.url));
+const localSupabaseGuard = "./tests/setup/local-supabase-env.ts";
 
 // setupFiles はプロジェクトごとに必要なものだけを配線する。
 // unit-node は環境固有の初期化を持たないため設定しない。
-const jsdomSetup = './tests/setup/unit-jsdom.ts';
-const serverSetup = './tests/setup/test-environment.ts';
+const jsdomSetup = "./tests/setup/unit-jsdom.ts";
+const serverSetup = "./tests/setup/test-environment.ts";
+const nextServerSetup = "./tests/setup/next-test-environment.ts";
 
 // prepare 未実行時は空のまま。失敗は db / integration の globalSetup で起こす。
 const localSupabaseEnv = readLocalSupabaseEnv() ?? {};
@@ -43,9 +44,9 @@ export default defineConfig({
         resolve: createResolve(),
         test: {
           ...createBaseTest(),
-          name: 'unit-node',
-          environment: 'node',
-          include: ['tests/unit/**/*.test.ts'],
+          name: "unit-node",
+          environment: "node",
+          include: ["tests/unit/**/*.test.ts"],
         },
       },
       {
@@ -53,9 +54,9 @@ export default defineConfig({
         resolve: createResolve(),
         test: {
           ...createBaseTest(),
-          name: 'unit-jsdom',
-          environment: 'jsdom',
-          include: ['tests/unit/**/*.test.tsx'],
+          name: "unit-jsdom",
+          environment: "jsdom",
+          include: ["tests/unit/**/*.test.tsx"],
           setupFiles: [jsdomSetup],
         },
       },
@@ -64,9 +65,9 @@ export default defineConfig({
         resolve: createResolve(),
         test: {
           ...createBaseTest(),
-          name: 'db',
-          environment: 'node',
-          include: ['tests/db/**/*.db.test.ts'],
+          name: "db",
+          environment: "node",
+          include: ["tests/db/**/*.db.test.ts"],
           env: localSupabaseEnv,
           globalSetup: [localSupabaseGuard],
           setupFiles: [serverSetup],
@@ -77,12 +78,12 @@ export default defineConfig({
         resolve: createResolve(),
         test: {
           ...createBaseTest(),
-          name: 'integration',
-          environment: 'node',
-          include: ['tests/integration/**/*.integration.test.ts'],
+          name: "integration",
+          environment: "node",
+          include: ["tests/integration/**/*.integration.test.ts"],
           env: localSupabaseEnv,
           globalSetup: [localSupabaseGuard],
-          setupFiles: [serverSetup],
+          setupFiles: [nextServerSetup],
         },
       },
     ],

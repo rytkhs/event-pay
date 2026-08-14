@@ -89,6 +89,18 @@ pnpm exec vitest --project integration  # pnpm test:db:prepare の実行後
 
 `db`と`integration`はprepareが生成した接続情報を前提にする。prepare未実行の場合はglobalSetupが失敗する。watch中にDBを初期状態へ戻したいときは、watchを止めて`pnpm test:db:prepare`を再実行する。
 
+## Next.js Server Action request context
+
+`integration`では、`tests/setup/next-request-context.ts`の
+`runInNextServerActionContext`を使い、認証Cookie、`cookies()`の書き込み、
+`revalidatePath()`を含むServer ActionをNext.jsのrequest context内で実行できる。
+
+- Next.js 15.5にはServer Action用の公開Vitestハーネスがないため、Next.js内部APIへの依存はこの1ファイルだけに隔離する。
+- ハーネスのカナリーは`tests/integration/setup/next-request-context.integration.test.ts`に置く。Next.js更新時はこのカナリーを最初に確認する。
+- 認証Cookieは`@supabase/ssr`の`createServerClient`と実際のログインから生成し、Cookie名やchunk形式を手書きしない。
+- ハーネスはNext.jsのHTTP transportやReact Server Componentの再描画を保証しない。それらは将来のE2Eで扱う。
+- 実行ごとに独立したcontextを生成し、可変なCookieやrequest stateをモジュールスコープで共有しない。
+
 ## Local Supabase
 
 `db`と`integration`はローカルSupabaseスタックへ直接接続する。前提はDockerが動作していることだけで、手書きの環境変数ファイルは使わない。
