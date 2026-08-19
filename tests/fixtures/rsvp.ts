@@ -27,6 +27,11 @@ type CreateEventOptions = {
   capacity?: number | null;
   fee?: number;
   paymentMethods?: PaymentMethod[];
+  /**
+   * 支払期限。`payment_methods` に `stripe` を含めるときは必須
+   * （`events_payment_deadline_required_if_stripe`）。
+   */
+  paymentDeadline?: string;
 };
 
 type CreateAttendanceOptions = {
@@ -75,6 +80,7 @@ export const test = communityTest.extend<RsvpFixtures>({
           fee: options.fee ?? 0,
           capacity,
           payment_methods: options.paymentMethods ?? ["cash"],
+          payment_deadline: options.paymentDeadline ?? null,
         })
         .select("id, community_id, capacity")
         .single();
