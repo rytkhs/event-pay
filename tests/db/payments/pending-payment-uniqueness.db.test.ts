@@ -3,14 +3,15 @@ import { describe, expect } from "vitest";
 import { PAYMENT_PAID_AT, test } from "../../fixtures/payment";
 
 /**
- * PAY-05: Attendanceごとのopen Paymentは最大1件である。
+ * `pending` PaymentはAttendanceごとに最大1件である。
  *
- * 部分UNIQUE index `unique_open_payment_per_attendance` は `pending` だけを対象にする。
- * 確定・キャンセル済みの決済は履歴として残るため、未収決済と共存できる。
+ * 部分UNIQUE index `unique_open_payment_per_attendance` の現行契約を固定する。
+ * PAY-05の「open Payment」に`failed`を含めるかはIssue #509で未確定のため、
+ * このテストだけではPAY-05全体を保証しない。
  */
 
-describe("未収決済の一意性", () => {
-  test("同一参加者に2件目の未収決済を作成できない", async ({ adminClient, payment }) => {
+describe("pending決済の一意性", () => {
+  test("同一参加者に2件目のpending決済を作成できない", async ({ adminClient, payment }) => {
     const first = await payment.createPaymentWithAttendance();
 
     const { error } = await adminClient
@@ -29,7 +30,7 @@ describe("未収決済の一意性", () => {
     expect(count).toBe(1);
   });
 
-  test("同一参加者への並行作成は1件だけ成功する", async ({ adminClient, payment }) => {
+  test("同一参加者へのpending決済の並行作成は1件だけ成功する", async ({ adminClient, payment }) => {
     const attendance = await payment.createAttendance();
     const firstClient = payment.createAdminClient();
     const secondClient = payment.createAdminClient();
@@ -57,7 +58,7 @@ describe("未収決済の一意性", () => {
     expect(count).toBe(1);
   });
 
-  test("受領済みになれば新しい未収決済を作成できる", async ({ adminClient, payment }) => {
+  test("受領済みになれば新しいpending決済を作成できる", async ({ adminClient, payment }) => {
     const first = await payment.createPaymentWithAttendance();
 
     const { error: updateError } = await adminClient
@@ -91,7 +92,7 @@ describe("未収決済の一意性", () => {
     expect(totalCount).toBe(2);
   });
 
-  test("キャンセル済み決済は未収決済と共存できる", async ({ adminClient, payment }) => {
+  test("キャンセル済み決済はpending決済と共存できる", async ({ adminClient, payment }) => {
     const canceled = await payment.createPaymentWithAttendance({ status: "canceled" });
 
     const { error } = await adminClient

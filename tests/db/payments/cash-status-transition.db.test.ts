@@ -5,10 +5,11 @@ import type { AppDatabase, AppSupabaseClient } from "@core/types/supabase";
 import { test } from "../../fixtures/payment";
 
 /**
- * CSH-03: 不正な降格や終端状態からの遷移を拒否する。
+ * `rpc_update_payment_status_safe`の現行DB遷移を検証する。
  *
- * 主催者が使う唯一の手動更新経路 `rpc_update_payment_status_safe` を入口にする。
- * 未収へ戻す操作だけは`received` / `waived`から許可される。
+ * 主催者によるcash Paymentの正常遷移、rankが下がる遷移の拒否、
+ * Stripe Paymentの手動更新拒否を固定する。rankが上がる不正遷移を含む
+ * CSH-03全体は、Issue #509で遷移仕様を確定してから保証する。
  */
 
 type PaymentStatus = AppDatabase["public"]["Enums"]["payment_status_enum"];
