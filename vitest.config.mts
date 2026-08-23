@@ -17,12 +17,6 @@ const nextServerSetup = "./tests/setup/next-test-environment.ts";
 // prepare 未実行時は空のまま。失敗は db / integration の globalSetup で起こす。
 const localSupabaseEnv = readLocalSupabaseEnv() ?? {};
 
-// ローカルSupabaseのKongは、PostgRESTがkeep-alive接続を閉じる瞬間に届いた
-// リクエストへ "upstream prematurely closed connection" を返すことがある。
-// アサーションではなくトランスポートが落ちるため、テスト内容と無関係に失敗する。
-// 契約が壊れていれば再実行しても同じ結果になるので、1回だけ再試行する。
-const LOCAL_SUPABASE_RETRY = 1;
-
 // plugins と alias はプロジェクトごとに新しいインスタンスを生成する。
 // 共有設定に `extends: true` を使うと plugins 配列が連結され、重複インスタンスが生まれる。
 const createPlugins = () => [react()];
@@ -74,7 +68,6 @@ export default defineConfig({
           name: "db",
           environment: "node",
           include: ["tests/db/**/*.db.test.ts"],
-          retry: LOCAL_SUPABASE_RETRY,
           env: localSupabaseEnv,
           globalSetup: [localSupabaseGuard],
           setupFiles: [serverSetup],
@@ -88,7 +81,6 @@ export default defineConfig({
           name: "integration",
           environment: "node",
           include: ["tests/integration/**/*.integration.test.ts"],
-          retry: LOCAL_SUPABASE_RETRY,
           env: localSupabaseEnv,
           globalSetup: [localSupabaseGuard],
           setupFiles: [nextServerSetup],
