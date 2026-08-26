@@ -6,6 +6,8 @@ import type { AppSupabaseClient } from "@core/types/supabase";
 
 import type { PaymentStatus, ServiceUpdatePaymentStatusParams } from "../types";
 
+import { isConcurrentPaymentStatusUpdateError } from "./payment-status-rpc-error";
+
 /**
  * 楽観的ロック付きの決済ステータス更新（現金払い用）
  */
@@ -36,9 +38,8 @@ export async function updatePaymentStatusSafe(
     });
 
     if (error) {
-      // PostgreSQLのエラーコードを確認
-      if (error.code === "40001") {
-        // serialization_failure = 楽観的ロック競合
+      // RPCのエラーコードを確認
+      if (isConcurrentPaymentStatusUpdateError(error)) {
         throw new PaymentError(
           PaymentErrorType.CONCURRENT_UPDATE,
           "他のユーザーによって同時に更新されました。最新の状態を確認してから再試行してください。"
