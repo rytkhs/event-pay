@@ -10,6 +10,7 @@ import { createServerActionSupabaseClient } from "@core/supabase/factory";
 import { PaymentError, PaymentErrorType } from "@core/types/payment-errors";
 
 import { getOwnedPaymentActionContextForServerAction } from "../services/get-owned-payment-action-context";
+import { isConcurrentPaymentStatusUpdateError } from "../services/status-update/payment-status-rpc-error";
 import { PaymentValidator, updateCashStatusActionInputSchema } from "../validation";
 
 function mapPaymentError(type: PaymentErrorType): ErrorCode {
@@ -126,7 +127,7 @@ export async function updateCashStatusAction(
 
     if (rpcError) {
       // 楽観的ロック競合の場合
-      if (rpcError.code === "40001") {
+      if (isConcurrentPaymentStatusUpdateError(rpcError)) {
         return fail("RESOURCE_CONFLICT", {
           userMessage:
             "他のユーザーによって同時に更新されました。最新の状態を確認してから再試行してください。",
