@@ -13,7 +13,6 @@ type PaymentActionRow = {
   id: string;
   method: string;
   status: string;
-  version: number;
 };
 
 type AttendanceEventRow = {
@@ -29,7 +28,6 @@ export type OwnedPaymentActionContext = {
   paymentId: string;
   status: string;
   user: User;
-  version: number;
 };
 
 export type OwnedBulkPaymentActionContext = {
@@ -63,7 +61,7 @@ export async function getOwnedPaymentActionContextForServerAction(
 
   const { data: payment, error: paymentError } = await supabase
     .from("payments")
-    .select("id, attendance_id, method, status, version")
+    .select("id, attendance_id, method, status")
     .eq("id", paymentId)
     .maybeSingle<PaymentActionRow>();
 
@@ -133,7 +131,6 @@ export async function getOwnedPaymentActionContextForServerAction(
     paymentId: payment.id,
     status: payment.status,
     user,
-    version: payment.version,
   });
 }
 
@@ -161,7 +158,7 @@ export async function getOwnedBulkPaymentActionContextForServerAction(
 
   const { data: payments, error: paymentsError } = await supabase
     .from("payments")
-    .select("id, attendance_id, method, status, version")
+    .select("id, attendance_id, method, status")
     .in("id", uniquePaymentIds);
 
   if (paymentsError) {
@@ -288,7 +285,6 @@ export async function getOwnedBulkPaymentActionContextForServerAction(
         paymentId: payment.id,
         status: payment.status,
         user,
-        version: payment.version,
       };
     }),
     user,

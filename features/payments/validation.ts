@@ -55,17 +55,35 @@ const updatePaymentStatusParamsSchema = z.object({
 
 export const updateCashStatusActionInputSchema = z.object({
   paymentId: z.string().uuid(),
+  expectedVersion: z.number().int().nonnegative(),
   status: z.enum(["received", "waived", "pending"]),
   notes: z.string().max(1000).optional(),
   isCancel: z.boolean().optional(),
 });
 
+const bulkPaymentTargetSchema = z.object({
+  paymentId: z.string().uuid(),
+  expectedVersion: z.number().int().nonnegative(),
+});
+
 export const bulkUpdateCashStatusActionInputSchema = z.object({
-  paymentIds: z
-    .array(z.string().uuid())
+  payments: z
+    .array(bulkPaymentTargetSchema)
     .min(1)
     .max(50) // 最大50件まで
-    .transform((ids) => Array.from(new Set(ids))),
+    .superRefine((payments, context) => {
+      const seenPaymentIds = new Set<string>();
+      payments.forEach((payment, index) => {
+        if (seenPaymentIds.has(payment.paymentId)) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [index, "paymentId"],
+            message: "同じ決済を複数回指定することはできません。",
+          });
+        }
+        seenPaymentIds.add(payment.paymentId);
+      });
+    }),
   status: CashUpdateStatusSchema,
   notes: z.string().max(1000).optional(),
 });
