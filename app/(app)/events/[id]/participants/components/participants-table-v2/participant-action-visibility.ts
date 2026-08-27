@@ -7,6 +7,14 @@ export function canShowDeleteMistakenAttendanceAction(participant: ParticipantVi
   return participant.can_delete_mistaken_attendance === true;
 }
 
+export function hasObservedPaymentVersion(participant: ParticipantView): boolean {
+  return (
+    typeof participant.payment_version === "number" &&
+    Number.isInteger(participant.payment_version) &&
+    participant.payment_version >= 0
+  );
+}
+
 export function getParticipantActionState(
   participant: ParticipantView,
   opts: { isSelectionMode?: boolean } = {}
@@ -15,7 +23,8 @@ export function getParticipantActionState(
   const isCashPayment =
     participant.payment_method === "cash" &&
     Boolean(participant.payment_id) &&
-    participant.payment_status !== "canceled";
+    participant.payment_status !== "canceled" &&
+    hasObservedPaymentVersion(participant);
   const canReceiveCash =
     participant.status === "attending" &&
     isCashPayment &&

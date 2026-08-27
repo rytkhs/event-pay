@@ -17,6 +17,7 @@ type BulkUpdateResult = {
   failedCount: number;
   failures: Array<{
     paymentId: string;
+    code: ErrorCode;
     error: string;
   }>;
 };
@@ -26,6 +27,7 @@ type BulkUpdatePaymentStatusRpcResult = {
   failure_count: number;
   failures: Array<{
     payment_id: string;
+    error_code: string;
     error_message: string;
   }>;
 };
@@ -42,8 +44,31 @@ function isBulkUpdatePaymentStatusRpcResult(
   return maybe.failures.every((failure) => {
     if (typeof failure !== "object" || failure === null) return false;
     const f = failure as Record<string, unknown>;
-    return typeof f.payment_id === "string" && typeof f.error_message === "string";
+    return (
+      typeof f.payment_id === "string" &&
+      typeof f.error_code === "string" &&
+      typeof f.error_message === "string"
+    );
   });
+}
+
+function mapRpcFailureCode(errorCode: string): ErrorCode {
+  switch (errorCode) {
+    case "PT409":
+      return "RESOURCE_CONFLICT";
+    case "P0001":
+      return "FORBIDDEN";
+    case "P0002":
+    case "P0005":
+    case "P0006":
+      return "NOT_FOUND";
+    case "P0003":
+      return "RESOURCE_CONFLICT";
+    case "P0004":
+      return "VALIDATION_ERROR";
+    default:
+      return "DATABASE_ERROR";
+  }
 }
 
 function mapPaymentError(type: PaymentErrorType): ErrorCode {
@@ -85,7 +110,11 @@ export async function bulkUpdateCashStatusAction(
         details: { zodErrors: parsed.error.errors },
       });
     }
-    const { paymentIds, status, notes } = parsed.data;
+    const { payments: paymentTargets, status, notes } = parsed.data;
+    const paymentIds = paymentTargets.map((payment) => payment.paymentId);
+    const expectedVersionByPaymentId = new Map(
+      paymentTargets.map((payment) => [payment.paymentId, payment.expectedVersion])
+    );
 
     const supabase = await createServerActionSupabaseClient();
     const accessResult = await getOwnedBulkPaymentActionContextForServerAction(
@@ -127,34 +156,52 @@ export async function bulkUpdateCashStatusAction(
     // 部分成功を許容するため、非現金払いは failures に積むだけで処理続行
     const initialFailures: BulkUpdateResult["failures"] = nonCashPayments.map((payment) => ({
       paymentId: payment.paymentId,
+      code: "RESOURCE_CONFLICT",
       error: "現金払い以外は手動更新できません。",
     }));
 
     // 現金払いのみを抽出
     const cashPayments = paymentsWithEvent.filter((payment) => payment.method === "cash");
 
-    if (cashPayments.length === 0) {
-      return ok({
-        successCount: 0,
-        failedCount: initialFailures.length,
-        failures: initialFailures,
-      });
-    }
-
     // 基本的なバリデーション（RPC関数内でも再実行される）
     const validator = new PaymentValidator(supabase);
+    const validationFailures: BulkUpdateResult["failures"] = [];
+    const validCashPayments = [];
     for (const payment of cashPayments) {
-      await validator.validateAttendanceAccess(payment.attendanceId);
-      await validator.validateUpdatePaymentStatusParams({
-        paymentId: payment.paymentId,
-        status,
+      try {
+        await validator.validateAttendanceAccess(payment.attendanceId);
+        await validator.validateUpdatePaymentStatusParams({
+          paymentId: payment.paymentId,
+          status,
+        });
+        validCashPayments.push(payment);
+      } catch (validationError) {
+        if (!(validationError instanceof PaymentError)) {
+          throw validationError;
+        }
+        if (validationError.type === PaymentErrorType.DATABASE_ERROR) {
+          throw validationError;
+        }
+        validationFailures.push({
+          paymentId: payment.paymentId,
+          code: mapPaymentError(validationError.type),
+          error: validationError.message,
+        });
+      }
+    }
+
+    if (validCashPayments.length === 0) {
+      return ok({
+        successCount: 0,
+        failedCount: initialFailures.length + validationFailures.length,
+        failures: [...initialFailures, ...validationFailures],
       });
     }
 
     // 一括更新用のデータを構築（version情報を含める）
-    const updateData = cashPayments.map((payment) => ({
+    const updateData = validCashPayments.map((payment) => ({
       payment_id: payment.paymentId,
-      expected_version: payment.version,
+      expected_version: expectedVersionByPaymentId.get(payment.paymentId),
       new_status: status,
     }));
 
@@ -181,16 +228,17 @@ export async function bulkUpdateCashStatusAction(
 
     // RPC結果をレスポンス形式に変換
     const rpcFailures: BulkUpdateResult["failures"] = rpcResult.failures.map(
-      (f: { payment_id: string; error_message: string }) => ({
+      (f: { payment_id: string; error_code: string; error_message: string }) => ({
         paymentId: f.payment_id,
+        code: mapRpcFailureCode(f.error_code),
         error: f.error_message,
       })
     );
 
     const result: BulkUpdateResult = {
       successCount: rpcResult.success_count,
-      failedCount: rpcResult.failure_count + initialFailures.length,
-      failures: [...initialFailures, ...rpcFailures],
+      failedCount: rpcResult.failure_count + initialFailures.length + validationFailures.length,
+      failures: [...initialFailures, ...validationFailures, ...rpcFailures],
     };
 
     return ok(result);

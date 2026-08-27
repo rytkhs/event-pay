@@ -9,6 +9,7 @@ import { AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
+import type { ErrorCode } from "@core/errors/types";
 import type { EventStatus, PaymentMethod } from "@core/types/statuses";
 import { conditionalSmartSort } from "@core/utils/participant-smart-sort";
 import { isPaymentUnpaid, toSimplePaymentStatus } from "@core/utils/payment-status-mapper";
@@ -48,20 +49,50 @@ import type {
 import { BulkActionBar } from "./BulkActionBar";
 import { CardsView } from "./CardsView";
 import { DataTable } from "./DataTable";
+import { hasObservedPaymentVersion } from "./participant-action-visibility";
 import { buildParticipantsColumns } from "./participants-columns";
 import { ViewModeToggle } from "./ViewModeToggle";
 
 type UpdateCashStatusInput = {
   paymentId: string;
+  expectedVersion: number;
   status: "received" | "waived" | "pending";
   notes?: string;
   isCancel?: boolean;
 };
 
 type BulkUpdateCashStatusInput = {
-  paymentIds: string[];
+  payments: Array<{
+    paymentId: string;
+    expectedVersion: number;
+  }>;
   status: "received" | "waived";
   notes?: string;
+};
+
+type BulkCashUpdateStatus = BulkUpdateCashStatusInput["status"];
+
+const BULK_CASH_UPDATE_COPY: Record<
+  BulkCashUpdateStatus,
+  {
+    emptySelection: string;
+    successTitle: string;
+    successVerb: string;
+    failureFallback: string;
+  }
+> = {
+  received: {
+    emptySelection: "集金済みにする対象を選択してください。",
+    successTitle: "一括受領が完了しました",
+    successVerb: "受領",
+    failureFallback: "一括受領に失敗しました",
+  },
+  waived: {
+    emptySelection: "免除対象の決済を選択してください。",
+    successTitle: "一括免除が完了しました",
+    successVerb: "免除",
+    failureFallback: "一括免除に失敗しました",
+  },
 };
 
 type BulkUpdateResult = {
@@ -69,6 +100,7 @@ type BulkUpdateResult = {
   failedCount: number;
   failures: Array<{
     paymentId: string;
+    code: ErrorCode;
     error: string;
   }>;
 };
@@ -122,6 +154,33 @@ function getDeviceType(width: number): keyof typeof VIEW_MODE_STORAGE_KEYS {
 
 function getDefaultViewMode(deviceType: keyof typeof VIEW_MODE_STORAGE_KEYS): "table" | "cards" {
   return deviceType === "mobile" ? "cards" : "table";
+}
+
+function getObservedPaymentVersion(
+  participants: ParticipantView[],
+  paymentId: string
+): number | null {
+  const participant = participants.find((candidate) => candidate.payment_id === paymentId);
+  return participant && hasObservedPaymentVersion(participant) ? participant.payment_version : null;
+}
+
+function restorePaymentParticipants(
+  current: ParticipantView[],
+  snapshot: ParticipantView[],
+  paymentIds: Set<string>
+): ParticipantView[] {
+  const snapshotByPaymentId = new Map(
+    snapshot
+      .filter((participant) => participant.payment_id)
+      .map((participant) => [participant.payment_id as string, participant])
+  );
+
+  return current.map((participant) => {
+    if (!participant.payment_id || !paymentIds.has(participant.payment_id)) {
+      return participant;
+    }
+    return snapshotByPaymentId.get(participant.payment_id) ?? participant;
+  });
 }
 
 function getInitialViewMode(): "table" | "cards" {
@@ -370,6 +429,7 @@ export function ParticipantsTableV2({
         p.status === "attending" &&
         p.payment_method === "cash" &&
         p.payment_id &&
+        hasObservedPaymentVersion(p) &&
         (p.payment_status === "pending" || p.payment_status === "failed")
     );
   }, [sortedParticipants]);
@@ -419,11 +479,24 @@ export function ParticipantsTableV2({
 
   const handleReceive = useCallback(
     async (paymentId: string) => {
+      const expectedVersion = getObservedPaymentVersion(localParticipants, paymentId);
+      if (expectedVersion === null) {
+        toast.error("更新に失敗しました", {
+          description: "決済の表示情報が古いため、最新の状態を取得してください。",
+        });
+        startTransition(() => router.refresh());
+        return;
+      }
+
       setIsUpdating(true);
       const prev = localParticipants;
       applyLocal(paymentId, "received");
       try {
-        const result = await updateCashStatusAction({ paymentId, status: "received" });
+        const result = await updateCashStatusAction({
+          paymentId,
+          expectedVersion,
+          status: "received",
+        });
         if (result.success) {
           toast("集金状況を更新しました", {
             description: "ステータスを「受領」に変更しました。",
@@ -434,6 +507,7 @@ export function ParticipantsTableV2({
         }
       } catch (error) {
         setLocalParticipants(prev);
+        startTransition(() => router.refresh());
         const errorMessage =
           error instanceof Error ? error.message : "予期しないエラーが発生しました";
         toast.error("更新に失敗しました", {
@@ -446,95 +520,89 @@ export function ParticipantsTableV2({
     [router, localParticipants, applyLocal, updateCashStatusAction]
   );
 
-  const handleBulkReceive = useCallback(async () => {
-    if (validSelectedPaymentIds.length === 0) {
-      toast.error("選択エラー", {
-        description: "集金済みにする対象を選択してください。",
-      });
-      return;
-    }
-
-    setIsBulkUpdating(true);
-    const prev = localParticipants;
-    const targetIds = [...validSelectedPaymentIds];
-
-    setLocalParticipants((current) =>
-      current.map((p) =>
-        p.payment_id && targetIds.includes(p.payment_id) ? { ...p, payment_status: "received" } : p
-      )
-    );
-
-    try {
-      const result = await bulkUpdateCashStatusAction({
-        paymentIds: targetIds,
-        status: "received",
-      });
-
-      if (result.success) {
-        const { successCount, failedCount } = result.data ?? { successCount: 0, failedCount: 0 };
-        toast("一括受領が完了しました", {
-          description: `${successCount}件受領、${failedCount > 0 ? `${failedCount}件失敗` : "全て成功"}`,
+  const handleBulkStatusUpdate = useCallback(
+    async (status: BulkCashUpdateStatus) => {
+      const copy = BULK_CASH_UPDATE_COPY[status];
+      if (validSelectedPaymentIds.length === 0) {
+        toast.error("選択エラー", {
+          description: copy.emptySelection,
         });
-        setSelectedPaymentIds([]);
-        startTransition(() => router.refresh());
-      } else {
-        throw new Error(result.error?.userMessage || "一括更新に失敗しました");
+        return;
       }
-    } catch (error) {
-      setLocalParticipants(prev);
-      const errorMessage = error instanceof Error ? error.message : "一括受領に失敗しました";
-      toast.error("一括更新に失敗しました", {
-        description: errorMessage,
-      });
-    } finally {
-      setIsBulkUpdating(false);
-    }
-  }, [validSelectedPaymentIds, localParticipants, router, bulkUpdateCashStatusAction]);
 
-  const handleBulkWaive = useCallback(async () => {
-    if (validSelectedPaymentIds.length === 0) {
-      toast.error("選択エラー", {
-        description: "免除対象の決済を選択してください。",
-      });
-      return;
-    }
+      setIsBulkUpdating(true);
+      const prev = localParticipants;
+      const targetIds = [...validSelectedPaymentIds];
+      const targetPayments = targetIds
+        .map((paymentId) => ({
+          paymentId,
+          expectedVersion: getObservedPaymentVersion(localParticipants, paymentId),
+        }))
+        .filter(
+          (payment): payment is { paymentId: string; expectedVersion: number } =>
+            payment.expectedVersion !== null
+        );
 
-    setIsBulkUpdating(true);
-    const prev = localParticipants;
-    const targetIds = [...validSelectedPaymentIds];
-
-    setLocalParticipants((current) =>
-      current.map((p) =>
-        p.payment_id && targetIds.includes(p.payment_id) ? { ...p, payment_status: "waived" } : p
-      )
-    );
-
-    try {
-      const result = await bulkUpdateCashStatusAction({
-        paymentIds: targetIds,
-        status: "waived",
-      });
-
-      if (result.success) {
-        const { successCount, failedCount } = result.data ?? { successCount: 0, failedCount: 0 };
-        toast("一括免除が完了しました", {
-          description: `${successCount}件免除、${failedCount > 0 ? `${failedCount}件失敗` : "全て成功"}`,
+      if (targetPayments.length !== targetIds.length) {
+        setIsBulkUpdating(false);
+        toast.error("一括更新に失敗しました", {
+          description: "決済の表示情報が古いため、最新の状態を取得してください。",
         });
-        setSelectedPaymentIds([]);
         startTransition(() => router.refresh());
-      } else {
-        throw new Error(result.error?.userMessage || "一括更新に失敗しました");
+        return;
       }
-    } catch (error) {
-      setLocalParticipants(prev);
-      const errorMessage = error instanceof Error ? error.message : "一括免除に失敗しました";
-      toast.error("一括更新に失敗しました", {
-        description: errorMessage,
-      });
-    } finally {
-      setIsBulkUpdating(false);
-    }
-  }, [validSelectedPaymentIds, localParticipants, router, bulkUpdateCashStatusAction]);
+
+      setLocalParticipants((current) =>
+        current.map((p) =>
+          p.payment_id && targetIds.includes(p.payment_id) ? { ...p, payment_status: status } : p
+        )
+      );
+
+      try {
+        const result = await bulkUpdateCashStatusAction({
+          payments: targetPayments,
+          status,
+        });
+
+        if (result.success) {
+          const { successCount, failedCount, failures } = result.data;
+          const failedPaymentIds = new Set(failures.map((failure) => failure.paymentId));
+          if (failedPaymentIds.size > 0) {
+            setLocalParticipants((current) =>
+              restorePaymentParticipants(current, prev, failedPaymentIds)
+            );
+          }
+          toast(copy.successTitle, {
+            description: `${successCount}件${copy.successVerb}、${failedCount > 0 ? `${failedCount}件失敗` : "全て成功"}`,
+          });
+          setSelectedPaymentIds([]);
+          startTransition(() => router.refresh());
+        } else {
+          throw new Error(result.error?.userMessage || "一括更新に失敗しました");
+        }
+      } catch (error) {
+        setLocalParticipants(prev);
+        startTransition(() => router.refresh());
+        const errorMessage = error instanceof Error ? error.message : copy.failureFallback;
+        toast.error("一括更新に失敗しました", {
+          description: errorMessage,
+        });
+      } finally {
+        setIsBulkUpdating(false);
+      }
+    },
+    [validSelectedPaymentIds, localParticipants, router, bulkUpdateCashStatusAction]
+  );
+
+  const handleBulkReceive = useCallback(
+    () => handleBulkStatusUpdate("received"),
+    [handleBulkStatusUpdate]
+  );
+
+  const handleBulkWaive = useCallback(
+    () => handleBulkStatusUpdate("waived"),
+    [handleBulkStatusUpdate]
+  );
 
   const handleSelectPayment = useCallback((paymentId: string, checked: boolean) => {
     setSelectedPaymentIds((prev) =>
@@ -544,12 +612,22 @@ export function ParticipantsTableV2({
 
   const handleCancel = useCallback(
     async (paymentId: string) => {
+      const expectedVersion = getObservedPaymentVersion(localParticipants, paymentId);
+      if (expectedVersion === null) {
+        toast.error("取り消しに失敗しました", {
+          description: "決済の表示情報が古いため、最新の状態を取得してください。",
+        });
+        startTransition(() => router.refresh());
+        return;
+      }
+
       setIsUpdating(true);
       const prev = localParticipants;
       applyLocal(paymentId, "pending");
       try {
         const result = await updateCashStatusAction({
           paymentId,
+          expectedVersion,
           status: "pending",
           isCancel: true,
           notes: "管理者による決済取り消し",
@@ -562,10 +640,12 @@ export function ParticipantsTableV2({
         } else {
           throw new Error(result.error?.userMessage || "更新に失敗しました");
         }
-      } catch {
+      } catch (error) {
         setLocalParticipants(prev);
+        startTransition(() => router.refresh());
+        const errorMessage = error instanceof Error ? error.message : "取り消しに失敗しました";
         toast.error("取り消しに失敗しました", {
-          description: "しばらく待ってから再度お試しください。",
+          description: errorMessage,
         });
       } finally {
         setIsUpdating(false);

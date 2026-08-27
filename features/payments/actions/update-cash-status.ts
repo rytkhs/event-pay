@@ -53,7 +53,7 @@ export async function updateCashStatusAction(
         details: { zodErrors: parsed.error.errors },
       });
     }
-    const { paymentId, status, notes, isCancel } = parsed.data;
+    const { paymentId, expectedVersion, status, notes, isCancel } = parsed.data;
 
     const supabase = await createServerActionSupabaseClient();
     const accessResult = await getOwnedPaymentActionContextForServerAction(supabase, paymentId);
@@ -66,7 +66,7 @@ export async function updateCashStatusAction(
       return fail("INTERNAL_ERROR", { userMessage: "決済レコードの取得に失敗しました。" });
     }
 
-    const { user, attendanceId, method, version } = accessContext;
+    const { user, attendanceId, method } = accessContext;
 
     // レート制限（ユーザー単位）
     try {
@@ -119,7 +119,7 @@ export async function updateCashStatusAction(
       {
         p_payment_id: paymentId,
         p_new_status: status,
-        p_expected_version: version,
+        p_expected_version: expectedVersion,
         p_user_id: user.id,
         p_notes: notes,
       }

@@ -4,6 +4,7 @@
  */
 
 import type { ActionResult } from "@core/errors/adapters/server-actions";
+import type { ErrorCode } from "@core/errors/types";
 import {
   PaymentErrorType,
   PaymentError as SharedPaymentError,
@@ -15,12 +16,16 @@ export type PaymentStatusValue = PaymentStatus;
 
 export interface UpdateCashStatusParams {
   paymentId: string;
+  expectedVersion: number;
   status: "received" | "waived";
   notes?: string;
 }
 
 export interface BulkUpdateCashStatusParams {
-  paymentIds: string[];
+  payments: Array<{
+    paymentId: string;
+    expectedVersion: number;
+  }>;
   status: "received" | "waived";
   notes?: string;
 }
@@ -30,6 +35,7 @@ export interface BulkUpdateResult {
   failedCount: number;
   failures: Array<{
     paymentId: string;
+    code: ErrorCode;
     error: string;
   }>;
 }
