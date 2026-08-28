@@ -23,3 +23,5 @@ $$;
 ALTER FUNCTION public.update_payment_version() OWNER TO app_definer;
 
 COMMENT ON COLUMN public.payments.version IS 'Optimistic lock version. UPDATE ごとにトリガーが必ず +1 する（巻き戻し不可）';
+
+REVOKE CREATE ON SCHEMA public FROM app_definer;
