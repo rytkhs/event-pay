@@ -161,6 +161,7 @@
   - `paid` は Stripe のみ、`received` は現金のみ
   - Stripe 決済で非 `pending` / `canceled` のとき、必要な Stripe 識別子が必須
   - Stripe 決済は `payout_profile_id` 必須
+  - `amount` は 1 以上。無料イベントでは Payment を作らない
   - `version` は単調増加し、巻き戻せない
 
 ### 5.6 Overview KPI: 入金状況
