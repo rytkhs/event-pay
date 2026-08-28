@@ -4,6 +4,14 @@ import type { AppDatabase, AppSupabaseClient } from "@core/types/supabase";
 
 import { test } from "../../fixtures/payment";
 
+/**
+ * CSH-04: `version`による楽観ロックで同時更新を検出し、上書きしない。
+ *
+ * `trigger_update_payment_version` はRLSではないため、RLSを迂回する service_role の
+ * 直接更新でも必ず発火し、`version` は UPDATE ごとに単調増加する。
+ * 末尾の一括更新テストは CSH-05 の競合ハンドリング部分にも触れる。
+ */
+
 type PaymentStatus = AppDatabase["public"]["Enums"]["payment_status_enum"];
 
 type StatusUpdateResult = {
@@ -148,5 +156,47 @@ describe("Paymentの楽観ロック", () => {
     const validSnapshot = await payment.readPayment(validPayment.id);
     expect(validSnapshot.status).toBe("received");
     expect(validSnapshot.version).toBe(validPayment.version + 1);
+  });
+
+  test("service_roleがversionを明示指定しても巻き戻らない", async ({
+    adminClient,
+    cashPayment,
+    organizer,
+    organizerClient,
+    payment,
+  }) => {
+    const first = await updateCashStatus(organizerClient, {
+      paymentId: cashPayment.id,
+      status: "received",
+      expectedVersion: cashPayment.version,
+      userId: organizer.id,
+    });
+    expect(first.error).toBeNull();
+
+    const { error } = await adminClient
+      .from("payments")
+      .update({ version: cashPayment.version })
+      .eq("id", cashPayment.id);
+
+    expect(error).toBeNull();
+
+    const snapshot = await payment.readPayment(cashPayment.id);
+    expect(snapshot.version).toBe(cashPayment.version + 2);
+  });
+
+  test("versionを指定しない直接更新でもversionは加算される", async ({
+    adminClient,
+    cashPayment,
+    payment,
+  }) => {
+    const { error } = await adminClient
+      .from("payments")
+      .update({ webhook_event_id: "evt_direct_update" })
+      .eq("id", cashPayment.id);
+
+    expect(error).toBeNull();
+
+    const snapshot = await payment.readPayment(cashPayment.id);
+    expect(snapshot.version).toBe(cashPayment.version + 1);
   });
 });

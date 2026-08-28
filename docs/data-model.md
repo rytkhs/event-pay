@@ -192,6 +192,7 @@ erDiagram
   - `method` と `status` の整合を保つ
   - `method = 'stripe'` のとき `payout_profile_id` は必須
   - `amount` は正（0円決済は作らない）。`refunded_amount` などの他の金額列は非負
+  - `version` は UPDATE のたびにトリガーが必ず +1 する（巻き戻し不可）
 - 補足:
   - `payout_profile_id` は決済時点の受取先 snapshot。event 作成後に community のデフォルト受取先が変わっても過去決済は揺れない
 
