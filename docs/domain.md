@@ -161,6 +161,7 @@
   - `paid` は Stripe のみ、`received` は現金のみ
   - Stripe 決済で非 `pending` / `canceled` のとき、必要な Stripe 識別子が必須
   - Stripe 決済は `payout_profile_id` 必須
+  - `version` は単調増加し、巻き戻せない
 
 ### 5.6 Overview KPI: 入金状況
 - 概要タブの `入金状況` は、会計上の売上ではなく community owner 向けの運用KPI
