@@ -2177,7 +2177,7 @@ BEGIN
 
   IF v_updated_rows = 0 THEN
     RAISE EXCEPTION 'Concurrent update detected for payment %', p_payment_id
-      USING ERRCODE = '40001';
+      USING ERRCODE = 'PT409';
   END IF;
 
   INSERT INTO public.system_logs (
@@ -2483,9 +2483,9 @@ CREATE OR REPLACE FUNCTION "public"."update_payment_version"() RETURNS "trigger"
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
-  -- UPDATE 時に version を自動インクリメント（手動更新された場合のフォールバック）
-  IF TG_OP = 'UPDATE' AND OLD.version = NEW.version THEN
-    NEW.version = OLD.version + 1;
+  -- 呼び出し側の指定値に関わらず強制的に +1 する（巻き戻し禁止）
+  IF TG_OP = 'UPDATE' THEN
+    NEW.version := OLD.version + 1;
   END IF;
   RETURN NEW;
 END;
@@ -2903,10 +2903,10 @@ CREATE TABLE IF NOT EXISTS "public"."payments" (
     "checkout_idempotency_key" "text",
     "checkout_key_revision" integer DEFAULT 0 NOT NULL,
     "payout_profile_id" "uuid",
+    CONSTRAINT "chk_payments_amount_positive" CHECK (("amount" > 0)),
     CONSTRAINT "chk_payments_application_fee_amount_non_negative" CHECK (("application_fee_amount" >= 0)),
     CONSTRAINT "chk_payments_application_fee_refunded_amount_non_negative" CHECK (("application_fee_refunded_amount" >= 0)),
     CONSTRAINT "chk_payments_refunded_amount_non_negative" CHECK (("refunded_amount" >= 0)),
-    CONSTRAINT "payments_amount_check" CHECK (("amount" >= 0)),
     CONSTRAINT "payments_method_status_consistency" CHECK (((("status" <> 'paid'::"public"."payment_status_enum") OR ("method" = 'stripe'::"public"."payment_method_enum")) AND (("status" <> 'received'::"public"."payment_status_enum") OR ("method" = 'cash'::"public"."payment_method_enum")) AND (("status" <> 'failed'::"public"."payment_status_enum") OR ("method" = 'stripe'::"public"."payment_method_enum")))),
     CONSTRAINT "payments_paid_at_when_paid" CHECK (((("status" = ANY (ARRAY['paid'::"public"."payment_status_enum", 'received'::"public"."payment_status_enum"])) AND ("paid_at" IS NOT NULL)) OR ("status" <> ALL (ARRAY['paid'::"public"."payment_status_enum", 'received'::"public"."payment_status_enum"])))),
     CONSTRAINT "payments_payout_profile_required_for_stripe" CHECK ((("method" <> 'stripe'::"public"."payment_method_enum") OR ("payout_profile_id" IS NOT NULL))),
@@ -2987,7 +2987,7 @@ COMMENT ON COLUMN "public"."payments"."tax_included" IS 'Whether the application
 
 
 
-COMMENT ON COLUMN "public"."payments"."version" IS 'Optimistic lock version to prevent concurrent updates';
+COMMENT ON COLUMN "public"."payments"."version" IS 'Optimistic lock version. UPDATE ごとにトリガーが必ず +1 する（巻き戻し不可）';
 
 
 
@@ -3973,7 +3973,7 @@ COMMENT ON CONSTRAINT "events_canceled_by_fkey" ON "public"."events" IS 'Sets ca
 
 
 ALTER TABLE ONLY "public"."events"
-    ADD CONSTRAINT "events_community_id_fkey" FOREIGN KEY ("community_id") REFERENCES "public"."communities"("id");
+    ADD CONSTRAINT "events_community_id_fkey" FOREIGN KEY ("community_id") REFERENCES "public"."communities"("id") ON DELETE CASCADE;
 
 
 
@@ -3983,7 +3983,7 @@ ALTER TABLE ONLY "public"."events"
 
 
 ALTER TABLE ONLY "public"."events"
-    ADD CONSTRAINT "events_payout_profile_id_fkey" FOREIGN KEY ("payout_profile_id") REFERENCES "public"."payout_profiles"("id");
+    ADD CONSTRAINT "events_payout_profile_id_fkey" FOREIGN KEY ("payout_profile_id") REFERENCES "public"."payout_profiles"("id") ON DELETE CASCADE;
 
 
 
@@ -4003,7 +4003,7 @@ ALTER TABLE ONLY "public"."payments"
 
 
 ALTER TABLE ONLY "public"."payments"
-    ADD CONSTRAINT "payments_payout_profile_id_fkey" FOREIGN KEY ("payout_profile_id") REFERENCES "public"."payout_profiles"("id");
+    ADD CONSTRAINT "payments_payout_profile_id_fkey" FOREIGN KEY ("payout_profile_id") REFERENCES "public"."payout_profiles"("id") ON DELETE CASCADE;
 
 
 
@@ -4018,17 +4018,17 @@ ALTER TABLE ONLY "public"."payout_profiles"
 
 
 ALTER TABLE ONLY "public"."payout_requests"
-    ADD CONSTRAINT "payout_requests_community_id_fkey" FOREIGN KEY ("community_id") REFERENCES "public"."communities"("id") ON DELETE RESTRICT;
+    ADD CONSTRAINT "payout_requests_community_id_fkey" FOREIGN KEY ("community_id") REFERENCES "public"."communities"("id") ON DELETE CASCADE;
 
 
 
 ALTER TABLE ONLY "public"."payout_requests"
-    ADD CONSTRAINT "payout_requests_payout_profile_id_fkey" FOREIGN KEY ("payout_profile_id") REFERENCES "public"."payout_profiles"("id") ON DELETE RESTRICT;
+    ADD CONSTRAINT "payout_requests_payout_profile_id_fkey" FOREIGN KEY ("payout_profile_id") REFERENCES "public"."payout_profiles"("id") ON DELETE CASCADE;
 
 
 
 ALTER TABLE ONLY "public"."payout_requests"
-    ADD CONSTRAINT "payout_requests_requested_by_fkey" FOREIGN KEY ("requested_by") REFERENCES "public"."users"("id") ON DELETE RESTRICT;
+    ADD CONSTRAINT "payout_requests_requested_by_fkey" FOREIGN KEY ("requested_by") REFERENCES "public"."users"("id") ON DELETE CASCADE;
 
 
 

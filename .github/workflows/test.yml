@@ -31,6 +31,17 @@ jobs:
       - name: Lint (循環参照チェック込み)
         run: pnpm run lint:cycle
 
+      - name: Format check
+        run: pnpm run format:check
+
+      # tsconfig.json は .next/types を include するため、型検査の前にルート型を生成する。
+      # next build は不要（typegen は数秒で終わる）。
+      - name: Generate Next.js route types
+        run: pnpm exec next typegen
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
   unit:
     name: Unit
     runs-on: ubuntu-latest
@@ -80,6 +91,13 @@ jobs:
       # 起動済みスタックを prepare が検出するため、prepare 側は reset と接続情報の生成だけを行う。
       - name: Start local Supabase
         run: pnpm exec supabase start -x studio,imgproxy,edge-runtime > /dev/null
+
+      # スキーマ由来の生成物が migration に追従しているかを検証する。
+      # ここで落ちる場合はローカルで `pnpm run db:generate` を実行してコミットする。
+      - name: Verify generated artifacts
+        run: |
+          pnpm run db:generate
+          git diff --exit-code types/database.ts local_schema.sql
 
       # prepare（migrations + seed の reset、接続情報の生成）を経由して db / integration を実行する。
       # Supabase の秘密情報は CI に設定せず、すべてローカルスタックから取得する。
