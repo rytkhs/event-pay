@@ -149,6 +149,11 @@ pnpm run typecheck
 pnpm run format
 pnpm run format:check
 pnpm run check:all
+
+# DB（ローカルスタック起動中に実行）
+pnpm run db:reset       # migrations + seed の再適用
+pnpm run db:migrate     # 未適用 migration の適用
+pnpm run db:generate    # types/database.ts と local_schema.sql を再生成（migration 変更時は必須）
 ```
 
 Stripe Webhook（必要時）:
@@ -176,9 +181,6 @@ pnpm run deploy
 
 # アセットのみアップロード
 pnpm run upload
-
-# Cloudflare型生成
-pnpm run cf-typegen
 ```
 
 ## 環境変数
