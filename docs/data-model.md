@@ -10,34 +10,35 @@ community 機能導入後の主線は **users → communities → events → att
 
 ## 2. ERD
 
-下のERDは `public` スキーマの全16テーブルと、全20本のFKを示します（`events.created_by` と `events.canceled_by` は1本の線にまとめている）。列は読みやすさのため主要なものに絞ります。
+下のERDは `public` スキーマの全16テーブルと、全20本のFKを示します。列は読みやすさのため主要なものに絞ります。
 このドキュメントは手書きであり、正は `supabase/migrations/*.sql` です（`local_schema.sql` は再生成されるスナップショット）。
 
 ```mermaid
 erDiagram
     auth_users ||--o| users : "profile"
     auth_users ||--o{ line_accounts : "linked"
-    auth_users ||--o{ system_logs : "actor"
+    auth_users o|--o{ system_logs : "actor"
 
     users ||--o{ communities : "created_by"
     users ||--o| payout_profiles : "owner_user_id (UNIQUE)"
-    users ||--o{ events : "created_by / canceled_by"
+    users ||--o{ events : "created_by"
+    users o|--o{ events : "canceled_by"
     users ||--o{ payout_requests : "requested_by"
     users ||--o| stripe_connect_accounts : "user_id (deprecated)"
 
-    payout_profiles ||--o{ communities : "current_payout_profile_id"
-    payout_profiles ||--o{ events : "payout_profile_id (snapshot)"
-    payout_profiles ||--o{ payments : "payout_profile_id (snapshot)"
+    payout_profiles o|--o{ communities : "current_payout_profile_id"
+    payout_profiles o|--o{ events : "payout_profile_id (snapshot)"
+    payout_profiles o|--o{ payments : "payout_profile_id (snapshot)"
     payout_profiles ||--o{ payout_requests : "payout_profile_id"
 
-    communities ||--o| payout_profiles : "representative_community_id"
+    communities o|--o| payout_profiles : "representative_community_id"
     communities ||--o{ events : "community_id"
     communities ||--o{ community_contacts : "community_id"
     communities ||--o{ payout_requests : "community_id"
 
     events ||--o{ attendances : "event_id"
     attendances ||--o{ payments : "attendance_id"
-    payments ||--o{ payment_disputes : "payment_id"
+    payments o|--o{ payment_disputes : "payment_id"
 
     users {
         uuid id PK ,FK "-> auth.users.id"
@@ -395,7 +396,7 @@ Supabase はブラウザから DB へ直接アクセスし得るため、exposed
 | community_contacts | owner の自 community 分のみ参照 | 公開 community 宛てに挿入のみ | 全操作 |
 | contacts | 挿入のみ（参照は常に不可） | 挿入のみ（参照は常に不可） | 全操作 |
 | feedbacks | 挿入のみ（参照は常に不可） | 挿入のみ（参照は常に不可） | 全操作 |
-| fee_config | 参照のみ | なし | 参照 |
+| fee_config | 参照のみ | なし | 全操作 |
 | webhook_event_ledger | なし | なし | 全操作 |
 | system_logs | なし | なし | 全操作 |
 | line_accounts | なし（ポリシー未定義） | なし | 全操作（RLSバイパス） |
