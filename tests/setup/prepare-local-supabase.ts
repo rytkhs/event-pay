@@ -17,6 +17,9 @@ import { assertLocalSupabaseUrl } from "./local-supabase-env";
 
 const GENERATED_ENV_PATH = fileURLToPath(new URL("../.env.local-supabase", import.meta.url));
 const RELATIVE_ENV_PATH = "tests/.env.local-supabase";
+const KONG_CONTAINER_NAME = "supabase_kong_event-pay";
+const KONG_ENV_PATH = "/usr/local/kong/.kong_env";
+const DISABLED_UPSTREAM_KEEPALIVE = "upstream_keepalive_pool_size = 0";
 
 const REQUIRED_KEYS = [
   "NEXT_PUBLIC_SUPABASE_URL",
@@ -107,6 +110,54 @@ function run(args: string[]): void {
   execFileSync("pnpm", ["exec", "supabase", ...args], { stdio: "inherit" });
 }
 
+/**
+ * Kong 2.8.1 の動的 upstream keepalive pool を無効化する。
+ *
+ * Supabase CLI 2.116.0 は pool size を設定する手段を公開しておらず、`db reset` 時の
+ * Kong reload で既定値の60へ戻る。そのため、reset後に同じcustom Nginx templateを
+ * 指定して再度reloadする。templateを省略するとemail_templates serverが失われる。
+ *
+ * TODO(#583): Supabase CLIが修正版Kongを採用した後、既定設定でDB・integration
+ * テストを24回連続実行し、該当するKong 502ログが0件なら本workaroundを撤去する。
+ */
+function disableKongUpstreamKeepalive(): void {
+  log("Kong の upstream keepalive pool を無効化します。");
+
+  execFileSync(
+    "docker",
+    [
+      "exec",
+      "--env",
+      "KONG_UPSTREAM_KEEPALIVE_POOL_SIZE=0",
+      KONG_CONTAINER_NAME,
+      "kong",
+      "reload",
+      "--nginx-conf",
+      "/home/kong/custom_nginx.template",
+    ],
+    { stdio: "inherit" }
+  );
+
+  let effectiveConfig: string;
+  try {
+    effectiveConfig = execFileSync(
+      "docker",
+      ["exec", KONG_CONTAINER_NAME, "grep", "-Fx", DISABLED_UPSTREAM_KEEPALIVE, KONG_ENV_PATH],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+    ).trim();
+  } catch (error) {
+    throw new Error(`Kong の有効設定で ${DISABLED_UPSTREAM_KEEPALIVE} を確認できませんでした。`, {
+      cause: error,
+    });
+  }
+
+  if (effectiveConfig !== DISABLED_UPSTREAM_KEEPALIVE) {
+    throw new Error(
+      `Kong の upstream keepalive pool 設定が不正です（actual: ${effectiveConfig}）。`
+    );
+  }
+}
+
 function assertLocalDbUrl(dbUrl: string): void {
   // `db reset` が実際に触るのは API ではなく DB のため、DB_URL も個別に検証する。
   let host: string;
@@ -169,6 +220,9 @@ function main(): void {
   // 破壊的であることが `pnpm test:server` から見えにくいため、ここで明示する。
   log(`ローカル Supabase をリセットします（migrations + seed）: ${dbUrl}`);
   run(["db", "reset"]);
+
+  // `db reset` 内部のreloadがKongのpool sizeを既定値へ戻すため、必ずreset後に適用する。
+  disableKongUpstreamKeepalive();
 
   // リセット成功後に書き出す。生成ファイルの存在が prepare 完了の signal であり、
   // リセット失敗時に残すと壊れた DB に対してテストが走ってしまう。
