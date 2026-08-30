@@ -18,9 +18,11 @@ export type LocalSupabaseEnv = {
   serviceRoleKey: string;
 };
 
-function requireKey(key: string): string {
-  const value = process.env[key];
-
+/**
+ * キーではなく値を受け取る。`process.env[key]` の動的アクセスにすると
+ * 参照が静的に追跡できなくなる（`tests/architecture/env-declarations.test.ts`）。
+ */
+function requireKey(value: string | undefined, key: string): string {
   if (!value) {
     throw new Error(`${ENV_SOURCE} に ${key} がありません。${PREPARE_HINT}`);
   }
@@ -35,13 +37,13 @@ function requireKey(key: string): string {
  * - URL がローカルホスト以外を指す場合は throw する
  */
 export function requireLocalSupabaseEnv(): LocalSupabaseEnv {
-  const url = requireKey("NEXT_PUBLIC_SUPABASE_URL");
+  const url = requireKey(process.env.NEXT_PUBLIC_SUPABASE_URL, "NEXT_PUBLIC_SUPABASE_URL");
   assertLocalSupabaseUrl(url, ENV_SOURCE);
 
   return {
     url,
-    anonKey: requireKey("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-    serviceRoleKey: requireKey("SUPABASE_SERVICE_ROLE_KEY"),
+    anonKey: requireKey(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, "NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+    serviceRoleKey: requireKey(process.env.SUPABASE_SERVICE_ROLE_KEY, "SUPABASE_SERVICE_ROLE_KEY"),
   };
 }
 

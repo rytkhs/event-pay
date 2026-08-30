@@ -165,6 +165,14 @@ declare namespace NodeJS {
     NEXT_PUBLIC_DEMO_INVITE_LINK?: string;
 
     // ===========================
+    // Build / Tooling Flags
+    // ===========================
+    /** バンドル解析の有効化（next.config.mjs。例: ANALYZE=true pnpm build） */
+    ANALYZE?: string;
+    /** ESLint の循環参照チェックの有効化（eslint.config.mjs。"1" で有効） */
+    LINT_NO_CYCLE?: string;
+
+    // ===========================
     // Testing & Development
     // ===========================
     /** テスト時のQStashスキップ（同期実行）設定 */

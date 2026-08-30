@@ -83,17 +83,21 @@ export class EmailNotificationService implements IEmailNotificationService {
     // 未設定のまま起動すると from が "undefined <undefined>" になり全送信が失敗するため、
     // 本番相当の環境では起動時に落とす。
     if (!isDev) {
-      const missing = [
+      const required: Array<[string, string | undefined]> = [
         ["RESEND_API_KEY", apiKey],
         ["FROM_EMAIL", fromEmail],
         ["FROM_NAME", fromName],
         ["ADMIN_EMAIL", adminEmail],
-      ]
-        .filter(([, value]) => !value)
-        .map(([name]) => name);
+      ];
+      const missing = required.filter(([, value]) => !value).map(([name]) => name);
 
       if (missing.length > 0) {
-        throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
+        // 素の Error にすると normalizeError で INTERNAL_ERROR へ落ち、
+        // ENV_VAR_MISSING の分類が失われる（ADR-0013）。
+        throw new AppError("ENV_VAR_MISSING", {
+          message: `Missing required environment variables: ${missing.join(", ")}`,
+          details: { variable_names: missing },
+        });
       }
     }
 

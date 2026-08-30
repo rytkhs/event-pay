@@ -1,5 +1,6 @@
 import "server-only";
 
+import { AppError } from "@core/errors";
 import { handleServerError } from "@core/utils/error-handler.server";
 
 /**
@@ -9,14 +10,25 @@ import { handleServerError } from "@core/utils/error-handler.server";
  * 内部で `process.env[key]` の動的アクセスにすると、Next.js が `NEXT_PUBLIC_*` を
  * ビルド時にインライン展開できず、ブラウザ側で undefined になる。
  *
+ * 値と名前が別々の引数になるため両者はずれ得る。組み合わせの一致は
+ * `tests/architecture/env-declarations.test.ts` が検証する。
+ *
+ * 投げるのは `AppError` であって素の `Error` ではない。素の `Error` にすると
+ * 上位の `normalizeError` で `INTERNAL_ERROR` へ落ち、ENV_VAR_MISSING の
+ * severity / retryable / httpStatus が失われる（ADR-0013）。
+ *
  * @param value 呼び出し側で読んだ `process.env.X`
  * @param name エラーに記録する変数名
  * @param action 監査ログに残す操作名
  */
 export function requireEnv(value: string | undefined, name: string, action: string): string {
   if (!value) {
-    const message = `Missing required environment variable: ${name}`;
-    handleServerError("ENV_VAR_MISSING", {
+    const appError = new AppError("ENV_VAR_MISSING", {
+      message: `Missing required environment variable: ${name}`,
+      details: { variable_name: name },
+    });
+
+    handleServerError(appError, {
       category: "system",
       action,
       actorType: "system",
@@ -24,7 +36,8 @@ export function requireEnv(value: string | undefined, name: string, action: stri
         variable_name: name,
       },
     });
-    throw new Error(message);
+
+    throw appError;
   }
   return value;
 }
