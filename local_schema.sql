@@ -13,13 +13,6 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 
-CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA "extensions";
-
-
-
-
-
-
 CREATE SCHEMA IF NOT EXISTS "private";
 
 
@@ -27,13 +20,6 @@ ALTER SCHEMA "private" OWNER TO "postgres";
 
 
 COMMENT ON SCHEMA "public" IS 'アプリケーション公開スキーマ';
-
-
-
-CREATE EXTENSION IF NOT EXISTS "pg_graphql" WITH SCHEMA "graphql";
-
-
-
 
 
 
@@ -4269,9 +4255,6 @@ ALTER TABLE "public"."webhook_event_ledger" ENABLE ROW LEVEL SECURITY;
 ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
 
 
-
-
-
 GRANT USAGE ON SCHEMA "private" TO "app_definer";
 GRANT USAGE ON SCHEMA "private" TO "anon";
 GRANT USAGE ON SCHEMA "private" TO "authenticated";
@@ -4284,15 +4267,6 @@ GRANT USAGE ON SCHEMA "public" TO "anon";
 GRANT USAGE ON SCHEMA "public" TO "authenticated";
 GRANT USAGE ON SCHEMA "public" TO "service_role";
 GRANT USAGE ON SCHEMA "public" TO "app_definer";
-
-
-
-
-
-
-
-
-
 
 
 
