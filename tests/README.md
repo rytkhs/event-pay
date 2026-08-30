@@ -5,6 +5,7 @@
 ```text
 tests/
 ├── unit/          # I/Oを行わない純粋ロジックと同期コンポーネント
+├── architecture/  # リポジトリ内のソースと設定ファイルの静的検査
 ├── db/            # SupabaseのRLS、RPC、制約、transaction
 ├── integration/   # アプリケーション境界からDBまで
 ├── e2e/           # ブラウザから操作するユーザーフロー
@@ -20,6 +21,14 @@ tests/
 - 日時、金額、状態遷移、validation、Result契約などを公開インターフェースから検証する。
 - 同期Client Componentは、ユーザーが観測できる表示と操作を検証する。
 - 内部モジュールはmockしない。
+
+### `architecture/`
+
+- リポジトリ内のソースと設定ファイルを読み、コード全体にかかる規約を検証する。
+- 対象ファイルは`git ls-files`で列挙する。未追跡ファイルを読むと、ローカルとCIで結果が変わる。
+- 型検査やlintでは表現できない規約に限る。ESLintで書けるものはESLintに置く。
+- アプリケーションのコードは実行しない。読み取るのはファイルの中身だけで、外部への接続は行わない。
+- 検証するのは規約であり、特定機能の振る舞いではない。
 
 ### `db/`
 
@@ -57,6 +66,7 @@ tests/
 ## Naming
 
 - `unit/`: `*.test.ts` / `*.test.tsx`
+- `architecture/`: `*.test.ts`
 - `db/`: `*.db.test.ts`
 - `integration/`: `*.integration.test.ts`
 - `e2e/`: `*.spec.ts`
@@ -65,16 +75,16 @@ tests/
 
 ## Commands
 
-Vitestの4プロジェクト（`unit-node` / `unit-jsdom` / `db` / `integration`）は、接続先の有無で実行コマンドが分かれる。
+Vitestの5プロジェクト（`unit-node` / `unit-jsdom` / `architecture` / `db` / `integration`）は、接続先の有無で実行コマンドが分かれる。
 
 | コマンド | 対象 | ローカルSupabase |
 | --- | --- | --- |
-| `pnpm test` | `unit-node` / `unit-jsdom` | 不要 |
+| `pnpm test` | `unit-node` / `unit-jsdom` / `architecture` | 不要 |
 | `pnpm test:server` | `db` / `integration` | 必要（prepareを内部で実行） |
 | `pnpm test:db:prepare` | prepareのみ | 必要 |
 | `pnpm typecheck:test` | `tests/tsconfig.json` の型検査 | 不要 |
 
-`pnpm test`はDB、ネットワーク、環境変数のいずれにも依存しない。ローカルSupabaseの接続情報はunitプロジェクトへ渡らない。
+`pnpm test`はDB、ネットワーク、環境変数のいずれにも依存しない。ローカルSupabaseの接続情報はunitプロジェクトへ渡らない。`architecture`はリポジトリ内のファイルを読むが、読み取るのは追跡済みのソースと設定だけで、実行環境には依存しない。
 
 ### Watch
 
@@ -83,6 +93,7 @@ watchはVitest CLIの既定（`vitest`がwatch、`vitest run`が単発）を使�
 ```bash
 pnpm exec vitest --project unit-node
 pnpm exec vitest --project unit-jsdom
+pnpm exec vitest --project architecture
 pnpm exec vitest --project db           # pnpm test:db:prepare の実行後
 pnpm exec vitest --project integration  # pnpm test:db:prepare の実行後
 ```

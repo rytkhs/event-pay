@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { SUPABASE_COOKIE_CONFIG } from "@core/supabase/config";
 import { handleServerError } from "@core/utils/error-handler.server";
+import { requireEnv } from "@core/utils/require-env";
 
 import type { Database } from "@/types/database";
 
@@ -41,39 +42,11 @@ async function getRequestCookieStoreOrThrow(): Promise<CookieStoreLike> {
 }
 
 function getURL(): string {
-  const value = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!value) {
-    const key = "NEXT_PUBLIC_SUPABASE_URL";
-    const message = `Missing required environment variable: ${key}`;
-    handleServerError("ENV_VAR_MISSING", {
-      category: "system",
-      action: "client_creation",
-      actorType: "system",
-      additionalData: {
-        variable_name: key,
-      },
-    });
-    throw new Error(message);
-  }
-  return value;
+  return requireEnv(process.env.NEXT_PUBLIC_SUPABASE_URL, "NEXT_PUBLIC_SUPABASE_URL");
 }
 
 function getAnonKey(): string {
-  const value = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!value) {
-    const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
-    const message = `Missing required environment variable: ${key}`;
-    handleServerError("ENV_VAR_MISSING", {
-      category: "system",
-      action: "client_creation",
-      actorType: "system",
-      additionalData: {
-        variable_name: key,
-      },
-    });
-    throw new Error(message);
-  }
-  return value;
+  return requireEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, "NEXT_PUBLIC_SUPABASE_ANON_KEY");
 }
 
 async function createRequestServerClient({

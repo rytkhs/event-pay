@@ -65,6 +65,16 @@ export default defineConfig({
         resolve: createResolve(),
         test: {
           ...createBaseTest(),
+          name: "architecture",
+          environment: "node",
+          include: ["tests/architecture/**/*.test.ts"],
+        },
+      },
+      {
+        plugins: createPlugins(),
+        resolve: createResolve(),
+        test: {
+          ...createBaseTest(),
           name: "db",
           environment: "node",
           include: ["tests/db/**/*.db.test.ts"],
