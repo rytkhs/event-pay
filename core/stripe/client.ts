@@ -15,11 +15,7 @@ export function getStripe(): Stripe {
     return stripeInstance;
   }
 
-  const stripeSecretKey = requireEnv(
-    process.env.STRIPE_SECRET_KEY,
-    "STRIPE_SECRET_KEY",
-    "env_validation"
-  );
+  const stripeSecretKey = requireEnv(process.env.STRIPE_SECRET_KEY, "STRIPE_SECRET_KEY");
 
   // デバッグログ: APIキーの詳細情報を出力
   logger.info("Stripe API Key Debug Info", {

@@ -26,33 +26,21 @@ import {
  * Supabase URLを取得
  */
 function getSupabaseUrl(): string {
-  return requireEnv(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    "NEXT_PUBLIC_SUPABASE_URL",
-    "client_creation"
-  );
+  return requireEnv(process.env.NEXT_PUBLIC_SUPABASE_URL, "NEXT_PUBLIC_SUPABASE_URL");
 }
 
 /**
  * Supabase Anon Keyを取得
  */
 function getAnonKey(): string {
-  return requireEnv(
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-    "client_creation"
-  );
+  return requireEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, "NEXT_PUBLIC_SUPABASE_ANON_KEY");
 }
 
 /**
  * Supabase Service Role Keyを取得
  */
 function getServiceRoleKey(): string {
-  return requireEnv(
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    "SUPABASE_SERVICE_ROLE_KEY",
-    "client_creation"
-  );
+  return requireEnv(process.env.SUPABASE_SERVICE_ROLE_KEY, "SUPABASE_SERVICE_ROLE_KEY");
 }
 
 /**

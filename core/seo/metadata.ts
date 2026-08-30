@@ -16,7 +16,7 @@ export const siteOgImage = {
 } as const;
 
 export function getAppUrl(): string {
-  return requireEnv(process.env.NEXT_PUBLIC_APP_URL, "NEXT_PUBLIC_APP_URL", "seo_metadata");
+  return requireEnv(process.env.NEXT_PUBLIC_APP_URL, "NEXT_PUBLIC_APP_URL");
 }
 
 export function getPublicUrl(path = ""): string {

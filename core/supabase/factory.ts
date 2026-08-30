@@ -42,19 +42,11 @@ async function getRequestCookieStoreOrThrow(): Promise<CookieStoreLike> {
 }
 
 function getURL(): string {
-  return requireEnv(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    "NEXT_PUBLIC_SUPABASE_URL",
-    "client_creation"
-  );
+  return requireEnv(process.env.NEXT_PUBLIC_SUPABASE_URL, "NEXT_PUBLIC_SUPABASE_URL");
 }
 
 function getAnonKey(): string {
-  return requireEnv(
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-    "client_creation"
-  );
+  return requireEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, "NEXT_PUBLIC_SUPABASE_ANON_KEY");
 }
 
 async function createRequestServerClient({
