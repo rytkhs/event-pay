@@ -3,7 +3,7 @@ import "server-only";
 import Stripe from "stripe";
 
 import { logger } from "@core/logging/app-logger";
-import { handleServerError } from "@core/utils/error-handler.server";
+import { requireEnv } from "@core/utils/require-env";
 
 // 明示固定: Stripe APIバージョン（SDK更新時はこの値を意図的に見直す）
 export const FIXED_STRIPE_API_VERSION: typeof Stripe.API_VERSION = "2026-03-25.dahlia";
@@ -15,21 +15,11 @@ export function getStripe(): Stripe {
     return stripeInstance;
   }
 
-  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-
-  if (!stripeSecretKey) {
-    const key = "STRIPE_SECRET_KEY";
-    const errorMessage = `Missing required environment variable: ${key}`;
-    handleServerError("ENV_VAR_MISSING", {
-      category: "system",
-      action: "env_validation",
-      actorType: "system",
-      additionalData: {
-        variable_name: key,
-      },
-    });
-    throw new Error(errorMessage);
-  }
+  const stripeSecretKey = requireEnv(
+    process.env.STRIPE_SECRET_KEY,
+    "STRIPE_SECRET_KEY",
+    "env_validation"
+  );
 
   // デバッグログ: APIキーの詳細情報を出力
   logger.info("Stripe API Key Debug Info", {

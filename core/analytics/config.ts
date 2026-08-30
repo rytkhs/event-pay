@@ -6,16 +6,30 @@
  * 有効/無効の判定ロジックを提供する
  */
 
-export interface GA4Config {
-  /** GA4 Measurement ID (G-で始まる識別子) */
-  measurementId: string;
+interface GA4ConfigBase {
   /** Measurement Protocol API Secret (サーバー側イベント送信用) */
   apiSecret?: string;
-  /** GA4が有効かどうか */
-  enabled: boolean;
   /** デバッグモードかどうか */
   debug: boolean;
 }
+
+/**
+ * GA4設定。
+ *
+ * `enabled` が true のときだけ `measurementId` の存在が保証される、という
+ * `getGA4Config()` の不変条件を型で表現している。
+ */
+export type GA4Config =
+  | (GA4ConfigBase & {
+      enabled: true;
+      /** GA4 Measurement ID (G-で始まる識別子) */
+      measurementId: string;
+    })
+  | (GA4ConfigBase & {
+      enabled: false;
+      /** GA4 Measurement ID。未設定のことがある */
+      measurementId?: string;
+    });
 
 /**
  * GA4設定を取得する
@@ -39,18 +53,15 @@ export function getGA4Config(): GA4Config {
   const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
   const apiSecret = process.env.GA_API_SECRET;
 
-  // 本番環境のみ有効、Measurement IDが設定されている場合のみ有効
-  const enabled = !!measurementId && process.env.NODE_ENV === "production";
-
   // 開発環境ではデバッグモードを有効化
   const debug = process.env.NODE_ENV === "development";
 
-  return {
-    measurementId,
-    apiSecret,
-    enabled,
-    debug,
-  };
+  // 本番環境のみ有効、Measurement IDが設定されている場合のみ有効
+  if (measurementId && process.env.NODE_ENV === "production") {
+    return { enabled: true, measurementId, apiSecret, debug };
+  }
+
+  return { enabled: false, measurementId, apiSecret, debug };
 }
 
 /**

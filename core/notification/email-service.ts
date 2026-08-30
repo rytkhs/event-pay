@@ -76,15 +76,32 @@ export class EmailNotificationService implements IEmailNotificationService {
   constructor() {
     const isDev = isDevelopment();
     const apiKey = process.env.RESEND_API_KEY;
-    if (!isDev && !apiKey) {
-      throw new Error("RESEND_API_KEY environment variable is required");
+    const fromEmail = process.env.FROM_EMAIL;
+    const fromName = process.env.FROM_NAME;
+    const adminEmail = process.env.ADMIN_EMAIL;
+
+    // 未設定のまま起動すると from が "undefined <undefined>" になり全送信が失敗するため、
+    // 本番相当の環境では起動時に落とす。
+    if (!isDev) {
+      const missing = [
+        ["RESEND_API_KEY", apiKey],
+        ["FROM_EMAIL", fromEmail],
+        ["FROM_NAME", fromName],
+        ["ADMIN_EMAIL", adminEmail],
+      ]
+        .filter(([, value]) => !value)
+        .map(([name]) => name);
+
+      if (missing.length > 0) {
+        throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
+      }
     }
 
     this.resend = new Resend(apiKey);
 
-    this.fromEmail = process.env.FROM_EMAIL;
-    this.fromName = process.env.FROM_NAME;
-    this.adminEmail = process.env.ADMIN_EMAIL;
+    this.fromEmail = fromEmail ?? "";
+    this.fromName = fromName ?? "";
+    this.adminEmail = adminEmail ?? "";
   }
 
   /**

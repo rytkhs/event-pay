@@ -10,7 +10,7 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 
 import { logger } from "@core/logging/app-logger";
-import { handleServerError } from "@core/utils/error-handler.server";
+import { requireEnv } from "@core/utils/require-env";
 
 import { validateGuestTokenFormat } from "./crypto";
 import { GuestErrorCode, GuestTokenError } from "./guest-token-errors";
@@ -26,63 +26,33 @@ import {
  * Supabase URLを取得
  */
 function getSupabaseUrl(): string {
-  const value = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!value) {
-    const key = "NEXT_PUBLIC_SUPABASE_URL";
-    const message = `Missing required environment variable: ${key}`;
-    handleServerError("ENV_VAR_MISSING", {
-      category: "system",
-      action: "client_creation",
-      actorType: "system",
-      additionalData: {
-        variable_name: key,
-      },
-    });
-    throw new Error(message);
-  }
-  return value;
+  return requireEnv(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "client_creation"
+  );
 }
 
 /**
  * Supabase Anon Keyを取得
  */
 function getAnonKey(): string {
-  const value = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!value) {
-    const key = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
-    const message = `Missing required environment variable: ${key}`;
-    handleServerError("ENV_VAR_MISSING", {
-      category: "system",
-      action: "client_creation",
-      actorType: "system",
-      additionalData: {
-        variable_name: key,
-      },
-    });
-    throw new Error(message);
-  }
-  return value;
+  return requireEnv(
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "client_creation"
+  );
 }
 
 /**
  * Supabase Service Role Keyを取得
  */
 function getServiceRoleKey(): string {
-  const value = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!value) {
-    const key = "SUPABASE_SERVICE_ROLE_KEY";
-    const message = `Missing required environment variable: ${key}`;
-    handleServerError("ENV_VAR_MISSING", {
-      category: "system",
-      action: "client_creation",
-      actorType: "system",
-      additionalData: {
-        variable_name: key,
-      },
-    });
-    throw new Error(message);
-  }
-  return value;
+  return requireEnv(
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "client_creation"
+  );
 }
 
 /**

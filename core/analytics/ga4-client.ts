@@ -124,6 +124,8 @@ export class GA4ClientService {
       return null;
     }
 
+    const measurementId = this.config.measurementId;
+
     return new Promise((resolve) => {
       let resolved = false;
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -152,7 +154,7 @@ export class GA4ClientService {
       const checkGtag = () => {
         if (typeof window !== "undefined" && window.gtag) {
           try {
-            window.gtag("get", this.config.measurementId, "client_id", (clientId: unknown) => {
+            window.gtag("get", measurementId, "client_id", (clientId: unknown) => {
               const rawClientId = typeof clientId === "string" ? clientId : String(clientId ?? "");
               // プレフィックス（GA1.1.など）を除去してサニタイズ
               const sanitizedClientId = GA4Validator.sanitizeClientId(rawClientId);
@@ -227,6 +229,8 @@ export class GA4ClientService {
       return null;
     }
 
+    const measurementId = this.config.measurementId;
+
     return new Promise((resolve) => {
       let resolved = false;
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -253,7 +257,7 @@ export class GA4ClientService {
       const checkGtag = () => {
         if (typeof window !== "undefined" && window.gtag) {
           try {
-            window.gtag("get", this.config.measurementId, "session_id", (sessionId: unknown) => {
+            window.gtag("get", measurementId, "session_id", (sessionId: unknown) => {
               const normalizedSessionId =
                 typeof sessionId === "number" ? sessionId : Number(sessionId);
 
