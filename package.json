@@ -20,7 +20,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "typecheck": "tsc --noEmit",
     "typecheck:test": "tsc -p tests/tsconfig.json --noEmit",
-    "test": "vitest run --project unit-node --project unit-jsdom",
+    "test": "vitest run --project unit-node --project unit-jsdom --project architecture",
     "test:db:prepare": "tsx tests/setup/prepare-local-supabase.ts",
     "test:server": "pnpm run test:db:prepare && vitest run --project db --project integration",
     "check:all": "pnpm run lint && pnpm run typecheck",
