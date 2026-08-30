@@ -17,6 +17,7 @@ import { assertLocalSupabaseUrl } from "./local-supabase-env";
 
 const GENERATED_ENV_PATH = fileURLToPath(new URL("../.env.local-supabase", import.meta.url));
 const RELATIVE_ENV_PATH = "tests/.env.local-supabase";
+// supabase/config.toml の project_id からSupabase CLIが生成するコンテナ名。
 const KONG_CONTAINER_NAME = "supabase_kong_event-pay";
 const KONG_ENV_PATH = "/usr/local/kong/.kong_env";
 const DISABLED_UPSTREAM_KEEPALIVE = "upstream_keepalive_pool_size = 0";
@@ -138,23 +139,16 @@ function disableKongUpstreamKeepalive(): void {
     { stdio: "inherit" }
   );
 
-  let effectiveConfig: string;
   try {
-    effectiveConfig = execFileSync(
+    execFileSync(
       "docker",
-      ["exec", KONG_CONTAINER_NAME, "grep", "-Fx", DISABLED_UPSTREAM_KEEPALIVE, KONG_ENV_PATH],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
-    ).trim();
+      ["exec", KONG_CONTAINER_NAME, "grep", "-Fqx", DISABLED_UPSTREAM_KEEPALIVE, KONG_ENV_PATH],
+      { stdio: ["ignore", "ignore", "pipe"] }
+    );
   } catch (error) {
     throw new Error(`Kong の有効設定で ${DISABLED_UPSTREAM_KEEPALIVE} を確認できませんでした。`, {
       cause: error,
     });
-  }
-
-  if (effectiveConfig !== DISABLED_UPSTREAM_KEEPALIVE) {
-    throw new Error(
-      `Kong の upstream keepalive pool 設定が不正です（actual: ${effectiveConfig}）。`
-    );
   }
 }
 
