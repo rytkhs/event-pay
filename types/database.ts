@@ -1079,6 +1079,13 @@ export type Database = {
         Args: { p_event_id: string };
         Returns: boolean;
       };
+      can_promote_payment_status: {
+        Args: {
+          p_new: Database["public"]["Enums"]["payment_status_enum"];
+          p_old: Database["public"]["Enums"]["payment_status_enum"];
+        };
+        Returns: boolean;
+      };
       generate_community_slug: { Args: never; Returns: string };
       get_dashboard_stats: {
         Args: { p_community_id: string };
