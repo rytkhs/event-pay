@@ -5,11 +5,13 @@ import type { AppDatabase, AppSupabaseClient } from "@core/types/supabase";
 import { test } from "../../fixtures/payment";
 
 /**
- * `rpc_update_payment_status_safe`の現行DB遷移を検証する。
+ * CSH-01 / CSH-03: `rpc_update_payment_status_safe`のDB遷移を検証する。
  *
- * 主催者によるcash Paymentの正常遷移、rankが下がる遷移の拒否、
- * Stripe Paymentの手動更新拒否を固定する。rankが上がる不正遷移を含む
- * CSH-03全体は、Issue #509で遷移仕様を確定してから保証する。
+ * 主催者によるcash Paymentの正常遷移、遷移表に反する更新の拒否、
+ * Stripe Paymentの手動更新拒否を固定する。
+ *
+ * `received`／`waived`から`pending`へ戻す現金の集金取り消しだけは、
+ * RPCが内部バイパスを立ててトリガーを迂回する正規経路であり、ここで守られていることを確認する。
  */
 
 type PaymentStatus = AppDatabase["public"]["Enums"]["payment_status_enum"];
@@ -145,7 +147,7 @@ describe("拒否される遷移", () => {
       });
 
       expect(error?.code).toBe("P0001");
-      expect(error?.message).toContain("Rejecting status rollback");
+      expect(error?.message).toContain("Rejecting invalid payment status transition");
 
       const snapshot = await payment.readPayment(created.id);
       expect(snapshot.status).toBe(from);

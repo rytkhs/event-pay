@@ -539,6 +539,33 @@ COMMENT ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") IS '
 
 
 
+CREATE OR REPLACE FUNCTION "public"."can_promote_payment_status"("p_old" "public"."payment_status_enum", "p_new" "public"."payment_status_enum") RETURNS boolean
+    LANGUAGE "sql" IMMUTABLE PARALLEL SAFE
+    SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
+    AS $$
+  SELECT CASE
+    -- 同一ステータスへの遷移は許可（冪等性）
+    WHEN p_old = p_new THEN true
+    -- 基本的に降格は禁止
+    WHEN public.status_rank(p_new) < public.status_rank(p_old) THEN false
+    -- canceled は未集金系（pending/failed）からのみ遷移可能
+    WHEN p_new = 'canceled' THEN p_old IN ('pending', 'failed')
+    -- canceled からは他のステータスに遷移できない（終端状態）
+    WHEN p_old = 'canceled' THEN false
+    -- refunded は決済完了系（paid/received/waived）からのみ遷移可能
+    WHEN p_new = 'refunded' THEN p_old IN ('paid', 'received', 'waived')
+    ELSE true
+  END;
+$$;
+
+
+ALTER FUNCTION "public"."can_promote_payment_status"("p_old" "public"."payment_status_enum", "p_new" "public"."payment_status_enum") OWNER TO "app_definer";
+
+
+COMMENT ON FUNCTION "public"."can_promote_payment_status"("p_old" "public"."payment_status_enum", "p_new" "public"."payment_status_enum") IS '決済ステータス遷移表の正本。TS の canPromoteStatus() はこの関数のミラー';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."check_attendance_capacity_limit"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
@@ -1061,28 +1088,32 @@ COMMENT ON FUNCTION "public"."is_public_community"("p_community_id" "uuid") IS '
 
 
 
-CREATE OR REPLACE FUNCTION "public"."prevent_payment_status_rollback"() RETURNS "trigger"
+CREATE OR REPLACE FUNCTION "public"."prevent_invalid_payment_status_transition"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO 'pg_catalog', 'public', 'pg_temp'
     AS $$
 BEGIN
   IF NEW.status IS DISTINCT FROM OLD.status THEN
-    -- 内部RPC専用バイパス（難読化キー）
+    -- 内部RPC専用バイパス（難読化キー）: 現金の集金取り消しのみ通す
     IF current_setting('app.internal_rpc_bypass_c8f2a1b3', true) = 'true' THEN
-      RETURN NEW;
+      IF OLD.status IN ('received', 'waived') AND NEW.status = 'pending' THEN
+        RETURN NEW;
+      END IF;
+
+      RAISE EXCEPTION 'Rejecting bypassed payment status transition: % -> %', OLD.status, NEW.status;
     END IF;
 
-    -- 通常のステータス遷移チェック（降格禁止）
-    IF public.status_rank(NEW.status) < public.status_rank(OLD.status) THEN
-      RAISE EXCEPTION 'Rejecting status rollback: % -> %', OLD.status, NEW.status;
+    IF NOT public.can_promote_payment_status(OLD.status, NEW.status) THEN
+      RAISE EXCEPTION 'Rejecting invalid payment status transition: % -> %', OLD.status, NEW.status;
     END IF;
   END IF;
+
   RETURN NEW;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."prevent_payment_status_rollback"() OWNER TO "app_definer";
+ALTER FUNCTION "public"."prevent_invalid_payment_status_transition"() OWNER TO "app_definer";
 
 
 CREATE OR REPLACE FUNCTION "public"."register_attendance_with_payment"("p_event_id" "uuid", "p_nickname" character varying, "p_email" character varying, "p_status" "public"."attendance_status_enum", "p_guest_token" character varying, "p_payment_method" "public"."payment_method_enum" DEFAULT NULL::"public"."payment_method_enum", "p_event_fee" integer DEFAULT 0) RETURNS "uuid"
@@ -3889,7 +3920,7 @@ CREATE OR REPLACE TRIGGER "trg_enforce_payout_profile_mvp_invariants" BEFORE INS
 
 
 
-CREATE OR REPLACE TRIGGER "trg_prevent_payment_status_rollback" BEFORE UPDATE ON "public"."payments" FOR EACH ROW EXECUTE FUNCTION "public"."prevent_payment_status_rollback"();
+CREATE OR REPLACE TRIGGER "trg_prevent_invalid_payment_status_transition" BEFORE UPDATE ON "public"."payments" FOR EACH ROW EXECUTE FUNCTION "public"."prevent_invalid_payment_status_transition"();
 
 
 
@@ -4470,6 +4501,13 @@ GRANT ALL ON FUNCTION "public"."can_manage_invite_links"("p_event_id" "uuid") TO
 
 
 
+REVOKE ALL ON FUNCTION "public"."can_promote_payment_status"("p_old" "public"."payment_status_enum", "p_new" "public"."payment_status_enum") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."can_promote_payment_status"("p_old" "public"."payment_status_enum", "p_new" "public"."payment_status_enum") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."can_promote_payment_status"("p_old" "public"."payment_status_enum", "p_new" "public"."payment_status_enum") TO "service_role";
+GRANT ALL ON FUNCTION "public"."can_promote_payment_status"("p_old" "public"."payment_status_enum", "p_new" "public"."payment_status_enum") TO "anon";
+
+
+
 REVOKE ALL ON FUNCTION "public"."check_attendance_capacity_limit"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."check_attendance_capacity_limit"() TO "anon";
 GRANT ALL ON FUNCTION "public"."check_attendance_capacity_limit"() TO "authenticated";
@@ -4576,9 +4614,9 @@ GRANT ALL ON FUNCTION "public"."is_public_community"("p_community_id" "uuid") TO
 
 
 
-REVOKE ALL ON FUNCTION "public"."prevent_payment_status_rollback"() FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."prevent_payment_status_rollback"() TO "service_role";
+REVOKE ALL ON FUNCTION "public"."prevent_invalid_payment_status_transition"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."prevent_invalid_payment_status_transition"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."prevent_invalid_payment_status_transition"() TO "service_role";
 
 
 

@@ -189,25 +189,59 @@ stateDiagram-v2
 ```
 
 ### 6.2 Payment Status
+
+遷移可否は DB の `public.can_promote_payment_status(old, new)` が定義し、`payments` の BEFORE UPDATE トリガー `trg_prevent_invalid_payment_status_transition` が強制する。アプリ側の `canPromoteStatus()`（`core/utils/payments/status-rank.ts`）は同関数のミラーで、Webhook が「ルール違反によるスキップ」を正常系として扱うための事前判定に使う。
+
+遷移表は `(現在, 遷移先)` だけを見るが、実際に到達できる組み合わせは `payments_method_status_consistency`（`paid` は stripe のみ、`received` は cash のみ、`failed` は stripe のみ）によって method ごとに絞られる。このため method 別に示す。
+
+#### cash
+
 ```mermaid
 stateDiagram-v2
   [*] --> pending: 決済レコード作成
 
-  pending --> paid: Stripe決済成功（Webhook確定）
   pending --> received: 現金受領（owner操作）
-  pending --> failed: Stripe決済失敗
-  pending --> canceled: キャンセル
-  pending --> waived: 免除
+  pending --> waived: 免除（owner操作）
+  pending --> canceled: キャンセル（出欠取り消し等）
 
-  failed --> paid: リトライ成功（Webhook確定）
-
-  paid --> refunded: 返金（記録）
+  received --> waived: 免除へ変更（owner操作）
   received --> refunded: 返金（記録）
+  received --> pending: 集金取り消し（owner操作）
+
+  waived --> refunded: 返金（記録）
+  waived --> pending: 免除取り消し（owner操作）
 
   refunded --> [*]
-  waived --> [*]
   canceled --> [*]
 ```
+
+`received` / `waived` から `pending` へ戻す集金取り消しだけは rank が下がる降格であり、`rpc_update_payment_status_safe` が内部バイパスを立ててトリガーを迂回する。この経路は cash 限定で、Stripe 決済には存在しない。
+
+#### stripe
+
+```mermaid
+stateDiagram-v2
+  [*] --> pending: 決済レコード作成
+
+  pending --> paid: 決済成功（Webhook確定）
+  pending --> failed: 決済失敗
+  pending --> waived: 免除（owner操作）
+  pending --> canceled: キャンセル（出欠取り消し等）
+
+  failed --> paid: リトライ成功（Webhook確定）
+  failed --> waived: 免除（owner操作）
+  failed --> canceled: キャンセル
+
+  paid --> waived: 免除へ変更（owner操作）
+  paid --> refunded: 返金（記録）
+
+  waived --> refunded: 返金（記録）
+
+  refunded --> [*]
+  canceled --> [*]
+```
+
+`canceled` と `refunded` は終端で、そこからの遷移は method を問わず拒否される。`canceled` へ到達できるのは未集金系（`pending` / `failed`）からのみ、`refunded` へ到達できるのは決済完了系（`paid` / `received` / `waived`）からのみ。
 
 ### 6.3 Payout Profile / Stripe Connect Status
 ```mermaid
