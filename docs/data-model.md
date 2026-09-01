@@ -315,6 +315,7 @@ FKを持たない独立テーブルは `contacts` / `feedbacks` / `fee_config` /
   - `stripe_payment_intent_id` は UNIQUE
   - `pending` のような open な支払いを attendance ごとに最大1つへ制限する
   - `method` と `status` の整合を保つ
+  - `status` の遷移は `can_promote_payment_status()` の遷移表にトリガーが従わせる。現金の集金取り消し（`received` / `waived` → `pending`）のみ内部RPCがバイパスする
   - `method = 'stripe'` のとき `payout_profile_id` は必須
   - `amount` は正（0円決済は作らない）。`refunded_amount` などの他の金額列は非負
   - `version` は UPDATE のたびにトリガーが必ず +1 する（巻き戻し不可）
