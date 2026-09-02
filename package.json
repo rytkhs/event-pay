@@ -127,6 +127,7 @@
     "jsdom": "^30.0.1",
     "knip": "^5.85.0",
     "lint-staged": "^16.2.7",
+    "msw": "^2.15.0",
     "postcss": "^8",
     "postcss-load-config": "^6.0.1",
     "prettier": "^3.8.1",
