@@ -135,19 +135,19 @@ test("Checkout Sessionへ渡す金額が内部Paymentと一致する", async ({ 
 });
 ```
 
-既存のfixtureチェーンへ合成するときは`withExternalHttp`を使う。
+既存のfixtureチェーンへ合成するときは`externalHttpFixture`を`extend`する。
 
 ```ts
 import { test as paymentTest } from "../../fixtures/payment";
-import { withExternalHttp } from "../../fixtures/external-http";
+import { externalHttpFixture, type ExternalHttpFixtures } from "../../fixtures/external-http";
 
-const test = withExternalHttp(paymentTest);
+const test = paymentTest.extend<ExternalHttpFixtures>(externalHttpFixture);
 ```
 
 - fake対象は`api.stripe.com`、`stripe.com`（Webhook IP許可リスト）、`qstash.upstash.io`、`api.resend.com`。
-- ローカルSupabaseだけは素通しする。それ以外の未登録ホストと、既知ホストのレスポンス未登録は、
-  リクエストを違反として記録し、`afterEach`がテストを失敗させる。意図した検証なら
-  `takeViolations()`でドレインする。
+- 素通しするのはprepareが書き出したローカルSupabaseのoriginだけ。ローカルの別ポートも含め、
+  それ以外の未登録の宛先と、既知ホストのレスポンス未登録は、リクエストを違反として記録し、
+  `afterEach`がテストを失敗させる。意図した検証なら`takeViolations()`でドレインする。
 - ハーネスは失敗させるとき例外ではなく`400`を返す。SDKのリトライを誘発せずに失敗させるためで、
   理由は`tests/setup/external-http.ts`のコメントにある。
 - ダミーの環境変数は`integration`プロジェクトの`test.env`（`tests/setup/external-service-env.ts`）が

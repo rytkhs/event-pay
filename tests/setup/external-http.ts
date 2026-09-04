@@ -2,6 +2,8 @@ import { http, HttpResponse, passthrough } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach } from "vitest";
 
+import { requireLocalSupabaseEnv } from "./test-environment";
+
 /**
  * `integration` プロジェクトの外部境界 fake。
  *
@@ -66,8 +68,13 @@ const KNOWN_HOSTS = new Map<string, ExternalService>([
   ["api.resend.com", "resend"],
 ]);
 
-/** ローカル Supabase。integration はここまで実経路を通す契約になっている。 */
-const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost"]);
+/**
+ * 素通しするのは prepare が書き出したローカル Supabase の origin だけ。
+ *
+ * hostname だけで判定すると、`NEXT_PUBLIC_APP_URL` の `http://localhost:3000` など
+ * ローカルの別ポートへの通信まで黙って通ってしまい、fail-closed が成立しない。
+ */
+const LOCAL_SUPABASE_ORIGIN = new URL(requireLocalSupabaseEnv().url).origin;
 
 export type RecordedRequest = {
   service: ExternalService;
@@ -84,6 +91,20 @@ export type ExternalHttpViolation = {
   url: string;
 };
 
+/**
+ * 記録と違反台帳はモジュールスコープに置く。`tests/README.md` の `setup/` は
+ * 「複数テスト間で可変データを共有しない」としており、ここは意図的な逸脱である。
+ *
+ * MSW のサーバ自体がモジュールスコープの可変状態であり、記録は
+ * `server.events` のグローバルなリスナから書き込む以外に方法がない。fixture へ
+ * 閉じ込めると、fixture を分割代入しなかったテストの外部通信が記録も違反判定も
+ * されなくなり、fail-closed が成立しなくなる。**テストが fixture を使うかどうかに
+ * 関わらず必ず検出する**ことを優先している。
+ *
+ * テスト間の漏れは下の `afterEach` / `afterAll` で塞ぎ、同一ファイル内の並行実行は
+ * `beginExternalHttpSession()` が禁止する。`.concurrent` が必要になったときは
+ * 自前で状態を分けるのではなく `externalHttpServer.boundary()` へ寄せること。
+ */
 const records: RecordedRequest[] = [];
 const violations: ExternalHttpViolation[] = [];
 
@@ -111,7 +132,7 @@ const violations: ExternalHttpViolation[] = [];
 const unregisteredRequestHandler = http.all("*", ({ request }) => {
   const url = new URL(request.url);
 
-  if (LOCAL_HOSTS.has(url.hostname)) {
+  if (url.origin === LOCAL_SUPABASE_ORIGIN) {
     return passthrough();
   }
 
@@ -201,23 +222,36 @@ export function endExternalHttpSession(): void {
   activeSessions = Math.max(0, activeSessions - 1);
 }
 
+function assertNoViolations(context: string): void {
+  const leaked = violations.splice(0);
+
+  if (leaked.length === 0) return;
+
+  const lines = leaked.map((violation) => `  ${violation.method} ${violation.url}`).join("\n");
+
+  throw new Error(
+    `登録されていない外部ホストへリクエストが出ました（${context}）。\n${lines}\n` +
+      "意図した検証であれば externalHttp.takeViolations() でドレインしてください。"
+  );
+}
+
 afterEach(() => {
   externalHttpServer.resetHandlers();
   records.length = 0;
-
-  const leaked = violations.splice(0);
-
-  if (leaked.length > 0) {
-    const lines = leaked.map((violation) => `  ${violation.method} ${violation.url}`).join("\n");
-    throw new Error(
-      `登録されていない外部ホストへリクエストが出ました。\n${lines}\n` +
-        "意図した検証であれば externalHttp.takeViolations() でドレインしてください。"
-    );
-  }
+  assertNoViolations("テスト本体");
 });
 
 afterAll(() => {
-  // close() は globalThis.fetch を元へ戻すが、getStripe() のシングルトンは
-  // MSW のラッパを掴んだままになる。close 後にリクエストを出してはならない。
-  externalHttpServer.close();
+  // Vitest は afterEach を fixture の teardown より前に実行する
+  // （@vitest/runner の runTest は callSuiteHook("afterEach") のあとに
+  // callFixtureCleanupFrom を呼ぶ）。teardown 中に出た外部通信は次のテストの
+  // afterEach まで検出されず、ファイル内の最後のテストでは誰も検査しないまま
+  // close() されてしまう。ここで取りこぼしを塞ぐ。
+  try {
+    assertNoViolations("fixture の teardown 中の可能性があります");
+  } finally {
+    // close() は globalThis.fetch を元へ戻すが、getStripe() のシングルトンは
+    // MSW のラッパを掴んだままになる。close 後にリクエストを出してはならない。
+    externalHttpServer.close();
+  }
 });

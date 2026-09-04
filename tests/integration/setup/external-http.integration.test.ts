@@ -147,4 +147,18 @@ describe("外部境界 fake ハーネス", () => {
     expect(error).toBeNull();
     expect(externalHttp.requests()).toHaveLength(0);
   });
+
+  test("ローカルSupabase以外のローカル宛先は素通しせず違反になる", async ({ externalHttp }) => {
+    // NEXT_PUBLIC_APP_URL のホスト。hostname だけで素通しを判定していると、
+    // ローカルの別ポートへの通信が黙って抜けて fail-closed が崩れる。
+    const response = await fetch("http://localhost:3000/api/workers/stripe-webhook", {
+      method: "POST",
+    });
+
+    expect(response.status).toBe(400);
+
+    const violations = externalHttp.takeViolations();
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.url).toBe("http://localhost:3000/api/workers/stripe-webhook");
+  });
 });
