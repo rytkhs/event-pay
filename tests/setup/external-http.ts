@@ -1,6 +1,6 @@
 import { http, HttpResponse, passthrough } from "msw";
 import { setupServer } from "msw/node";
-import { afterAll, afterEach } from "vitest";
+import { afterAll, beforeEach, onTestFinished } from "vitest";
 
 import { requireLocalSupabaseEnv } from "./test-environment";
 
@@ -101,7 +101,7 @@ export type ExternalHttpViolation = {
  * されなくなり、fail-closed が成立しなくなる。**テストが fixture を使うかどうかに
  * 関わらず必ず検出する**ことを優先している。
  *
- * テスト間の漏れは下の `afterEach` / `afterAll` で塞ぎ、同一ファイル内の並行実行は
+ * テスト間の漏れは下の `onTestFinished` / `afterAll` で塞ぎ、同一ファイル内の並行実行は
  * `beginExternalHttpSession()` が禁止する。`.concurrent` が必要になったときは
  * 自前で状態を分けるのではなく `externalHttpServer.boundary()` へ寄せること。
  */
@@ -127,7 +127,7 @@ const violations: ExternalHttpViolation[] = [];
  * `retryWithIdempotency` が、5xx は Stripe SDK 自身が再試行対象にする。
  *
  * レスポンスを返す以上テスト自体は赤くならないので、違反は台帳へ記録して
- * 下の `afterEach` で失敗させる。
+ * 下の `onTestFinished` で失敗させる。
  */
 const unregisteredRequestHandler = http.all("*", ({ request }) => {
   const url = new URL(request.url);
@@ -235,20 +235,36 @@ function assertNoViolations(context: string): void {
   );
 }
 
-afterEach(() => {
-  externalHttpServer.resetHandlers();
-  records.length = 0;
-  assertNoViolations("テスト本体");
+/**
+ * 後始末は `afterEach` ではなく `onTestFinished` で行う。
+ *
+ * Vitest は `afterEach` を fixture の teardown より**前**に実行する
+ * （`@vitest/runner` の `runTest` は `callSuiteHook("afterEach")` のあとに
+ * `callFixtureCleanupFrom` を呼ぶ）。`afterEach` で消すと、
+ *
+ * - fixture の teardown が登録済みハンドラを使えない
+ * - teardown 中に出た通信が次のテストの `records` へ混入する
+ * - teardown 由来の違反が次のテストの失敗として誤って帰属する
+ *
+ * `onTestFinished` は `callFixtureCleanupFrom` の後に走るため、これらが起きない。
+ * `beforeEach` から登録するので、fixture を使わないテストでも必ず動く。
+ * 登録順の逆（stack）で実行されるため、テスト側が登録した `onTestFinished` の
+ * あとに走る。
+ */
+beforeEach(() => {
+  onTestFinished(() => {
+    externalHttpServer.resetHandlers();
+    records.length = 0;
+    assertNoViolations("テスト本体または fixture の teardown");
+  });
 });
 
 afterAll(() => {
-  // Vitest は afterEach を fixture の teardown より前に実行する
-  // （@vitest/runner の runTest は callSuiteHook("afterEach") のあとに
-  // callFixtureCleanupFrom を呼ぶ）。teardown 中に出た外部通信は次のテストの
-  // afterEach まで検出されず、ファイル内の最後のテストでは誰も検査しないまま
-  // close() されてしまう。ここで取りこぼしを塞ぐ。
+  // 最後の onTestFinished より後に動くもの（テストファイル側の afterAll など）の
+  // 取りこぼしを塞ぐ。setup file の afterAll は登録順の逆で走るため、
+  // テストファイルの afterAll より後になる。
   try {
-    assertNoViolations("fixture の teardown 中の可能性があります");
+    assertNoViolations("テストファイルの afterAll など、テスト実行後");
   } finally {
     // close() は globalThis.fetch を元へ戻すが、getStripe() のシングルトンは
     // MSW のラッパを掴んだままになる。close 後にリクエストを出してはならない。

@@ -118,7 +118,7 @@ describe("外部境界 fake ハーネス", () => {
     expect(violations).toHaveLength(1);
     expect(violations[0]?.url).toBe("https://unregistered.example.test/ping");
 
-    // ドレインしなければ afterEach がテストを失敗させる。
+    // ドレインしなければ onTestFinished がテストを失敗させる。
     expect(externalHttp.takeViolations()).toHaveLength(0);
   });
 
@@ -146,6 +146,34 @@ describe("外部境界 fake ハーネス", () => {
 
     expect(error).toBeNull();
     expect(externalHttp.requests()).toHaveLength(0);
+  });
+
+  // 後始末が fixture の teardown より後に走ることの回帰検知。
+  // 下の2テストはこの順序で実行される前提で、順序に意味がある。
+  describe("fixture teardown 中の外部通信", () => {
+    const teardownTest = test.extend<{ stripeCallOnTeardown: void }>({
+      stripeCallOnTeardown: async ({ externalHttp }, use) => {
+        await use(undefined);
+
+        // ここは fixture の teardown。afterEach で resetHandlers していると
+        // 登録が消えていて catch-all に落ちる。
+        externalHttp.on(
+          http.post("https://api.stripe.com/v1/customers", () =>
+            HttpResponse.json({ id: "cus_teardown", object: "customer" })
+          )
+        );
+        await getStripe().customers.create({ email: "teardown@example.test" });
+      },
+    });
+
+    teardownTest("teardown からも登録済みハンドラを使える", ({ stripeCallOnTeardown: _ }) => {
+      // 本体では何もしない。teardown 側が Stripe を叩く。
+      // ハンドラが消えていれば違反になり、このテストが失敗する。
+    });
+
+    test("teardown 由来のリクエストが次のテストへ混入しない", ({ externalHttp }) => {
+      expect(externalHttp.requests("stripe")).toHaveLength(0);
+    });
   });
 
   test("ローカルSupabase以外のローカル宛先は素通しせず違反になる", async ({ externalHttp }) => {

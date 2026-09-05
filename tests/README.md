@@ -147,7 +147,10 @@ const test = paymentTest.extend<ExternalHttpFixtures>(externalHttpFixture);
 - fake対象は`api.stripe.com`、`stripe.com`（Webhook IP許可リスト）、`qstash.upstash.io`、`api.resend.com`。
 - 素通しするのはprepareが書き出したローカルSupabaseのoriginだけ。ローカルの別ポートも含め、
   それ以外の未登録の宛先と、既知ホストのレスポンス未登録は、リクエストを違反として記録し、
-  `afterEach`がテストを失敗させる。意図した検証なら`takeViolations()`でドレインする。
+  ハーネスがテストを失敗させる。意図した検証なら`takeViolations()`でドレインする。
+- ハンドラの解除と記録のクリアは`onTestFinished`で行う。`afterEach`はfixtureのteardownより前に
+  走るため、teardown中の通信が次のテストへ混入してしまう。fixtureのteardownからも登録済みハンドラを
+  そのまま使える。
 - ハーネスは失敗させるとき例外ではなく`400`を返す。SDKのリトライを誘発せずに失敗させるためで、
   理由は`tests/setup/external-http.ts`のコメントにある。
 - ダミーの環境変数は`integration`プロジェクトの`test.env`（`tests/setup/external-service-env.ts`）が
