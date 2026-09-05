@@ -23,9 +23,10 @@ import { test as baseTest } from "./test";
  * - ネットワークエラー: `HttpResponse.error()`
  * - 遅延・timeout: `await delay(ms)`
  *
- * ハンドラの解除と記録のクリアは `tests/setup/external-http.ts` の `afterEach` が
+ * ハンドラの解除と記録のクリアは `tests/setup/external-http.ts` の `onTestFinished` が
  * 無条件に行う。fixture を使わずに `externalHttpServer.use()` を直接呼んだテストでも
- * 漏れない。
+ * 漏れない。fixture の teardown より後に走るため、teardown からも登録済みハンドラを
+ * そのまま使える。
  *
  * `db` プロジェクトには MSW の setup が無いため、基底の `./test` へは入れない
  * （import が評価された時点で `listen()` が走る）。
