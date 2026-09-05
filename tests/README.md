@@ -100,6 +100,67 @@ pnpm exec vitest --project integration  # pnpm test:db:prepare の実行後
 
 `db`と`integration`はprepareが生成した接続情報を前提にする。prepare未実行の場合はglobalSetupが失敗する。watch中にDBを初期状態へ戻したいときは、watchを止めて`pnpm test:db:prepare`を再実行する。
 
+## External service fake
+
+`integration`では、Stripe / QStash / Resendへの通信を**HTTPのレイヤーで**fakeする。
+内部モジュールはmockしない。ハーネスは`tests/setup/external-http.ts`、
+テストからの入口は`tests/fixtures/external-http.ts`の`externalHttp` fixture。
+
+fixtureが持つのは`on()`、`requests()`、`takeViolations()`の3つだけ。
+レスポンス列・ネットワークエラー・遅延はMSWの標準機能を直接使う。
+
+| やりたいこと | 使うもの |
+| --- | --- |
+| 単発のレスポンス | `http.post(url, resolver)` |
+| レスポンス列 | `http.post(url, resolver, { once: true })`を必要な回数重ねる |
+| ネットワークエラー | `HttpResponse.error()` |
+| 遅延・timeout | `await delay(ms)` |
+
+```ts
+import { http, HttpResponse } from "msw";
+import { test } from "../../fixtures/external-http";
+
+test("Checkout Sessionへ渡す金額が内部Paymentと一致する", async ({ externalHttp }) => {
+  externalHttp.on(
+    http.post("https://api.stripe.com/v1/checkout/sessions", () =>
+      HttpResponse.json({ id: "cs_test", url: "https://checkout.stripe.com/c/pay/cs_test" })
+    )
+  );
+
+  // ... Server Actionを実行 ...
+
+  const [request] = externalHttp.requests("stripe");
+  const body = new URLSearchParams(await request.text());
+  expect(body.get("line_items[0][price_data][unit_amount]")).toBe("1000");
+});
+```
+
+既存のfixtureチェーンへ合成するときは`externalHttpFixture`を`extend`する。
+
+```ts
+import { test as paymentTest } from "../../fixtures/payment";
+import { externalHttpFixture, type ExternalHttpFixtures } from "../../fixtures/external-http";
+
+const test = paymentTest.extend<ExternalHttpFixtures>(externalHttpFixture);
+```
+
+- fake対象は`api.stripe.com`、`stripe.com`（Webhook IP許可リスト）、`qstash.upstash.io`、`api.resend.com`。
+- 素通しするのはprepareが書き出したローカルSupabaseのoriginだけ。ローカルの別ポートも含め、
+  それ以外の未登録の宛先と、既知ホストのレスポンス未登録は、リクエストを違反として記録し、
+  ハーネスがテストを失敗させる。意図した検証なら`takeViolations()`でドレインする。
+- ハンドラの解除と記録のクリアは`onTestFinished`で行う。`afterEach`はfixtureのteardownより前に
+  走るため、teardown中の通信が次のテストへ混入してしまう。fixtureのteardownからも登録済みハンドラを
+  そのまま使える。
+- ハーネスは失敗させるとき例外ではなく`400`を返す。SDKのリトライを誘発せずに失敗させるためで、
+  理由は`tests/setup/external-http.ts`のコメントにある。
+- ダミーの環境変数は`integration`プロジェクトの`test.env`（`tests/setup/external-service-env.ts`）が
+  プロセス全体に固定する。テストから`vi.stubEnv`しない。Stripeクライアントがモジュールスコープで
+  キャッシュされるため間に合わない。
+- Stripe sandboxやResendのテストアドレス（`delivered@resend.dev`）への実接続は、このレーンではなく
+  External contractの担当。
+- ハーネスのカナリーは`tests/integration/setup/external-http.integration.test.ts`に置く。
+  MSWやSDKの更新時はこのカナリーを最初に確認する。
+
 ## Next.js Server Action request context
 
 `integration`では、`tests/setup/next-request-context.ts`の

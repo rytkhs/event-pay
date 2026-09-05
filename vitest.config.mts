@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
+import { externalServiceEnv } from "./tests/setup/external-service-env.ts";
 import { readLocalSupabaseEnv } from "./tests/setup/local-supabase-env.ts";
 
 const serverOnlyStub = fileURLToPath(new URL("./tests/setup/server-only.ts", import.meta.url));
@@ -13,6 +14,7 @@ const localSupabaseGuard = "./tests/setup/local-supabase-env.ts";
 const jsdomSetup = "./tests/setup/unit-jsdom.ts";
 const serverSetup = "./tests/setup/test-environment.ts";
 const nextServerSetup = "./tests/setup/next-test-environment.ts";
+const externalHttpSetup = "./tests/setup/external-http.ts";
 
 // prepare 未実行時は空のまま。失敗は db / integration の globalSetup で起こす。
 const localSupabaseEnv = readLocalSupabaseEnv() ?? {};
@@ -91,9 +93,11 @@ export default defineConfig({
           name: "integration",
           environment: "node",
           include: ["tests/integration/**/*.integration.test.ts"],
-          env: localSupabaseEnv,
+          // 外部サービスのダミー値はここで固定する。fixture 側の vi.stubEnv では
+          // Stripe クライアントのキャッシュに間に合わない。
+          env: { ...localSupabaseEnv, ...externalServiceEnv },
           globalSetup: [localSupabaseGuard],
-          setupFiles: [nextServerSetup],
+          setupFiles: [nextServerSetup, externalHttpSetup],
         },
       },
     ],
