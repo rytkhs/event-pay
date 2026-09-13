@@ -17,19 +17,6 @@ export function getStripe(): Stripe {
 
   const stripeSecretKey = requireEnv(process.env.STRIPE_SECRET_KEY, "STRIPE_SECRET_KEY");
 
-  // デバッグログ: APIキーの詳細情報を出力
-  logger.info("Stripe API Key Debug Info", {
-    category: "system",
-    action: "client_creation",
-    actor_type: "system",
-    key_length: stripeSecretKey.length,
-    key_has_newlines: stripeSecretKey.includes("\n"),
-    key_has_spaces: stripeSecretKey.includes(" "),
-    key_has_tabs: stripeSecretKey.includes("\t"),
-    node_env: process.env.NODE_ENV,
-    outcome: "success",
-  });
-
   const instance = new Stripe(stripeSecretKey, {
     apiVersion: FIXED_STRIPE_API_VERSION,
     // Cloudflare Workers use the Fetch API for their API requests.

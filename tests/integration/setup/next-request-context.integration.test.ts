@@ -1,5 +1,5 @@
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
+import { cookies, headers as nextHeaders } from "next/headers";
 
 import { describe, expect } from "vitest";
 
@@ -7,6 +7,29 @@ import { test } from "../../fixtures/test";
 import { runInNextServerActionContext } from "../../setup/next-request-context";
 
 describe("Next.js Server Action request context", () => {
+  test("任意のrequest headerをServer Actionから観測できる", async () => {
+    const execution = await runInNextServerActionContext(
+      {
+        requestHeaders: {
+          "cf-connecting-ip": "203.0.113.42",
+          "user-agent": "next-context-canary",
+        },
+      },
+      async () => {
+        const headerStore = await nextHeaders();
+        return {
+          ip: headerStore.get("cf-connecting-ip"),
+          userAgent: headerStore.get("user-agent"),
+        };
+      }
+    );
+
+    expect(execution.result).toEqual({
+      ip: "203.0.113.42",
+      userAgent: "next-context-canary",
+    });
+  });
+
   test("cookiesの読み書きとpath revalidationを観測できる", async () => {
     const execution = await runInNextServerActionContext(
       {

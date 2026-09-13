@@ -20,8 +20,6 @@ import { StripeWebhookSignatureVerifier } from "@core/stripe/webhook-signature-v
 import { getClientIP } from "@core/utils/ip-detection";
 import { toErrorLike } from "@core/utils/type-guards";
 
-import { StripeWebhookEventHandler } from "@features/payments/server";
-
 import { ensureFeaturesRegistered } from "@/app/_init/feature-registrations";
 
 export const dynamic = "force-dynamic";
@@ -154,74 +152,7 @@ export async function POST(request: NextRequest) {
       request_id: requestId,
     });
 
-    // テスト環境での同期処理モード（E2Eテスト用）
-    // SKIP_QSTASH_IN_TEST=true の場合、QStashをスキップして直接処理
-    const shouldProcessSync = process.env.SKIP_QSTASH_IN_TEST === "true";
-
-    if (shouldProcessSync) {
-      logger.info("Test mode: Processing webhook synchronously (QStash skipped)", {
-        category: "stripe_webhook",
-        action: "processSynchronously",
-        event_id: event.id,
-        event_type: event.type,
-        request_id: requestId,
-      });
-
-      try {
-        // workerの処理を直接実行
-        const handler = new StripeWebhookEventHandler();
-        const result = await handler.handleEvent(event);
-
-        const processingTime = Date.now() - startTime;
-
-        logger.info("Webhook processed synchronously", {
-          category: "stripe_webhook",
-          action: "processedSynchronously",
-          event_id: event.id,
-          event_type: event.type,
-          success: result.success,
-          processing_time_ms: processingTime,
-          request_id: requestId,
-        });
-
-        // ハンドラーが失敗を返した場合はエラーレスポンスを返す
-        if (!result.success) {
-          return respondWithProblem(result.error, {
-            instance: "/api/webhooks/stripe",
-            detail: "Webhook processing failed in test mode",
-            correlationId: requestId,
-            defaultCode: "WEBHOOK_SYNC_PROCESSING_FAILED",
-            logContext: {
-              ...baseLogContext,
-              action: "sync_processing_failed",
-            },
-          });
-        }
-
-        return new Response(null, {
-          status: 204,
-          headers: {
-            "X-Request-Id": requestId,
-            "X-Event-Id": event.id,
-            "X-Event-Type": event.type,
-            "X-Processing-Time-Ms": String(processingTime),
-          },
-        });
-      } catch (error) {
-        return respondWithProblem(error, {
-          instance: "/api/webhooks/stripe",
-          detail: "Webhook processing failed in test mode",
-          correlationId: requestId,
-          defaultCode: "WEBHOOK_SYNC_PROCESSING_FAILED",
-          logContext: {
-            ...baseLogContext,
-            action: "sync_processing_failed",
-          },
-        });
-      }
-    }
-
-    // 本番環境: QStashに転送（完全なイベントデータを送信）
+    // QStashに転送（完全なイベントデータを送信）
     const workerUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/workers/stripe-webhook`;
 
     // 完全なイベントデータを送信（イベント再取得を不要にする）

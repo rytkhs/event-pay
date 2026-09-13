@@ -1,5 +1,3 @@
-import { headers } from "next/headers";
-
 import { type ActionResult, fail, ok } from "@core/errors/adapters/server-actions";
 import { logger } from "@core/logging/app-logger";
 import { validateGuestTokenFormat } from "@core/security/crypto";
@@ -12,33 +10,23 @@ import type { UpdateGuestAttendanceData } from "@core/types/guest";
 import type { PaymentMethod, PaymentStatus } from "@core/types/statuses";
 import { handleServerError } from "@core/utils/error-handler.server";
 import { validateGuestToken } from "@core/utils/guest-token";
-import { getClientIPFromHeaders } from "@core/utils/ip-detection";
 import { attendanceStatusSchema, paymentMethodSchema } from "@core/validation/participation";
+
+export type GuestRequestSecurityContext = {
+  userAgent?: string;
+  ip?: string;
+};
 
 /**
  * ゲスト参加状況を更新するサーバーアクション
  * @param formData フォームデータ
+ * @param securityContext 呼び出し元が取得したrequest由来の監査情報
  * @returns 更新結果
  */
 export async function updateGuestAttendanceAction(
-  formData: FormData
+  formData: FormData,
+  securityContext: GuestRequestSecurityContext
 ): Promise<ActionResult<UpdateGuestAttendanceData>> {
-  // テスト環境ではheaders()が利用できないため、安全に取得
-  let securityContext: { userAgent?: string; ip?: string } = {};
-  try {
-    const headersList = await headers();
-    const userAgent = headersList.get("user-agent") || undefined;
-    const ip = getClientIPFromHeaders(headersList) ?? undefined;
-    securityContext = { userAgent, ip };
-  } catch (_error) {
-    // テスト環境など、headers()が利用できない場合は空のコンテキストを使用
-    if (process.env.NODE_ENV === "test") {
-      securityContext = { userAgent: "test-agent", ip: "127.0.0.1" };
-    } else {
-      securityContext = {};
-    }
-  }
-
   // フォームデータの取得（スコープを関数全体に拡大）
   const guestToken = formData.get("guestToken") as string;
   const attendanceStatus = formData.get("attendanceStatus") as string;
