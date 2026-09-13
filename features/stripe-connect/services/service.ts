@@ -118,6 +118,28 @@ export class StripeConnectService implements IStripeConnectService {
   }
 
   /**
+   * 作成後の処理に失敗したExpress Accountを補償削除する。
+   * 補償削除の失敗はログに残し、呼び出し元の元エラーを優先して伝搬させる。
+   */
+  private async compensateCreatedAccount(accountId: string, action: string): Promise<void> {
+    try {
+      await this.getStripeClient().accounts.del(accountId);
+    } catch (compensationError) {
+      handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+        action,
+        additionalData: {
+          account_id: accountId,
+          error_name: compensationError instanceof Error ? compensationError.name : "Unknown",
+          error_message:
+            compensationError instanceof Error
+              ? compensationError.message
+              : String(compensationError),
+        },
+      });
+    }
+  }
+
+  /**
    * Stripe Account Objectのrequirementsを整形
    * @param requirements Stripe Account Requirements
    * @returns 整形されたrequirements情報
@@ -275,30 +297,10 @@ export class StripeConnectService implements IStripeConnectService {
       try {
         await this.configureManualPayoutSchedule(stripeAccount.id);
       } catch (manualScheduleError) {
-        try {
-          await stripe.accounts.del(stripeAccount.id);
-        } catch (compensationError) {
-          handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
-            action: "compensate_manual_payout_schedule_failure",
-            additionalData: {
-              account_id: stripeAccount.id,
-              error_name: compensationError instanceof Error ? compensationError.name : "Unknown",
-              error_message:
-                compensationError instanceof Error
-                  ? compensationError.message
-                  : String(compensationError),
-            },
-          });
-        }
-
-        if (manualScheduleError instanceof Stripe.errors.StripeError) {
-          throw new StripeConnectError(
-            StripeConnectErrorType.STRIPE_API_ERROR,
-            "振込スケジュールの設定に失敗しました",
-            manualScheduleError,
-            { accountId: stripeAccount.id, userId }
-          );
-        }
+        await this.compensateCreatedAccount(
+          stripeAccount.id,
+          "compensate_manual_payout_schedule_failure"
+        );
 
         throw new StripeConnectError(
           StripeConnectErrorType.STRIPE_API_ERROR,
@@ -319,22 +321,10 @@ export class StripeConnectService implements IStripeConnectService {
 
       if (dbError) {
         // Stripeアカウントは作成されたが、DBへの保存に失敗した場合は補償削除を試行
-        try {
-          await stripe.accounts.del(stripeAccount.id);
-        } catch (compensationError) {
-          // 補償削除の失敗はログに残し、上位へはDBエラーとしてマッピングして伝搬
-          handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
-            action: "compensate_account_creation_failure",
-            additionalData: {
-              account_id: stripeAccount.id,
-              error_name: compensationError instanceof Error ? compensationError.name : "Unknown",
-              error_message:
-                compensationError instanceof Error
-                  ? compensationError.message
-                  : String(compensationError),
-            },
-          });
-        }
+        await this.compensateCreatedAccount(
+          stripeAccount.id,
+          "compensate_account_creation_failure"
+        );
 
         throw this.errorHandler.mapDatabaseError(dbError, "Express Account作成後のDB保存");
       }

@@ -10,9 +10,6 @@ import { POST as postStripeConnectWebhook } from "@/app/api/webhooks/stripe-conn
 
 import { test } from "../../fixtures/external-http";
 
-const STRIPE_WEBHOOK_SECRET = "whsec_eventpay_integration_dummy";
-const STRIPE_CONNECT_WEBHOOK_SECRET = "whsec_eventpay_integration_connect_dummy";
-
 function createSignedWebhookRequest(options: {
   eventId: string;
   eventType: string;
@@ -46,64 +43,71 @@ function createSignedWebhookRequest(options: {
   });
 }
 
+type WebhookPublishCase = {
+  name: string;
+  post: (request: NextRequest) => Promise<Response>;
+  path: string;
+  secret: string;
+  eventId: string;
+  eventType: string;
+  messageId: string;
+  workerPath: string;
+};
+
+// 両routeに独立して存在した同期分岐の回帰を、それぞれ検知する。
+const webhookPublishCases: WebhookPublishCase[] = [
+  {
+    name: "決済Webhook",
+    post: postStripeWebhook,
+    path: "/api/webhooks/stripe",
+    secret: "whsec_eventpay_integration_dummy",
+    eventId: "evt_issue593_payment",
+    eventType: "customer.created",
+    messageId: "msg_issue593_payment",
+    workerPath: "/api/workers/stripe-webhook",
+  },
+  {
+    name: "Connect Webhook",
+    post: postStripeConnectWebhook,
+    path: "/api/webhooks/stripe-connect",
+    secret: "whsec_eventpay_integration_connect_dummy",
+    eventId: "evt_issue593_connect",
+    eventType: "account.updated",
+    messageId: "msg_issue593_connect",
+    workerPath: "/api/workers/stripe-connect-webhook",
+  },
+];
+
 describe("Stripe Webhook QStash publish", () => {
-  test("決済Webhookはtest環境でもQStashへpublishする", async ({ externalHttp }) => {
-    // 廃止した環境変数がシェルから漏れても挙動を変えないことを保証する。
-    vi.stubEnv("SKIP_QSTASH_IN_TEST", "true");
-    const eventId = "evt_issue593_payment";
-    externalHttp.on(
-      http.post("https://qstash.upstash.io/v2/publish/*", () =>
-        HttpResponse.json({ messageId: "msg_issue593_payment" })
-      )
-    );
+  test.for(webhookPublishCases)(
+    "$nameはtest環境でもQStashへpublishする",
+    async (webhook, { externalHttp }) => {
+      // 廃止した環境変数がシェルから漏れても挙動を変えないことを保証する。
+      vi.stubEnv("SKIP_QSTASH_IN_TEST", "true");
+      externalHttp.on(
+        http.post("https://qstash.upstash.io/v2/publish/*", () =>
+          HttpResponse.json({ messageId: webhook.messageId })
+        )
+      );
 
-    const response = await postStripeWebhook(
-      createSignedWebhookRequest({
-        eventId,
-        eventType: "customer.created",
-        path: "/api/webhooks/stripe",
-        secret: STRIPE_WEBHOOK_SECRET,
-      })
-    );
+      const response = await webhook.post(
+        createSignedWebhookRequest({
+          eventId: webhook.eventId,
+          eventType: webhook.eventType,
+          path: webhook.path,
+          secret: webhook.secret,
+        })
+      );
 
-    expect(response.status).toBe(204);
-    expect(response.headers.get("x-qstash-message-id")).toBe("msg_issue593_payment");
+      expect(response.status).toBe(204);
+      expect(response.headers.get("x-qstash-message-id")).toBe(webhook.messageId);
 
-    const [publishRequest] = externalHttp.requests("qstash");
-    expect(publishRequest?.headers["upstash-deduplication-id"]).toBe(eventId);
-    expect(publishRequest?.url.pathname).toContain("/api/workers/stripe-webhook");
-    expect(JSON.parse((await publishRequest?.text()) ?? "{}")).toMatchObject({
-      event: { id: eventId, type: "customer.created" },
-    });
-  });
-
-  test("Connect Webhookはtest環境でもQStashへpublishする", async ({ externalHttp }) => {
-    // 両routeに独立して存在した同期分岐の回帰を検知する。
-    vi.stubEnv("SKIP_QSTASH_IN_TEST", "true");
-    const eventId = "evt_issue593_connect";
-    externalHttp.on(
-      http.post("https://qstash.upstash.io/v2/publish/*", () =>
-        HttpResponse.json({ messageId: "msg_issue593_connect" })
-      )
-    );
-
-    const response = await postStripeConnectWebhook(
-      createSignedWebhookRequest({
-        eventId,
-        eventType: "account.updated",
-        path: "/api/webhooks/stripe-connect",
-        secret: STRIPE_CONNECT_WEBHOOK_SECRET,
-      })
-    );
-
-    expect(response.status).toBe(204);
-    expect(response.headers.get("x-qstash-message-id")).toBe("msg_issue593_connect");
-
-    const [publishRequest] = externalHttp.requests("qstash");
-    expect(publishRequest?.headers["upstash-deduplication-id"]).toBe(eventId);
-    expect(publishRequest?.url.pathname).toContain("/api/workers/stripe-connect-webhook");
-    expect(JSON.parse((await publishRequest?.text()) ?? "{}")).toMatchObject({
-      event: { id: eventId, type: "account.updated" },
-    });
-  });
+      const [publishRequest] = externalHttp.requests("qstash");
+      expect(publishRequest?.headers["upstash-deduplication-id"]).toBe(webhook.eventId);
+      expect(publishRequest?.url.pathname).toContain(webhook.workerPath);
+      expect(JSON.parse((await publishRequest?.text()) ?? "{}")).toMatchObject({
+        event: { id: webhook.eventId, type: webhook.eventType },
+      });
+    }
+  );
 });
