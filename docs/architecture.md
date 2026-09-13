@@ -104,7 +104,7 @@ flowchart TB
 ### Queue（Upstash QStash）
 - **責務**: Stripe Webhook処理の非同期化、リトライ・Deduplication
 - **応答規約**: Workerは `204`（成功ACK）、`489 + Upstash-NonRetryable-Error`（非リトライ）、`5xx`（リトライ）で返す
-- **スキップ**: E2Eテスト時は同期処理モード（`SKIP_QSTASH_IN_TEST=true`）
+- **Webhook受信**: 署名検証後は環境にかかわらずQStashへpublishし、publish失敗時は`5xx`でStripeの再送を促す
 
 ### Rate Limiting（Upstash Redis）
 - **適用箇所**: API Routes、Webhook受信、ゲストアクセス

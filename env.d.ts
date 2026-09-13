@@ -175,8 +175,6 @@ declare namespace NodeJS {
     // ===========================
     // Testing & Development
     // ===========================
-    /** テスト時のQStashスキップ（同期実行）設定 */
-    SKIP_QSTASH_IN_TEST?: string;
     /** テスト時のレート制限スキップ設定 */
     SKIP_RATE_LIMIT?: string;
     /** プラットフォーム残高の監視閾値 (JPY) */

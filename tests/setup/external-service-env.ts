@@ -51,8 +51,6 @@ const FIXED_ENDPOINTS = {
  * シェルから漏れると挙動が変わるキー。`test.env` は unset できないため falsy 値で上書きする。
  */
 const NEUTRALIZED = {
-  /** "true" のとき Webhook が QStash publish をスキップして同期処理へ分岐する（#593）。 */
-  SKIP_QSTASH_IN_TEST: "",
   /** 空文字なら「本番のみ有効」の既定に戻る（core/security/stripe-ip-allowlist.ts）。 */
   ENABLE_STRIPE_IP_CHECK: "",
   /** url と token が揃ったときだけ Upstash Redis クライアントが作られる。 */

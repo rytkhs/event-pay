@@ -118,6 +118,28 @@ export class StripeConnectService implements IStripeConnectService {
   }
 
   /**
+   * 作成後の処理に失敗したExpress Accountを補償削除する。
+   * 補償削除の失敗はログに残し、呼び出し元の元エラーを優先して伝搬させる。
+   */
+  private async compensateCreatedAccount(accountId: string, action: string): Promise<void> {
+    try {
+      await this.getStripeClient().accounts.del(accountId);
+    } catch (compensationError) {
+      handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
+        action,
+        additionalData: {
+          account_id: accountId,
+          error_name: compensationError instanceof Error ? compensationError.name : "Unknown",
+          error_message:
+            compensationError instanceof Error
+              ? compensationError.message
+              : String(compensationError),
+        },
+      });
+    }
+  }
+
+  /**
    * Stripe Account Objectのrequirementsを整形
    * @param requirements Stripe Account Requirements
    * @returns 整形されたrequirements情報
@@ -236,36 +258,6 @@ export class StripeConnectService implements IStripeConnectService {
         };
       }
 
-      // Stripe側の既存アカウント確認（emailでリスト→metadata.actor_idで照合）
-      // 見つかった場合はそのアカウントを再利用する
-      let stripeAccount: Stripe.Account | null = null;
-      try {
-        // 型定義に search が無いStripeバージョンでもビルドを通すため、動的呼び出し
-        const stripe = this.getStripeClient();
-        const maybeSearch = Reflect.get(stripe.accounts, "search");
-        if (typeof maybeSearch === "function") {
-          const searchResult = await (
-            maybeSearch as (
-              this: Stripe.AccountResource,
-              params: { query: string }
-            ) => Promise<{ data: unknown[] }>
-          ).call(stripe.accounts, {
-            query: `metadata['actor_id']:'${userId}'`,
-          });
-          if (Array.isArray(searchResult?.data) && searchResult.data.length > 0) {
-            stripeAccount = searchResult.data[0] as Stripe.Account;
-          }
-        }
-      } catch (searchError) {
-        // searchは補助的機能。失敗しても致命ではないため続行する
-        this.logger.debug("Stripe accounts.search failed, continue to create", {
-          user_id: userId,
-          error_name: searchError instanceof Error ? searchError.name : "Unknown",
-          error_message: searchError instanceof Error ? searchError.message : String(searchError),
-          outcome: "failure",
-        });
-      }
-
       // Stripe Express Account作成パラメータ
       const createParams: Stripe.AccountCreateParams = {
         type: "express",
@@ -297,56 +289,25 @@ export class StripeConnectService implements IStripeConnectService {
         }
       }
 
-      // 既存が見つからなければ新規作成（Idempotency-Keyで二重作成防止）
-      let createdNewAccount = false;
-      if (!stripeAccount) {
-        const idempotencyKey = generateIdempotencyKey("connect");
-        const stripe = this.getStripeClient();
-        if (process.env.NODE_ENV === "test") {
-          // テスト環境では引数シグネチャ互換のためリクエストオプションを渡さない
-          stripeAccount = await stripe.accounts.create(createParams);
-        } else {
-          stripeAccount = await stripe.accounts.create(createParams, { idempotencyKey });
-        }
-        createdNewAccount = true;
-        try {
-          await this.configureManualPayoutSchedule(stripeAccount.id);
-        } catch (manualScheduleError) {
-          if (process.env.NODE_ENV !== "test") {
-            try {
-              await stripe.accounts.del(stripeAccount.id);
-            } catch (compensationError) {
-              handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
-                action: "compensate_manual_payout_schedule_failure",
-                additionalData: {
-                  account_id: stripeAccount.id,
-                  error_name:
-                    compensationError instanceof Error ? compensationError.name : "Unknown",
-                  error_message:
-                    compensationError instanceof Error
-                      ? compensationError.message
-                      : String(compensationError),
-                },
-              });
-            }
-          }
+      // Stripe API の再試行でも同じ作成結果を返すよう Idempotency-Key を渡す。
+      const idempotencyKey = generateIdempotencyKey("connect");
+      const stripe = this.getStripeClient();
+      const stripeAccount = await stripe.accounts.create(createParams, { idempotencyKey });
 
-          if (manualScheduleError instanceof Stripe.errors.StripeError) {
-            throw new StripeConnectError(
-              StripeConnectErrorType.STRIPE_API_ERROR,
-              "振込スケジュールの設定に失敗しました",
-              manualScheduleError,
-              { accountId: stripeAccount.id, userId }
-            );
-          }
+      try {
+        await this.configureManualPayoutSchedule(stripeAccount.id);
+      } catch (manualScheduleError) {
+        await this.compensateCreatedAccount(
+          stripeAccount.id,
+          "compensate_manual_payout_schedule_failure"
+        );
 
-          throw new StripeConnectError(
-            StripeConnectErrorType.STRIPE_API_ERROR,
-            "振込スケジュールの設定に失敗しました",
-            manualScheduleError as Error,
-            { accountId: stripeAccount.id, userId }
-          );
-        }
+        throw new StripeConnectError(
+          StripeConnectErrorType.STRIPE_API_ERROR,
+          "振込スケジュールの設定に失敗しました",
+          manualScheduleError as Error,
+          { accountId: stripeAccount.id, userId }
+        );
       }
 
       // データベースにアカウント情報を保存
@@ -360,25 +321,10 @@ export class StripeConnectService implements IStripeConnectService {
 
       if (dbError) {
         // Stripeアカウントは作成されたが、DBへの保存に失敗した場合は補償削除を試行
-        if (createdNewAccount && stripeAccount && process.env.NODE_ENV !== "test") {
-          try {
-            const stripe = this.getStripeClient();
-            await stripe.accounts.del(stripeAccount.id);
-          } catch (compensationError) {
-            // 補償削除の失敗はログに残し、上位へはDBエラーとしてマッピングして伝搬
-            handleServerError("STRIPE_CONNECT_SERVICE_ERROR", {
-              action: "compensate_account_creation_failure",
-              additionalData: {
-                account_id: stripeAccount.id,
-                error_name: compensationError instanceof Error ? compensationError.name : "Unknown",
-                error_message:
-                  compensationError instanceof Error
-                    ? compensationError.message
-                    : String(compensationError),
-              },
-            });
-          }
-        }
+        await this.compensateCreatedAccount(
+          stripeAccount.id,
+          "compensate_account_creation_failure"
+        );
 
         throw this.errorHandler.mapDatabaseError(dbError, "Express Account作成後のDB保存");
       }

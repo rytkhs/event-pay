@@ -20,6 +20,7 @@ export type NextResponseTestCookie = ResponseCookie;
 
 export type NextServerActionContextOptions = {
   cookies?: NextRequestTestCookie[];
+  requestHeaders?: HeadersInit;
   url?: string;
 };
 
@@ -40,7 +41,7 @@ export async function runInNextServerActionContext<TResult>(
   action: () => Promise<TResult> | TResult
 ): Promise<NextServerActionExecution<TResult>> {
   const url = options.url ?? DEFAULT_REQUEST_URL;
-  const headers = new Headers();
+  const headers = new Headers(options.requestHeaders);
   const requestCookies = options.cookies ?? [];
 
   if (requestCookies.length > 0) {

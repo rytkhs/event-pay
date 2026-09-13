@@ -2,7 +2,7 @@
 
 - **Status**: Accepted
 - **Date**: 2025-12-21
-- **Updated**: 2026-02-13
+- **Updated**: 2026-09-13
 
 ## Context and Problem Statement
 
@@ -104,7 +104,7 @@ Traces: SentryでWebhook→QStash→Workerを1トレース化
 ### Negative / リスク軽減策
 | リスク | 影響度 | 軽減策 |
 |--------|--------|--------|
-| QStash障害 | 中 | フォールバック: 同期キュー（`SKIP_QSTASH_IN_TEST`）+アラート |
+| QStash障害 | 中 | Webhook endpointが`5xx`を返してStripeの再送を促し、構造化ログからアラートする |
 | DLQ監視不足 | 高 | 自動スクリプト+ダッシュボード |
 | コスト超過 | 低 | 無料枠10k msg/dayでMVP十分、超過時SQS移行検討 |
 | ベンダーロック | 中 | 抽象化Wrapper実装（`QueueService`インタフェース）など |
@@ -114,6 +114,13 @@ Traces: SentryでWebhook→QStash→Workerを1トレース化
 1. QStash DLQ有効化、構造化ログ強化、Sentryトレース
 2. `failed_webhook_events`テーブル+管理画面
 3. メトリクスダッシュボード（Grafana/Cloudflare）、メール非同期化
+
+## Amendment (2026-09-13)
+
+テストやE2EだけWebhook handlerを同期実行する`SKIP_QSTASH_IN_TEST`分岐を廃止した。
+Webhook endpointの責務を「署名検証→QStash publish」に固定し、全環境で同じInterfaceを検証する。
+QStashへのpublishに失敗した場合は同期処理へフォールバックせず`5xx`を返し、StripeのWebhook再送と運用アラートで回復する。
+これは上記「Webhook Endpoint」の責務分担およびpublish-onlyの構成を明確化する追補である。
 
 ## Links
 - [QStash DLQ](https://upstash.com/docs/qstash/features/dlq)
