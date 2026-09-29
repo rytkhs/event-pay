@@ -16,12 +16,7 @@ export type DatabaseStatus = StripeAccountStatus;
  * UI層で表示される派生ステータス
  */
 export type UIStatus =
-  | "no_account"
-  | "unverified"
-  | "requirements_due"
-  | "pending_review"
-  | "ready"
-  | "restricted";
+  "no_account" | "unverified" | "requirements_due" | "pending_review" | "ready" | "restricted";
 
 /**
  * Classification Result

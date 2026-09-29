@@ -105,10 +105,7 @@ export type PaymentWebhookRecord = Pick<PaymentRow, PaymentWebhookReadColumn>;
 const PAYMENT_WEBHOOK_READ_SELECT = PAYMENT_WEBHOOK_READ_COLUMNS.join(",");
 
 export type PaymentWebhookRepositoryErrorCategory =
-  | "cardinality"
-  | "integrity"
-  | "transient"
-  | "unknown";
+  "cardinality" | "integrity" | "transient" | "unknown";
 
 export interface PaymentWebhookDbErrorLike {
   message: string;

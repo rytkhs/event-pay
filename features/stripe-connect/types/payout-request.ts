@@ -14,11 +14,7 @@ export type StripePayoutRequestStatus = Exclude<
 >;
 
 export type PayoutSystemFeeState =
-  | "not_started"
-  | "succeeded"
-  | "failed"
-  | "creation_unknown"
-  | "manual_review_required";
+  "not_started" | "succeeded" | "failed" | "creation_unknown" | "manual_review_required";
 
 export type PayoutBalance = {
   availableAmount: number;
