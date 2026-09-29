@@ -18,10 +18,7 @@ const AMOUNT_COLUMNS =
 const AMOUNT_POSITIVE_CONSTRAINT = "chk_payments_amount_positive";
 
 type NonNegativeColumn =
-  | "amount"
-  | "refunded_amount"
-  | "application_fee_amount"
-  | "application_fee_refunded_amount";
+  "amount" | "refunded_amount" | "application_fee_amount" | "application_fee_refunded_amount";
 
 const NON_NEGATIVE_COLUMNS: Array<{
   column: NonNegativeColumn;

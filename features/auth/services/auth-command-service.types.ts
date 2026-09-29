@@ -1,10 +1,7 @@
 import type { AppResult } from "@core/errors";
 
 export type AuthRateLimitScope =
-  | "auth.login"
-  | "auth.register"
-  | "auth.passwordReset"
-  | "auth.emailResend";
+  "auth.login" | "auth.register" | "auth.passwordReset" | "auth.emailResend";
 
 export type AuthTelemetryEvent =
   | {

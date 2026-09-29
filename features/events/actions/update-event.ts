@@ -210,8 +210,7 @@ export async function updateEventAction(
 
     // Stripe Connect 準備状態チェック（"stripe" を新規に追加する場合のみ）
     let stripePayoutResolution:
-      | Awaited<ReturnType<typeof resolveEventStripePayoutProfile>>
-      | undefined;
+      Awaited<ReturnType<typeof resolveEventStripePayoutProfile>> | undefined;
     {
       const hadStripe = (existingEvent.payment_methods || []).includes("stripe");
       const addingStripe = hasStripe && !hadStripe && effectiveFee > 0;

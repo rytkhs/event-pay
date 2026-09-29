@@ -220,13 +220,6 @@ export interface AdminUpdateAttendanceStatusResult {
   paymentId?: string | null;
   paymentMethod?: "cash" | "stripe" | null;
   paymentStatus?:
-    | "pending"
-    | "paid"
-    | "failed"
-    | "received"
-    | "refunded"
-    | "waived"
-    | "canceled"
-    | null;
+    "pending" | "paid" | "failed" | "received" | "refunded" | "waived" | "canceled" | null;
   guestUrl?: string;
 }
